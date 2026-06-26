@@ -1,0 +1,29 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Models (large files — download separately)
+models-onnx/
+models-original/
+
+# Olive cache
+.olive-cache/
+
+# Build
+NemotronSpeech/bin/
+NemotronSpeech/obj/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
