@@ -8,10 +8,56 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.14.1" />
-    <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="System.CommandLine" Version="2.0.1" />
-  </ItemGroup>
+  <!-- GPU architecture selection.
+       Standard (default):  RTX 20/30/40 — stable ORT GenAI 0.14.1, CUDA 12.x
+       Blackwell:           RTX 50        — nightly ORT GenAI, CUDA 13.x
+       CPU:                 no GPU        — CPU-only ORT GenAI (smaller, no CUDA DLLs)
+
+       Usage:
+         dotnet build -c Release                          (Standard)
+         dotnet build -c Release -p:GpuArch=Blackwell     (RTX 50)
+         dotnet build -c Release -p:GpuArch=CPU           (CPU only)
+  -->
+  <PropertyGroup>
+    <GpuArch Condition="'$(GpuArch)' == ''">Standard</GpuArch>
+  </PropertyGroup>
+
+  <Choose>
+    <!-- Blackwell (RTX 50) — nightly ORT -->
+    <When Condition="'$(GpuArch)' == 'Blackwell'">
+      <PropertyGroup>
+        <DefineConstants>$(DefineConstants);GPU_BLACKWELL</DefineConstants>
+      </PropertyGroup>
+      <ItemGroup>
+        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.15.0-dev-*" />
+        <PackageReference Include="NAudio" Version="2.2.1" />
+        <PackageReference Include="System.CommandLine" Version="2.0.1" />
+      </ItemGroup>
+    </When>
+
+    <!-- CPU only — no CUDA package -->
+    <When Condition="'$(GpuArch)' == 'CPU'">
+      <PropertyGroup>
+        <DefineConstants>$(DefineConstants);GPU_NONE</DefineConstants>
+      </PropertyGroup>
+      <ItemGroup>
+        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.14.1" />
+        <PackageReference Include="NAudio" Version="2.2.1" />
+        <PackageReference Include="System.CommandLine" Version="2.0.1" />
+      </ItemGroup>
+    </When>
+
+    <!-- Standard (RTX 20/30/40, GTX 16) — stable ORT -->
+    <Otherwise>
+      <PropertyGroup>
+        <DefineConstants>$(DefineConstants);GPU_STANDARD</DefineConstants>
+      </PropertyGroup>
+      <ItemGroup>
+        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.14.1" />
+        <PackageReference Include="NAudio" Version="2.2.1" />
+        <PackageReference Include="System.CommandLine" Version="2.0.1" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
 
 </Project>
