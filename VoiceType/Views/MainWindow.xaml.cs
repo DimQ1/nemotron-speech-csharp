@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using VoiceType.Services;
@@ -57,5 +58,17 @@ public partial class MainWindow : Window
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Application.Current.Shutdown();
+    }
+
+    private void TextDisplay_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        // Context menu handled in XAML
+    }
+
+    private void CopyMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(TextDisplay.SelectedText))
+            TextDisplay.SelectAll();
+        TextDisplay.Copy();
     }
 }

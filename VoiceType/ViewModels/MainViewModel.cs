@@ -30,6 +30,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         StopCommand = new RelayCommand(Stop, () => IsRecording);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
         ToggleCommand = new RelayCommand(Toggle);
+        CopyCommand = new RelayCommand(CopyText);
 
         _hook.InputDetected += OnInputDetected;
         _recognition.PartialResult += OnPartialResult;
@@ -62,6 +63,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ICommand StopCommand { get; }
     public ICommand OpenSettingsCommand { get; }
     public ICommand ToggleCommand { get; }
+    public ICommand CopyCommand { get; }
 
     // ── Hotkey ──────────────────────────────────────
 
@@ -78,6 +80,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         if (IsRecording) Stop();
         else Start();
+    }
+
+    private void CopyText()
+    {
+        if (!string.IsNullOrEmpty(_floatingText))
+            System.Windows.Clipboard.SetText(_floatingText);
     }
 
     private void Start()
