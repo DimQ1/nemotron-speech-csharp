@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Input;
 using VoiceType.Services;
 
@@ -18,16 +19,31 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "VoiceType", "Models", "nemotron-speech-onnx");
 
-        FetchFilesCommand = new RelayCommand(async () => await FetchFolders());
-        DownloadCommand = new RelayCommand(async () => await Download(),
+        FetchFilesCommand = new AsyncRelayCommand(FetchFolders);
+        DownloadCommand = new AsyncRelayCommand(Download,
             () => Folders.Count > 0 && !IsDownloading);
         CancelCommand = new RelayCommand(() => _downloader.Cancel(), () => IsDownloading);
         SelectAllCommand = new RelayCommand(() => { foreach (var f in Folders) f.Selected = true; });
         DeselectAllCommand = new RelayCommand(() => { foreach (var f in Folders) f.Selected = false; });
 
-        _downloader.ProgressChanged += p => { CurrentFile = p.CurrentFile; FileProgress = p.FileProgress; OverallProgress = p.OverallProgress; DownloadedFiles = p.DownloadedFiles; TotalFiles = p.TotalFiles; };
-        _downloader.StatusChanged += s => Status = s;
-        _downloader.Completed += (ok, msg) => { IsDownloading = false; if (ok) ResultPath = msg; Status = ok ? "Download complete!" : $"Error: {msg}"; };
+        _downloader.ProgressChanged += p =>
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                CurrentFile = p.CurrentFile; FileProgress = p.FileProgress;
+                OverallProgress = p.OverallProgress; DownloadedFiles = p.DownloadedFiles; TotalFiles = p.TotalFiles;
+            });
+        };
+        _downloader.StatusChanged += s => Application.Current.Dispatcher.Invoke(() => Status = s);
+        _downloader.Completed += (ok, msg) =>
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                IsDownloading = false;
+                if (ok) ResultPath = msg;
+                Status = ok ? "Download complete!" : $"Error: {msg}";
+            });
+        };
     }
 
     public string RepoId { get; set; }

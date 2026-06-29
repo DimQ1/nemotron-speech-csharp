@@ -10,7 +10,11 @@ namespace VoiceType.Services;
 /// </summary>
 public sealed class ModelDownloaderService : IDisposable
 {
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromMinutes(30) };
+    private readonly HttpClient _http = new()
+    {
+        Timeout = TimeSpan.FromSeconds(30),
+        DefaultRequestHeaders = { { "User-Agent", "VoiceType/1.0" } }
+    };
     private CancellationTokenSource? _cts;
 
     public event Action<DownloadProgress>? ProgressChanged;

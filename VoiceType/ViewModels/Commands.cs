@@ -40,3 +40,35 @@ public sealed class RelayCommand<T> : ICommand
         remove => CommandManager.RequerySuggested -= value;
     }
 }
+
+/// <summary>Async ICommand — properly awaits tasks, catches exceptions.</summary>
+public sealed class AsyncRelayCommand : ICommand
+{
+    private readonly Func<Task> _execute;
+    private readonly Func<bool>? _canExecute;
+    private bool _isExecuting;
+
+    public AsyncRelayCommand(Func<Task> execute, Func<bool>? canExecute = null)
+    { _execute = execute; _canExecute = canExecute; }
+
+    public bool CanExecute(object? p) => !_isExecuting && (_canExecute?.Invoke() ?? true);
+
+    public async void Execute(object? p)
+    {
+        _isExecuting = true;
+        CommandManager.InvalidateRequerySuggested();
+        try { await _execute(); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"AsyncRelayCommand error: {ex}"); }
+        finally
+        {
+            _isExecuting = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    public event EventHandler? CanExecuteChanged
+    {
+        add => CommandManager.RequerySuggested += value;
+        remove => CommandManager.RequerySuggested -= value;
+    }
+}
