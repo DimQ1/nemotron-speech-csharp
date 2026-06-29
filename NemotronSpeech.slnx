@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="NemotronSpeech/NemotronSpeech.csproj" />
+  <Project Path="SpeechLib/SpeechLib.csproj" />
+  <Project Path="VoiceType/VoiceType.csproj" />
+</Solution>

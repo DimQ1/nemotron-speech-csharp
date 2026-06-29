@@ -12,15 +12,22 @@
        Standard (default):  RTX 20/30/40 — stable ORT GenAI 0.14.1, CUDA 12.x
        Blackwell:           RTX 50        — nightly ORT GenAI, CUDA 13.x
        CPU:                 no GPU        — CPU-only ORT GenAI (smaller, no CUDA DLLs)
+       DML:                 any GPU       — DirectML ORT GenAI (Windows GPU via DirectX)
 
        Usage:
          dotnet build -c Release                          (Standard)
          dotnet build -c Release -p:GpuArch=Blackwell     (RTX 50)
          dotnet build -c Release -p:GpuArch=CPU           (CPU only)
+         dotnet build -c Release -p:GpuArch=DML           (DirectML)
   -->
   <PropertyGroup>
     <GpuArch Condition="'$(GpuArch)' == ''">Standard</GpuArch>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.1" />
+    <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
+  </ItemGroup>
 
   <Choose>
     <!-- Blackwell (RTX 50) — nightly ORT -->
@@ -30,8 +37,6 @@
       </PropertyGroup>
       <ItemGroup>
         <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.15.0-dev-*" />
-        <PackageReference Include="NAudio" Version="2.2.1" />
-        <PackageReference Include="System.CommandLine" Version="2.0.1" />
       </ItemGroup>
     </When>
 
@@ -42,8 +47,16 @@
       </PropertyGroup>
       <ItemGroup>
         <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.14.1" />
-        <PackageReference Include="NAudio" Version="2.2.1" />
-        <PackageReference Include="System.CommandLine" Version="2.0.1" />
+      </ItemGroup>
+    </When>
+
+    <!-- DirectML — any GPU via DirectX (Windows only) -->
+    <When Condition="'$(GpuArch)' == 'DML'">
+      <PropertyGroup>
+        <DefineConstants>$(DefineConstants);GPU_DML</DefineConstants>
+      </PropertyGroup>
+      <ItemGroup>
+        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.DirectML" Version="0.14.1" />
       </ItemGroup>
     </When>
 
@@ -54,8 +67,6 @@
       </PropertyGroup>
       <ItemGroup>
         <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.14.1" />
-        <PackageReference Include="NAudio" Version="2.2.1" />
-        <PackageReference Include="System.CommandLine" Version="2.0.1" />
       </ItemGroup>
     </Otherwise>
   </Choose>

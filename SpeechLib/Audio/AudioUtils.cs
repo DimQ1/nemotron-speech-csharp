@@ -1,9 +1,9 @@
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 
-namespace NemotronSpeech;
+namespace SpeechLib.Audio;
 
-/// <summary>Audio format conversion utilities.</summary>
+/// <summary>Audio format conversion and resampling utilities.</summary>
 public static class AudioUtils
 {
     /// <summary>Convert raw byte buffer to float32 mono samples.</summary>

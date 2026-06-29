@@ -1,6 +1,6 @@
-namespace NemotronSpeech;
+namespace SpeechLib;
 
-/// <summary>Maps BCP-47 language codes to numeric lang_id for the multilingual Nemotron model.</summary>
+/// <summary>Maps BCP-47 language codes to numeric lang_id for multilingual speech models.</summary>
 public static class LanguageMapper
 {
     private static readonly Dictionary<string, int> Map = new(StringComparer.OrdinalIgnoreCase)
@@ -51,7 +51,6 @@ public static class LanguageMapper
         if (string.IsNullOrEmpty(langArg)) return null;
         if (int.TryParse(langArg, out int n) && n >= 0 && n < 128) return n.ToString();
         if (Map.TryGetValue(langArg, out int id)) return id.ToString();
-        Console.WriteLine($"  Warning: Unknown language '{langArg}'.");
         return null;
     }
 }

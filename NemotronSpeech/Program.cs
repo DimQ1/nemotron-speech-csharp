@@ -3,6 +3,8 @@
 
 using Microsoft.ML.OnnxRuntime;
 using NemotronSpeech;
+using SpeechLib;
+using SpeechLib.Models;
 
 try
 {
@@ -18,17 +20,13 @@ try
         Console.WriteLine($"  Language: {opts.LanguageArg} -> lang_id={langId}");
 
     using var session = new ModelSession(opts.ModelPath, opts.ExecutionProvider, langId, opts.UseVad);
+    if (session.IsSingleLanguage)
+        Console.WriteLine("  Model: single-language (no lang_id needed)");
     Console.WriteLine("  Use VAD: " + session.VadStatus);
 
     if (opts.IsLive)
     {
-        IAudioSource source = opts.Mode switch
-        {
-            CaptureMode.Mic => new MicAudioSource(),
-            CaptureMode.Loopback => new LoopbackAudioSource(session.SampleRate),
-            CaptureMode.Mix => new MixAudioSource(session.SampleRate),
-            _ => throw new InvalidOperationException()
-        };
+        var source = Transcriber.CreateAudioSource(opts.Mode, session.SampleRate);
 
         var label = opts.Mode switch
         {

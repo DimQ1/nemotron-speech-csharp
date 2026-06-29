@@ -1,3 +1,5 @@
+using SpeechLib.Models;
+
 namespace NemotronSpeech;
 
 /// <summary>Parsed command-line options.</summary>
@@ -51,5 +53,3 @@ public sealed record AppOptions
         return opts;
     }
 }
-
-public enum CaptureMode { File, Mic, Loopback, Mix }

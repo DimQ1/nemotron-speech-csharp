@@ -53,11 +53,9 @@ namespace CommonUtils
             {
                 ortEnv.RegisterExecutionProviderLibrary("NvTensorRTRTXExecutionProvider", ep_path);
             }
-            else
+            else if (string.Equals(ep, "dml", StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine($"Warning: EP registration not supported for {ep}");
-                Console.WriteLine("Only 'cuda' and 'NvTensorRtRtx' support plug-in libraries.");
-                return;
+                ortEnv.RegisterExecutionProviderLibrary("DmlExecutionProvider", ep_path);
             }
 
             Console.WriteLine($"Registered {ep} successfully!");
@@ -78,11 +76,20 @@ namespace CommonUtils
             var config = new Config(path);
             if (ep != "follow_config")
             {
-                config.ClearProviders();
-                if (ep != "cpu")
+                // DML: don't clear default providers (keep CPU fallback), just append DML
+                if (ep == "dml")
                 {
-                    Console.WriteLine($"Setting model to {ep}");
+                    Console.WriteLine($"Setting model to {ep} (keeping default CPU fallback)");
                     config.AppendProvider(ep);
+                }
+                else
+                {
+                    config.ClearProviders();
+                    if (ep != "cpu")
+                    {
+                        Console.WriteLine($"Setting model to {ep}");
+                        config.AppendProvider(ep);
+                    }
                 }
 
                 // Set any EP-specific options

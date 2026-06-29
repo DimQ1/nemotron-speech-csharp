@@ -31,7 +31,7 @@ MEL_FEATURES = 128
 SUBSAMPLING_FACTOR = 8
 
 # Model architecture constants (0.6B multilingual model)
-N_LAYERS = 24
+N_LAYERS = 12
 D_MODEL = 1024
 CONV_CONTEXT = 8  # conv_kernel_size(9) - 1
 DECODER_HIDDEN = 640

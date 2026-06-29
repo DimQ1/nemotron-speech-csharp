@@ -1,11 +1,16 @@
 using CommonUtils;
 using Microsoft.ML.OnnxRuntimeGenAI;
+using SpeechLib;
 using System.Text.Json;
 
 namespace NemotronSpeech;
 
-/// <summary>Wraps ONNX Runtime GenAI model lifecycle: config, model, processor, tokenizer, generator.</summary>
-public sealed class ModelSession : IDisposable
+/// <summary>
+/// Nemotron ONNX Runtime GenAI speech recognizer.
+/// Wraps model lifecycle: config, model, processor, tokenizer, generator.
+/// Implements <see cref="IStreamingSpeechRecognizer"/> for pluggable recognition pipelines.
+/// </summary>
+public sealed class ModelSession : IStreamingSpeechRecognizer
 {
     private readonly Config _config;
     private readonly Model _model;
@@ -18,6 +23,7 @@ public sealed class ModelSession : IDisposable
     public int SampleRate { get; }
     public int ChunkSamples { get; }
     public string VadStatus { get; }
+    public bool IsSingleLanguage { get; }
 
     public ModelSession(string modelPath, string executionProvider, string? langId, bool useVad)
     {
@@ -29,6 +35,10 @@ public sealed class ModelSession : IDisposable
         var cfg = json.RootElement.GetProperty("model");
         SampleRate = cfg.GetProperty("sample_rate").GetInt32();
         ChunkSamples = cfg.GetProperty("chunk_samples").GetInt32();
+
+        // Detect single-language models: encoder has no lang_id input
+        var encInputs = cfg.GetProperty("encoder").GetProperty("inputs");
+        IsSingleLanguage = !encInputs.TryGetProperty("lang_id", out _);
 
         _config = Common.GetConfig(modelPath, executionProvider, null, new GeneratorParamsArgs());
         _model = new Model(_config);
@@ -45,13 +55,34 @@ public sealed class ModelSession : IDisposable
         _genParams = new GeneratorParams(_model);
         _generator = new Generator(_model, _genParams);
 
-        if (langId is not null)
+        if (!IsSingleLanguage && langId is not null)
             SetLanguage(langId);
     }
 
     public NamedTensors? ProcessAudio(float[] chunk) => _processor.Process(chunk);
     public NamedTensors? Flush() => _processor.Flush();
     public void SetInputs(NamedTensors inputs) => _generator.SetInputs(inputs);
+
+    /// <inheritdoc />
+    string? IStreamingSpeechRecognizer.ProcessAudio(float[] chunk)
+    {
+        var inputs = _processor.Process(chunk);
+        if (inputs is null) return null;
+        _generator.SetInputs(inputs);
+        return DecodeTokens();
+    }
+
+    /// <inheritdoc />
+    string? IStreamingSpeechRecognizer.Flush()
+    {
+        var inputs = _processor.Flush();
+        if (inputs is null) return null;
+        _generator.SetInputs(inputs);
+        return DecodeTokens();
+    }
+
+    int IStreamingSpeechRecognizer.SampleRate => SampleRate;
+    int IStreamingSpeechRecognizer.ChunkSamples => ChunkSamples;
 
     public string DecodeTokens()
     {
