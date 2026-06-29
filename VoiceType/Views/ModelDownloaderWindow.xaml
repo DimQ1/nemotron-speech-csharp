@@ -76,7 +76,7 @@
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold"/>
                                             <TextBlock Foreground="{StaticResource FgSecondaryBrush}" FontSize="11">
-                                                <Run Text="{Binding Files.Count, StringFormat={}{0} files}"/>
+                                                <Run Text="{Binding Files.Count, Mode=OneWay, StringFormat={}{0} files}"/>
                                                 <Run Text=" · "/>
                                                 <Run Text="{Binding SizeDisplay}"/>
                                             </TextBlock>
