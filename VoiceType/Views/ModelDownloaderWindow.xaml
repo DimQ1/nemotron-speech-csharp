@@ -78,7 +78,7 @@
                                             <TextBlock Foreground="{StaticResource FgSecondaryBrush}" FontSize="11">
                                                 <Run Text="{Binding Files.Count, Mode=OneWay, StringFormat={}{0} files}"/>
                                                 <Run Text=" · "/>
-                                                <Run Text="{Binding SizeDisplay}"/>
+                                                <Run Text="{Binding SizeDisplay, Mode=OneWay}"/>
                                             </TextBlock>
                                         </StackPanel>
                                     </Grid>
@@ -124,7 +124,7 @@
                     Command="{Binding CancelCommand}" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVis}}"/>
             <Button Content="Download" Style="{StaticResource PrimaryButton}" Padding="16,6"
                     Command="{Binding DownloadCommand}"
-                    Visibility="{Binding IsNotDownloading, Converter={StaticResource BoolToVis}}"/>
+                    Visibility="{Binding IsNotDownloading, Mode=OneWay, Converter={StaticResource BoolToVis}}"/>
         </StackPanel>
     </Grid>
 </Window>

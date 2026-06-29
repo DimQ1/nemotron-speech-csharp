@@ -90,7 +90,7 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
         await _downloader.DownloadFromHuggingFace(repoId, Folders.ToList(), DownloadPath);
     }
 
-    private static string ParseRepoId(string input)
+    public static string ParseRepoId(string input)
     {
         var s = input.Trim().TrimEnd('/');
         if (s.StartsWith("https://huggingface.co/", StringComparison.OrdinalIgnoreCase)) s = s["https://huggingface.co/".Length..];
