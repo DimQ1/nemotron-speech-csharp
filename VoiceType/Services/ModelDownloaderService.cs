@@ -19,10 +19,11 @@ public sealed class ModelDownloaderService : IDisposable
 
     public bool IsDownloading { get; private set; }
 
-    /// <summary>Fetch file list from a HuggingFace repo.</summary>
-    public async Task<List<HfFile>> FetchRepoFiles(string repoId)
+    /// <summary>Fetch file list from a HuggingFace repo, optionally filtered by subfolder.</summary>
+    public async Task<List<HfFile>> FetchRepoFiles(string repoId, string? subfolder = null)
     {
-        StatusChanged?.Invoke($"Fetching file list from {repoId}...");
+        var displayId = subfolder is not null ? $"{repoId}/{subfolder}" : repoId;
+        StatusChanged?.Invoke($"Fetching file list from {displayId}...");
         var url = $"https://huggingface.co/api/models/{repoId}";
         var response = await _http.GetAsync(url);
         response.EnsureSuccessStatusCode();
@@ -32,11 +33,13 @@ public sealed class ModelDownloaderService : IDisposable
 
         if (json.TryGetProperty("siblings", out var siblings))
         {
+            var prefix = subfolder is not null ? subfolder.TrimEnd('/') + "/" : "";
             foreach (var sib in siblings.EnumerateArray())
             {
                 var rfilename = sib.GetProperty("rfilename").GetString() ?? "";
-                if (rfilename.StartsWith(".")) continue; // skip hidden
-                if (rfilename.Contains("/")) continue;    // root-level files only
+                if (rfilename.StartsWith(".")) continue;
+                // Filter by subfolder prefix
+                if (!string.IsNullOrEmpty(prefix) && !rfilename.StartsWith(prefix)) continue;
                 var size = sib.TryGetProperty("size", out var sz) ? sz.GetInt64() : 0;
                 files.Add(new HfFile
                 {
@@ -46,7 +49,7 @@ public sealed class ModelDownloaderService : IDisposable
                 });
             }
         }
-        StatusChanged?.Invoke($"Found {files.Count} files in {repoId}");
+        StatusChanged?.Invoke($"Found {files.Count} files in {displayId}");
         return files;
     }
 
@@ -66,6 +69,7 @@ public sealed class ModelDownloaderService : IDisposable
         {
             var url = $"https://huggingface.co/{repoId}/resolve/main/{file.Name}";
             var dest = Path.Combine(targetDir, file.Name);
+            Directory.CreateDirectory(Path.GetDirectoryName(dest)!); // create subdirs
 
             StatusChanged?.Invoke($"Downloading {file.Name} ({FormatSize(file.SizeBytes)})...");
 

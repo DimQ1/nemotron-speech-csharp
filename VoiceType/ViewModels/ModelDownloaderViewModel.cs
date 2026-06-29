@@ -98,13 +98,19 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
     private async Task FetchFiles()
     {
         Files.Clear();
-        var id = ParseRepoId(RepoId);
-        Status = $"Fetching {id}...";
+        var (repoId, subfolder) = ParseRepoUrl(RepoId);
+        var displayId = subfolder is not null ? $"{repoId}/{subfolder}" : repoId;
+        Status = $"Fetching {displayId}...";
         try
         {
-            var list = await _downloader.FetchRepoFiles(id);
+            var list = await _downloader.FetchRepoFiles(repoId, subfolder);
             foreach (var f in list) Files.Add(f);
-            Status = $"Found {Files.Count} files";
+            Status = $"Found {Files.Count} files in {displayId}";
+
+            // Auto-append subfolder to download path
+            if (subfolder is not null && !DownloadPath.EndsWith(subfolder))
+                DownloadPath = Path.Combine(DownloadPath, subfolder);
+            OnPropertyChanged(nameof(DownloadPath));
         }
         catch (Exception ex)
         {
@@ -112,23 +118,56 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
         }
     }
 
-    /// <summary>Extract owner/repo from URL like https://huggingface.co/DimQ1/nemotron-speech-onnx/</summary>
-    private static string ParseRepoId(string input)
+    /// <summary>
+    /// Extract (owner/repo, subfolder) from URL.
+    /// Handles: https://huggingface.co/DimQ1/nemotron-speech-onnx/tree/main/cpu
+    ///          DimQ1/nemotron-speech-onnx/cpu
+    ///          DimQ1/nemotron-speech-onnx
+    /// </summary>
+    private static (string repoId, string? subfolder) ParseRepoUrl(string input)
     {
         var s = input.Trim().TrimEnd('/');
+
+        // Strip protocol + domain
         if (s.StartsWith("https://huggingface.co/", StringComparison.OrdinalIgnoreCase))
             s = s["https://huggingface.co/".Length..];
         else if (s.StartsWith("huggingface.co/", StringComparison.OrdinalIgnoreCase))
             s = s["huggingface.co/".Length..];
-        return s;
+
+        // Split into owner/repo and optional /tree/main/subfolder
+        var parts = s.Split('/');
+        // parts[0] = owner, parts[1] = repo, parts[2..] = "tree", "main", "subfolder"...
+        if (parts.Length >= 2 && parts[0].Length > 0 && parts[1].Length > 0)
+        {
+            var repoId = $"{parts[0]}/{parts[1]}";
+
+            string? subfolder = null;
+            if (parts.Length > 2)
+            {
+                // Skip "tree"/"main" or "resolve"/"main" segments
+                var skip = 0;
+                if (parts.Length > skip + 2 && parts[skip + 2].Equals("tree", StringComparison.OrdinalIgnoreCase))
+                    skip += 2; // skip "tree/main"
+                else if (parts.Length > skip + 2 && parts[skip + 2].Equals("resolve", StringComparison.OrdinalIgnoreCase))
+                    skip += 2; // skip "resolve/main"
+
+                var remaining = parts.Skip(2 + skip).ToArray();
+                if (remaining.Length > 0)
+                    subfolder = string.Join("/", remaining);
+            }
+
+            return (repoId, subfolder);
+        }
+
+        return (s, null);
     }
 
     private async Task DownloadSelected()
     {
         IsDownloading = true;
         Status = "Starting download...";
-        var id = ParseRepoId(RepoId);
-        await _downloader.DownloadFromHuggingFace(id, Files.ToList(), DownloadPath);
+        var (repoId, _) = ParseRepoUrl(RepoId);
+        await _downloader.DownloadFromHuggingFace(repoId, Files.ToList(), DownloadPath);
     }
 
     private async Task DownloadAll()
