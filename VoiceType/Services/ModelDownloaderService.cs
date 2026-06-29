@@ -19,59 +19,66 @@ public sealed class ModelDownloaderService : IDisposable
 
     public bool IsDownloading { get; private set; }
 
-    /// <summary>Fetch file list from a HuggingFace repo, optionally filtered by subfolder.</summary>
-    public async Task<List<HfFile>> FetchRepoFiles(string repoId, string? subfolder = null)
+    /// <summary>Fetch files from repo and group by top-level folders.</summary>
+    public async Task<List<HfFolder>> FetchRepoFolders(string repoId)
     {
-        var displayId = subfolder is not null ? $"{repoId}/{subfolder}" : repoId;
-        StatusChanged?.Invoke($"Fetching file list from {displayId}...");
+        StatusChanged?.Invoke($"Fetching file list from {repoId}...");
         var url = $"https://huggingface.co/api/models/{repoId}";
         var response = await _http.GetAsync(url);
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var files = new List<HfFile>();
+        var allFiles = new List<HfFile>();
 
         if (json.TryGetProperty("siblings", out var siblings))
         {
-            var prefix = subfolder is not null ? subfolder.TrimEnd('/') + "/" : "";
             foreach (var sib in siblings.EnumerateArray())
             {
                 var rfilename = sib.GetProperty("rfilename").GetString() ?? "";
                 if (rfilename.StartsWith(".")) continue;
-                // Filter by subfolder prefix
-                if (!string.IsNullOrEmpty(prefix) && !rfilename.StartsWith(prefix)) continue;
                 var size = sib.TryGetProperty("size", out var sz) ? sz.GetInt64() : 0;
-                files.Add(new HfFile
-                {
-                    Name = rfilename,
-                    SizeBytes = size,
-                    Selected = true
-                });
+                allFiles.Add(new HfFile { Name = Path.GetFileName(rfilename), RelativePath = rfilename, SizeBytes = size });
             }
         }
-        StatusChanged?.Invoke($"Found {files.Count} files in {displayId}");
-        return files;
+
+        // Group by top-level folder
+        var folders = allFiles
+            .GroupBy(f => f.RelativePath.Contains('/') ? f.RelativePath[..f.RelativePath.IndexOf('/')] : "(root)")
+            .OrderBy(g => g.Key == "(root)" ? 0 : 1).ThenBy(g => g.Key)
+            .Select(g => new HfFolder
+            {
+                Name = g.Key == "(root)" ? "📄 Root files" : $"📁 {g.Key}",
+                Files = g.OrderBy(f => f.RelativePath).ToList()
+            })
+            .ToList();
+
+        StatusChanged?.Invoke($"Found {folders.Count} folder(s), {allFiles.Count} file(s) in {repoId}");
+        return folders;
     }
 
-    /// <summary>Download selected files from a HuggingFace repo.</summary>
-    public async Task DownloadFromHuggingFace(string repoId, List<HfFile> files, string targetDir)
+    /// <summary>Download selected folders from a HuggingFace repo.</summary>
+    public async Task DownloadFromHuggingFace(string repoId, List<HfFolder> folders, string targetDir)
     {
         _cts = new CancellationTokenSource();
         IsDownloading = true;
         Directory.CreateDirectory(targetDir);
 
-        var selected = files.Where(f => f.Selected).ToList();
-        long totalBytes = selected.Sum(f => f.SizeBytes);
+        var selectedFiles = folders
+            .Where(f => f.Selected)
+            .SelectMany(f => f.Files)
+            .ToList();
+
+        long totalBytes = selectedFiles.Sum(f => f.SizeBytes);
         long downloadedBytes = 0;
         int completed = 0;
 
-        foreach (var file in selected)
+        foreach (var file in selectedFiles)
         {
-            var url = $"https://huggingface.co/{repoId}/resolve/main/{file.Name}";
-            var dest = Path.Combine(targetDir, file.Name);
-            Directory.CreateDirectory(Path.GetDirectoryName(dest)!); // create subdirs
+            var url = $"https://huggingface.co/{repoId}/resolve/main/{file.RelativePath}";
+            var dest = Path.Combine(targetDir, file.RelativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
 
-            StatusChanged?.Invoke($"Downloading {file.Name} ({FormatSize(file.SizeBytes)})...");
+            StatusChanged?.Invoke($"Downloading {file.RelativePath} ({FormatSize(file.SizeBytes)})...");
 
             try
             {
@@ -79,18 +86,19 @@ public sealed class ModelDownloaderService : IDisposable
                     (bytes) =>
                     {
                         downloadedBytes += bytes;
+                        file.DownloadedBytes += bytes;
                         ProgressChanged?.Invoke(new DownloadProgress
                         {
-                            CurrentFile = file.Name,
+                            CurrentFile = file.RelativePath,
                             FileProgress = file.SizeBytes > 0 ? (double)file.DownloadedBytes / file.SizeBytes * 100 : 0,
                             OverallProgress = totalBytes > 0 ? (double)downloadedBytes / totalBytes * 100 : 0,
                             DownloadedFiles = completed,
-                            TotalFiles = selected.Count
+                            TotalFiles = selectedFiles.Count
                         });
                     }, _cts.Token);
 
                 completed++;
-                downloadedBytes = selected.Take(completed).Sum(f => f.SizeBytes);
+                downloadedBytes = selectedFiles.Take(completed).Sum(f => f.SizeBytes);
             }
             catch (OperationCanceledException)
             {
@@ -101,7 +109,7 @@ public sealed class ModelDownloaderService : IDisposable
             }
             catch (Exception ex)
             {
-                StatusChanged?.Invoke($"Error: {ex.Message}");
+                StatusChanged?.Invoke($"Error on {file.RelativePath}: {ex.Message}");
                 IsDownloading = false;
                 Completed?.Invoke(false, ex.Message);
                 return;
@@ -166,9 +174,19 @@ public sealed class ModelDownloaderService : IDisposable
 public sealed class HfFile
 {
     public string Name { get; init; } = "";
+    public string RelativePath { get; init; } = "";
     public long SizeBytes { get; init; }
     public long DownloadedBytes { get; set; }
-    public bool Selected { get; set; }
+}
+
+/// <summary>A folder containing HuggingFace files (grouped by top-level directory).</summary>
+public sealed class HfFolder
+{
+    public string Name { get; init; } = "";
+    public List<HfFile> Files { get; init; } = new();
+    public long TotalSize => Files.Sum(f => f.SizeBytes);
+    public string SizeDisplay => ModelDownloaderService.FormatSize(TotalSize);
+    public bool Selected { get; set; } = true;
 }
 
 public sealed class DownloadProgress

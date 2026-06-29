@@ -33,9 +33,9 @@
                 </Grid.ColumnDefinitions>
                 <TextBox Text="{Binding RepoId, UpdateSourceTrigger=PropertyChanged}"
                          Style="{StaticResource DarkTextBox}"/>
-                <Button Grid.Column="1" Content="Fetch Files" Margin="8,0,0,0"
+                <Button Grid.Column="1" Content="Scan" Margin="8,0,0,0"
                         Background="{StaticResource AccentBrush}" Foreground="White"
-                        BorderThickness="0" Padding="12,6" Cursor="Hand"
+                        BorderThickness="0" Padding="14,6" Cursor="Hand"
                         Command="{Binding FetchFilesCommand}"/>
             </Grid>
 
@@ -44,8 +44,8 @@
                      Style="{StaticResource DarkTextBox}"/>
         </StackPanel>
 
-        <!-- File list -->
-        <GroupBox Grid.Row="1" Header="Files" Style="{StaticResource DarkGroupBox}" Margin="0,0,0,8">
+        <!-- Folder list -->
+        <GroupBox Grid.Row="1" Header="Folders" Style="{StaticResource DarkGroupBox}" Margin="0,0,0,8">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -59,19 +59,30 @@
                             BorderThickness="0" Padding="8,3" FontSize="11" Cursor="Hand"
                             Command="{Binding DeselectAllCommand}"/>
                 </StackPanel>
-                <ScrollViewer Grid.Row="1" MaxHeight="180" VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding Files}">
+                <ScrollViewer Grid.Row="1" MaxHeight="200" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Folders}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <CheckBox IsChecked="{Binding Selected}" Margin="0,2">
-                                    <CheckBox.Content>
-                                        <TextBlock Foreground="{StaticResource FgBrush}" FontSize="12">
-                                            <Run Text="{Binding Name}"/>
-                                            <Run Text="  " Foreground="{StaticResource FgSecondaryBrush}"/>
-                                            <Run Text="{Binding SizeBytes, StringFormat={} ({0:N0} B)}" Foreground="{StaticResource FgSecondaryBrush}"/>
-                                        </TextBlock>
-                                    </CheckBox.Content>
-                                </CheckBox>
+                                <Border Background="{StaticResource BgSecondaryBrush}"
+                                        CornerRadius="4" Padding="10,6" Margin="0,0,0,3">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding Selected}"
+                                                  VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Foreground="{StaticResource FgSecondaryBrush}" FontSize="11">
+                                                <Run Text="{Binding Files.Count, StringFormat={}{0} files}"/>
+                                                <Run Text=" · "/>
+                                                <Run Text="{Binding SizeDisplay}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -111,12 +122,8 @@
             <Button Content="Cancel" Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
                     BorderThickness="0" Padding="12,6" Cursor="Hand" Margin="0,0,8,0"
                     Command="{Binding CancelCommand}" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVis}}"/>
-            <Button Content="Download Selected" Style="{StaticResource PrimaryButton}" Padding="12,6"
-                    Command="{Binding DownloadSelectedCommand}" Margin="0,0,8,0"
-                    Visibility="{Binding IsNotDownloading, Converter={StaticResource BoolToVis}}"/>
-            <Button Content="Download All" Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
-                    BorderThickness="0" Padding="12,6" Cursor="Hand"
-                    Command="{Binding DownloadAllCommand}"
+            <Button Content="Download" Style="{StaticResource PrimaryButton}" Padding="16,6"
+                    Command="{Binding DownloadCommand}"
                     Visibility="{Binding IsNotDownloading, Converter={StaticResource BoolToVis}}"/>
         </StackPanel>
     </Grid>
