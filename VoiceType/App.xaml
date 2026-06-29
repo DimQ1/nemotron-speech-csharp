@@ -17,6 +17,9 @@
             <SolidColorBrush x:Key="RedBrush" Color="#FF5A5A"/>
             <SolidColorBrush x:Key="GreenBrush" Color="#16C60C"/>
 
+            <!-- Converters -->
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
             <!-- Styles -->
             <Style TargetType="Button" x:Key="PrimaryButton">
                 <Setter Property="Background" Value="{StaticResource AccentBrush}"/>

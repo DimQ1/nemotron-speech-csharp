@@ -2,6 +2,7 @@ using System.IO;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Input;
 using VoiceType.Models;
 using VoiceType.Services;
@@ -41,6 +42,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         CancelCommand = new RelayCommand(Cancel);
         AddRuleCommand = new RelayCommand(AddRule);
         DeleteRuleCommand = new RelayCommand<PostProcessingRule>(DeleteRule);
+        OpenModelDownloaderCommand = new RelayCommand(OpenModelDownloader);
     }
 
     // ── Engine ──────────────────────────────────────
@@ -73,6 +75,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public ICommand CancelCommand { get; }
     public ICommand AddRuleCommand { get; }
     public ICommand DeleteRuleCommand { get; }
+    public ICommand OpenModelDownloaderCommand { get; }
 
     public bool WasSaved { get; private set; }
 
@@ -108,6 +111,15 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private void DeleteRule(PostProcessingRule? rule)
     {
         if (rule is not null) Rules.Remove(rule);
+    }
+
+    private void OpenModelDownloader()
+    {
+        var window = new Views.ModelDownloaderWindow();
+        window.Owner = System.Windows.Application.Current.MainWindow;
+        window.ShowDialog();
+        if (window.WasDownloaded && window.ResultPath is not null)
+            ModelPath = window.ResultPath;
     }
 
     public event Action? RequestClose;
