@@ -98,10 +98,11 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
     private async Task FetchFiles()
     {
         Files.Clear();
-        Status = $"Fetching {RepoId}...";
+        var id = ParseRepoId(RepoId);
+        Status = $"Fetching {id}...";
         try
         {
-            var list = await _downloader.FetchRepoFiles(RepoId);
+            var list = await _downloader.FetchRepoFiles(id);
             foreach (var f in list) Files.Add(f);
             Status = $"Found {Files.Count} files";
         }
@@ -111,11 +112,23 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
         }
     }
 
+    /// <summary>Extract owner/repo from URL like https://huggingface.co/DimQ1/nemotron-speech-onnx/</summary>
+    private static string ParseRepoId(string input)
+    {
+        var s = input.Trim().TrimEnd('/');
+        if (s.StartsWith("https://huggingface.co/", StringComparison.OrdinalIgnoreCase))
+            s = s["https://huggingface.co/".Length..];
+        else if (s.StartsWith("huggingface.co/", StringComparison.OrdinalIgnoreCase))
+            s = s["huggingface.co/".Length..];
+        return s;
+    }
+
     private async Task DownloadSelected()
     {
         IsDownloading = true;
         Status = "Starting download...";
-        await _downloader.DownloadFromHuggingFace(RepoId, Files.ToList(), DownloadPath);
+        var id = ParseRepoId(RepoId);
+        await _downloader.DownloadFromHuggingFace(id, Files.ToList(), DownloadPath);
     }
 
     private async Task DownloadAll()

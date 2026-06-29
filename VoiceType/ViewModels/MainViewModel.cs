@@ -31,6 +31,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OpenSettingsCommand = new RelayCommand(OpenSettings);
         ToggleCommand = new RelayCommand(Toggle);
         CopyCommand = new RelayCommand(CopyText);
+        OpenModelDownloaderCommand = new RelayCommand(OpenModelDownloader);
 
         _hook.InputDetected += OnInputDetected;
         _recognition.PartialResult += OnPartialResult;
@@ -64,6 +65,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ICommand OpenSettingsCommand { get; }
     public ICommand ToggleCommand { get; }
     public ICommand CopyCommand { get; }
+    public ICommand OpenModelDownloaderCommand { get; }
 
     // ── Hotkey ──────────────────────────────────────
 
@@ -86,6 +88,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         if (!string.IsNullOrEmpty(_floatingText))
             System.Windows.Clipboard.SetText(_floatingText);
+    }
+
+    private void OpenModelDownloader()
+    {
+        var window = new Views.ModelDownloaderWindow();
+        window.Owner = Application.Current.MainWindow;
+        window.ShowDialog();
+        if (window.WasDownloaded && window.ResultPath is not null)
+        {
+            _settings.ModelPath = window.ResultPath;
+            SettingsService.Save(_settings);
+        }
     }
 
     private void Start()
