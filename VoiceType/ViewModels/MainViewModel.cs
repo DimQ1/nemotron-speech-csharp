@@ -19,6 +19,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _statusText = "Ready";
     private string _recognizedText = "";
     private string _floatingText = "";
+    private int _lastInjectedLength;
     private bool _isRecording;
     private RecognitionSession? _currentSession;
 
@@ -87,6 +88,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         StatusText = "Initializing engine...";
         _recognizedText = "";
         _floatingText = "";
+        _lastInjectedLength = 0;
         OnPropertyChanged(nameof(RecognizedText));
         OnPropertyChanged(nameof(FloatingText));
 
@@ -156,8 +158,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
             RecognizedText = text;
             FloatingText = text;
 
-            // Inject into target window
-            TextInjector.Inject(text, _settings.TextInjectionMethod);
+            // Inject only new characters since last injection
+            if (text.Length > _lastInjectedLength)
+            {
+                var delta = text[_lastInjectedLength..];
+                TextInjector.Inject(delta, _settings.TextInjectionMethod);
+                _lastInjectedLength = text.Length;
+            }
         });
     }
 
@@ -167,6 +174,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             RecognizedText = text;
             FloatingText = text;
+
+            // Inject any remaining delta not yet sent
+            if (text.Length > _lastInjectedLength)
+            {
+                var delta = text[_lastInjectedLength..];
+                TextInjector.Inject(delta, _settings.TextInjectionMethod);
+            }
+            _lastInjectedLength = 0;
+
             IsRecording = false;
             StatusText = "Done";
 
