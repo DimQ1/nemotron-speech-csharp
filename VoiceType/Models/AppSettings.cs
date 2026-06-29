@@ -32,7 +32,7 @@ public sealed class AppSettings
     public bool PostProcessingEnabled { get; set; } = true;
     public List<PostProcessingRule> PostProcessingRules { get; set; } = new()
     {
-        new() { Name = "Remove language tags (<ru-RU>, <en>, etc.)", Pattern = @"<[a-z]{2}(-[A-Z]{1,3})?>", Replacement = "" },
+        new() { Name = "Remove language tags (<ru-RU>, <en>, <auto>, etc.)", Pattern = @"<(?:[a-z]{2}(-[A-Z]{1,3})?|auto)>", Replacement = "" },
         new() { Name = "Strip repeated punctuation", Pattern = @"([,.!?;:])\1+", Replacement = "$1" },
         new() { Name = "Remove 'uh', 'um' hesitation markers", Pattern = @"\b(uh+|um+|er+)\b", Replacement = "" },
         new() { Name = "Normalise whitespace", Pattern = @"\s{2,}", Replacement = " " },
