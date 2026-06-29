@@ -12,7 +12,7 @@ public sealed class AppSettings
     // ── Engine ──────────────────────────────────────
     public string ModelPath { get; set; } = "";
     public string ExecutionProvider { get; set; } = "cpu";
-    public string Language { get; set; } = "ru";
+    public string Language { get; set; } = "auto";
     public bool UseVad { get; set; } = true;
 
     // ── Capture ─────────────────────────────────────
