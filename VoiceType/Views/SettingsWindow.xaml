@@ -57,7 +57,7 @@
                         <TextBlock Text="Injection Method" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <ComboBox SelectedValue="{Binding TextInjectionMethod}" SelectedValuePath="Content"
                                   Style="{StaticResource DarkComboBox}" Margin="0,0,0,8">
-                            <ComboBoxItem Content="SendInput"/> <ComboBoxItem Content="Clipboard"/>
+                            <ComboBoxItem Content="InputSimulator"/> <ComboBoxItem Content="SendInput"/> <ComboBoxItem Content="Clipboard"/>
                         </ComboBox>
                         <CheckBox Content="Stop recognition on any keyboard/mouse input"
                                   IsChecked="{Binding StopOnAnyInput}" Style="{StaticResource DarkCheckBox}"/>

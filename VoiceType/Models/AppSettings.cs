@@ -19,7 +19,7 @@ public sealed class AppSettings
     public string AudioSource { get; set; } = "Mic"; // Mic, Loopback, Mix
 
     // ── Injection ───────────────────────────────────
-    public InjectionMethod TextInjectionMethod { get; set; } = InjectionMethod.SendInput;
+    public InjectionMethod TextInjectionMethod { get; set; } = InjectionMethod.InputSimulator;
     public bool StopOnAnyInput { get; set; } = true;
 
     // ── Sessions ────────────────────────────────────
@@ -41,7 +41,7 @@ public sealed class AppSettings
     public string ToggleHotkey { get; set; } = "Ctrl+Shift+V";
 }
 
-public enum InjectionMethod { SendInput, Clipboard }
+public enum InjectionMethod { InputSimulator, SendInput, Clipboard }
 
 /// <summary>
 /// A single post-processing rule: regex find-and-replace.
