@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using VoiceType.Models;
 using VoiceType.Services;
 
@@ -116,9 +117,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private void BrowseRoot()
     {
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(
+            System.Windows.Application.Current.MainWindow).Handle;
         var path = FolderBrowser.Show("Select root folder with model subfolders",
             Directory.Exists(ModelsRootPath) ? ModelsRootPath
-                : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx")));
+                : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx")),
+            hwnd);
         if (path is not null)
             ModelsRootPath = path;
     }

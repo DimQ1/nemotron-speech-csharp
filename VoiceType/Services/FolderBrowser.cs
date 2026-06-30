@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace VoiceType.Services;
 
@@ -10,10 +11,7 @@ internal static class FolderBrowser
     private static extern IntPtr SHBrowseForFolder(ref BROWSEINFO lpbi);
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-    private static extern bool SHGetPathFromIDList(IntPtr pidl, IntPtr pszPath);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetActiveWindow();
+    private static extern bool SHGetPathFromIDList(IntPtr pidl, StringBuilder pszPath);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct BROWSEINFO
@@ -32,11 +30,11 @@ internal static class FolderBrowser
     private const uint BIF_NEWDIALOGSTYLE = 0x0040;
 
     /// <summary>Show folder browser dialog. Returns selected path or null if cancelled.</summary>
-    public static string? Show(string title, string initialPath)
+    public static string? Show(string title, string initialPath, IntPtr ownerHwnd)
     {
         var bi = new BROWSEINFO
         {
-            hwndOwner = GetActiveWindow(),
+            hwndOwner = ownerHwnd,
             lpszTitle = title,
             ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE,
             pszDisplayName = new string('\0', 260)
@@ -46,17 +44,17 @@ internal static class FolderBrowser
         if (pidl == IntPtr.Zero)
             return null;
 
-        var pathPtr = Marshal.AllocCoTaskMem(520);
+        var sb = new StringBuilder(520);
         try
         {
-            if (SHGetPathFromIDList(pidl, pathPtr))
-                return Marshal.PtrToStringUni(pathPtr);
+            if (SHGetPathFromIDList(pidl, sb))
+                return sb.ToString();
             return null;
         }
         finally
         {
-            Marshal.FreeCoTaskMem(pathPtr);
             Marshal.FreeCoTaskMem(pidl);
         }
     }
 }
+

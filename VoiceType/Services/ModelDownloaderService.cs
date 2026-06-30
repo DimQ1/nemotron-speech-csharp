@@ -12,7 +12,7 @@ public sealed class ModelDownloaderService : IDisposable
 {
     private readonly HttpClient _http = new()
     {
-        Timeout = TimeSpan.FromSeconds(30),
+        Timeout = System.Threading.Timeout.InfiniteTimeSpan,
         DefaultRequestHeaders = { { "User-Agent", "VoiceType/1.0" } }
     };
     private CancellationTokenSource? _cts;

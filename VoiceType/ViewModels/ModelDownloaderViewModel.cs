@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using VoiceType.Models;
 using VoiceType.Services;
 
@@ -47,6 +48,7 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
         CancelCommand = new RelayCommand(() => _customDownloader.Cancel(), () => IsDownloading);
         SelectAllCommand = new RelayCommand(() => { foreach (var f in Folders) f.Selected = true; });
         DeselectAllCommand = new RelayCommand(() => { foreach (var f in Folders) f.Selected = false; });
+        BrowseRootCommand = new RelayCommand(BrowseRoot);
 
         _customDownloader.ProgressChanged += p =>
         {
@@ -161,6 +163,7 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
     public ICommand CancelCommand { get; }
     public ICommand SelectAllCommand { get; }
     public ICommand DeselectAllCommand { get; }
+    public ICommand BrowseRootCommand { get; }
 
     private async Task FetchFolders()
     {
@@ -190,4 +193,15 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
     public void Dispose() => _customDownloader.Dispose();
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged([CallerMemberName] string? n = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+
+    private void BrowseRoot()
+    {
+        var hwnd = new WindowInteropHelper(Application.Current.MainWindow).Handle;
+        var path = FolderBrowser.Show("Select root folder for downloaded models",
+            Directory.Exists(ModelsRootPath) ? ModelsRootPath
+                : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            hwnd);
+        if (path is not null)
+            ModelsRootPath = path;
+    }
 }
