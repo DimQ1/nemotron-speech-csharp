@@ -60,69 +60,75 @@ public sealed class ModelDownloaderService : IDisposable
         return folders;
     }
 
-    /// <summary>Download selected folders from a HuggingFace repo.</summary>
-    public async Task DownloadFromHuggingFace(string repoId, List<HfFolder> folders, string targetDir)
+    /// <summary>Download selected folders from a HuggingFace repo into targetRoot/{folderName}/.</summary>
+    public async Task DownloadFromHuggingFace(string repoId, List<HfFolder> folders, string targetRoot)
     {
         _cts = new CancellationTokenSource();
         IsDownloading = true;
-        Directory.CreateDirectory(targetDir);
+        Directory.CreateDirectory(targetRoot);
 
-        var selectedFiles = folders
-            .Where(f => f.Selected)
-            .SelectMany(f => f.Files)
-            .ToList();
-
-        long totalBytes = selectedFiles.Sum(f => f.SizeBytes);
+        var selectedFolders = folders.Where(f => f.Selected).ToList();
+        var allFiles = selectedFolders.SelectMany(f => f.Files).ToList();
+        long totalBytes = allFiles.Sum(f => f.SizeBytes);
         long downloadedBytes = 0;
         int completed = 0;
 
-        foreach (var file in selectedFiles)
+        foreach (var folder in selectedFolders)
         {
-            var url = $"https://huggingface.co/{repoId}/resolve/main/{file.RelativePath}";
-            var dest = Path.Combine(targetDir, file.RelativePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
-
-            StatusChanged?.Invoke($"Downloading {file.RelativePath} ({FormatSize(file.SizeBytes)})...");
-
-            try
+            foreach (var file in folder.Files)
             {
-                await DownloadFileAsync(url, dest, file.SizeBytes,
-                    (bytes) =>
-                    {
-                        downloadedBytes += bytes;
-                        file.DownloadedBytes += bytes;
-                        ProgressChanged?.Invoke(new DownloadProgress
+                var url = $"https://huggingface.co/{repoId}/resolve/main/{file.RelativePath}";
+                // Place file into: targetRoot/{SubfolderName}/{rest-of-path}
+                var subfolder = string.IsNullOrEmpty(folder.SubfolderName)
+                    ? repoId[(repoId.LastIndexOf('/') + 1)..]  // Use repo name for root files
+                    : folder.SubfolderName;
+                var relativePath = file.RelativePath.Contains('/')
+                    ? file.RelativePath[(file.RelativePath.IndexOf('/') + 1)..]
+                    : file.RelativePath;
+                var dest = Path.Combine(targetRoot, subfolder, relativePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+
+                StatusChanged?.Invoke($"Downloading {file.RelativePath} ({FormatSize(file.SizeBytes)})...");
+
+                try
+                {
+                    await DownloadFileAsync(url, dest, file.SizeBytes,
+                        (bytes) =>
                         {
-                            CurrentFile = file.RelativePath,
-                            FileProgress = file.SizeBytes > 0 ? (double)file.DownloadedBytes / file.SizeBytes * 100 : 0,
-                            OverallProgress = totalBytes > 0 ? (double)downloadedBytes / totalBytes * 100 : 0,
-                            DownloadedFiles = completed,
-                            TotalFiles = selectedFiles.Count
-                        });
-                    }, _cts.Token);
+                            downloadedBytes += bytes;
+                            file.DownloadedBytes += bytes;
+                            ProgressChanged?.Invoke(new DownloadProgress
+                            {
+                                CurrentFile = file.RelativePath,
+                                FileProgress = file.SizeBytes > 0 ? (double)file.DownloadedBytes / file.SizeBytes * 100 : 0,
+                                OverallProgress = totalBytes > 0 ? (double)downloadedBytes / totalBytes * 100 : 0,
+                                DownloadedFiles = completed,
+                                TotalFiles = allFiles.Count
+                            });
+                        }, _cts.Token);
 
-                completed++;
-                downloadedBytes = selectedFiles.Take(completed).Sum(f => f.SizeBytes);
-            }
-            catch (OperationCanceledException)
-            {
-                StatusChanged?.Invoke("Download cancelled");
-                IsDownloading = false;
-                Completed?.Invoke(false, "Cancelled");
-                return;
-            }
-            catch (Exception ex)
-            {
-                StatusChanged?.Invoke($"Error on {file.RelativePath}: {ex.Message}");
-                IsDownloading = false;
-                Completed?.Invoke(false, ex.Message);
-                return;
+                    completed++;
+                }
+                catch (OperationCanceledException)
+                {
+                    StatusChanged?.Invoke("Download cancelled");
+                    IsDownloading = false;
+                    Completed?.Invoke(false, "Cancelled");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    StatusChanged?.Invoke($"Error on {file.RelativePath}: {ex.Message}");
+                    IsDownloading = false;
+                    Completed?.Invoke(false, ex.Message);
+                    return;
+                }
             }
         }
 
         IsDownloading = false;
-        StatusChanged?.Invoke($"Download complete — {completed} files to {targetDir}");
-        Completed?.Invoke(true, targetDir);
+        StatusChanged?.Invoke($"Download complete — {completed} files to {targetRoot}");
+        Completed?.Invoke(true, targetRoot);
     }
 
     /// <summary>Download a single file from any URL.</summary>
@@ -187,6 +193,13 @@ public sealed class HfFile
 public sealed class HfFolder
 {
     public string Name { get; init; } = "";
+    public string SubfolderName => Name switch
+    {
+        _ when Name.StartsWith("📁 ") => Name[3..],
+        _ when Name.StartsWith("📄 ") => Name[3..],
+        "(root)" => "",
+        _ => Name
+    };
     public List<HfFile> Files { get; init; } = new();
     public long TotalSize => Files.Sum(f => f.SizeBytes);
     public string SizeDisplay => ModelDownloaderService.FormatSize(TotalSize);

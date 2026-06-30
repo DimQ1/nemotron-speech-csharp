@@ -179,11 +179,14 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private void OpenModelDownloader()
     {
-        var window = new Views.ModelDownloaderWindow();
-        window.Owner = System.Windows.Application.Current.MainWindow;
+        var window = new Views.ModelDownloaderWindow
+        {
+            Owner = System.Windows.Application.Current.MainWindow,
+            ModelsRootPath = ModelsRootPath
+        };
         window.ShowDialog();
         if (window.WasDownloaded && window.ResultPath is not null)
-            ModelPath = window.ResultPath;
+            ModelsRootPath = window.ResultPath;  // This triggers ScanModels()
     }
 
     public event Action? RequestClose;

@@ -14,10 +14,10 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
 
     public ModelDownloaderViewModel()
     {
-        RepoId = "DimQ1/nemotron-speech-onnx";
-        DownloadPath = Path.Combine(
+        RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int8-cpu";
+        ModelsRootPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "VoiceType", "Models", "nemotron-speech-onnx");
+            "VoiceType", "Models");
 
         FetchFilesCommand = new AsyncRelayCommand(FetchFolders);
         DownloadCommand = new AsyncRelayCommand(Download,
@@ -47,7 +47,7 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
     }
 
     public string RepoId { get; set; }
-    public string DownloadPath { get; set; }
+    public string ModelsRootPath { get; set; }
     public ObservableCollection<HfFolder> Folders { get; } = new();
     private string _status = "Ready";
     public string Status { get => _status; set { _status = value; OnPropertyChanged(); } }
@@ -87,7 +87,7 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
     {
         IsDownloading = true; Status = "Starting download...";
         var repoId = ParseRepoId(RepoId);
-        await _downloader.DownloadFromHuggingFace(repoId, Folders.ToList(), DownloadPath);
+        await _downloader.DownloadFromHuggingFace(repoId, Folders.ToList(), ModelsRootPath);
     }
 
     public static string ParseRepoId(string input)
