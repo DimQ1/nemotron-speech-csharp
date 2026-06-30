@@ -33,7 +33,7 @@ public sealed class RecognitionService : IDisposable
     public void Initialize(AppSettings settings)
     {
         var modelPath = string.IsNullOrEmpty(settings.ModelPath)
-            ? Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx", "cpu")
+            ? Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx", ModelSubfolder(settings.ExecutionProvider))
             : settings.ModelPath;
 
         if (!Path.IsPathRooted(modelPath))
@@ -156,4 +156,12 @@ public sealed class RecognitionService : IDisposable
         }
         catch { /* best-effort */ }
     }
+
+    /// <summary>Map execution provider to the matching model subfolder under models-onnx/.</summary>
+    private static string ModelSubfolder(string executionProvider) => executionProvider.ToLowerInvariant() switch
+    {
+        "cuda" => "gpu-cuda",
+        "dml" => "gpu-cuda",
+        _ => "cpu"
+    };
 }

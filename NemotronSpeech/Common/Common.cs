@@ -82,6 +82,11 @@ namespace CommonUtils
                     Console.WriteLine($"Setting model to {ep} (keeping default CPU fallback)");
                     config.AppendProvider(ep);
                 }
+                else if (ep == "tensorrt" || ep == "NvTensorRtRtx")
+                {
+                    Console.WriteLine($"Setting model to NvTensorRtRtx (TensorRT)");
+                    config.AppendProvider("NvTensorRtRtx");
+                }
                 else
                 {
                     config.ClearProviders();
