@@ -132,9 +132,10 @@ public sealed class ModelDownloaderService : IDisposable
     }
 
     /// <summary>Download all files from a HuggingFace repo into targetRoot/{subfolder}/.</summary>
-    public async Task DownloadModelRepo(string repoId, string subfolder, string targetRoot)
+    public async Task DownloadModelRepo(string repoId, string subfolder, string targetRoot,
+        CancellationToken externalCt = default)
     {
-        _cts = new CancellationTokenSource();
+        _cts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
         IsDownloading = true;
         Directory.CreateDirectory(targetRoot);
 
@@ -233,16 +234,47 @@ public sealed class ModelDownloaderService : IDisposable
     private async Task DownloadFileAsync(string url, string dest, long totalSize,
         Action<long> onChunk, CancellationToken ct)
     {
-        using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
-        response.EnsureSuccessStatusCode();
-        await using var stream = await response.Content.ReadAsStreamAsync(ct);
-        await using var file = File.Create(dest);
-        var buffer = new byte[8192];
-        int read;
-        while ((read = await stream.ReadAsync(buffer, ct)) > 0)
+        // Resume support: check existing partial file
+        long existingBytes = 0;
+        if (File.Exists(dest))
         {
-            await file.WriteAsync(buffer.AsMemory(0, read), ct);
-            onChunk(read);
+            existingBytes = new FileInfo(dest).Length;
+            // If file appears complete, skip
+            if (totalSize > 0 && existingBytes >= totalSize)
+                return;
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        if (existingBytes > 0)
+            request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(existingBytes, null);
+
+        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        
+        if (existingBytes > 0 && response.StatusCode == System.Net.HttpStatusCode.PartialContent)
+        {
+            // Resume mode: append to existing file
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            await using var file = File.Open(dest, FileMode.Append, FileAccess.Write);
+            var buffer = new byte[8192];
+            int read;
+            while ((read = await stream.ReadAsync(buffer, ct)) > 0)
+            {
+                await file.WriteAsync(buffer.AsMemory(0, read), ct);
+                onChunk(read);
+            }
+        }
+        else
+        {
+            response.EnsureSuccessStatusCode();
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            await using var file = File.Create(dest);
+            var buffer = new byte[8192];
+            int read;
+            while ((read = await stream.ReadAsync(buffer, ct)) > 0)
+            {
+                await file.WriteAsync(buffer.AsMemory(0, read), ct);
+                onChunk(read);
+            }
         }
     }
 

@@ -1,19 +1,49 @@
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace VoiceType.Models;
 
-/// <summary>Predefined model entry for the downloader catalog.</summary>
-public sealed class AvailableModel
+/// <summary>Predefined model entry for the downloader catalog with independent download state.</summary>
+public sealed class AvailableModel : INotifyPropertyChanged
 {
+    private bool _isDownloading;
+    private bool _isDownloaded;
+    private double _progress;
+    private string? _statusMessage;
+
     public string Name { get; init; } = "";
     public string RepoId { get; init; } = "";
+    public string SubfolderName => RepoId.Contains('/') ? RepoId[(RepoId.LastIndexOf('/') + 1)..] : RepoId;
     public string Description { get; init; } = "";
     public string SizeDisplay { get; init; } = "";
     public string Precision { get; init; } = "";
-    public bool IsDownloading { get; set; }
-    public bool IsDownloaded { get; set; }
-    public double Progress { get; set; }
-    public string? StatusMessage { get; set; }
+
+    public bool IsDownloading
+    {
+        get => _isDownloading;
+        set { _isDownloading = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanDownload)); }
+    }
+
+    public bool IsDownloaded
+    {
+        get => _isDownloaded;
+        set { _isDownloaded = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanDownload)); }
+    }
+
+    public bool CanDownload => !IsDownloading && !IsDownloaded;
+
+    public double Progress
+    {
+        get => _progress;
+        set { _progress = value; OnPropertyChanged(); }
+    }
+
+    public string? StatusMessage
+    {
+        get => _statusMessage;
+        set { _statusMessage = value; OnPropertyChanged(); }
+    }
 
     /// <summary>Predefined CPU models available for download.</summary>
     public static IReadOnlyList<AvailableModel> CpuModels { get; } = new List<AvailableModel>
@@ -43,4 +73,9 @@ public sealed class AvailableModel
             Precision = "INT4"
         },
     };
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void OnPropertyChanged([CallerMemberName] string? n = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
 }
+
