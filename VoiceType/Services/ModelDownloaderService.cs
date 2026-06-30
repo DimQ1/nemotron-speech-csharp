@@ -131,7 +131,83 @@ public sealed class ModelDownloaderService : IDisposable
         Completed?.Invoke(true, targetRoot);
     }
 
-    /// <summary>Download a single file from any URL.</summary>
+    /// <summary>Download all files from a HuggingFace repo into targetRoot/{subfolder}/.</summary>
+    public async Task DownloadModelRepo(string repoId, string subfolder, string targetRoot)
+    {
+        _cts = new CancellationTokenSource();
+        IsDownloading = true;
+        Directory.CreateDirectory(targetRoot);
+
+        // Fetch file list
+        StatusChanged?.Invoke($"Fetching {repoId}...");
+        var url = $"https://huggingface.co/api/models/{repoId}";
+        var response = await _http.GetAsync(url, _cts.Token);
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>(_cts.Token);
+
+        var files = new List<(string path, long size)>();
+        if (json.TryGetProperty("siblings", out var siblings))
+        {
+            foreach (var sib in siblings.EnumerateArray())
+            {
+                var rfilename = sib.GetProperty("rfilename").GetString() ?? "";
+                if (rfilename.StartsWith(".")) continue;
+                var size = sib.TryGetProperty("size", out var sz) ? sz.GetInt64() : 0;
+                files.Add((rfilename, size));
+            }
+        }
+
+        long totalBytes = files.Sum(f => f.size);
+        long downloadedBytes = 0;
+        int completed = 0;
+
+        foreach (var (path, size) in files)
+        {
+            var fileUrl = $"https://huggingface.co/{repoId}/resolve/main/{path}";
+            var dest = Path.Combine(targetRoot, subfolder, path);
+            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+
+            StatusChanged?.Invoke($"Downloading {path} ({FormatSize(size)})...");
+
+            try
+            {
+                long lastBytes = 0;
+                await DownloadFileAsync(fileUrl, dest, size,
+                    (bytes) =>
+                    {
+                        downloadedBytes += bytes;
+                        lastBytes += bytes;
+                        ProgressChanged?.Invoke(new DownloadProgress
+                        {
+                            CurrentFile = path,
+                            FileProgress = size > 0 ? (double)lastBytes / size * 100 : 0,
+                            OverallProgress = totalBytes > 0 ? (double)downloadedBytes / totalBytes * 100 : 0,
+                            DownloadedFiles = completed,
+                            TotalFiles = files.Count
+                        });
+                    }, _cts.Token);
+                completed++;
+            }
+            catch (OperationCanceledException)
+            {
+                StatusChanged?.Invoke("Download cancelled");
+                IsDownloading = false;
+                Completed?.Invoke(false, "Cancelled");
+                return;
+            }
+            catch (Exception ex)
+            {
+                StatusChanged?.Invoke($"Error on {path}: {ex.Message}");
+                IsDownloading = false;
+                Completed?.Invoke(false, ex.Message);
+                return;
+            }
+        }
+
+        IsDownloading = false;
+        StatusChanged?.Invoke($"Download complete — {completed} files to {targetRoot}/{subfolder}");
+        Completed?.Invoke(true, targetRoot);
+    }
     public async Task DownloadSingleFile(string url, string destPath)
     {
         _cts = new CancellationTokenSource();

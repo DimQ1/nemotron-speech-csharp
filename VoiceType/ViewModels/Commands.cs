@@ -72,3 +72,35 @@ public sealed class AsyncRelayCommand : ICommand
         remove => CommandManager.RequerySuggested -= value;
     }
 }
+
+/// <summary>Async ICommand with parameter.</summary>
+public sealed class AsyncRelayCommand<T> : ICommand
+{
+    private readonly Func<T?, Task> _execute;
+    private readonly Func<T?, bool>? _canExecute;
+    private bool _isExecuting;
+
+    public AsyncRelayCommand(Func<T?, Task> execute, Func<T?, bool>? canExecute = null)
+    { _execute = execute; _canExecute = canExecute; }
+
+    public bool CanExecute(object? p) => !_isExecuting && (_canExecute?.Invoke((T?)p) ?? true);
+
+    public async void Execute(object? p)
+    {
+        _isExecuting = true;
+        CommandManager.InvalidateRequerySuggested();
+        try { await _execute((T?)p); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"AsyncRelayCommand error: {ex}"); }
+        finally
+        {
+            _isExecuting = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    public event EventHandler? CanExecuteChanged
+    {
+        add => CommandManager.RequerySuggested += value;
+        remove => CommandManager.RequerySuggested -= value;
+    }
+}

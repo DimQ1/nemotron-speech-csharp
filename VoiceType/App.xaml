@@ -128,6 +128,16 @@
                 </Setter>
             </Style>
 
+            <Style TargetType="Expander" x:Key="DarkExpander">
+                <Setter Property="Foreground" Value="{StaticResource FgBrush}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BgTertiaryBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Padding" Value="8"/>
+            </Style>
+
             <Style TargetType="ComboBox" x:Key="DarkComboBox">
                 <Setter Property="Background" Value="{StaticResource BgSecondaryBrush}"/>
                 <Setter Property="Foreground" Value="{StaticResource FgBrush}"/>

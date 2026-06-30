@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using VoiceType.Models;
 using VoiceType.Services;
 
 namespace VoiceType.ViewModels;
@@ -11,6 +13,7 @@ namespace VoiceType.ViewModels;
 public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ModelDownloaderService _downloader = new();
+    private AvailableModel? _currentDownload;
 
     public ModelDownloaderViewModel()
     {
@@ -19,6 +22,23 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "VoiceType", "Models");
 
+        AvailableModels = new ObservableCollection<AvailableModel>(
+            AvailableModel.CpuModels.Select(m =>
+            {
+                var copy = new AvailableModel
+                {
+                    Name = m.Name, RepoId = m.RepoId, Description = m.Description,
+                    SizeDisplay = m.SizeDisplay, Precision = m.Precision
+                };
+                // Check if already downloaded
+                var subfolder = m.RepoId[(m.RepoId.LastIndexOf('/') + 1)..];
+                copy.IsDownloaded = Directory.Exists(Path.Combine(ModelsRootPath, subfolder))
+                    && File.Exists(Path.Combine(ModelsRootPath, subfolder, "genai_config.json"));
+                return copy;
+            }));
+
+        DownloadModelCommand = new AsyncRelayCommand<AvailableModel>(DownloadModel,
+            m => m is not null && !m.IsDownloading);
         FetchFilesCommand = new AsyncRelayCommand(FetchFolders);
         DownloadCommand = new AsyncRelayCommand(Download,
             () => Folders.Count > 0 && !IsDownloading);
@@ -32,20 +52,53 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
             {
                 CurrentFile = p.CurrentFile; FileProgress = p.FileProgress;
                 OverallProgress = p.OverallProgress; DownloadedFiles = p.DownloadedFiles; TotalFiles = p.TotalFiles;
+                if (_currentDownload is not null)
+                    _currentDownload.Progress = p.OverallProgress;
             });
         };
-        _downloader.StatusChanged += s => Application.Current.Dispatcher.Invoke(() => Status = s);
+        _downloader.StatusChanged += s =>
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                Status = s;
+                if (_currentDownload is not null)
+                    _currentDownload.StatusMessage = s;
+            });
+        };
         _downloader.Completed += (ok, msg) =>
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
                 IsDownloading = false;
+                if (_currentDownload is not null)
+                {
+                    _currentDownload.IsDownloading = false;
+                    _currentDownload.IsDownloaded = ok;
+                    _currentDownload.StatusMessage = ok ? "✓ Downloaded" : $"✗ {msg}";
+                    _currentDownload = null;
+                }
                 if (ok) ResultPath = msg;
                 Status = ok ? "Download complete!" : $"Error: {msg}";
             });
         };
     }
 
+    // ── Predefined models ─────────────────────────
+    public ObservableCollection<AvailableModel> AvailableModels { get; }
+
+    private async Task DownloadModel(AvailableModel? model)
+    {
+        if (model is null) return;
+        _currentDownload = model;
+        model.IsDownloading = true;
+        model.StatusMessage = "Starting...";
+        IsDownloading = true;
+        Status = $"Downloading {model.Name}...";
+        var subfolder = model.RepoId[(model.RepoId.LastIndexOf('/') + 1)..];
+        await _downloader.DownloadModelRepo(model.RepoId, subfolder, ModelsRootPath);
+    }
+
+    // ── Custom repo ────────────────────────────────
     public string RepoId { get; set; }
     public string ModelsRootPath { get; set; }
     public ObservableCollection<HfFolder> Folders { get; } = new();
@@ -68,6 +121,7 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
     public string? ResultPath { get => _resultPath; set { _resultPath = value; OnPropertyChanged(); } }
     public bool WasDownloaded => _resultPath is not null;
 
+    public ICommand DownloadModelCommand { get; }
     public ICommand FetchFilesCommand { get; }
     public ICommand DownloadCommand { get; }
     public ICommand CancelCommand { get; }
