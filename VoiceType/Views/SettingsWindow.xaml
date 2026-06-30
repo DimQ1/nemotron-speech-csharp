@@ -21,8 +21,19 @@
                 <GroupBox Header="Speech Engine" Style="{StaticResource DarkGroupBox}">
                     <StackPanel>
                         <TextBlock Text="Models Root Folder" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
-                        <TextBox Text="{Binding ModelsRootPath, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{Binding ModelsRootPath, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource DarkTextBox}"/>
+                            <Button Grid.Column="1" Content="..." Margin="8,0,0,0"
+                                    Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
+                                    BorderThickness="0" Padding="10,6" FontSize="13" Cursor="Hand" FontWeight="Bold"
+                                    Command="{Binding BrowseRootCommand}"
+                                    ToolTip="Browse for models root folder"/>
+                        </Grid>
 
                         <TextBlock Text="Model" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <Grid Margin="0,0,0,8">

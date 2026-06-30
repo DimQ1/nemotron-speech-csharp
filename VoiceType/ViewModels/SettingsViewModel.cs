@@ -53,6 +53,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         AddRuleCommand = new RelayCommand(AddRule);
         DeleteRuleCommand = new RelayCommand<PostProcessingRule>(DeleteRule);
         OpenModelDownloaderCommand = new RelayCommand(OpenModelDownloader);
+        BrowseRootCommand = new RelayCommand(BrowseRoot);
 
         // Initial scan
         ScanModels();
@@ -113,6 +114,15 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ModelPath));
     }
 
+    private void BrowseRoot()
+    {
+        var path = FolderBrowser.Show("Select root folder with model subfolders",
+            Directory.Exists(ModelsRootPath) ? ModelsRootPath
+                : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx")));
+        if (path is not null)
+            ModelsRootPath = path;
+    }
+
     // ── Capture ─────────────────────────────────────
     public string AudioSource { get; set; }
 
@@ -138,6 +148,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public ICommand AddRuleCommand { get; }
     public ICommand DeleteRuleCommand { get; }
     public ICommand OpenModelDownloaderCommand { get; }
+    public ICommand BrowseRootCommand { get; }
 
     public bool WasSaved { get; private set; }
 
