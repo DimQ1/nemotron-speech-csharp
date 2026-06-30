@@ -62,6 +62,9 @@ public sealed class RecognitionService : IDisposable
         _buffer = new ConcurrentQueueWrapper();
         _signal = new ManualResetEventSlim(false);
 
+        // Warmup: send a silent chunk to prime the model pipeline
+        Warmup(_recognizer);
+
         _captureThread = new Thread(() =>
         {
             var running = _isRunning;
@@ -83,6 +86,11 @@ public sealed class RecognitionService : IDisposable
     {
         var lastAudio = DateTime.UtcNow;
 
+        // Cache post-processing settings once — avoid disk I/O on every audio chunk
+        var procSettings = SettingsService.Load();
+        var procRules = procSettings.PostProcessingRules;
+        var procEnabled = procSettings.PostProcessingEnabled;
+
         while (_isRunning || (_buffer?.IsEmpty == false))
         {
             bool gotData = false;
@@ -93,9 +101,7 @@ public sealed class RecognitionService : IDisposable
                 {
                     _accumulatedText += raw;
                     var processed = PostProcessingPipeline.Process(
-                        _accumulatedText,
-                        SettingsService.Load().PostProcessingRules,
-                        SettingsService.Load().PostProcessingEnabled);
+                        _accumulatedText, procRules, procEnabled);
                     PartialResult?.Invoke(processed);
                 }
                 _audioRecorder?.Append(batch);
@@ -117,9 +123,7 @@ public sealed class RecognitionService : IDisposable
         if (final is not null) _accumulatedText += final;
 
         var finalProcessed = PostProcessingPipeline.Process(
-            _accumulatedText,
-            SettingsService.Load().PostProcessingRules,
-            SettingsService.Load().PostProcessingEnabled);
+            _accumulatedText, procRules, procEnabled);
 
         FinalResult?.Invoke(finalProcessed);
         Stopped?.Invoke();
@@ -141,5 +145,15 @@ public sealed class RecognitionService : IDisposable
         _recognizer?.Dispose();
         _audioRecorder?.Dispose();
         _audioSource?.Dispose();
+    }
+
+    private static void Warmup(IStreamingSpeechRecognizer recognizer)
+    {
+        try
+        {
+            var silent = new float[recognizer.ChunkSamples];
+            recognizer.ProcessAudio(silent);
+        }
+        catch { /* best-effort */ }
     }
 }
