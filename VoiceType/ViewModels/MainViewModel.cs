@@ -116,6 +116,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         try
         {
+            // Compute ModelPath from root + selection if not set directly
+            if (string.IsNullOrEmpty(_settings.ModelPath) && !string.IsNullOrEmpty(_settings.ModelsRootPath))
+                _settings.ModelPath = Path.Combine(_settings.ModelsRootPath, _settings.SelectedModel);
+
             Console.WriteLine($"[VoiceType] Initializing recognizer: path={_settings.ModelPath}, ep={_settings.ExecutionProvider}, lang={_settings.Language}, vad={_settings.UseVad}");
             _recognition.Initialize(_settings);
             Console.WriteLine("[VoiceType] Recognizer initialized OK");

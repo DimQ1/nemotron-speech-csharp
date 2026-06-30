@@ -20,19 +20,28 @@
                 <!-- ── Engine ── -->
                 <GroupBox Header="Speech Engine" Style="{StaticResource DarkGroupBox}">
                     <StackPanel>
-                        <TextBlock Text="Model Path" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <TextBlock Text="Models Root Folder" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <TextBox Text="{Binding ModelsRootPath, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+
+                        <TextBlock Text="Model" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox Text="{Binding ModelPath, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource DarkTextBox}"/>
-                            <Button Grid.Column="1" Content="Download Models..." Margin="8,0,0,0"
+                            <ComboBox ItemsSource="{Binding AvailableModels}"
+                                      SelectedItem="{Binding SelectedModel}"
+                                      Style="{StaticResource DarkComboBox}"/>
+                            <Button Grid.Column="1" Content="Download..." Margin="8,0,0,0"
                                     Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
                                     BorderThickness="0" Padding="12,6" FontSize="12" Cursor="Hand"
                                     Command="{Binding OpenModelDownloaderCommand}"/>
                         </Grid>
+
+                        <TextBlock Text="{Binding ModelPath, StringFormat='Full path: {0}'}" 
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="10" 
+                                   Margin="0,0,0,8" TextTrimming="CharacterEllipsis"/>
 
                         <TextBlock Text="Execution Provider" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <ComboBox SelectedValue="{Binding ExecutionProvider}" SelectedValuePath="Content"

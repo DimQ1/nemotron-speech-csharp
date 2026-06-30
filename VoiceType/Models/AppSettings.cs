@@ -10,10 +10,16 @@ namespace VoiceType.Models;
 public sealed class AppSettings
 {
     // ── Engine ──────────────────────────────────────
+    public string ModelsRootPath { get; set; } = "";
+    public string SelectedModel { get; set; } = "";
     public string ModelPath { get; set; } = "";
     public string ExecutionProvider { get; set; } = "cpu";
     public string Language { get; set; } = "auto";
     public bool UseVad { get; set; } = true;
+
+    // ── Decoding quality ────────────────────────────
+    public int NumBeams { get; set; } = 4;
+    public double RepetitionPenalty { get; set; } = 1.1;
 
     // ── Capture ─────────────────────────────────────
     public string AudioSource { get; set; } = "Mic"; // Mic, Loopback, Mix

@@ -26,7 +26,7 @@ import torch.nn.functional as F
 # per NVIDIA's documentation (best latency/accuracy trade-off). The value is
 # not available from a HuggingFace config — it lives inside the .nemo archive
 # as encoder.att_context_size and requires loading the full model to read.
-CHUNK_SIZE = 1.12  # seconds (was 0.56)
+CHUNK_SIZE = 0.56  # seconds (NVIDIA recommended: best latency/accuracy trade-off)
 MEL_FEATURES = 128
 SUBSAMPLING_FACTOR = 8
 

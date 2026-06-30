@@ -82,12 +82,12 @@ def _run_olive_pipeline(config_name: str, output_dir: str, output_subdir: str, m
 
 
 def run_olive_pipelines(output_dir: str, model_path: str = None, encoder_precision: str = "int4", execution_provider: str = "cpu"):
-    """Run all Olive pipelines: encoder (INT4 or INT8), decoder (FP32), joint (FP32).
+    """Run all Olive pipelines: encoder (FP32, INT4, or INT8), decoder (FP32), joint (FP32).
 
     Args:
         output_dir: Output directory for optimized models.
         model_path: Path to the .nemo model file or HF repo name.
-        encoder_precision: "int4" or "int8".
+        encoder_precision: "fp32", "int4", or "int8".
         execution_provider: "cpu" (default) or "dml".
     """
     ep_suffix = {"cpu": "_cpu", "dml": "_dml", "cuda": "_cuda"}.get(execution_provider, "_cpu")
@@ -96,6 +96,9 @@ def run_olive_pipelines(output_dir: str, model_path: str = None, encoder_precisi
     if encoder_precision == "int8":
         encoder_config = f"nemotron_encoder_int8{ep_suffix}.json"
         print(f"=== Stage 1: Olive Encoder ({ep_label}, OnnxConversion -> INT8 k-quant) ===")
+    elif encoder_precision == "fp32":
+        encoder_config = f"nemotron_encoder_fp32{ep_suffix}.json"
+        print(f"=== Stage 1: Olive Encoder ({ep_label}, OnnxConversion, FP32) ===")
     else:
         encoder_config = f"nemotron_encoder_int4{ep_suffix}.json"
         print(f"=== Stage 1: Olive Encoder ({ep_label}, OnnxConversion -> INT4 quant) ===")
@@ -196,7 +199,7 @@ def generate_configs(model_name: str, output_dir: str, chunk_size: float):
             "encoder": {
                 "filename": "encoder.onnx",
                 "hidden_size": D_MODEL,
-                "num_hidden_layers": N_LAYERS,
+                "num_hidden_layers": len(encoder.layers) if hasattr(encoder, 'layers') else N_LAYERS,
                 "inputs": {
                     "audio_features": "audio_signal",
                     "input_lengths": "length",
@@ -332,9 +335,9 @@ def main():
     )
     parser.add_argument(
         "--encoder-precision",
-        choices=["int4", "int8"],
+        choices=["int4", "int8", "fp32"],
         default="int4",
-        help="Encoder precision: int4 (k-quant) or int8 (dynamic). Default: int4.",
+        help="Encoder precision: fp32, int4 (k-quant), or int8 (k-quant). Default: int4.",
     )
     parser.add_argument(
         "--execution-provider",
@@ -388,7 +391,7 @@ def main():
         total_mb = sum(f.stat().st_size for f in files) / (1024 * 1024)
         print(f"=== Done! Optimized models -> {output_path} ===")
         print(f"    Total size: {total_mb:.1f} MB")
-        enc_label = {"int4": "INT4 k-quant (Olive)", "int8": "INT8 k-quant (Olive)"}.get(args.encoder_precision, "")
+        enc_label = {"fp32": "", "int4": "INT4 k-quant (Olive)", "int8": "INT8 k-quant (Olive)"}.get(args.encoder_precision, "")
         ep_label = "DML" if args.execution_provider == "dml" else "CPU"
         for f in files:
             tag = f" ← {enc_label}" if f.name.startswith("encoder") and enc_label else ""

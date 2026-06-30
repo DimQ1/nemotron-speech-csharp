@@ -8,6 +8,7 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>VoiceType</RootNamespace>
     <AssemblyName>VoiceType</AssemblyName>
+    <ApplicationIcon>Resources\microphone.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

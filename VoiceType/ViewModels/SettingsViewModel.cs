@@ -21,10 +21,20 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         _original = settings;
 
         // Clone for editing
+        AvailableModels = new ObservableCollection<string>();
+        ModelsRootPath = settings.ModelsRootPath;
         ModelPath = settings.ModelPath;
+        SelectedModel = settings.SelectedModel;
         ExecutionProvider = settings.ExecutionProvider;
         Language = settings.Language;
         UseVad = settings.UseVad;
+
+        // Set default models root if empty
+        if (string.IsNullOrEmpty(ModelsRootPath))
+        {
+            var defaultRoot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx");
+            ModelsRootPath = Path.GetFullPath(defaultRoot);
+        }
 
         AudioSource = settings.AudioSource;
         TextInjectionMethod = settings.TextInjectionMethod;
@@ -43,13 +53,65 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         AddRuleCommand = new RelayCommand(AddRule);
         DeleteRuleCommand = new RelayCommand<PostProcessingRule>(DeleteRule);
         OpenModelDownloaderCommand = new RelayCommand(OpenModelDownloader);
+
+        // Initial scan
+        ScanModels();
     }
 
     // ── Engine ──────────────────────────────────────
+    private string _modelsRootPath = "";
+    public string ModelsRootPath
+    {
+        get => _modelsRootPath;
+        set { _modelsRootPath = value; OnPropertyChanged(); ScanModels(); }
+    }
+
+    private string _selectedModel = "";
+    public string SelectedModel
+    {
+        get => _selectedModel;
+        set { _selectedModel = value; OnPropertyChanged(); UpdateModelPath(); }
+    }
+
     public string ModelPath { get; set; }
     public string ExecutionProvider { get; set; }
     public string Language { get; set; }
     public bool UseVad { get; set; }
+
+    public ObservableCollection<string> AvailableModels { get; }
+
+    private void ScanModels()
+    {
+        AvailableModels.Clear();
+        if (string.IsNullOrEmpty(ModelsRootPath)) return;
+
+        var root = ModelsRootPath;
+        if (!Path.IsPathRooted(root))
+            root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, root));
+
+        if (!Directory.Exists(root)) return;
+
+        foreach (var dir in Directory.GetDirectories(root))
+        {
+            var configPath = Path.Combine(dir, "genai_config.json");
+            if (File.Exists(configPath))
+                AvailableModels.Add(Path.GetFileName(dir));
+        }
+
+        // Keep current selection if still valid
+        if (!string.IsNullOrEmpty(SelectedModel) && !AvailableModels.Contains(SelectedModel))
+            SelectedModel = AvailableModels.Count > 0 ? AvailableModels[0] : "";
+
+        UpdateModelPath();
+    }
+
+    private void UpdateModelPath()
+    {
+        ModelPath = (!string.IsNullOrEmpty(ModelsRootPath) && !string.IsNullOrEmpty(SelectedModel))
+            ? Path.Combine(ModelsRootPath, SelectedModel)
+            : "";
+        OnPropertyChanged(nameof(ModelPath));
+    }
 
     // ── Capture ─────────────────────────────────────
     public string AudioSource { get; set; }
@@ -81,6 +143,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     public AppSettings BuildSettings() => new()
     {
+        ModelsRootPath = ModelsRootPath,
+        SelectedModel = SelectedModel,
         ModelPath = ModelPath,
         ExecutionProvider = ExecutionProvider,
         Language = Language,

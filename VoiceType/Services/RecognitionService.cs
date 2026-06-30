@@ -1,4 +1,5 @@
 using System.IO;
+using CommonUtils;
 using NemotronSpeech;
 using SpeechLib;
 using SpeechLib.Audio;
@@ -41,7 +42,14 @@ public sealed class RecognitionService : IDisposable
 
         var langId = LanguageMapper.Resolve(settings.Language);
 
-        _recognizer = new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad);
+        var searchOptions = new GeneratorParamsArgs
+        {
+            num_beams = settings.NumBeams,
+            do_sample = false,
+            repetition_penalty = settings.RepetitionPenalty
+        };
+
+        _recognizer = new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
     }
 
     public void Start(AppSettings settings)

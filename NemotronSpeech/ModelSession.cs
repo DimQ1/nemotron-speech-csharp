@@ -26,6 +26,10 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
     public bool IsSingleLanguage { get; }
 
     public ModelSession(string modelPath, string executionProvider, string? langId, bool useVad)
+        : this(modelPath, executionProvider, langId, useVad, null) { }
+
+    public ModelSession(string modelPath, string executionProvider, string? langId, bool useVad,
+        GeneratorParamsArgs? searchOptions)
     {
         modelPath = ResolvePath(modelPath);
         if (!Directory.Exists(modelPath))
@@ -40,7 +44,17 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         var encInputs = cfg.GetProperty("encoder").GetProperty("inputs");
         IsSingleLanguage = !encInputs.TryGetProperty("lang_id", out _);
 
-        _config = Common.GetConfig(modelPath, executionProvider, null, new GeneratorParamsArgs());
+        // Use quality defaults for streaming ASR if no explicit options provided:
+        //   num_beams=4 gives significant WER reduction over greedy (num_beams=1)
+        //   repetition_penalty=1.1 prevents the decoder from getting stuck in loops
+        searchOptions ??= new GeneratorParamsArgs
+        {
+            num_beams = 4,
+            do_sample = false,
+            repetition_penalty = 1.1
+        };
+
+        _config = Common.GetConfig(modelPath, executionProvider, null, searchOptions);
         _model = new Model(_config);
         _processor = new StreamingProcessor(_model);
 
