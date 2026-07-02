@@ -1,0 +1,76 @@
+name: Build VoiceType Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - fix/**
+    paths:
+      - '.github/workflows/build-voicetype-release.yml'
+      - 'VoiceType/**'
+      - 'SpeechLib/**'
+      - 'NemotronSpeech/**'
+      - 'VoiceType.Tests/**'
+      - 'NemotronSpeech.slnx'
+  pull_request:
+    paths:
+      - '.github/workflows/build-voicetype-release.yml'
+      - 'VoiceType/**'
+      - 'SpeechLib/**'
+      - 'NemotronSpeech/**'
+      - 'VoiceType.Tests/**'
+      - 'NemotronSpeech.slnx'
+
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Run VoiceType unit tests
+        run: dotnet test VoiceType.Tests/VoiceType.Tests.csproj -c Release --filter "FullyQualifiedName~Unit_|FullyQualifiedName~ModelDownloaderService"
+
+  publish:
+    name: Publish ${{ matrix.label }}
+    runs-on: windows-latest
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: CPU
+            gpuArch: CPU
+            artifactName: VoiceType-release-cpu
+            outputDir: build/VoiceType-release-cpu
+          - label: GPU
+            gpuArch: Standard
+            artifactName: VoiceType-release-gpu
+            outputDir: build/VoiceType-release-gpu
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish VoiceType (${{ matrix.label }})
+        run: dotnet publish VoiceType/VoiceType.csproj -c Release -p:GpuArch=${{ matrix.gpuArch }} -o ${{ matrix.outputDir }}
+
+      - name: Upload artifact (${{ matrix.label }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifactName }}
+          path: ${{ matrix.outputDir }}
+          if-no-files-found: error

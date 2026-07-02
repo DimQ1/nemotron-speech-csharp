@@ -2,6 +2,11 @@ using SpeechLib.Audio;
 
 namespace SpeechLib;
 
+public sealed class CaptureState
+{
+    public volatile bool IsRunning = true;
+}
+
 /// <summary>Audio source abstraction for live capture.</summary>
 public interface IAudioSource : IDisposable
 {
@@ -12,5 +17,5 @@ public interface IAudioSource : IDisposable
     /// Start capturing. Samples are pushed as <c>float[]</c> batches to <paramref name="buffer"/>
     /// and <paramref name="signal"/> is set whenever new data arrives.
     /// </summary>
-    void Start(ConcurrentQueueWrapper buffer, ManualResetEventSlim signal, ref bool isRunning);
+    void Start(ConcurrentQueueWrapper buffer, ManualResetEventSlim signal, CaptureState state);
 }

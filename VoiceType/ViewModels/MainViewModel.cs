@@ -1,8 +1,10 @@
 using System.IO;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using VoiceType.Models;
 using VoiceType.Services;
 
@@ -22,6 +24,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private int _lastInjectedLength;
     private bool _isRecording;
     private RecognitionSession? _currentSession;
+    private readonly object _partialResultGate = new();
+    private readonly DispatcherTimer _partialResultTimer;
+    private string? _pendingPartialText;
+    private bool _hasPendingPartial;
 
     public MainViewModel()
     {
@@ -37,6 +43,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _recognition.PartialResult += OnPartialResult;
         _recognition.FinalResult += OnFinalResult;
         _recognition.Stopped += OnRecognitionStopped;
+
+        _partialResultTimer = new DispatcherTimer(
+            TimeSpan.FromMilliseconds(50),
+            DispatcherPriority.Background,
+            (_, _) => FlushPendingPartialResult(),
+            Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher);
+        _partialResultTimer.Start();
     }
 
     // ── Properties ──────────────────────────────────
@@ -95,9 +108,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var window = new Views.ModelDownloaderWindow();
         window.Owner = Application.Current.MainWindow;
         window.ShowDialog();
-        if (window.WasDownloaded && window.ResultPath is not null)
+        if (window.WasDownloaded && window.ResultModelPath is not null)
         {
-            _settings.ModelPath = window.ResultPath;
+            _settings.ModelsRootPath = window.ResultPath ?? _settings.ModelsRootPath;
+            _settings.ModelPath = window.ResultModelPath;
             SettingsService.Save(_settings);
         }
     }
@@ -111,6 +125,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _recognizedText = "";
         _floatingText = "";
         _lastInjectedLength = 0;
+        lock (_partialResultGate)
+        {
+            _pendingPartialText = null;
+            _hasPendingPartial = false;
+        }
         OnPropertyChanged(nameof(RecognizedText));
         OnPropertyChanged(nameof(FloatingText));
 
@@ -173,31 +192,27 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         if (_settings.StopOnAnyInput)
         {
-            Application.Current.Dispatcher.Invoke(() => Stop());
+            Application.Current.Dispatcher.BeginInvoke(Stop);
         }
     }
 
     private void OnPartialResult(string text)
     {
-        Application.Current.Dispatcher.Invoke(() =>
+        lock (_partialResultGate)
         {
-            RecognizedText = text;
-            FloatingText = text;
-
-            // Inject only new characters since last injection
-            if (text.Length > _lastInjectedLength)
-            {
-                var delta = text[_lastInjectedLength..];
-                TextInjector.Inject(delta, _settings.TextInjectionMethod);
-                _lastInjectedLength = text.Length;
-            }
-        });
+            _pendingPartialText = text;
+            _hasPendingPartial = true;
+        }
     }
 
-    private void OnFinalResult(string text)
+    private async void OnFinalResult(string text)
     {
-        Application.Current.Dispatcher.Invoke(async () =>
+        RecognitionSession? sessionToSave = null;
+        bool saveAudio = false;
+
+        await Application.Current.Dispatcher.InvokeAsync(() =>
         {
+            FlushPendingPartialResult();
             RecognizedText = text;
             FloatingText = text;
 
@@ -212,29 +227,71 @@ public sealed class MainViewModel : INotifyPropertyChanged
             IsRecording = false;
             StatusText = "Done";
 
-            // Save session
             if (_currentSession is not null && _settings.SaveSessions)
             {
                 _currentSession.EndedAt = DateTime.Now;
                 _currentSession.RecognizedText = text;
                 _currentSession.IsComplete = true;
-
-                if (_settings.SaveAudioMp3)
-                    _currentSession.AudioFilePath = _recognition.SaveAudio(_currentSession.Id);
-
-                SessionManager.SaveSession(_currentSession);
+                sessionToSave = _currentSession;
+                saveAudio = _settings.SaveAudioMp3;
             }
         });
+
+        if (sessionToSave is null)
+            return;
+
+        await Task.Run(() => PersistSession(sessionToSave, saveAudio));
     }
 
     private void OnRecognitionStopped()
     {
-        Application.Current.Dispatcher.Invoke(() =>
+        Application.Current.Dispatcher.BeginInvoke(() =>
         {
             IsRecording = false;
             if (StatusText == "Finalizing...")
                 StatusText = "Ready";
         });
+    }
+
+    private void FlushPendingPartialResult()
+    {
+        string? text;
+        lock (_partialResultGate)
+        {
+            if (!_hasPendingPartial)
+                return;
+
+            text = _pendingPartialText;
+            _hasPendingPartial = false;
+        }
+
+        if (string.IsNullOrEmpty(text))
+            return;
+
+        RecognizedText = text;
+        FloatingText = text;
+
+        if (text.Length <= _lastInjectedLength)
+            return;
+
+        var delta = text[_lastInjectedLength..];
+        TextInjector.Inject(delta, _settings.TextInjectionMethod);
+        _lastInjectedLength = text.Length;
+    }
+
+    private void PersistSession(RecognitionSession session, bool saveAudio)
+    {
+        try
+        {
+            if (saveAudio)
+                session.AudioFilePath = _recognition.SaveAudio(session.Id);
+
+            SessionManager.SaveSession(session);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[VoiceType] Session save error: {ex}");
+        }
     }
 
     // ── INotifyPropertyChanged ──────────────────────

@@ -1,6 +1,10 @@
 using VoiceType.Services;
 using VoiceType.ViewModels;
 using Xunit;
+using VoiceType.Models;
+using SpeechLib.Audio;
+using System.Net;
+using System.Text;
 
 namespace VoiceType.Tests;
 
@@ -9,6 +13,275 @@ namespace VoiceType.Tests;
 /// </summary>
 public sealed class Unit_ModelDownloaderViewModelTests
 {
+    [Fact]
+    public void AppSettings_DefaultNumBeams_IsCpuFriendly()
+    {
+        var settings = new AppSettings();
+
+        Assert.Equal(1, settings.NumBeams);
+    }
+
+    [Fact]
+    public void SettingsViewModel_BuildSettings_PreservesQualityAndDownloaderSettings()
+    {
+        var settings = new AppSettings
+        {
+            ModelsRootPath = Path.Combine(Path.GetTempPath(), $"VoiceType_missing_{Guid.NewGuid():N}"),
+            NumBeams = 2,
+            RepetitionPenalty = 1.25,
+            DownloaderRepoId = "org/repo",
+            DownloaderModelsRootPath = @"C:\Models",
+            DownloaderSelectedFoldersRepoId = "org/repo",
+            DownloaderSelectedFolders = ["cpu", "tokenizer"]
+        };
+
+        var viewModel = new SettingsViewModel(settings);
+        var saved = viewModel.BuildSettings();
+
+        Assert.Equal(2, saved.NumBeams);
+        Assert.Equal(1.25, saved.RepetitionPenalty);
+        Assert.Equal("org/repo", saved.DownloaderRepoId);
+        Assert.Equal(@"C:\Models", saved.DownloaderModelsRootPath);
+        Assert.Equal("org/repo", saved.DownloaderSelectedFoldersRepoId);
+        Assert.Equal(["cpu", "tokenizer"], saved.DownloaderSelectedFolders);
+    }
+
+    [Fact]
+    public void AudioUtils_Convert_ConvertsPcm16ToFloatSamples()
+    {
+        var pcm = new short[] { short.MinValue, 0, short.MaxValue };
+        var bytes = new byte[pcm.Length * sizeof(short)];
+        Buffer.BlockCopy(pcm, 0, bytes, 0, bytes.Length);
+
+        var samples = AudioUtils.Convert(bytes, bytes.Length, new NAudio.Wave.WaveFormat(16000, 16, 1));
+
+        Assert.Equal(-1f, samples[0]);
+        Assert.Equal(0f, samples[1]);
+        Assert.InRange(samples[2], 0.9999f, 1f);
+    }
+
+    [Fact]
+    public void AudioUtils_Resample_ReturnsArrayWithoutExtraSamples()
+    {
+        var samples = AudioUtils.Resample([0f, 10f, 20f, 30f], fromRate: 4, toRate: 2);
+
+        Assert.Equal(2, samples.Length);
+        Assert.Equal(0f, samples[0]);
+        Assert.Equal(20f, samples[1]);
+    }
+
+    [Fact]
+    public void ResolveDownloaderRepoId_UsesPersistedValue_WhenPresent()
+    {
+        var settings = new AppSettings { DownloaderRepoId = "org/custom-repo" };
+
+        var repoId = ModelDownloaderViewModel.ResolveDownloaderRepoId(settings);
+
+        Assert.Equal("org/custom-repo", repoId);
+    }
+
+    [Fact]
+    public void ResolveDownloaderRepoId_FallsBackToDefault_WhenEmpty()
+    {
+        var repoId = ModelDownloaderViewModel.ResolveDownloaderRepoId(new AppSettings());
+
+        Assert.Equal("DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int8-cpu", repoId);
+    }
+
+    [Fact]
+    public void ResolveDownloaderModelsRootPath_PrefersDownloaderSetting()
+    {
+        var settings = new AppSettings
+        {
+            ModelsRootPath = @"C:\EngineModels",
+            DownloaderModelsRootPath = @"D:\DownloadModels"
+        };
+
+        var path = ModelDownloaderViewModel.ResolveDownloaderModelsRootPath(settings);
+
+        Assert.Equal(@"D:\DownloadModels", path);
+    }
+
+    [Fact]
+    public void ResolveDownloaderModelsRootPath_FallsBackToEngineModelsRootPath()
+    {
+        var settings = new AppSettings { ModelsRootPath = @"C:\EngineModels" };
+
+        var path = ModelDownloaderViewModel.ResolveDownloaderModelsRootPath(settings);
+
+        Assert.Equal(@"C:\EngineModels", path);
+    }
+
+    [Fact]
+    public void PersistDownloaderSettings_WritesRepoAndPath()
+    {
+        var settings = new AppSettings();
+
+        ModelDownloaderViewModel.PersistDownloaderSettings(settings, " org/repo ", " C:\\Models ");
+
+        Assert.Equal("org/repo", settings.DownloaderRepoId);
+        Assert.Equal("C:\\Models", settings.DownloaderModelsRootPath);
+    }
+
+    [Fact]
+    public void PersistDownloaderFolderSelection_WritesRepoAndFolderKeys()
+    {
+        var settings = new AppSettings();
+
+        ModelDownloaderViewModel.PersistDownloaderFolderSelection(settings, " org/repo ", ["cpu", "tokenizer", "cpu"]);
+
+        Assert.Equal("org/repo", settings.DownloaderSelectedFoldersRepoId);
+        Assert.Equal(["cpu", "tokenizer"], settings.DownloaderSelectedFolders);
+    }
+
+    [Fact]
+    public void ResolveDownloaderSelectedFolders_ReadsPersistedKeys()
+    {
+        var settings = new AppSettings { DownloaderSelectedFolders = ["cpu", "tokenizer"] };
+
+        var selected = ModelDownloaderViewModel.ResolveDownloaderSelectedFolders(settings);
+
+        Assert.Contains("cpu", selected);
+        Assert.Contains("tokenizer", selected);
+    }
+
+    [Fact]
+    public void ApplySelectedFolders_RestoresSelectionBySubfolder()
+    {
+        var folders = new List<HfFolder>
+        {
+            new() { Name = "📁 cpu", Selected = true },
+            new() { Name = "📁 tokenizer", Selected = true },
+            new() { Name = "📄 Root files", Selected = true }
+        };
+
+        ModelDownloaderViewModel.ApplySelectedFolders(folders, new HashSet<string>(["tokenizer", string.Empty], StringComparer.OrdinalIgnoreCase));
+
+        Assert.False(folders[0].Selected);
+        Assert.True(folders[1].Selected);
+        Assert.True(folders[2].Selected);
+    }
+
+    [Fact]
+    public void CaptureSelectedFolderKeys_ReturnsOnlySelectedFolders()
+    {
+        var selected = ModelDownloaderViewModel.CaptureSelectedFolderKeys(
+        [
+            new HfFolder { Name = "📁 cpu", Selected = true },
+            new HfFolder { Name = "📁 tokenizer", Selected = false },
+            new HfFolder { Name = "📄 Root files", Selected = true }
+        ]);
+
+        Assert.Contains("cpu", selected);
+        Assert.Contains(string.Empty, selected);
+        Assert.DoesNotContain("tokenizer", selected);
+    }
+
+    [Fact]
+    public void HfFolder_SubfolderName_ForRootFiles_IsEmpty()
+    {
+        var folder = new HfFolder { Name = "📄 Root files" };
+
+        Assert.Equal(string.Empty, folder.SubfolderName);
+    }
+
+    [Fact]
+    public void TryResolveCustomResultModelPath_SingleRootFolder_UsesRepoSlug()
+    {
+        var path = ModelDownloaderViewModel.TryResolveCustomResultModelPath(
+            [new HfFolder { Name = "📄 Root files", Selected = true }],
+            "DimQ1/sample-repo",
+            @"C:\Models");
+
+        Assert.Equal(Path.Combine(@"C:\Models", "sample-repo"), path);
+    }
+
+    [Fact]
+    public void TryResolveCustomResultModelPath_MultipleFolders_ReturnsNull()
+    {
+        var path = ModelDownloaderViewModel.TryResolveCustomResultModelPath(
+            [
+                new HfFolder { Name = "📁 cpu", Selected = true },
+                new HfFolder { Name = "📁 tokenizer", Selected = true }
+            ],
+            "DimQ1/sample-repo",
+            @"C:\Models");
+
+        Assert.Null(path);
+    }
+
+    [Fact]
+    public void AudioRecorderService_StopAndSave_WithoutSamples_ReturnsNull()
+    {
+        using var recorder = new AudioRecorderService(16000);
+        recorder.Start();
+
+        var outputBasePath = Path.Combine(Path.GetTempPath(), $"VoiceType_empty_{Guid.NewGuid():N}");
+        var result = recorder.StopAndSave(outputBasePath);
+
+        Assert.Null(result);
+        Assert.False(File.Exists(Path.ChangeExtension(outputBasePath, ".mp3")));
+    }
+
+    [Fact]
+    public void AudioRecorderService_StopAndSave_WithSamples_WritesMp3()
+    {
+        using var recorder = new AudioRecorderService(16000);
+        recorder.Start();
+
+        var samples = Enumerable.Range(0, 4000)
+            .Select(i => (float)Math.Sin(2 * Math.PI * 440 * i / 16000))
+            .ToArray();
+        recorder.Append(samples);
+
+        var outputBasePath = Path.Combine(Path.GetTempPath(), $"VoiceType_audio_{Guid.NewGuid():N}");
+        string? result = null;
+
+        try
+        {
+            result = recorder.StopAndSave(outputBasePath);
+
+            Assert.NotNull(result);
+            Assert.True(File.Exists(result));
+            Assert.True(new FileInfo(result).Length > 0);
+        }
+        finally
+        {
+            if (!string.IsNullOrEmpty(result) && File.Exists(result))
+                File.Delete(result);
+        }
+    }
+
+    [Fact]
+    public void PostProcessingPipeline_CompileRules_SkipsMalformedRegex()
+    {
+        var rules = new List<PostProcessingRule>
+        {
+            new() { Pattern = "[", Replacement = "", Enabled = true },
+            new() { Pattern = "foo", Replacement = "bar", Enabled = true }
+        };
+
+        var compiled = PostProcessingPipeline.CompileRules(rules, enabled: true);
+
+        Assert.Single(compiled);
+        Assert.Equal("bar", compiled[0].Replacement);
+    }
+
+    [Fact]
+    public void PostProcessingPipeline_Process_WithCompiledRules_AppliesAllRules()
+    {
+        var rules = new List<PostProcessingRule>
+        {
+            new() { Pattern = "<auto>", Replacement = "", Enabled = true },
+            new() { Pattern = "\\s+", Replacement = " ", Enabled = true }
+        };
+
+        var compiled = PostProcessingPipeline.CompileRules(rules, enabled: true);
+        var processed = PostProcessingPipeline.Process("  hello   <auto>  world  ", compiled);
+
+        Assert.Equal("hello world", processed);
+    }
+
     // ── ParseRepoId ─────────────────────────────────────────────
 
     [Theory]
@@ -110,5 +383,154 @@ public sealed class Unit_ModelDownloaderViewModelTests
         cmd.Execute(null);
         var completed = await Task.WhenAny(tcs.Task, Task.Delay(2000)) == tcs.Task;
         Assert.True(completed, "Async command did not complete within 2 seconds");
+    }
+
+    [Fact]
+    public async Task ModelDownloaderService_DownloadSingleFile_WritesFile_AndRaisesCompleted()
+    {
+        await using var server = await TestHttpServer.Start(async context =>
+        {
+            var payload = Encoding.UTF8.GetBytes("hello downloader");
+            context.Response.StatusCode = 200;
+            context.Response.ContentLength64 = payload.Length;
+            await context.Response.OutputStream.WriteAsync(payload);
+            context.Response.Close();
+        });
+
+        using var downloader = new ModelDownloaderService();
+        bool? completedOk = null;
+        string? completedMessage = null;
+        downloader.Completed += (ok, msg) => { completedOk = ok; completedMessage = msg; };
+
+        var outputDir = Path.Combine(Path.GetTempPath(), $"VoiceType_downloader_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outputDir);
+        var destPath = Path.Combine(outputDir, "payload.txt");
+
+        try
+        {
+            await downloader.DownloadSingleFile(server.Url + "file.txt", destPath);
+
+            Assert.True(File.Exists(destPath));
+            Assert.Equal("hello downloader", await File.ReadAllTextAsync(destPath));
+            Assert.False(downloader.IsDownloading);
+            Assert.True(completedOk);
+            Assert.Equal(destPath, completedMessage);
+        }
+        finally
+        {
+            if (Directory.Exists(outputDir))
+                Directory.Delete(outputDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ModelDownloaderService_DownloadSingleFile_OnFailure_ResetsState_AndRaisesCompleted()
+    {
+        await using var server = await TestHttpServer.Start(context =>
+        {
+            context.Response.StatusCode = 404;
+            context.Response.Close();
+            return Task.CompletedTask;
+        });
+
+        using var downloader = new ModelDownloaderService();
+        bool? completedOk = null;
+        string? completedMessage = null;
+        downloader.Completed += (ok, msg) => { completedOk = ok; completedMessage = msg; };
+
+        var outputDir = Path.Combine(Path.GetTempPath(), $"VoiceType_downloader_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outputDir);
+        var destPath = Path.Combine(outputDir, "missing.txt");
+
+        try
+        {
+            await Assert.ThrowsAsync<HttpRequestException>(() =>
+                downloader.DownloadSingleFile(server.Url + "missing.txt", destPath));
+
+            Assert.False(downloader.IsDownloading);
+            Assert.False(completedOk);
+            Assert.False(string.IsNullOrWhiteSpace(completedMessage));
+        }
+        finally
+        {
+            if (Directory.Exists(outputDir))
+                Directory.Delete(outputDir, recursive: true);
+        }
+    }
+
+    private sealed class TestHttpServer : IAsyncDisposable
+    {
+        private readonly HttpListener _listener;
+        private readonly Func<HttpListenerContext, Task> _handler;
+        private readonly CancellationTokenSource _cts = new();
+        private readonly Task _loopTask;
+
+        public string Url { get; }
+
+        private TestHttpServer(HttpListener listener, string url, Func<HttpListenerContext, Task> handler)
+        {
+            _listener = listener;
+            Url = url;
+            _handler = handler;
+            _listener.Start();
+            _loopTask = Task.Run(ListenLoopAsync);
+        }
+
+        public static async Task<TestHttpServer> Start(Func<HttpListenerContext, Task> handler)
+        {
+            var tcp = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+            tcp.Start();
+            var port = ((System.Net.IPEndPoint)tcp.LocalEndpoint).Port;
+            tcp.Stop();
+
+            var url = $"http://127.0.0.1:{port}/";
+            var listener = new HttpListener();
+            listener.Prefixes.Add(url);
+            var server = new TestHttpServer(listener, url, handler);
+            await Task.Delay(50);
+            return server;
+        }
+
+        private async Task ListenLoopAsync()
+        {
+            while (!_cts.IsCancellationRequested)
+            {
+                HttpListenerContext? context = null;
+                try
+                {
+                    context = await _listener.GetContextAsync();
+                    await _handler(context);
+                }
+                catch (HttpListenerException) when (_cts.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (ObjectDisposedException) when (_cts.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch
+                {
+                    if (context is not null)
+                    {
+                        try
+                        {
+                            context.Response.StatusCode = 500;
+                            context.Response.Close();
+                        }
+                        catch { }
+                    }
+                }
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            _cts.Cancel();
+            _listener.Stop();
+            _listener.Close();
+            try { await _loopTask; } catch { }
+            _cts.Dispose();
+        }
     }
 }

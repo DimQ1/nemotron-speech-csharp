@@ -10,25 +10,23 @@ public sealed class LoopbackAudioSource : IAudioSource
     public LoopbackAudioSource(int targetRate) => _targetRate = targetRate;
     public int SourceSampleRate => _targetRate;
 
-    public void Start(ConcurrentQueueWrapper buffer, ManualResetEventSlim signal, ref bool isRunning)
+    public void Start(ConcurrentQueueWrapper buffer, ManualResetEventSlim signal, CaptureState state)
     {
-        bool running = isRunning;
         var device = new WasapiLoopbackCapture();
         var fmt = device.WaveFormat;
         device.DataAvailable += (_, ev) =>
         {
-            if (!running) return;
+            if (!state.IsRunning) return;
             var samples = AudioUtils.Convert(ev.Buffer, ev.BytesRecorded, fmt);
-            var downsampled = AudioUtils.Resample(samples, fmt.SampleRate, _targetRate, 0.5f);
-            var batch = downsampled.ToArray();
-            buffer.Enqueue(batch);
+            var batch = AudioUtils.Resample(samples, fmt.SampleRate, _targetRate, 0.5f);
+            if (batch.Length > 0)
+                buffer.Enqueue(batch);
             signal.Set();
         };
-        device.RecordingStopped += (_, _) => { running = false; signal.Set(); };
+        device.RecordingStopped += (_, _) => { state.IsRunning = false; signal.Set(); };
         device.StartRecording();
 
-        while (running) Thread.Sleep(100);
-        isRunning = running;
+        while (state.IsRunning) Thread.Sleep(100);
         device.StopRecording();
         device.Dispose();
     }

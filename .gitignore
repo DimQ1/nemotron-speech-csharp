@@ -7,6 +7,7 @@ __pycache__/
 # ── Models (large files — download separately) ───
 models-onnx/
 models-original/
+build/
 converter/build/
 
 # ── Olive cache ──────────────────────────────────

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using CommonUtils;
 using NemotronSpeech;
 using SpeechLib;
@@ -20,8 +21,10 @@ public sealed class RecognitionService : IDisposable
     private Thread? _captureThread;
     private ConcurrentQueueWrapper? _buffer;
     private ManualResetEventSlim? _signal;
+    private CaptureState? _captureState;
     private bool _isRunning;
-    private string _accumulatedText = "";
+    private readonly StringBuilder _accumulatedText = new();
+    private readonly StringBuilder _partialProcessedText = new();
 
     public event Action<string>? PartialResult;
     public event Action<string>? FinalResult;
@@ -29,7 +32,7 @@ public sealed class RecognitionService : IDisposable
 
     public bool IsRunning => _isRunning;
     public int SampleRate => _recognizer?.SampleRate ?? 16000;
-    public string AccumulatedText => _accumulatedText;
+    public string AccumulatedText => _accumulatedText.ToString();
 
     public void Initialize(AppSettings settings)
     {
@@ -57,7 +60,8 @@ public sealed class RecognitionService : IDisposable
         if (_recognizer is null) Initialize(settings);
         if (_recognizer is null) throw new InvalidOperationException("Recognizer not initialized.");
 
-        _accumulatedText = "";
+        _accumulatedText.Clear();
+        _partialProcessedText.Clear();
         _isRunning = true;
 
         _audioRecorder = new AudioRecorderService(_recognizer.SampleRate);
@@ -69,14 +73,14 @@ public sealed class RecognitionService : IDisposable
 
         _buffer = new ConcurrentQueueWrapper();
         _signal = new ManualResetEventSlim(false);
+        _captureState = new CaptureState();
 
         // Warmup: send a silent chunk to prime the model pipeline
         Warmup(_recognizer);
 
         _captureThread = new Thread(() =>
         {
-            var running = _isRunning;
-            _audioSource!.Start(_buffer, _signal!, ref running);
+            _audioSource!.Start(_buffer, _signal!, _captureState);
         }) { IsBackground = true };
         _captureThread.Start();
 
@@ -87,6 +91,8 @@ public sealed class RecognitionService : IDisposable
     public void Stop()
     {
         _isRunning = false;
+        if (_captureState is not null)
+            _captureState.IsRunning = false;
         _signal?.Set();
     }
 
@@ -98,8 +104,9 @@ public sealed class RecognitionService : IDisposable
         var procSettings = SettingsService.Load();
         var procRules = procSettings.PostProcessingRules;
         var procEnabled = procSettings.PostProcessingEnabled;
+        var compiledProcRules = PostProcessingPipeline.CompileRules(procRules, procEnabled);
 
-        while (_isRunning || (_buffer?.IsEmpty == false))
+        while ((_captureState?.IsRunning == true) || (_buffer?.IsEmpty == false))
         {
             bool gotData = false;
             while (_buffer?.TryDequeue(out var batch) == true)
@@ -107,10 +114,12 @@ public sealed class RecognitionService : IDisposable
                 var raw = _recognizer!.ProcessAudio(batch);
                 if (raw is not null)
                 {
-                    _accumulatedText += raw;
-                    var processed = PostProcessingPipeline.Process(
-                        _accumulatedText, procRules, procEnabled);
-                    PartialResult?.Invoke(processed);
+                    _accumulatedText.Append(raw);
+                    var processedDelta = PostProcessingPipeline.Process(raw, compiledProcRules);
+                    if (!string.IsNullOrEmpty(processedDelta))
+                        _partialProcessedText.Append(processedDelta);
+
+                    PartialResult?.Invoke(_partialProcessedText.ToString());
                 }
                 _audioRecorder?.Append(batch);
                 gotData = true;
@@ -119,19 +128,21 @@ public sealed class RecognitionService : IDisposable
             if (gotData)
                 lastAudio = DateTime.UtcNow;
             else
-                Thread.Sleep(1);
+            {
+                _signal?.Wait(50);
+                _signal?.Reset();
+            }
 
-            if (!_isRunning && (_buffer?.IsEmpty == true) &&
+            if ((_captureState?.IsRunning != true) && (_buffer?.IsEmpty == true) &&
                 (DateTime.UtcNow - lastAudio).TotalSeconds > 1.5)
                 break;
         }
 
         // Flush
         var final = _recognizer!.Flush();
-        if (final is not null) _accumulatedText += final;
+        if (final is not null) _accumulatedText.Append(final);
 
-        var finalProcessed = PostProcessingPipeline.Process(
-            _accumulatedText, procRules, procEnabled);
+        var finalProcessed = PostProcessingPipeline.Process(_accumulatedText.ToString(), compiledProcRules);
 
         FinalResult?.Invoke(finalProcessed);
         Stopped?.Invoke();
@@ -150,9 +161,12 @@ public sealed class RecognitionService : IDisposable
     public void Dispose()
     {
         _isRunning = false;
+        if (_captureState is not null)
+            _captureState.IsRunning = false;
         _recognizer?.Dispose();
         _audioRecorder?.Dispose();
         _audioSource?.Dispose();
+        _signal?.Set();
     }
 
     private static void Warmup(IStreamingSpeechRecognizer recognizer)

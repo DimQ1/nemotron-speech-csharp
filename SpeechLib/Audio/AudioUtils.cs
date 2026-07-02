@@ -1,5 +1,6 @@
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using System.Runtime.InteropServices;
 
 namespace SpeechLib.Audio;
 
@@ -14,9 +15,15 @@ public static class AudioUtils
         var samples = new float[n];
 
         if (fmt.BitsPerSample == 16)
-            for (int i = 0; i < n; i++) samples[i] = BitConverter.ToInt16(buffer, i * 2) / 32768f;
+        {
+            var pcm = MemoryMarshal.Cast<byte, short>(buffer.AsSpan(0, bytesRecorded));
+            for (int i = 0; i < n; i++) samples[i] = pcm[i] / 32768f;
+        }
         else if (fmt.BitsPerSample == 32)
-            for (int i = 0; i < n; i++) samples[i] = BitConverter.ToSingle(buffer, i * 4);
+        {
+            var pcm = MemoryMarshal.Cast<byte, float>(buffer.AsSpan(0, bytesRecorded));
+            for (int i = 0; i < n; i++) samples[i] = pcm[i];
+        }
         else
             for (int i = 0; i < n; i++) samples[i] = (buffer[i] - 128) / 128f;
 
@@ -31,17 +38,21 @@ public static class AudioUtils
     }
 
     /// <summary>Linear resample to target rate with optional gain.</summary>
-    public static List<float> Resample(float[] samples, int fromRate, int toRate, float gain = 1f)
+    public static float[] Resample(float[] samples, int fromRate, int toRate, float gain = 1f)
     {
-        var result = new List<float>();
+        if (samples.Length <= 1)
+            return [];
+
         double ratio = (double)fromRate / toRate;
+        var result = new float[(int)Math.Ceiling((samples.Length - 1) / ratio)];
         double si = 0;
-        while (si < samples.Length - 1)
+        int outputIndex = 0;
+        while (si < samples.Length - 1 && outputIndex < result.Length)
         {
             int idx = (int)si;
             float frac = (float)(si - idx);
             int next = Math.Min(idx + 1, samples.Length - 1);
-            result.Add((samples[idx] * (1f - frac) + samples[next] * frac) * gain);
+            result[outputIndex++] = (samples[idx] * (1f - frac) + samples[next] * frac) * gain;
             si += ratio;
         }
         return result;

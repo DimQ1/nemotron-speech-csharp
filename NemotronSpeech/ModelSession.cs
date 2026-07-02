@@ -1,6 +1,7 @@
 using CommonUtils;
 using Microsoft.ML.OnnxRuntimeGenAI;
 using SpeechLib;
+using System.Text;
 using System.Text.Json;
 
 namespace NemotronSpeech;
@@ -44,12 +45,12 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         var encInputs = cfg.GetProperty("encoder").GetProperty("inputs");
         IsSingleLanguage = !encInputs.TryGetProperty("lang_id", out _);
 
-        // Use quality defaults for streaming ASR if no explicit options provided:
-        //   num_beams=4 gives significant WER reduction over greedy (num_beams=1)
+        // Use CPU-friendly defaults for local realtime ASR when no explicit options are provided:
+        //   num_beams=1 keeps CPU latency low; GPU/non-CPU defaults keep the higher quality beam search.
         //   repetition_penalty=1.1 prevents the decoder from getting stuck in loops
         searchOptions ??= new GeneratorParamsArgs
         {
-            num_beams = 4,
+            num_beams = string.Equals(executionProvider, "cpu", StringComparison.OrdinalIgnoreCase) ? 1 : 4,
             do_sample = false,
             repetition_penalty = 1.1
         };
@@ -100,7 +101,7 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
 
     public string DecodeTokens()
     {
-        var text = "";
+        var text = new StringBuilder();
         while (!_generator.IsDone())
         {
             _generator.GenerateNextToken();
@@ -108,10 +109,14 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
             if (tokens.Length > 0)
             {
                 var t = _tokenizerStream.Decode(tokens[0]);
-                if (!string.IsNullOrEmpty(t)) { Console.Write(t); text += t; }
+                if (!string.IsNullOrEmpty(t))
+                {
+                    Console.Write(t);
+                    text.Append(t);
+                }
             }
         }
-        return text;
+        return text.ToString();
     }
 
     public void Dispose()

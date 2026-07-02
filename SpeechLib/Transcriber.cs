@@ -1,5 +1,6 @@
 using SpeechLib.Audio;
 using SpeechLib.Models;
+using System.Text;
 
 namespace SpeechLib;
 
@@ -16,25 +17,25 @@ public static class Transcriber
         Console.WriteLine($"Audio: {audio.Length / (double)recognizer.SampleRate:F1}s ({audio.Length} samples)");
         Console.WriteLine(new string('-', 60));
 
-        var transcript = "";
+        var transcript = new StringBuilder();
         for (int i = 0; i < audio.Length; i += recognizer.ChunkSamples)
         {
             int remaining = Math.Min(recognizer.ChunkSamples, audio.Length - i);
             var chunk = audio[i..(i + remaining)];
             var text = recognizer.ProcessAudio(chunk);
             if (text is not null)
-                transcript += text;
+                transcript.Append(text);
         }
 
         var flush = recognizer.Flush();
         if (flush is not null)
-            transcript += flush;
+            transcript.Append(flush);
 
         Console.WriteLine($"\n{new string('=', 60)}");
-        Console.WriteLine($"  {transcript.Trim()}");
+        Console.WriteLine($"  {transcript.ToString().Trim()}");
         Console.WriteLine(new string('=', 60));
 
-        return transcript;
+        return transcript.ToString();
     }
 
     /// <summary>
@@ -52,35 +53,38 @@ public static class Transcriber
 
         var buffer = new ConcurrentQueueWrapper();
         var dataSignal = new ManualResetEventSlim(false);
-        bool isRunning = true;
-        var transcript = "";
+        var captureState = new CaptureState();
+        var transcript = new StringBuilder();
 
         Warmup(recognizer);
 
-        var captureThread = new Thread(() => source.Start(buffer, dataSignal, ref isRunning))
+        var captureThread = new Thread(() => source.Start(buffer, dataSignal, captureState))
             { IsBackground = true };
         captureThread.Start();
 
         Console.WriteLine("  [Listening...]");
         var lastAudio = DateTime.UtcNow;
 
-        while (isRunning || !buffer.IsEmpty)
+        while (captureState.IsRunning || !buffer.IsEmpty)
         {
             bool gotData = false;
             while (buffer.TryDequeue(out var batch))
             {
                 var text = recognizer.ProcessAudio(batch);
                 if (text is not null)
-                    transcript += text;
+                    transcript.Append(text);
                 gotData = true;
             }
 
             if (gotData)
                 lastAudio = DateTime.UtcNow;
             else
-                Thread.Sleep(1);
+            {
+                dataSignal.Wait(50);
+                dataSignal.Reset();
+            }
 
-            if (!isRunning && buffer.IsEmpty &&
+            if (!captureState.IsRunning && buffer.IsEmpty &&
                 (DateTime.UtcNow - lastAudio).TotalSeconds > 1.5)
                 break;
         }
@@ -91,13 +95,13 @@ public static class Transcriber
         // Flush remaining
         var flush = recognizer.Flush();
         if (flush is not null)
-            transcript += flush;
+            transcript.Append(flush);
 
         Console.WriteLine($"\n{new string('=', 60)}");
-        Console.WriteLine($"  {transcript.Trim()}");
+        Console.WriteLine($"  {transcript.ToString().Trim()}");
         Console.WriteLine(new string('=', 60));
 
-        return transcript;
+        return transcript.ToString();
     }
 
     private static void Warmup(IStreamingSpeechRecognizer recognizer)

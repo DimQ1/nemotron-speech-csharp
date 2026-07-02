@@ -29,6 +29,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         ExecutionProvider = settings.ExecutionProvider;
         Language = settings.Language;
         UseVad = settings.UseVad;
+        NumBeams = settings.NumBeams;
+        RepetitionPenalty = settings.RepetitionPenalty;
 
         // Set default models root if empty
         if (string.IsNullOrEmpty(ModelsRootPath))
@@ -79,6 +81,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string ExecutionProvider { get; set; }
     public string Language { get; set; }
     public bool UseVad { get; set; }
+    public int NumBeams { get; set; }
+    public double RepetitionPenalty { get; set; }
 
     public ObservableCollection<string> AvailableModels { get; }
 
@@ -164,6 +168,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         ExecutionProvider = ExecutionProvider,
         Language = Language,
         UseVad = UseVad,
+        NumBeams = Math.Max(1, NumBeams),
+        RepetitionPenalty = RepetitionPenalty,
         AudioSource = AudioSource,
         TextInjectionMethod = TextInjectionMethod,
         StopOnAnyInput = StopOnAnyInput,
@@ -173,6 +179,10 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         ToggleHotkey = ToggleHotkey,
         PostProcessingEnabled = PostProcessingEnabled,
         PostProcessingRules = Rules.ToList(),
+        DownloaderRepoId = _original.DownloaderRepoId,
+        DownloaderModelsRootPath = _original.DownloaderModelsRootPath,
+        DownloaderSelectedFoldersRepoId = _original.DownloaderSelectedFoldersRepoId,
+        DownloaderSelectedFolders = _original.DownloaderSelectedFolders.ToList(),
     };
 
     private void Save()

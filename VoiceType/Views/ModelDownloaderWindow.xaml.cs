@@ -9,6 +9,7 @@ public partial class ModelDownloaderWindow : Window
     private readonly ModelDownloaderViewModel _vm;
 
     public string? ResultPath => _vm.ResultPath;
+    public string? ResultModelPath => _vm.ResultModelPath;
     public bool WasDownloaded => _vm.WasDownloaded;
 
     /// <summary>Pre-fill the models root path for the downloader.</summary>

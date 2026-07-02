@@ -18,7 +18,7 @@ public sealed class AppSettings
     public bool UseVad { get; set; } = true;
 
     // ── Decoding quality ────────────────────────────
-    public int NumBeams { get; set; } = 4;
+    public int NumBeams { get; set; } = 1;
     public double RepetitionPenalty { get; set; } = 1.1;
 
     // ── Capture ─────────────────────────────────────
@@ -43,6 +43,12 @@ public sealed class AppSettings
 
     // ── Hotkey ──────────────────────────────────────
     public string ToggleHotkey { get; set; } = "Ctrl+Shift+V";
+
+    // ── Downloader ───────────────────────────────────
+    public string DownloaderRepoId { get; set; } = "";
+    public string DownloaderModelsRootPath { get; set; } = "";
+    public string DownloaderSelectedFoldersRepoId { get; set; } = "";
+    public List<string> DownloaderSelectedFolders { get; set; } = new();
 }
 
 public enum InjectionMethod { InputSimulator, SendInput, Clipboard }
