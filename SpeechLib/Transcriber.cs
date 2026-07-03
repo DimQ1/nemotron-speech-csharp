@@ -80,7 +80,7 @@ public static class Transcriber
                 lastAudio = DateTime.UtcNow;
             else
             {
-                dataSignal.Wait(50);
+                dataSignal.Wait(10);
                 dataSignal.Reset();
             }
 
@@ -90,7 +90,9 @@ public static class Transcriber
         }
 
         source.Dispose();
-        captureThread.Join(2000);
+        // Wait for capture thread to finish (non-blocking poll, max ~1s)
+        for (int i = 0; i < 100 && captureThread.IsAlive; i++)
+            Thread.Sleep(10);
 
         // Flush remaining
         var flush = recognizer.Flush();
@@ -111,15 +113,16 @@ public static class Transcriber
             var silent = new float[recognizer.ChunkSamples];
             recognizer.ProcessAudio(silent);
         }
-        catch { /* best-effort */ }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Transcriber] Warmup: {ex.Message}");
+        }
     }
 
     /// <summary>Create an <see cref="IAudioSource"/> for the given capture mode.</summary>
     public static IAudioSource CreateAudioSource(CaptureMode mode, int sampleRate) => mode switch
     {
-        CaptureMode.Mic => new BufferedCaptureSource(mode, sampleRate),
-        CaptureMode.Loopback => new BufferedCaptureSource(mode, sampleRate),
-        CaptureMode.Mix => new BufferedCaptureSource(mode, sampleRate),
+        CaptureMode.Mic or CaptureMode.Loopback or CaptureMode.Mix => new BufferedCaptureSource(mode, sampleRate),
         _ => throw new InvalidOperationException($"Capture mode '{mode}' is not a live source.")
     };
 }
