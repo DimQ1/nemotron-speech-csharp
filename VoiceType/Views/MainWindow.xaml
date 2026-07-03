@@ -31,6 +31,9 @@
                     <TextBlock Text="🎙 VoiceType" Foreground="{StaticResource FgBrush}"
                                FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="🎵" Style="{StaticResource IconButton}"
+                                ToolTip="Transcribe Audio File"
+                                Command="{Binding OpenFileTranscriptionCommand}"/>
                         <Button Content="📥" Style="{StaticResource IconButton}"
                                 ToolTip="Download Models"
                                 Command="{Binding OpenModelDownloaderCommand}"/>

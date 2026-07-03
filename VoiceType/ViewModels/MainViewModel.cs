@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -38,6 +39,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ToggleCommand = new RelayCommand(Toggle);
         CopyCommand = new RelayCommand(CopyText);
         OpenModelDownloaderCommand = new RelayCommand(OpenModelDownloader);
+        OpenFileTranscriptionCommand = new RelayCommand(OpenFileTranscription);
 
         _hook.InputDetected += OnInputDetected;
         _recognition.PartialResult += OnPartialResult;
@@ -49,22 +51,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
             DispatcherPriority.Background,
             (_, _) => FlushPendingPartialResult(),
             Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher);
-        _partialResultTimer.Start();
     }
 
     // ── Properties ──────────────────────────────────
 
-    public string StatusText { get => _statusText; set { _statusText = value; OnPropertyChanged(); } }
-    public string RecognizedText { get => _recognizedText; set { _recognizedText = value; OnPropertyChanged(); } }
-    public string FloatingText { get => _floatingText; set { _floatingText = value; OnPropertyChanged(); } }
+    public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
+    public string RecognizedText { get => _recognizedText; set => SetProperty(ref _recognizedText, value); }
+    public string FloatingText { get => _floatingText; set => SetProperty(ref _floatingText, value); }
 
     public bool IsRecording
     {
         get => _isRecording;
         set
         {
-            _isRecording = value;
-            OnPropertyChanged();
+            if (!SetProperty(ref _isRecording, value))
+                return;
+
             OnPropertyChanged(nameof(RecordButtonText));
             OnPropertyChanged(nameof(RecordingIndicator));
         }
@@ -79,6 +81,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ICommand ToggleCommand { get; }
     public ICommand CopyCommand { get; }
     public ICommand OpenModelDownloaderCommand { get; }
+    public ICommand OpenFileTranscriptionCommand { get; }
 
     // ── Hotkey ──────────────────────────────────────
 
@@ -116,22 +119,29 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    private void OpenFileTranscription()
+    {
+        var window = new Views.FileTranscriptionWindow
+        {
+            Owner = Application.Current.MainWindow
+        };
+        window.Show();
+    }
+
     private void Start()
     {
         if (IsRecording) return;
         _settings = SettingsService.Load();
 
         StatusText = "Initializing engine...";
-        _recognizedText = "";
-        _floatingText = "";
+        RecognizedText = "";
+        FloatingText = "";
         _lastInjectedLength = 0;
         lock (_partialResultGate)
         {
             _pendingPartialText = null;
             _hasPendingPartial = false;
         }
-        OnPropertyChanged(nameof(RecognizedText));
-        OnPropertyChanged(nameof(FloatingText));
 
         try
         {
@@ -151,6 +161,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             Console.WriteLine("[VoiceType] Hooks installed OK");
 
             IsRecording = true;
+            _partialResultTimer.Start();
             StatusText = "Listening...";
 
             Console.WriteLine("[VoiceType] Starting recognition...");
@@ -160,6 +171,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[VoiceType] Start error: {ex}");
+            _partialResultTimer.Stop();
             StatusText = $"Error: {ex.Message}";
             IsRecording = false;
         }
@@ -200,6 +212,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         lock (_partialResultGate)
         {
+            if (_hasPendingPartial && string.Equals(_pendingPartialText, text, StringComparison.Ordinal))
+                return;
+
             _pendingPartialText = text;
             _hasPendingPartial = true;
         }
@@ -212,6 +227,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         await Application.Current.Dispatcher.InvokeAsync(() =>
         {
+            _partialResultTimer.Stop();
             FlushPendingPartialResult();
             RecognizedText = text;
             FloatingText = text;
@@ -247,6 +263,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         Application.Current.Dispatcher.BeginInvoke(() =>
         {
+            _partialResultTimer.Stop();
             IsRecording = false;
             if (StatusText == "Finalizing...")
                 StatusText = "Ready";
@@ -297,6 +314,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
     // ── INotifyPropertyChanged ──────────────────────
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? name = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        field = value;
+        OnPropertyChanged(name);
+        return true;
+    }
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));

@@ -1,6 +1,8 @@
 using System.IO;
+using System.ComponentModel;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Diagnostics;
 using Microsoft.Extensions.Http.Resilience;
@@ -19,6 +21,8 @@ public sealed class ModelDownloaderService : IDisposable
     private const double ProgressStepPercent = 1.0;
 
     private readonly HttpClient _http;
+    private readonly bool _disposeHttp;
+    private readonly string _huggingFaceBaseUrl;
     private CancellationTokenSource? _cts;
 
     /// <summary>Raised periodically during download with structured progress info.</summary>
@@ -31,6 +35,23 @@ public sealed class ModelDownloaderService : IDisposable
     public bool IsDownloading { get; private set; }
 
     public ModelDownloaderService()
+        : this(CreateDefaultHttpClient(), "https://huggingface.co", disposeHttp: true)
+    {
+    }
+
+    public ModelDownloaderService(HttpClient httpClient, string huggingFaceBaseUrl)
+        : this(httpClient, huggingFaceBaseUrl, disposeHttp: false)
+    {
+    }
+
+    private ModelDownloaderService(HttpClient httpClient, string huggingFaceBaseUrl, bool disposeHttp)
+    {
+        _http = httpClient;
+        _disposeHttp = disposeHttp;
+        _huggingFaceBaseUrl = huggingFaceBaseUrl.TrimEnd('/');
+    }
+
+    private static HttpClient CreateDefaultHttpClient()
     {
         // ── Inner handler: pooled connections with DNS refresh ──
         var socketHandler = new SocketsHttpHandler
@@ -49,7 +70,7 @@ public sealed class ModelDownloaderService : IDisposable
             })
             .Build();
 
-        _http = new HttpClient(new ResilienceHandler(retryPipeline) { InnerHandler = socketHandler })
+        return new HttpClient(new ResilienceHandler(retryPipeline) { InnerHandler = socketHandler })
         {
             Timeout = System.Threading.Timeout.InfiniteTimeSpan,
             DefaultRequestHeaders = { { "User-Agent", "VoiceType/1.0" } }
@@ -64,7 +85,7 @@ public sealed class ModelDownloaderService : IDisposable
     public async Task<List<HfFolder>> FetchRepoFolders(string repoId, CancellationToken ct = default)
     {
         StatusChanged?.Invoke($"Fetching file list from {repoId}...");
-        var url = $"https://huggingface.co/api/models/{repoId}";
+        var url = $"{_huggingFaceBaseUrl}/api/models/{repoId}";
         var response = await _http.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
 
@@ -112,18 +133,28 @@ public sealed class ModelDownloaderService : IDisposable
 
         foreach (var folder in selectedFolders)
         {
+            var subfolder = string.IsNullOrEmpty(folder.SubfolderName)
+                ? repoId[(repoId.LastIndexOf('/') + 1)..]
+                : folder.SubfolderName;
+
             foreach (var file in folder.Files)
             {
-                var url = $"https://huggingface.co/{repoId}/resolve/main/{file.RelativePath}";
-                var subfolder = string.IsNullOrEmpty(folder.SubfolderName)
-                    ? repoId[(repoId.LastIndexOf('/') + 1)..]
-                    : folder.SubfolderName;
+                var url = $"{_huggingFaceBaseUrl}/{repoId}/resolve/main/{file.RelativePath}";
                 var relativePath = file.RelativePath.Contains('/')
                     ? file.RelativePath[(file.RelativePath.IndexOf('/') + 1)..]
                     : file.RelativePath;
                 var dest = Path.Combine(targetRoot, subfolder, relativePath);
-                files.Add(new FileToDownload(url, dest, file.SizeBytes));
+                var displayPath = Path.Combine(subfolder, relativePath).Replace('\\', '/');
+                files.Add(new FileToDownload(url, dest, displayPath, file.SizeBytes));
             }
+        }
+
+        if (files.Count == 0)
+        {
+            IsDownloading = false;
+            StatusChanged?.Invoke("Select at least one folder to download");
+            Completed?.Invoke(false, "No folders selected");
+            return;
         }
 
         StatusChanged?.Invoke($"Starting download: {files.Count} file(s), {FormatSize(files.Sum(f => f.SizeBytes))}");
@@ -139,7 +170,7 @@ public sealed class ModelDownloaderService : IDisposable
         Directory.CreateDirectory(targetRoot);
 
         StatusChanged?.Invoke($"Fetching {repoId}...");
-        var url = $"https://huggingface.co/api/models/{repoId}";
+        var url = $"{_huggingFaceBaseUrl}/api/models/{repoId}";
         var response = await _http.GetAsync(url, _cts.Token);
         response.EnsureSuccessStatusCode();
         var json = await response.Content.ReadFromJsonAsync<JsonElement>(_cts.Token);
@@ -153,8 +184,8 @@ public sealed class ModelDownloaderService : IDisposable
                 if (rfilename.StartsWith(".")) continue;
                 var size = sib.TryGetProperty("size", out var sz) ? sz.GetInt64() : 0;
                 var dest = Path.Combine(targetRoot, subfolder, rfilename);
-                var fileUrl = $"https://huggingface.co/{repoId}/resolve/main/{rfilename}";
-                files.Add(new FileToDownload(fileUrl, dest, size));
+                var fileUrl = $"{_huggingFaceBaseUrl}/{repoId}/resolve/main/{rfilename}";
+                files.Add(new FileToDownload(fileUrl, dest, Path.Combine(subfolder, rfilename).Replace('\\', '/'), size));
             }
         }
 
@@ -205,14 +236,15 @@ public sealed class ModelDownloaderService : IDisposable
     public void Dispose()
     {
         _cts?.Dispose();
-        _http.Dispose();
+        if (_disposeHttp)
+            _http.Dispose();
     }
 
     // ═══════════════════════════════════════════════════════════
     //  Private download pipeline (shared by all batch methods)
     // ═══════════════════════════════════════════════════════════
 
-    private readonly record struct FileToDownload(string Url, string DestPath, long SizeBytes);
+    private readonly record struct FileToDownload(string Url, string DestPath, string DisplayPath, long SizeBytes);
 
     /// <summary>Core batch download — iterates files, reports progress, handles errors.</summary>
     private async Task DownloadBatchAsync(IReadOnlyList<FileToDownload> files, CancellationToken ct)
@@ -225,8 +257,7 @@ public sealed class ModelDownloaderService : IDisposable
         {
             ct.ThrowIfCancellationRequested();
 
-            var fileName = Path.GetFileName(file.DestPath);
-            StatusChanged?.Invoke($"Downloading {fileName} ({FormatSize(file.SizeBytes)})...");
+            StatusChanged?.Invoke($"Downloading {file.DisplayPath} ({FormatSize(file.SizeBytes)})...");
 
             // Per-file timeout: 10 minutes
             using var fileCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -253,9 +284,9 @@ public sealed class ModelDownloaderService : IDisposable
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
                 // Per-file timeout — treat as batch failure
-                StatusChanged?.Invoke($"Timeout on {fileName} (10 min), aborting batch");
+                StatusChanged?.Invoke($"Timeout on {file.DisplayPath} (10 min), aborting batch");
                 IsDownloading = false;
-                Completed?.Invoke(false, $"Timeout downloading {fileName}");
+                Completed?.Invoke(false, $"Timeout downloading {file.DisplayPath}");
                 return;
             }
             catch (OperationCanceledException)
@@ -267,7 +298,7 @@ public sealed class ModelDownloaderService : IDisposable
             }
             catch (Exception ex)
             {
-                StatusChanged?.Invoke($"Error on {fileName}: {ex.Message}");
+                StatusChanged?.Invoke($"Error on {file.DisplayPath}: {ex.Message}");
                 IsDownloading = false;
                 Completed?.Invoke(false, ex.Message);
                 return;
@@ -296,7 +327,7 @@ public sealed class ModelDownloaderService : IDisposable
 
                 ProgressChanged?.Invoke(new DownloadProgress
                 {
-                    CurrentFile = fileName,
+                    CurrentFile = file.DisplayPath,
                     FileProgress = fileProgress,
                     OverallProgress = overallProgress,
                     DownloadedFiles = completed,
@@ -398,8 +429,10 @@ public sealed class HfFile
 }
 
 /// <summary>A folder containing HuggingFace files (grouped by top-level directory).</summary>
-public sealed class HfFolder
+public sealed class HfFolder : INotifyPropertyChanged
 {
+    private bool _selected = true;
+
     public string Name { get; init; } = "";
     public string SubfolderName => Name switch
     {
@@ -412,7 +445,22 @@ public sealed class HfFolder
     public List<HfFile> Files { get; init; } = new();
     public long TotalSize => Files.Sum(f => f.SizeBytes);
     public string SizeDisplay => ModelDownloaderService.FormatSize(TotalSize);
-    public bool Selected { get; set; } = true;
+    public bool Selected
+    {
+        get => _selected;
+        set
+        {
+            if (_selected == value)
+                return;
+
+            _selected = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
 public sealed class DownloadProgress

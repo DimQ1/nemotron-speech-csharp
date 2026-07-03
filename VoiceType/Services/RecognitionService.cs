@@ -16,6 +16,7 @@ namespace VoiceType.Services;
 public sealed class RecognitionService : IDisposable
 {
     private IStreamingSpeechRecognizer? _recognizer;
+    private RecognizerConfiguration? _recognizerConfiguration;
     private AudioRecorderService? _audioRecorder;
     private IAudioSource? _audioSource;
     private Thread? _captureThread;
@@ -36,23 +37,25 @@ public sealed class RecognitionService : IDisposable
 
     public void Initialize(AppSettings settings)
     {
-        var modelPath = string.IsNullOrEmpty(settings.ModelPath)
-            ? Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx", ModelSubfolder(settings.ExecutionProvider))
-            : settings.ModelPath;
-
-        if (!Path.IsPathRooted(modelPath))
-            modelPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, modelPath));
-
-        var langId = LanguageMapper.Resolve(settings.Language);
+        var configuration = CreateRecognizerConfiguration(settings);
+        if (_recognizer is not null && _recognizerConfiguration == configuration)
+            return;
 
         var searchOptions = new GeneratorParamsArgs
         {
-            num_beams = settings.NumBeams,
+            num_beams = configuration.NumBeams,
             do_sample = false,
-            repetition_penalty = settings.RepetitionPenalty
+            repetition_penalty = configuration.RepetitionPenalty
         };
 
-        _recognizer = new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
+        _recognizer?.Dispose();
+        _recognizer = new ModelSession(
+            configuration.ModelPath,
+            configuration.ExecutionProvider,
+            configuration.LanguageId,
+            configuration.UseVad,
+            searchOptions);
+        _recognizerConfiguration = configuration;
     }
 
     public void Start(AppSettings settings)
@@ -64,8 +67,13 @@ public sealed class RecognitionService : IDisposable
         _partialProcessedText.Clear();
         _isRunning = true;
 
-        _audioRecorder = new AudioRecorderService(_recognizer.SampleRate);
-        _audioRecorder.Start();
+        _audioRecorder?.Dispose();
+        _audioRecorder = null;
+        if (settings.SaveSessions && settings.SaveAudioMp3)
+        {
+            _audioRecorder = new AudioRecorderService(_recognizer.SampleRate);
+            _audioRecorder.Start();
+        }
 
         _audioSource = Transcriber.CreateAudioSource(
             Enum.Parse<CaptureMode>(settings.AudioSource),
@@ -84,8 +92,12 @@ public sealed class RecognitionService : IDisposable
         }) { IsBackground = true };
         _captureThread.Start();
 
+        var compiledProcRules = PostProcessingPipeline.CompileRules(
+            settings.PostProcessingRules,
+            settings.PostProcessingEnabled);
+
         // Processing loop on thread pool
-        Task.Run(() => ProcessLoop());
+        Task.Run(() => ProcessLoop(compiledProcRules));
     }
 
     public void Stop()
@@ -96,15 +108,9 @@ public sealed class RecognitionService : IDisposable
         _signal?.Set();
     }
 
-    private void ProcessLoop()
+    private void ProcessLoop(IReadOnlyList<PostProcessingPipeline.CompiledRule> compiledProcRules)
     {
         var lastAudio = DateTime.UtcNow;
-
-        // Cache post-processing settings once — avoid disk I/O on every audio chunk
-        var procSettings = SettingsService.Load();
-        var procRules = procSettings.PostProcessingRules;
-        var procEnabled = procSettings.PostProcessingEnabled;
-        var compiledProcRules = PostProcessingPipeline.CompileRules(procRules, procEnabled);
 
         while ((_captureState?.IsRunning == true) || (_buffer?.IsEmpty == false))
         {
@@ -117,9 +123,10 @@ public sealed class RecognitionService : IDisposable
                     _accumulatedText.Append(raw);
                     var processedDelta = PostProcessingPipeline.Process(raw, compiledProcRules);
                     if (!string.IsNullOrEmpty(processedDelta))
+                    {
                         _partialProcessedText.Append(processedDelta);
-
-                    PartialResult?.Invoke(_partialProcessedText.ToString());
+                        PartialResult?.Invoke(_partialProcessedText.ToString());
+                    }
                 }
                 _audioRecorder?.Append(batch);
                 gotData = true;
@@ -164,9 +171,29 @@ public sealed class RecognitionService : IDisposable
         if (_captureState is not null)
             _captureState.IsRunning = false;
         _recognizer?.Dispose();
+        _recognizer = null;
+        _recognizerConfiguration = null;
         _audioRecorder?.Dispose();
         _audioSource?.Dispose();
         _signal?.Set();
+    }
+
+    internal static RecognizerConfiguration CreateRecognizerConfiguration(AppSettings settings)
+    {
+        var modelPath = string.IsNullOrEmpty(settings.ModelPath)
+            ? Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx", ModelSubfolder(settings.ExecutionProvider))
+            : settings.ModelPath;
+
+        if (!Path.IsPathRooted(modelPath))
+            modelPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, modelPath));
+
+        return new RecognizerConfiguration(
+            modelPath,
+            settings.ExecutionProvider,
+            LanguageMapper.Resolve(settings.Language),
+            settings.UseVad,
+            settings.NumBeams,
+            settings.RepetitionPenalty);
     }
 
     private static void Warmup(IStreamingSpeechRecognizer recognizer)
@@ -186,4 +213,12 @@ public sealed class RecognitionService : IDisposable
         "dml" => "gpu-cuda",
         _ => "cpu"
     };
+
+    internal readonly record struct RecognizerConfiguration(
+        string ModelPath,
+        string ExecutionProvider,
+        string? LanguageId,
+        bool UseVad,
+        int NumBeams,
+        double RepetitionPenalty);
 }

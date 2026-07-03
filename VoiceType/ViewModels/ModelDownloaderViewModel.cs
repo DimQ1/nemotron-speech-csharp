@@ -17,7 +17,6 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
     private const string DefaultRepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int8-cpu";
 
     private readonly ModelDownloaderService _customDownloader = new();
-    private readonly Dictionary<AvailableModel, CancellationTokenSource> _activeCts = new();
     private string _modelsRootPath = string.Empty;
     private string _repoId = string.Empty;
     private string _loadedFoldersRepoId = string.Empty;
@@ -33,25 +32,6 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
         _selectedFoldersRepoId = ResolveDownloaderSelectedFoldersRepoId(settings);
         _selectedFolderKeys = ResolveDownloaderSelectedFolders(settings);
 
-        AvailableModels = new ObservableCollection<AvailableModel>(
-            AvailableModel.CpuModels.Select(m =>
-            {
-                var copy = new AvailableModel
-                {
-                    Name = m.Name, RepoId = m.RepoId, Description = m.Description,
-                    SizeDisplay = m.SizeDisplay, Precision = m.Precision
-                };
-                copy.IsDownloaded = Directory.Exists(Path.Combine(ModelsRootPath, copy.SubfolderName))
-                    && File.Exists(Path.Combine(ModelsRootPath, copy.SubfolderName, "genai_config.json"));
-                return copy;
-            }));
-
-        DownloadModelCommand = new AsyncRelayCommand<AvailableModel>(DownloadModel,
-            m => m is not null && m.CanDownload);
-        CancelModelCommand = new RelayCommand<AvailableModel>(CancelModel,
-            m => m is not null && m.IsDownloading);
-
-        // Custom repo commands
         FetchFilesCommand = new AsyncRelayCommand(FetchFolders);
         DownloadCommand = new AsyncRelayCommand(DownloadCustom,
             () => Folders.Count > 0 && !IsDownloading);
@@ -90,70 +70,7 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
         };
     }
 
-    // ── Predefined models (independent per-model download) ──
-    public ObservableCollection<AvailableModel> AvailableModels { get; }
-
-    private async Task DownloadModel(AvailableModel? model)
-    {
-        if (model is null || model.IsDownloading) return;
-        ResultPath = null;
-        ResultModelPath = null;
-        model.IsDownloading = true;
-        model.Progress = 0;
-        model.StatusMessage = "Fetching file list...";
-
-        using var downloader = new ModelDownloaderService();
-        var cts = new CancellationTokenSource();
-        _activeCts[model] = cts;
-
-        downloader.StatusChanged += s =>
-            _ = Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => model.StatusMessage = s));
-        downloader.ProgressChanged += p =>
-            _ = Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => model.Progress = p.OverallProgress));
-
-        try
-        {
-            await downloader.DownloadModelRepo(model.RepoId, model.SubfolderName, ModelsRootPath, cts.Token);
-            _ = Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
-            {
-                model.IsDownloading = false;
-                model.IsDownloaded = true;
-                model.Progress = 100;
-                model.StatusMessage = "✓ Downloaded";
-                ResultPath = ModelsRootPath;
-                ResultModelPath = GetInstalledModelPath(ModelsRootPath, model.SubfolderName);
-            }));
-        }
-        catch (OperationCanceledException)
-        {
-            _ = Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
-            {
-                model.IsDownloading = false;
-                model.StatusMessage = "Paused — click to resume";
-            }));
-        }
-        catch (Exception ex)
-        {
-            _ = Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
-            {
-                model.IsDownloading = false;
-                model.StatusMessage = $"✗ {ex.Message}";
-            }));
-        }
-        finally
-        {
-            _activeCts.Remove(model);
-            cts.Dispose();
-        }
-    }
-
-    private void CancelModel(AvailableModel? model)
-    {
-        if (model is not null && _activeCts.TryGetValue(model, out var cts))
-            cts.Cancel();
-    }
-
-    // ── Custom repo ────────────────────────────────
+    // ── HuggingFace folder downloader ───────────────
     public string RepoId
     {
         get => _repoId;
@@ -201,8 +118,6 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
     public string? ResultModelPath { get => _resultModelPath; private set { _resultModelPath = value; OnPropertyChanged(); } }
     public bool WasDownloaded => _resultPath is not null;
 
-    public ICommand DownloadModelCommand { get; }
-    public ICommand CancelModelCommand { get; }
     public ICommand FetchFilesCommand { get; }
     public ICommand DownloadCommand { get; }
     public ICommand CancelCommand { get; }

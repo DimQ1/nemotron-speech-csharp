@@ -68,6 +68,7 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         _tokenizer = new Tokenizer(_model);
         _tokenizerStream = _tokenizer.CreateStream();
         _genParams = new GeneratorParams(_model);
+        Common.SetSearchOptions(_genParams, searchOptions, verbose: false);
         _generator = new Generator(_model, _genParams);
 
         if (!IsSingleLanguage && langId is not null)
@@ -111,7 +112,6 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
                 var t = _tokenizerStream.Decode(tokens[0]);
                 if (!string.IsNullOrEmpty(t))
                 {
-                    Console.Write(t);
                     text.Append(t);
                 }
             }

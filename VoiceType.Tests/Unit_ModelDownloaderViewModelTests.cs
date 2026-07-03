@@ -335,6 +335,18 @@ public sealed class Unit_ModelDownloaderViewModelTests
         Assert.Equal("0 B", folder.SizeDisplay);
     }
 
+    [Fact]
+    public void HfFolder_Selected_RaisesPropertyChanged()
+    {
+        var folder = new HfFolder();
+        var changed = false;
+        folder.PropertyChanged += (_, args) => changed = args.PropertyName == nameof(HfFolder.Selected);
+
+        folder.Selected = false;
+
+        Assert.True(changed);
+    }
+
     // ── DownloadProgress model ──────────────────────────────────
 
     [Fact]
@@ -455,6 +467,130 @@ public sealed class Unit_ModelDownloaderViewModelTests
         {
             if (Directory.Exists(outputDir))
                 Directory.Delete(outputDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ModelDownloaderService_FetchRepoFolders_GroupsHuggingFaceSiblings()
+    {
+        await using var server = await TestHttpServer.Start(context =>
+        {
+            if (context.Request.Url?.AbsolutePath == "/api/models/org/repo")
+            {
+                var payload = Encoding.UTF8.GetBytes("""
+                { "siblings": [
+                    { "rfilename": "cpu/encoder.onnx", "size": 3 },
+                    { "rfilename": "cpu/tokenizer.json", "size": 5 },
+                    { "rfilename": "gpu/encoder.onnx", "size": 7 },
+                    { "rfilename": "README.md", "size": 11 },
+                    { "rfilename": ".gitattributes", "size": 1 }
+                ]}
+                """);
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                context.Response.ContentLength64 = payload.Length;
+                return context.Response.OutputStream.WriteAsync(payload).AsTask()
+                    .ContinueWith(_ => context.Response.Close());
+            }
+
+            context.Response.StatusCode = 404;
+            context.Response.Close();
+            return Task.CompletedTask;
+        });
+
+        using var httpClient = new HttpClient();
+        using var downloader = new ModelDownloaderService(httpClient, server.Url.TrimEnd('/'));
+
+        var folders = await downloader.FetchRepoFolders("org/repo");
+
+        Assert.Equal(3, folders.Count);
+        Assert.Equal("📄 Root files", folders[0].Name);
+        Assert.Equal("📁 cpu", folders[1].Name);
+        Assert.Equal("📁 gpu", folders[2].Name);
+        Assert.Equal(2, folders[1].Files.Count);
+    }
+
+    [Fact]
+    public async Task ModelDownloaderService_DownloadFromHuggingFace_WritesSelectedFolders_AndReportsCurrentFileProgress()
+    {
+        await using var server = await TestHttpServer.Start(async context =>
+        {
+            var path = context.Request.Url?.AbsolutePath ?? "";
+            if (path == "/org/repo/resolve/main/cpu/encoder.onnx")
+            {
+                await WriteResponse(context, "enc");
+                return;
+            }
+
+            if (path == "/org/repo/resolve/main/cpu/tokenizer.json")
+            {
+                await WriteResponse(context, "token");
+                return;
+            }
+
+            if (path == "/org/repo/resolve/main/gpu/encoder.onnx")
+            {
+                await WriteResponse(context, "gpu");
+                return;
+            }
+
+            context.Response.StatusCode = 404;
+            context.Response.Close();
+        });
+
+        using var httpClient = new HttpClient();
+        using var downloader = new ModelDownloaderService(httpClient, server.Url.TrimEnd('/'));
+        var progressFiles = new List<string>();
+        bool? completedOk = null;
+
+        downloader.ProgressChanged += progress => progressFiles.Add(progress.CurrentFile);
+        downloader.Completed += (ok, _) => completedOk = ok;
+
+        var folders = new List<HfFolder>
+        {
+            new()
+            {
+                Name = "📁 cpu",
+                Selected = true,
+                Files =
+                [
+                    new HfFile { Name = "encoder.onnx", RelativePath = "cpu/encoder.onnx", SizeBytes = 3 },
+                    new HfFile { Name = "tokenizer.json", RelativePath = "cpu/tokenizer.json", SizeBytes = 5 }
+                ]
+            },
+            new()
+            {
+                Name = "📁 gpu",
+                Selected = false,
+                Files = [new HfFile { Name = "encoder.onnx", RelativePath = "gpu/encoder.onnx", SizeBytes = 3 }]
+            }
+        };
+
+        var outputDir = Path.Combine(Path.GetTempPath(), $"VoiceType_hf_{Guid.NewGuid():N}");
+        try
+        {
+            await downloader.DownloadFromHuggingFace("org/repo", folders, outputDir);
+
+            Assert.True(completedOk);
+            Assert.Equal("enc", await File.ReadAllTextAsync(Path.Combine(outputDir, "cpu", "encoder.onnx")));
+            Assert.Equal("token", await File.ReadAllTextAsync(Path.Combine(outputDir, "cpu", "tokenizer.json")));
+            Assert.False(File.Exists(Path.Combine(outputDir, "gpu", "encoder.onnx")));
+            Assert.Contains("cpu/encoder.onnx", progressFiles);
+            Assert.Contains("cpu/tokenizer.json", progressFiles);
+        }
+        finally
+        {
+            if (Directory.Exists(outputDir))
+                Directory.Delete(outputDir, recursive: true);
+        }
+
+        static async Task WriteResponse(HttpListenerContext context, string text)
+        {
+            var payload = Encoding.UTF8.GetBytes(text);
+            context.Response.StatusCode = 200;
+            context.Response.ContentLength64 = payload.Length;
+            await context.Response.OutputStream.WriteAsync(payload);
+            context.Response.Close();
         }
     }
 
