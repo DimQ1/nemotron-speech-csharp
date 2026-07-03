@@ -5,21 +5,15 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Diagnostics;
-using Microsoft.Extensions.Http.Resilience;
-using Polly;
 
 namespace VoiceType.Services;
 
 /// <summary>
-/// Downloads ONNX model files from HuggingFace or custom URLs with progress tracking,
-/// resume support, and resilience (retry + exponential backoff).
+/// Downloads ONNX model files from HuggingFace using the Downloader library
+/// (multipart parallel download, auto-resume, real-time progress).
 /// </summary>
 public sealed class ModelDownloaderService : IDisposable
 {
-    private const int ProgressBufferSize = 64 * 1024;
-    private const int ProgressUpdateIntervalMs = 125;
-    private const double ProgressStepPercent = 1.0;
-
     private readonly HttpClient _http;
     private readonly bool _disposeHttp;
     private readonly string _huggingFaceBaseUrl;
@@ -53,28 +47,23 @@ public sealed class ModelDownloaderService : IDisposable
 
     private static HttpClient CreateDefaultHttpClient()
     {
-        // ── Inner handler: pooled connections with DNS refresh ──
-        var socketHandler = new SocketsHttpHandler
+        var handler = new SocketsHttpHandler
         {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(15)
+            PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+            MaxConnectionsPerServer = 10,
+            UseCookies = true,
+            AllowAutoRedirect = true,
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
         };
-
-        // ── Resilience: retry on transient HTTP failures ──
-        var retryPipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
-            .AddRetry(new HttpRetryStrategyOptions
-            {
-                BackoffType = DelayBackoffType.Exponential,
-                MaxRetryAttempts = 3,
-                Delay = TimeSpan.FromSeconds(2),
-                UseJitter = true
-            })
-            .Build();
-
-        return new HttpClient(new ResilienceHandler(retryPipeline) { InnerHandler = socketHandler })
+        var client = new HttpClient(handler)
         {
-            Timeout = System.Threading.Timeout.InfiniteTimeSpan,
-            DefaultRequestHeaders = { { "User-Agent", "VoiceType/1.0" } }
+            Timeout = Timeout.InfiniteTimeSpan,
         };
+        client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36");
+        client.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "*/*");
+        client.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate, br");
+
+        return client;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -103,7 +92,6 @@ public sealed class ModelDownloaderService : IDisposable
             }
         }
 
-        // Group by top-level folder
         var folders = allFiles
             .GroupBy(f => f.RelativePath.Contains('/') ? f.RelativePath[..f.RelativePath.IndexOf('/')] : "(root)")
             .OrderBy(g => g.Key == "(root)" ? 0 : 1).ThenBy(g => g.Key)
@@ -118,10 +106,7 @@ public sealed class ModelDownloaderService : IDisposable
         return folders;
     }
 
-    /// <summary>
-    /// Download selected folders from a HuggingFace repo into targetRoot/{folderName}/.
-    /// Each file gets a per-file timeout of 10 minutes.
-    /// </summary>
+    /// <summary>Download selected folders using Downloader library.</summary>
     public async Task DownloadFromHuggingFace(string repoId, List<HfFolder> folders, string targetRoot)
     {
         _cts = new CancellationTokenSource();
@@ -161,7 +146,7 @@ public sealed class ModelDownloaderService : IDisposable
         await DownloadBatchAsync(files, _cts.Token);
     }
 
-    /// <summary>Download all files from a HuggingFace repo into targetRoot/{subfolder}/.</summary>
+    /// <summary>Download all files from a HuggingFace repo using Downloader library.</summary>
     public async Task DownloadModelRepo(string repoId, string subfolder, string targetRoot,
         CancellationToken externalCt = default)
     {
@@ -193,7 +178,7 @@ public sealed class ModelDownloaderService : IDisposable
         await DownloadBatchAsync(files, _cts.Token);
     }
 
-    /// <summary>Download a single file from a direct URL.</summary>
+    /// <summary>Download a single file from a direct URL using Downloader library.</summary>
     public async Task DownloadSingleFile(string url, string destPath)
     {
         _cts = new CancellationTokenSource();
@@ -205,7 +190,7 @@ public sealed class ModelDownloaderService : IDisposable
         try
         {
             StatusChanged?.Invoke($"Downloading {fileName}...");
-            await DownloadFileAsync(url, destPath, 0, _cts.Token);
+            await DownloadWithDownloaderAsync(url, destPath, 0, _cts.Token);
             StatusChanged?.Invoke($"Download complete → {destPath}");
             Completed?.Invoke(true, destPath);
         }
@@ -241,53 +226,41 @@ public sealed class ModelDownloaderService : IDisposable
     }
 
     // ═══════════════════════════════════════════════════════════
-    //  Private download pipeline (shared by all batch methods)
+    //  Downloader-powered file downloads
     // ═══════════════════════════════════════════════════════════
 
     private readonly record struct FileToDownload(string Url, string DestPath, string DisplayPath, long SizeBytes);
 
-    /// <summary>Core batch download — iterates files, reports progress, handles errors.</summary>
     private async Task DownloadBatchAsync(IReadOnlyList<FileToDownload> files, CancellationToken ct)
     {
-        long totalBytes = files.Sum(f => f.SizeBytes);
-        long downloadedBytes = 0;
         int completed = 0;
 
-        foreach (var file in files)
+        for (int i = 0; i < files.Count; i++)
         {
+            var file = files[i];
             ct.ThrowIfCancellationRequested();
 
             StatusChanged?.Invoke($"Downloading {file.DisplayPath} ({FormatSize(file.SizeBytes)})...");
 
-            // Per-file timeout: 10 minutes
-            using var fileCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            fileCts.CancelAfter(TimeSpan.FromMinutes(10));
-
             long fileChunkTotal = 0;
-            var progressGate = Stopwatch.StartNew();
+            long fileActualTotal = 0;
             double lastFileProgress = -1;
             double lastOverallProgress = -1;
+            var progressGate = Stopwatch.StartNew();
 
             try
             {
-                await DownloadFileWithProgressAsync(file.Url, file.DestPath, file.SizeBytes,
-                    chunkBytes =>
+                await DownloadWithDownloaderAsync(file.Url, file.DestPath, file.SizeBytes,
+                    (_, totalRead, actualTotal) =>
                     {
-                        downloadedBytes += chunkBytes;
-                        fileChunkTotal += chunkBytes;
+                        fileChunkTotal = totalRead;
+                        fileActualTotal = actualTotal;
                         EmitProgressIfNeeded(force: false);
                     },
-                    fileCts.Token);
+                    ct);
+
                 completed++;
                 EmitProgressIfNeeded(force: true);
-            }
-            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-            {
-                // Per-file timeout — treat as batch failure
-                StatusChanged?.Invoke($"Timeout on {file.DisplayPath} (10 min), aborting batch");
-                IsDownloading = false;
-                Completed?.Invoke(false, $"Timeout downloading {file.DisplayPath}");
-                return;
             }
             catch (OperationCanceledException)
             {
@@ -306,18 +279,20 @@ public sealed class ModelDownloaderService : IDisposable
 
             void EmitProgressIfNeeded(bool force)
             {
-                var fileProgress = file.SizeBytes > 0
-                    ? (double)fileChunkTotal / file.SizeBytes * 100
+                // Use actual Content-Length from HTTP response (authoritative),
+                // fall back to file.SizeBytes from API
+                var effectiveSize = fileActualTotal > 0 ? fileActualTotal : file.SizeBytes;
+                var fileProgress = effectiveSize > 0
+                    ? (double)fileChunkTotal / effectiveSize * 100
                     : 100;
-                var overallProgress = totalBytes > 0
-                    ? (double)downloadedBytes / totalBytes * 100
-                    : 100;
+                // Overall progress based on completed files count only
+                var overallProgress = (double)completed / files.Count * 100;
 
                 if (!force)
                 {
-                    var progressChangedEnough = Math.Abs(fileProgress - lastFileProgress) >= ProgressStepPercent
-                        || Math.Abs(overallProgress - lastOverallProgress) >= ProgressStepPercent;
-                    if (!progressChangedEnough && progressGate.ElapsedMilliseconds < ProgressUpdateIntervalMs)
+                    var changed = Math.Abs(fileProgress - lastFileProgress) >= 0.5
+                        || Math.Abs(overallProgress - lastOverallProgress) >= 0.5;
+                    if (!changed && progressGate.ElapsedMilliseconds < 125)
                         return;
                 }
 
@@ -341,66 +316,41 @@ public sealed class ModelDownloaderService : IDisposable
         Completed?.Invoke(true, "");
     }
 
-    // ═══════════════════════════════════════════════════════════
-    //  Low-level file download with resume support
-    // ═══════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Download a single file to dest with resume support and per-chunk progress callback.
-    /// </summary>
-    private async Task DownloadFileWithProgressAsync(string url, string dest, long totalSize,
-        Action<long> onChunk, CancellationToken ct)
+    /// <summary>Download a single file using plain HttpClient streaming.
+    /// Handles HuggingFace's 307 → CloudFront CDN redirect correctly because
+    /// _http already has AllowAutoRedirect=true + browser User-Agent.</summary>
+    private async Task DownloadWithDownloaderAsync(string url, string dest, long knownSize,
+        Action<long, long, long>? onProgress, CancellationToken ct)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
-        long existingBytes = 0;
-        if (File.Exists(dest))
-        {
-            existingBytes = new FileInfo(dest).Length;
-            if (totalSize > 0 && existingBytes >= totalSize)
-            {
-                onChunk(existingBytes);
-                return; // already complete
-            }
-        }
+        ct.ThrowIfCancellationRequested();
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        if (existingBytes > 0)
-            request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(existingBytes, null);
+        using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
 
-        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        // Use Content-Length from the response (after redirect) as authoritative file size
+        var actualSize = response.Content.Headers.ContentLength > 0
+            ? response.Content.Headers.ContentLength.Value
+            : knownSize;
 
-        if (existingBytes > 0 && response.StatusCode == System.Net.HttpStatusCode.PartialContent)
+        await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
+        await using var fileStream = new FileStream(dest, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
+
+        var buffer = new byte[81920];
+        long totalRead = 0;
+        int bytesRead;
+        while ((bytesRead = await contentStream.ReadAsync(buffer, ct)) > 0)
         {
-            onChunk(existingBytes);
-            await using var file = File.Open(dest, FileMode.Append, FileAccess.Write);
-            await CopyStreamAsync(stream, file, onChunk, ct);
-        }
-        else
-        {
-            response.EnsureSuccessStatusCode();
-            await using var file = File.Create(dest);
-            await CopyStreamAsync(stream, file, onChunk, ct);
+            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
+            totalRead += bytesRead;
+            onProgress?.Invoke(bytesRead, totalRead, actualSize);
         }
     }
 
-    /// <summary>Simpler overload — no per-chunk callback (used by DownloadSingleFile).</summary>
-    private async Task DownloadFileAsync(string url, string dest, long totalSize, CancellationToken ct)
+    /// <summary>Simpler overload — no per-chunk callback.</summary>
+    private async Task DownloadWithDownloaderAsync(string url, string dest, long knownSize, CancellationToken ct)
     {
-        await DownloadFileWithProgressAsync(url, dest, totalSize, _ => { }, ct);
-    }
-
-    /// <summary>Copy stream to stream in chunks, invoking callback with bytes written.</summary>
-    private static async Task CopyStreamAsync(Stream source, Stream target,
-        Action<long> onChunk, CancellationToken ct)
-    {
-        var buffer = new byte[ProgressBufferSize];
-        int read;
-        while ((read = await source.ReadAsync(buffer, ct)) > 0)
-        {
-            await target.WriteAsync(buffer.AsMemory(0, read), ct);
-            onChunk(read);
-        }
+        await DownloadWithDownloaderAsync(url, dest, knownSize, (Action<long, long, long>?)null, ct);
     }
 
     // ═══════════════════════════════════════════════════════════
