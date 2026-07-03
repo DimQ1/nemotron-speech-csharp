@@ -31,9 +31,6 @@
                     <TextBlock Text="🎙 VoiceType" Foreground="{StaticResource FgBrush}"
                                FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="🎵" Style="{StaticResource IconButton}"
-                                ToolTip="Transcribe Audio File"
-                                Command="{Binding OpenFileTranscriptionCommand}"/>
                         <Button Content="📥" Style="{StaticResource IconButton}"
                                 ToolTip="Download Models"
                                 Command="{Binding OpenModelDownloaderCommand}"/>
@@ -104,16 +101,42 @@
                             Command="{Binding ToggleCommand}"
                             HorizontalAlignment="Stretch" Height="42"/>
                     <Grid Margin="0,8,0,0">
-                        <TextBlock FontSize="11"
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   FontSize="11"
                                    Foreground="{StaticResource FgSecondaryBrush}"
                                    TextWrapping="Wrap"
                                    VerticalAlignment="Center"
                                    Text="Ctrl+Shift+V to toggle • Any key/mouse stops"/>
-                        <Button Content="📋 Copy" HorizontalAlignment="Right"
-                                Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
-                                BorderThickness="0" Padding="10,4" FontSize="11" Cursor="Hand"
-                                Command="{Binding CopyCommand}"
-                                CommandParameter="{Binding ElementName=TextDisplay}"/>
+
+                        <Grid Grid.Row="1" Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <CheckBox Grid.Column="0"
+                                      Content="Enable text injection"
+                                      IsChecked="{Binding IsTextInjectionEnabled}"
+                                      Style="{StaticResource DarkCheckBox}"
+                                      VerticalAlignment="Center"/>
+
+                            <Button Grid.Column="1"
+                                    Content="📋 Copy"
+                                    Margin="12,0,0,0"
+                                    Background="{StaticResource BgTertiaryBrush}"
+                                    Foreground="{StaticResource FgBrush}"
+                                    BorderThickness="0"
+                                    Padding="10,4"
+                                    FontSize="11"
+                                    Cursor="Hand"
+                                    Command="{Binding CopyCommand}"
+                                    CommandParameter="{Binding ElementName=TextDisplay}"/>
+                        </Grid>
                     </Grid>
                 </StackPanel>
             </Border>

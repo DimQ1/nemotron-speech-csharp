@@ -117,9 +117,9 @@ public static class Transcriber
     /// <summary>Create an <see cref="IAudioSource"/> for the given capture mode.</summary>
     public static IAudioSource CreateAudioSource(CaptureMode mode, int sampleRate) => mode switch
     {
-        CaptureMode.Mic => new MicAudioSource(),
-        CaptureMode.Loopback => new LoopbackAudioSource(sampleRate),
-        CaptureMode.Mix => new MixAudioSource(sampleRate),
+        CaptureMode.Mic => new BufferedCaptureSource(mode, sampleRate),
+        CaptureMode.Loopback => new BufferedCaptureSource(mode, sampleRate),
+        CaptureMode.Mix => new BufferedCaptureSource(mode, sampleRate),
         _ => throw new InvalidOperationException($"Capture mode '{mode}' is not a live source.")
     };
 }

@@ -29,6 +29,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly DispatcherTimer _partialResultTimer;
     private string? _pendingPartialText;
     private bool _hasPendingPartial;
+    private bool _isTextInjectionEnabled = true;
 
     public MainViewModel()
     {
@@ -39,7 +40,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ToggleCommand = new RelayCommand(Toggle);
         CopyCommand = new RelayCommand(CopyText);
         OpenModelDownloaderCommand = new RelayCommand(OpenModelDownloader);
-        OpenFileTranscriptionCommand = new RelayCommand(OpenFileTranscription);
 
         _hook.InputDetected += OnInputDetected;
         _recognition.PartialResult += OnPartialResult;
@@ -58,6 +58,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
     public string RecognizedText { get => _recognizedText; set => SetProperty(ref _recognizedText, value); }
     public string FloatingText { get => _floatingText; set => SetProperty(ref _floatingText, value); }
+    public bool IsTextInjectionEnabled { get => _isTextInjectionEnabled; set => SetProperty(ref _isTextInjectionEnabled, value); }
 
     public bool IsRecording
     {
@@ -81,7 +82,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ICommand ToggleCommand { get; }
     public ICommand CopyCommand { get; }
     public ICommand OpenModelDownloaderCommand { get; }
-    public ICommand OpenFileTranscriptionCommand { get; }
 
     // ── Hotkey ──────────────────────────────────────
 
@@ -117,15 +117,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
             _settings.ModelPath = window.ResultModelPath;
             SettingsService.Save(_settings);
         }
-    }
-
-    private void OpenFileTranscription()
-    {
-        var window = new Views.FileTranscriptionWindow
-        {
-            Owner = Application.Current.MainWindow
-        };
-        window.Show();
     }
 
     private void Start()
@@ -233,7 +224,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             FloatingText = text;
 
             // Inject any remaining delta not yet sent
-            if (text.Length > _lastInjectedLength)
+            if (IsTextInjectionEnabled && text.Length > _lastInjectedLength)
             {
                 var delta = text[_lastInjectedLength..];
                 TextInjector.Inject(delta, _settings.TextInjectionMethod);
@@ -288,7 +279,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RecognizedText = text;
         FloatingText = text;
 
-        if (text.Length <= _lastInjectedLength)
+        if (!IsTextInjectionEnabled || text.Length <= _lastInjectedLength)
             return;
 
         var delta = text[_lastInjectedLength..];
