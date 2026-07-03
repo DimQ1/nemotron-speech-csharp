@@ -53,7 +53,7 @@ public sealed class ModelDownloaderService : IDisposable
             MaxConnectionsPerServer = 10,
             UseCookies = true,
             AllowAutoRedirect = true,
-            AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate | System.Net.DecompressionMethods.Brotli , 
         };
         var client = new HttpClient(handler)
         {
@@ -61,7 +61,6 @@ public sealed class ModelDownloaderService : IDisposable
         };
         client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36");
         client.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "*/*");
-        client.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate, br");
 
         return client;
     }
