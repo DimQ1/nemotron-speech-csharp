@@ -24,6 +24,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _floatingText = "";
     private int _lastInjectedLength;
     private bool _isRecording;
+    private bool _isCaptureMuted;
+    private int _toggleHotkeyId;
+    private int _muteHotkeyId;
     private RecognitionSession? _currentSession;
     private readonly object _partialResultGate = new();
     private readonly DispatcherTimer _partialResultTimer;
@@ -40,6 +43,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ToggleCommand = new RelayCommand(Toggle);
         CopyCommand = new RelayCommand(CopyText);
         OpenModelDownloaderCommand = new RelayCommand(OpenModelDownloader);
+        MuteCommand = new RelayCommand(ToggleMute, () => IsRecording);
 
         _hook.InputDetected += OnInputDetected;
         _recognition.PartialResult += OnPartialResult;
@@ -59,6 +63,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string RecognizedText { get => _recognizedText; set => SetProperty(ref _recognizedText, value); }
     public string FloatingText { get => _floatingText; set => SetProperty(ref _floatingText, value); }
     public bool IsTextInjectionEnabled { get => _isTextInjectionEnabled; set => SetProperty(ref _isTextInjectionEnabled, value); }
+    public bool IsCaptureMuted
+    {
+        get => _isCaptureMuted;
+        set
+        {
+            if (SetProperty(ref _isCaptureMuted, value))
+                OnPropertyChanged(nameof(RecordingIndicator));
+        }
+    }
 
     public bool IsRecording
     {
@@ -74,7 +87,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     public string RecordButtonText => IsRecording ? "⏹ Stop" : "🎤 Start";
-    public string RecordingIndicator => IsRecording ? "🔴 Recording..." : "⚪ Idle";
+    public string RecordingIndicator => IsRecording
+        ? (IsCaptureMuted ? "🔇 Muted" : "🔴 Recording...")
+        : "⚪ Idle";
 
     public ICommand StartCommand { get; }
     public ICommand StopCommand { get; }
@@ -82,14 +97,35 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ICommand ToggleCommand { get; }
     public ICommand CopyCommand { get; }
     public ICommand OpenModelDownloaderCommand { get; }
+    public ICommand MuteCommand { get; }
 
     // ── Hotkey ──────────────────────────────────────
 
     public void RegisterHotkey(nint hwnd)
     {
-        var hotkey = _settings.ToggleHotkey;
-        if (!string.IsNullOrEmpty(hotkey))
-            GlobalHotkeyService.Register(hwnd, hotkey);
+        var toggle = _settings.ToggleHotkey;
+        if (!string.IsNullOrEmpty(toggle))
+            _toggleHotkeyId = GlobalHotkeyService.Register(hwnd, toggle);
+
+        var mute = _settings.MuteHotkey;
+        if (!string.IsNullOrEmpty(mute))
+            _muteHotkeyId = GlobalHotkeyService.Register(hwnd, mute);
+    }
+
+    /// <summary>Handle WM_HOTKEY by hotkey ID. Returns true if handled.</summary>
+    public bool HandleHotkey(int hotkeyId)
+    {
+        if (hotkeyId == _toggleHotkeyId && _toggleHotkeyId != 0)
+        {
+            Toggle();
+            return true;
+        }
+        if (hotkeyId == _muteHotkeyId && _muteHotkeyId != 0)
+        {
+            ToggleMute();
+            return true;
+        }
+        return false;
     }
 
     // ── Commands ────────────────────────────────────
@@ -98,6 +134,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         if (IsRecording) Stop();
         else Start();
+    }
+
+    public void ToggleMute()
+    {
+        if (!IsRecording) return;
+        var newMuted = !IsCaptureMuted;
+        _recognition.SetMuted(newMuted);
+        IsCaptureMuted = newMuted;
+        StatusText = newMuted ? "Muted (audio discarded)" : "Listening...";
+        OnPropertyChanged(nameof(RecordingIndicator));
     }
 
     private void CopyText()

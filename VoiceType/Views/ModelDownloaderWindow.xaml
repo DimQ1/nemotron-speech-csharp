@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:VoiceType.ViewModels"
         Title="Model Downloader"
-        Width="640" Height="560"
-        MinWidth="520" MinHeight="460"
+        Width="520" Height="380"
+        MinWidth="440" MinHeight="340"
         WindowStartupLocation="CenterOwner"
         WindowStyle="ToolWindow"
         ResizeMode="CanResizeWithGrip"
@@ -18,128 +18,87 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Repository -->
-        <GroupBox Grid.Row="0" Header="HuggingFace Repository" Style="{StaticResource DarkGroupBox}" Margin="0,0,0,8">
+        <!-- Model Selection -->
+        <GroupBox Grid.Row="0" Header="Select Model" Style="{StaticResource DarkGroupBox}" Margin="0,0,0,8">
             <StackPanel>
-                <TextBlock Text="Repository (owner/repo or URL)" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                <ComboBox ItemsSource="{Binding Source={x:Static vm:ModelDownloaderViewModel.AvailableModels}}"
+                          SelectedItem="{Binding SelectedModel}"
+                          DisplayMemberPath="Display"
+                          Style="{StaticResource DarkComboBox}" Margin="0,0,0,8"
+                          IsEnabled="{Binding IsIdle}"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBox Text="{Binding RepoId, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource DarkTextBox}"/>
-                    <Button Grid.Column="1" Content="Scan" Margin="8,0,0,0"
-                            Background="{StaticResource AccentBrush}" Foreground="White"
-                            BorderThickness="0" Padding="16,6" Cursor="Hand"
-                            Command="{Binding FetchFilesCommand}"
-                            IsEnabled="{Binding IsNotDownloading}"/>
+                    <TextBox Grid.Column="0" Text="{Binding ModelsRootPath, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource DarkTextBox}" FontSize="11"/>
+                    <Button Grid.Column="1" Content="..." Margin="8,0,0,0"
+                            Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
+                            BorderThickness="0" Padding="10,6" FontSize="13" Cursor="Hand" FontWeight="Bold"
+                            Command="{Binding BrowseRootCommand}"
+                            ToolTip="Browse download folder"/>
                 </Grid>
             </StackPanel>
         </GroupBox>
 
-        <!-- Models Root -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,8">
-            <TextBlock Text="Models Root Folder" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBox Text="{Binding ModelsRootPath, UpdateSourceTrigger=PropertyChanged}"
-                         Style="{StaticResource DarkTextBox}"/>
-                <Button Grid.Column="1" Content="..." Margin="8,0,0,0"
-                        Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
-                        BorderThickness="0" Padding="10,6" FontSize="13" Cursor="Hand" FontWeight="Bold"
-                        Command="{Binding BrowseRootCommand}"
-                        ToolTip="Browse for models root folder"/>
+        <!-- File Progress -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,4">
+            <Grid Margin="0,0,0,2">
+                <TextBlock Text="{Binding CurrentFile}" Foreground="{StaticResource FgSecondaryBrush}"
+                           FontSize="11" TextTrimming="CharacterEllipsis"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding FileProgressDisplay}"
+                               Foreground="{StaticResource FgSecondaryBrush}" FontSize="11"/>
+                    <TextBlock Text="{Binding FileRemaining}"
+                               Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" Margin="8,0,0,0"/>
+                </StackPanel>
             </Grid>
+            <ProgressBar Height="8" Value="{Binding FileProgress}" Minimum="0" Maximum="100"
+                         Foreground="{StaticResource AccentBrush}" Background="{StaticResource BgTertiaryBrush}"/>
         </StackPanel>
 
-        <!-- Folders -->
-        <GroupBox Grid.Row="2" Header="Folders to Download" Style="{StaticResource DarkGroupBox}" Margin="0,0,0,8">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
-                    <Button Content="Select All" Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
-                            BorderThickness="0" Padding="8,3" FontSize="11" Cursor="Hand" Margin="0,0,6,0"
-                            Command="{Binding SelectAllCommand}"/>
-                    <Button Content="Deselect All" Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
-                            BorderThickness="0" Padding="8,3" FontSize="11" Cursor="Hand"
-                            Command="{Binding DeselectAllCommand}"/>
-                </StackPanel>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding Folders}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{StaticResource BgSecondaryBrush}"
-                                        CornerRadius="4" Padding="10,6" Margin="0,0,0,4">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <CheckBox Grid.Column="0" IsChecked="{Binding Selected}"
-                                                  VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Name}" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold"/>
-                                            <TextBlock Foreground="{StaticResource FgSecondaryBrush}" FontSize="11">
-                                                <Run Text="{Binding Files.Count, Mode=OneWay, StringFormat={}{0} files}"/>
-                                                <Run Text=" · "/>
-                                                <Run Text="{Binding SizeDisplay, Mode=OneWay}"/>
-                                            </TextBlock>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </Grid>
-        </GroupBox>
-
-        <!-- Progress -->
-        <StackPanel Grid.Row="3" Margin="0,0,0,8">
-            <TextBlock Text="Current File" Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" Margin="0,0,0,2"/>
-            <Grid Margin="0,0,0,4">
-                <TextBlock Text="{Binding CurrentFile}" Foreground="{StaticResource FgSecondaryBrush}" FontSize="11"
-                           TextTrimming="CharacterEllipsis" Margin="0,0,0,2"/>
-                <TextBlock HorizontalAlignment="Right" Foreground="{StaticResource FgSecondaryBrush}" FontSize="11"
-                           Text="{Binding FileProgress, StringFormat={}{0:F0}%}"/>
-            </Grid>
-            <ProgressBar Height="6" Value="{Binding FileProgress}" Minimum="0" Maximum="100" Margin="0,0,0,8"
-                         Foreground="{StaticResource AccentBrush}" Background="{StaticResource BgTertiaryBrush}"/>
+        <!-- Total Progress -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,10">
             <Grid Margin="0,0,0,2">
-                <TextBlock Foreground="{StaticResource FgBrush}" FontSize="11"
-                           Text="{Binding DownloadedFiles, StringFormat=Files: {0}}"/>
-                <TextBlock HorizontalAlignment="Right" Foreground="{StaticResource FgBrush}" FontSize="11"
-                           Text="{Binding TotalFiles, StringFormat=/ {0}}"/>
+                <TextBlock Foreground="{StaticResource FgBrush}" FontSize="11">
+                    <Run Text="Files: "/>
+                    <Run Text="{Binding DownloadedFiles, Mode=OneWay}"/>
+                    <Run Text="/"/>
+                    <Run Text="{Binding TotalFiles, Mode=OneWay}"/>
+                </TextBlock>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding DownloadProgressDisplay}"
+                               Foreground="{StaticResource FgBrush}" FontSize="11"/>
+                    <TextBlock Text="{Binding FolderRemaining}"
+                               Foreground="{StaticResource GreenBrush}" FontSize="11" Margin="8,0,0,0"/>
+                </StackPanel>
             </Grid>
-            <ProgressBar Height="6" Value="{Binding OverallProgress}" Minimum="0" Maximum="100"
+            <ProgressBar Height="8" Value="{Binding DownloadProgress}" Minimum="0" Maximum="100"
                          Foreground="{StaticResource GreenBrush}" Background="{StaticResource BgTertiaryBrush}"/>
         </StackPanel>
 
         <!-- Status -->
-        <TextBlock Grid.Row="4" Text="{Binding StatusCustom}" Foreground="{StaticResource FgSecondaryBrush}"
+        <TextBlock Grid.Row="3" Text="{Binding Status}" Foreground="{StaticResource FgSecondaryBrush}"
                    FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"/>
 
-        <!-- Bottom buttons -->
-    <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+        <Grid Grid.Row="4"/>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Cancel" Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
-                    BorderThickness="0" Padding="12,6" Cursor="Hand" Margin="0,0,8,0"
-                    Command="{Binding CancelCommand}" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVis}}"/>
-            <Button Content="Download" Style="{StaticResource PrimaryButton}" Padding="16,6"
+                    BorderThickness="0" Padding="14,8" Cursor="Hand" Margin="0,0,8,0" FontSize="13"
+                    Command="{Binding CancelCommand}"
+                    Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVis}}"/>
+            <Button Content="Download &amp; Install" Style="{StaticResource PrimaryButton}" Padding="20,8" FontSize="13"
                     Command="{Binding DownloadCommand}"
-                    Visibility="{Binding IsNotDownloading, Mode=OneWay, Converter={StaticResource BoolToVis}}"/>
+                    Visibility="{Binding IsIdle, Converter={StaticResource BoolToVis}}"/>
         </StackPanel>
     </Grid>
 </Window>

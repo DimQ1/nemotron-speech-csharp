@@ -43,6 +43,7 @@ public sealed class AppSettings
 
     // ── Hotkey ──────────────────────────────────────
     public string ToggleHotkey { get; set; } = "Ctrl+Shift+V";
+    public string MuteHotkey { get; set; } = "Ctrl+Shift+M";
 
     // ── Downloader ───────────────────────────────────
     public string DownloaderRepoId { get; set; } = "";

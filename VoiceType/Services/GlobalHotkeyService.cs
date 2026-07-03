@@ -16,9 +16,9 @@ public static class GlobalHotkeyService
     private const int MOD_WIN = 0x0008;
     private const int MOD_NOREPEAT = 0x4000;
 
-    private static int _currentId;
+    private static int _nextId = 1;
     private static nint _hwnd;
-    private static bool _registered;
+    private static readonly List<int> _registeredIds = new();
 
     [DllImport("user32.dll")]
     private static extern bool RegisterHotKey(nint hWnd, int id, uint fsModifiers, uint vk);
@@ -29,33 +29,46 @@ public static class GlobalHotkeyService
     /// <summary>Message code for WM_HOTKEY.</summary>
     public static int WmHotkey => WM_HOTKEY;
 
-    /// <summary>Whether a hotkey is currently registered.</summary>
-    public static bool IsRegistered => _registered;
+    /// <summary>Whether any hotkey is currently registered.</summary>
+    public static bool IsRegistered => _registeredIds.Count > 0;
 
     /// <summary>
     /// Parse a hotkey string (e.g. "Ctrl+Shift+V") and register it.
+    /// Returns the hotkey ID (0 = failure) which is passed as wParam in WM_HOTKEY.
     /// </summary>
-    public static bool Register(nint hwnd, string hotkeyString)
+    public static int Register(nint hwnd, string hotkeyString)
     {
-        Unregister();
         _hwnd = hwnd;
 
         if (!TryParse(hotkeyString, out uint mods, out uint vk))
-            return false;
+            return 0;
 
-        _currentId = 1;
-        _registered = RegisterHotKey(hwnd, _currentId, mods, vk);
-        return _registered;
+        int id = _nextId++;
+        if (RegisterHotKey(hwnd, id, mods, vk))
+        {
+            _registeredIds.Add(id);
+            return id;
+        }
+        return 0;
     }
 
-    /// <summary>Unregister the current hotkey.</summary>
-    public static void Unregister()
+    /// <summary>Unregister a specific hotkey by ID.</summary>
+    public static void Unregister(int id)
     {
-        if (_registered && _hwnd != nint.Zero)
+        if (_hwnd != nint.Zero)
+            UnregisterHotKey(_hwnd, id);
+        _registeredIds.Remove(id);
+    }
+
+    /// <summary>Unregister all hotkeys.</summary>
+    public static void UnregisterAll()
+    {
+        foreach (var id in _registeredIds.ToArray())
         {
-            UnregisterHotKey(_hwnd, _currentId);
-            _registered = false;
+            if (_hwnd != nint.Zero)
+                UnregisterHotKey(_hwnd, id);
         }
+        _registeredIds.Clear();
     }
 
     /// <summary>

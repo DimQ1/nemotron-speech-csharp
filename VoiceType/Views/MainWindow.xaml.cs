@@ -36,15 +36,15 @@ public partial class MainWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
-        GlobalHotkeyService.Unregister();
+        GlobalHotkeyService.UnregisterAll();
     }
 
     private nint WndProcHook(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
         if (msg == GlobalHotkeyService.WmHotkey)
         {
-            _vm?.Toggle();
-            handled = true;
+            var hotkeyId = wParam.ToInt32();
+            handled = _vm?.HandleHotkey(hotkeyId) ?? false;
         }
         return nint.Zero;
     }

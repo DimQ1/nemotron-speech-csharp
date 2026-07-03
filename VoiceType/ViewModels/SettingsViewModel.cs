@@ -48,6 +48,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         SaveAudioMp3 = settings.SaveAudioMp3;
 
         ToggleHotkey = settings.ToggleHotkey;
+        MuteHotkey = settings.MuteHotkey;
         PostProcessingEnabled = settings.PostProcessingEnabled;
         Rules = new ObservableCollection<PostProcessingRule>(settings.PostProcessingRules);
 
@@ -145,6 +146,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     // ── Hotkey ─────────────────────────────────────
     public string ToggleHotkey { get; set; } = "Ctrl+Shift+V";
+    public string MuteHotkey { get; set; } = "Ctrl+Shift+M";
 
     // ── Post-processing ─────────────────────────────
     public bool PostProcessingEnabled { get; set; }
@@ -177,6 +179,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         SessionsPath = SessionsPath,
         SaveAudioMp3 = SaveAudioMp3,
         ToggleHotkey = ToggleHotkey,
+        MuteHotkey = MuteHotkey,
         PostProcessingEnabled = PostProcessingEnabled,
         PostProcessingRules = Rules.ToList(),
         DownloaderRepoId = _original.DownloaderRepoId,

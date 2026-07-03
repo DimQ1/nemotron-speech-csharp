@@ -23,6 +23,7 @@ public sealed class RecognitionService : IDisposable
     private ManualResetEventSlim? _signal;
     private CaptureState? _captureState;
     private bool _isRunning;
+    private volatile bool _captureMuted;
     private readonly StringBuilder _accumulatedText = new();
     private readonly StringBuilder _partialProcessedText = new();
 
@@ -31,6 +32,7 @@ public sealed class RecognitionService : IDisposable
     public event Action? Stopped;
 
     public bool IsRunning => _isRunning;
+    public bool IsMuted => _captureMuted;
     public int SampleRate => _recognizer?.SampleRate ?? 16000;
     public string AccumulatedText => _accumulatedText.ToString();
 
@@ -96,11 +98,18 @@ public sealed class RecognitionService : IDisposable
         _signal?.Set();
     }
 
+    /// <summary>Mute/unmute capture. When muted, audio is discarded without recognition (saves CPU).</summary>
+    public void SetMuted(bool muted)
+    {
+        _captureMuted = muted;
+        Console.WriteLine($"[VoiceType] Capture {(muted ? "muted" : "unmuted")}");
+    }
+
     private void ProcessLoop()
     {
         var lastAudio = DateTime.UtcNow;
 
-        // Cache post-processing settings once — avoid disk I/O on every audio chunk
+        // Cache post-processing settings once ï¿½ avoid disk I/O on every audio chunk
         var procSettings = SettingsService.Load();
         var procRules = procSettings.PostProcessingRules;
         var procEnabled = procSettings.PostProcessingEnabled;
@@ -111,6 +120,13 @@ public sealed class RecognitionService : IDisposable
             bool gotData = false;
             while (_buffer?.TryDequeue(out var batch) == true)
             {
+                if (_captureMuted)
+                {
+                    // Muted: discard audio, no recognition (saves CPU)
+                    gotData = true;
+                    continue;
+                }
+
                 var raw = _recognizer!.ProcessAudio(batch);
                 if (raw is not null)
                 {

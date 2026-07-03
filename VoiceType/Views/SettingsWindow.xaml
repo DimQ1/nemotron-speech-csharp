@@ -132,6 +132,10 @@
                         <TextBlock Text="Toggle Recognition (Ctrl+Shift+V, Ctrl+Alt+R, etc.)"
                                    Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <TextBox Text="{Binding ToggleHotkey, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                        <TextBlock Text="Toggle Mute (Ctrl+Shift+M, Ctrl+Alt+M, etc.)"
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <TextBox Text="{Binding MuteHotkey, UpdateSourceTrigger=PropertyChanged}"
                                  Style="{StaticResource DarkTextBox}"/>
                     </StackPanel>
                 </GroupBox>
