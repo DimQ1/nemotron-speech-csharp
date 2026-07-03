@@ -1,13 +1,15 @@
-name: Build VoiceType Release
+name: VoiceType CI
+
+run-name: VoiceType CI · ${{ github.ref_name }} · #${{ github.run_number }}
 
 on:
   workflow_dispatch:
   push:
     branches:
       - master
-      - fix/**
     paths:
       - '.github/workflows/build-voicetype-release.yml'
+      - '.github/workflows/release-voicetype-tag.yml'
       - 'VoiceType/**'
       - 'SpeechLib/**'
       - 'NemotronSpeech/**'
@@ -16,6 +18,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/build-voicetype-release.yml'
+      - '.github/workflows/release-voicetype-tag.yml'
       - 'VoiceType/**'
       - 'SpeechLib/**'
       - 'NemotronSpeech/**'
@@ -39,22 +42,10 @@ jobs:
       - name: Run VoiceType unit tests
         run: dotnet test VoiceType.Tests/VoiceType.Tests.csproj -c Release --filter "FullyQualifiedName~Unit_|FullyQualifiedName~ModelDownloaderService"
 
-  publish:
-    name: Publish ${{ matrix.label }}
+  publish_cpu:
+    name: Publish CPU CI Artifact
     runs-on: windows-latest
     needs: test
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - label: CPU
-            gpuArch: CPU
-            artifactName: VoiceType-release-cpu
-            outputDir: build/VoiceType-release-cpu
-          - label: GPU
-            gpuArch: Standard
-            artifactName: VoiceType-release-gpu
-            outputDir: build/VoiceType-release-gpu
 
     steps:
       - name: Checkout
@@ -65,12 +56,36 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Publish VoiceType (${{ matrix.label }})
-        run: dotnet publish VoiceType/VoiceType.csproj -c Release -p:GpuArch=${{ matrix.gpuArch }} -o ${{ matrix.outputDir }}
+      - name: Publish VoiceType (CPU)
+        run: dotnet publish VoiceType/VoiceType.csproj -c Release -p:GpuArch=CPU -o build/VoiceType-release-cpu
 
-      - name: Upload artifact (${{ matrix.label }})
+      - name: Upload CPU artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifactName }}
-          path: ${{ matrix.outputDir }}
+          name: VoiceType-ci-cpu-${{ github.run_number }}
+          path: build/VoiceType-release-cpu
+          if-no-files-found: error
+
+  publish_gpu:
+    name: Publish GPU CI Artifact
+    runs-on: windows-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish VoiceType (GPU)
+        run: dotnet publish VoiceType/VoiceType.csproj -c Release -p:GpuArch=Standard -o build/VoiceType-release-gpu
+
+      - name: Upload GPU artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceType-ci-gpu-${{ github.run_number }}
+          path: build/VoiceType-release-gpu
           if-no-files-found: error
