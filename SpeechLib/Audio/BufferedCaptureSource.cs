@@ -126,14 +126,14 @@ public sealed class BufferedCaptureSource : IAudioSource
         {
             var loopbackSamples = ReadAllSamples(loopback);
             if (loopbackSamples.Length > 0)
-                sources.Add(CreateNormalizedSource(loopbackSamples, loopback.WaveFormat, 0.5f));
+                sources.Add(CreateNormalizedSource(loopbackSamples, loopback.WaveFormat, 1f));
         }
 
         if (mic is not null && mic.BufferedDuration > TimeSpan.Zero)
         {
             var micSamples = ReadAllSamples(mic);
             if (micSamples.Length > 0)
-                sources.Add(CreateNormalizedSource(micSamples, mic.WaveFormat, 0.6f));
+                sources.Add(CreateNormalizedSource(micSamples, mic.WaveFormat, 1f));
         }
 
         if (sources.Count == 0)
