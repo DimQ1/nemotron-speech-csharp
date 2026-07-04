@@ -43,6 +43,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isTextInjectionEnabled;
     private bool _isAutoScrollEnabled;
     private bool _disableInjectionOnFocusChange;
+    private volatile bool _isInjecting;
 
     public MainViewModel()
     {
@@ -203,8 +204,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// </summary>
     public void InjectCurrentText()
     {
+        if (!IsTextInjectionEnabled) return;
         if (string.IsNullOrEmpty(_floatingText)) return;
-        TextInjector.Inject(_floatingText, _settings.TextInjectionMethod);
+        _isInjecting = true;
+        try { TextInjector.Inject(_floatingText, _settings.TextInjectionMethod); }
+        finally { _isInjecting = false; }
     }
 
     // ── Commands ────────────────────────────────────
@@ -346,6 +350,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void OnInputDetected()
     {
+        if (_isInjecting) return;
         if (_settings.StopOnAnyInput)
         {
             Application.Current.Dispatcher.BeginInvoke(Stop);
@@ -392,7 +397,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
             if (IsTextInjectionEnabled && text.Length > _lastInjectedLength && CanInjectToTargetWindow())
             {
                 var delta = text[_lastInjectedLength..];
-                TextInjector.Inject(delta, _settings.TextInjectionMethod);
+                _isInjecting = true;
+                try { TextInjector.Inject(delta, _settings.TextInjectionMethod); }
+                finally { _isInjecting = false; }
             }
             _lastInjectedLength = 0;
 
@@ -455,7 +462,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         var delta = text[_lastInjectedLength..];
-        TextInjector.Inject(delta, _settings.TextInjectionMethod);
+        _isInjecting = true;
+        try { TextInjector.Inject(delta, _settings.TextInjectionMethod); }
+        finally { _isInjecting = false; }
         _lastInjectedLength = text.Length;
     }
 
