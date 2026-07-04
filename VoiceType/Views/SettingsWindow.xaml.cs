@@ -10,6 +10,7 @@ public partial class SettingsWindow : Window
     private readonly SettingsViewModel _vm;
 
     public AppSettings ResultSettings { get; private set; } = null!;
+    public bool WasSaved => _vm.WasSaved;
 
     public SettingsWindow(AppSettings currentSettings)
     {
@@ -20,7 +21,6 @@ public partial class SettingsWindow : Window
         _vm.RequestClose += () =>
         {
             ResultSettings = _vm.BuildSettings();
-            DialogResult = _vm.WasSaved;
             Close();
         };
     }

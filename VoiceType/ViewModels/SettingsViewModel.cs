@@ -1,6 +1,7 @@
 using System.IO;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
@@ -215,14 +216,26 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private void OpenModelDownloader()
     {
+        var existingWindow = Views.ModelDownloaderWindow.FindOpenInstance();
+        if (existingWindow is not null)
+        {
+            existingWindow.Activate();
+            return;
+        }
+
+        var owner = System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(window => window.IsActive)
+            ?? System.Windows.Application.Current.MainWindow;
         var window = new Views.ModelDownloaderWindow
         {
-            Owner = System.Windows.Application.Current.MainWindow,
+            Owner = owner,
             ModelsRootPath = ModelsRootPath
         };
-        window.ShowDialog();
-        if (window.WasDownloaded && window.ResultPath is not null)
-            ModelsRootPath = window.ResultPath;  // This triggers ScanModels()
+        window.Closed += (_, _) =>
+        {
+            if (window.WasDownloaded && window.ResultPath is not null)
+                ModelsRootPath = window.ResultPath;  // This triggers ScanModels()
+        };
+        window.Show();
     }
 
     public event Action? RequestClose;

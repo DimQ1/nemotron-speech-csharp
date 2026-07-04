@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -34,6 +35,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private int _injectTextHotkeyId;
     private nint _injectionTargetWindow;
     private RecognitionSession? _currentSession;
+    private Views.SettingsWindow? _settingsWindow;
     private readonly object _partialResultGate = new();
     private readonly DispatcherTimer _partialResultTimer;
     private string? _pendingPartialText;
@@ -231,15 +233,27 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void OpenModelDownloader()
     {
-        var window = new Views.ModelDownloaderWindow();
-        window.Owner = Application.Current.MainWindow;
-        window.ShowDialog();
-        if (window.WasDownloaded && window.ResultModelPath is not null)
+        var existingWindow = Views.ModelDownloaderWindow.FindOpenInstance();
+        if (existingWindow is not null)
         {
-            _settings.ModelsRootPath = window.ResultPath ?? _settings.ModelsRootPath;
-            _settings.ModelPath = window.ResultModelPath;
-            SettingsService.Save(_settings);
+            existingWindow.Activate();
+            return;
         }
+
+        var owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(window => window.IsActive)
+            ?? Application.Current.MainWindow;
+        var window = new Views.ModelDownloaderWindow();
+        window.Owner = owner;
+        window.Closed += (_, _) =>
+        {
+            if (window.WasDownloaded && window.ResultModelPath is not null)
+            {
+                _settings.ModelsRootPath = window.ResultPath ?? _settings.ModelsRootPath;
+                _settings.ModelPath = window.ResultModelPath;
+                SettingsService.Save(_settings);
+            }
+        };
+        window.Show();
     }
 
     private void Start()
@@ -305,15 +319,27 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void OpenSettings()
     {
+        if (_settingsWindow?.IsLoaded == true)
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+
         var settingsWindow = new Views.SettingsWindow(_settings);
         settingsWindow.Owner = Application.Current.MainWindow;
-        if (settingsWindow.ShowDialog() == true)
+        settingsWindow.Closed += (_, _) =>
         {
-            ApplySettingsSnapshot(settingsWindow.ResultSettings);
-            // Re-register hotkey with new binding
-            var hwnd = new System.Windows.Interop.WindowInteropHelper(Application.Current.MainWindow).Handle;
-            RegisterHotkey(hwnd);
-        }
+            if (settingsWindow.WasSaved)
+            {
+                ApplySettingsSnapshot(settingsWindow.ResultSettings);
+                // Re-register hotkey with new binding
+                var hwnd = new System.Windows.Interop.WindowInteropHelper(Application.Current.MainWindow).Handle;
+                RegisterHotkey(hwnd);
+            }
+            _settingsWindow = null;
+        };
+        _settingsWindow = settingsWindow;
+        settingsWindow.Show();
     }
 
     // ── Event handlers ──────────────────────────────
