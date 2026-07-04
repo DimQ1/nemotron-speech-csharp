@@ -43,7 +43,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isTextInjectionEnabled;
     private bool _isAutoScrollEnabled;
     private bool _disableInjectionOnFocusChange;
-    private volatile bool _isInjecting;
 
     public MainViewModel()
     {
@@ -88,8 +87,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _isTextInjectionEnabled, value))
             {
+                _lastInjectedLength = _floatingText.Length;
                 _settings.IsTextInjectionEnabled = value;
                 SettingsService.Save(_settings);
+
+                if (value && !IsRecording)
+                    Start();
             }
         }
     }
@@ -192,23 +195,31 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         if (hotkeyId == _injectTextHotkeyId && _injectTextHotkeyId != 0)
         {
-            InjectCurrentText();
+            ToggleTextInjection();
             return true;
         }
         return false;
     }
 
-    /// <summary>
-    /// Manually inject the current recognized text into the focused window.
-    /// Triggered by the InjectText hotkey.
-    /// </summary>
+    /// <summary>Toggle automatic text injection from the global hotkey.</summary>
+    public void ToggleTextInjection()
+    {
+        var wasRecording = IsRecording;
+        var enable = !IsTextInjectionEnabled;
+        IsTextInjectionEnabled = enable;
+
+        if (!enable)
+            StatusText = "Text injection disabled";
+        else if (wasRecording)
+            StatusText = "Text injection enabled";
+    }
+
+    /// <summary>Manually inject the current recognized text into the focused window.</summary>
     public void InjectCurrentText()
     {
         if (!IsTextInjectionEnabled) return;
         if (string.IsNullOrEmpty(_floatingText)) return;
-        _isInjecting = true;
-        try { TextInjector.Inject(_floatingText, _settings.TextInjectionMethod); }
-        finally { _isInjecting = false; }
+        TextInjector.Inject(_floatingText, _settings.TextInjectionMethod);
     }
 
     // ── Commands ────────────────────────────────────
@@ -350,7 +361,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void OnInputDetected()
     {
-        if (_isInjecting) return;
         if (_settings.StopOnAnyInput)
         {
             Application.Current.Dispatcher.BeginInvoke(Stop);
@@ -397,9 +407,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             if (IsTextInjectionEnabled && text.Length > _lastInjectedLength && CanInjectToTargetWindow())
             {
                 var delta = text[_lastInjectedLength..];
-                _isInjecting = true;
-                try { TextInjector.Inject(delta, _settings.TextInjectionMethod); }
-                finally { _isInjecting = false; }
+                TextInjector.Inject(delta, _settings.TextInjectionMethod);
             }
             _lastInjectedLength = 0;
 
@@ -451,7 +459,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RecognizedText = text;
         FloatingText = text;
 
-        if (!IsTextInjectionEnabled || text.Length <= _lastInjectedLength)
+        if (!IsTextInjectionEnabled)
+        {
+            _lastInjectedLength = text.Length;
+            return;
+        }
+
+        if (text.Length <= _lastInjectedLength)
             return;
 
         if (!CanInjectToTargetWindow())
@@ -462,9 +476,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         var delta = text[_lastInjectedLength..];
-        _isInjecting = true;
-        try { TextInjector.Inject(delta, _settings.TextInjectionMethod); }
-        finally { _isInjecting = false; }
+        TextInjector.Inject(delta, _settings.TextInjectionMethod);
         _lastInjectedLength = text.Length;
     }
 

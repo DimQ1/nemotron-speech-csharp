@@ -56,7 +56,7 @@ public sealed class GlobalInputHook : IDisposable
         if (nCode >= 0 && wParam is WM_KEYDOWN or WM_SYSKEYDOWN)
         {
             var data = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
-            if ((data.flags & LLKHF_INJECTED) == 0)
+            if ((data.flags & LLKHF_INJECTED) == 0 && data.dwExtraInfo != TextInjector.InjectionMarker)
                 InputDetected?.Invoke();
         }
         return CallNextHookEx(_kbdHookId, nCode, wParam, lParam);

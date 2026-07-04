@@ -139,7 +139,7 @@
                                    Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <TextBox Text="{Binding MuteHotkey, UpdateSourceTrigger=PropertyChanged}"
                                  Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
-                        <TextBlock Text="Inject Text (Ctrl+Shift+I, etc.) — manually sends recognized text to the focused window"
+                        <TextBlock Text="Toggle Text Injection (Ctrl+Shift+I, etc.)"
                                    Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <TextBox Text="{Binding InjectTextHotkey, UpdateSourceTrigger=PropertyChanged}"
                                  Style="{StaticResource DarkTextBox}"/>
