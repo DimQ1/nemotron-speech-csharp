@@ -56,6 +56,7 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         };
 
         _config = Common.GetConfig(modelPath, executionProvider, null, searchOptions);
+        
         _model = new Model(_config);
         _processor = new StreamingProcessor(_model);
 

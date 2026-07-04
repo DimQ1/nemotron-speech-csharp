@@ -6,6 +6,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace CommonUtils
@@ -73,7 +74,18 @@ namespace CommonUtils
         /// </returns>
         public static Config GetConfig(string path, string ep, Dictionary<string, string>? ep_options, GeneratorParamsArgs search_options)
         {
+           
             var config = new Config(path);
+
+            if (ep == "cpu")
+            {
+                string? cpuOverlay = modifyConfigForCpu(path);
+                if (!string.IsNullOrWhiteSpace(cpuOverlay))
+                {
+                    config.Overlay(cpuOverlay);
+                }
+            }
+
             if (ep != "follow_config")
             {
                 // DML: don't clear default providers (keep CPU fallback), just append DML
@@ -132,6 +144,89 @@ namespace CommonUtils
             // Otherwise they can be set with generatorParams.SetSearchOptions(search_options)
             config.Overlay(json);
             return config;
+        }
+
+        /// <summary>
+        /// Overlay CPU-optimized thread settings onto the genai_config.json.
+        /// Calculates optimal intra_op_num_threads based on logical core count and injects
+        /// session_options into every decoder/encoder sub-model section.
+        /// </summary>
+        /// <param name="path">Path to the model folder containing genai_config.json</param>
+        /// <returns>JSON overlay string with CPU thread settings, or null on failure</returns>
+        private static string? modifyConfigForCpu(string path)
+        {
+            int logicalCores = Environment.ProcessorCount;
+            int optimalIntraThreads = ComputeOptimalIntraThreads(logicalCores);
+
+            string configPath = Path.Combine(path, "genai_config.json");
+
+            try
+            {
+                string jsonContent = File.ReadAllText(configPath);
+                var rootNode = JsonNode.Parse(jsonContent);
+                if (rootNode is null)
+                {
+                    Console.WriteLine("CPU config: failed to parse genai_config.json (null root).");
+                    return null;
+                }
+
+                var modelNode = rootNode["model"];
+                if (modelNode is null)
+                {
+                    Console.WriteLine("CPU config: genai_config.json missing 'model' section.");
+                    return null;
+                }
+
+                // Inject session_options into every decoder/encoder sub-model
+                foreach (var property in modelNode.AsObject())
+                {
+                    if (property.Value is not JsonObject componentNode)
+                        continue;
+
+                    if (property.Key != "decoder" && property.Key != "encoder")
+                        continue;
+
+                    if (!componentNode.ContainsKey("session_options"))
+                    {
+                        componentNode["session_options"] = new JsonObject();
+                    }
+
+                    var sessionOptions = componentNode["session_options"]!.AsObject();
+
+                    // Pin intra-op threads to physical P-cores for best ONNX throughput.
+                    // inter_op_num_threads = 1 avoids contention on CPU inference.
+                    // force_spinning_stop prevents busy-waiting after work is done.
+                    sessionOptions["intra_op_num_threads"] = optimalIntraThreads;
+                    sessionOptions["inter_op_num_threads"] = 1;
+                    sessionOptions["session.force_spinning_stop"] = "1";
+                }
+
+                string overlay = rootNode.ToJsonString();
+                Console.WriteLine($"CPU config: intra_op_num_threads={optimalIntraThreads} " +
+                                  $"(logical cores={logicalCores}).");
+                return overlay;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"CPU config preparation failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Heuristic to pick the best intra_op_num_threads for ONNX CPU inference.
+        /// LLM inference scales poorly beyond ~8 threads; on hybrid Intel CPUs
+        /// (P-cores + E-cores) dividing by 2 targets physical P-cores only.
+        /// </summary>
+        private static int ComputeOptimalIntraThreads(int logicalCores)
+        {
+            return logicalCores switch
+            {
+                <= 4  => Math.Max(1, logicalCores - 1),   // Low-end: leave 1 thread for OS
+                <= 16 => logicalCores / 2,                 // Mid-range / hybrid: target P-cores
+                <= 32 => 8,                                // High-end: LLM scaling ceiling
+                _     => Math.Min(12, logicalCores / 4)    // 32+: slightly more, but capped
+            };
         }
 
         /// <summary>
