@@ -113,7 +113,7 @@
                                    Foreground="{StaticResource FgSecondaryBrush}"
                                    TextWrapping="Wrap"
                                    VerticalAlignment="Center"
-                                   Text="Ctrl+Shift+V toggle • Ctrl+Shift+I inject • Any key/mouse stops"/>
+                                   Text="Ctrl+Shift+V toggle • Ctrl+Shift+I text injection • Any key/mouse stops"/>
 
                         <Grid Grid.Row="1" Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>

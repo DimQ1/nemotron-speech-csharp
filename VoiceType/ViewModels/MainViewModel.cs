@@ -87,8 +87,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _isTextInjectionEnabled, value))
             {
+                _lastInjectedLength = _floatingText.Length;
                 _settings.IsTextInjectionEnabled = value;
                 SettingsService.Save(_settings);
+
+                if (value)
+                {
+                    _injectionTargetWindow = GetForegroundWindow();
+                    if (!IsRecording)
+                        Start();
+                }
             }
         }
     }
@@ -191,18 +199,29 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         if (hotkeyId == _injectTextHotkeyId && _injectTextHotkeyId != 0)
         {
-            InjectCurrentText();
+            ToggleTextInjection();
             return true;
         }
         return false;
     }
 
-    /// <summary>
-    /// Manually inject the current recognized text into the focused window.
-    /// Triggered by the InjectText hotkey.
-    /// </summary>
+    /// <summary>Toggle automatic text injection from the global hotkey.</summary>
+    public void ToggleTextInjection()
+    {
+        var wasRecording = IsRecording;
+        var enable = !IsTextInjectionEnabled;
+        IsTextInjectionEnabled = enable;
+
+        if (!enable)
+            StatusText = "Text injection disabled";
+        else if (wasRecording)
+            StatusText = "Text injection enabled";
+    }
+
+    /// <summary>Manually inject the current recognized text into the focused window.</summary>
     public void InjectCurrentText()
     {
+        if (!IsTextInjectionEnabled) return;
         if (string.IsNullOrEmpty(_floatingText)) return;
         TextInjector.Inject(_floatingText, _settings.TextInjectionMethod);
     }
@@ -444,7 +463,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RecognizedText = text;
         FloatingText = text;
 
-        if (!IsTextInjectionEnabled || text.Length <= _lastInjectedLength)
+        if (!IsTextInjectionEnabled)
+        {
+            _lastInjectedLength = text.Length;
+            return;
+        }
+
+        if (text.Length <= _lastInjectedLength)
             return;
 
         if (!CanInjectToTargetWindow())

@@ -14,9 +14,7 @@ public static class TextInjector
     private const int INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_UNICODE = 0x0004;
     private const uint KEYEVENTF_KEYUP = 0x0002;
-
-    [DllImport("user32.dll")]
-    private static extern nint GetMessageExtraInfo();
+    internal static readonly nint InjectionMarker = 0x565449;
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
@@ -70,7 +68,7 @@ public static class TextInjector
     /// </summary>
     private static void SendUnicodeText(string text)
     {
-        var extraInfo = GetMessageExtraInfo();
+        var extraInfo = InjectionMarker;
         var inputs = new INPUT[2]; // keydown + keyup
 
         foreach (char c in text)
@@ -112,7 +110,7 @@ public static class TextInjector
     private static INPUT VkKey(ushort vk, uint flags) => new()
     {
         type = INPUT_KEYBOARD,
-        ki = new KEYBDINPUT { wVk = vk, dwFlags = flags }
+        ki = new KEYBDINPUT { wVk = vk, dwFlags = flags, dwExtraInfo = InjectionMarker }
     };
 }
 
