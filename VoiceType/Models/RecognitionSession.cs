@@ -11,6 +11,10 @@ public sealed class RecognitionSession
     public DateTime EndedAt { get; set; }
     public TimeSpan Duration => EndedAt - StartedAt;
 
+    /// <summary>Safe filename prefix: start—end time + unique id.</summary>
+    public string FileNameBase =>
+        $"{StartedAt:yyyy-MM-dd_HH-mm-ss}__{EndedAt:yyyy-MM-dd_HH-mm-ss}__{Id}";
+
     public string Language { get; init; } = "";
     public string EngineProvider { get; init; } = "Nemotron";
     public string AudioSource { get; init; } = "Mic";

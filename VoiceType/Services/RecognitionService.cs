@@ -127,6 +127,8 @@ public sealed class RecognitionService : IDisposable
                     continue;
                 }
 
+                _audioRecorder?.Append(batch);
+
                 var raw = _recognizer!.ProcessAudio(batch);
                 if (raw is not null)
                 {
@@ -137,7 +139,6 @@ public sealed class RecognitionService : IDisposable
 
                     PartialResult?.Invoke(_partialProcessedText.ToString());
                 }
-                _audioRecorder?.Append(batch);
                 gotData = true;
             }
 
@@ -166,11 +167,11 @@ public sealed class RecognitionService : IDisposable
         _audioSource?.Dispose();
     }
 
-    public string? SaveAudio(string sessionId)
+    public string? SaveAudio(string fileNameBase)
     {
         if (_audioRecorder is null) return null;
         var dir = SessionManager.EnsureDirectory();
-        var path = Path.Combine(dir, $"{sessionId}_audio");
+        var path = Path.Combine(dir, fileNameBase);
         return _audioRecorder.StopAndSave(path);
     }
 

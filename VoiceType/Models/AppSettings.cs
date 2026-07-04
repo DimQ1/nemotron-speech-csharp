@@ -38,7 +38,7 @@ public sealed class AppSettings
     public bool SaveSessions { get; set; } = true;
     public string SessionsPath { get; set; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceType", "Sessions");
-    public bool SaveAudioMp3 { get; set; } = true;
+    public bool SaveAudioMp3 { get; set; } = false;
 
     // ── Post-processing ─────────────────────────────
     public bool PostProcessingEnabled { get; set; } = true;

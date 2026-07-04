@@ -29,7 +29,7 @@ public static class SessionManager
     public static void SaveSession(RecognitionSession session)
     {
         var dir = EnsureDirectory();
-        var jsonPath = Path.Combine(dir, $"{session.Id}.json");
+        var jsonPath = Path.Combine(dir, $"{session.FileNameBase}.json");
         var json = JsonSerializer.Serialize(session, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(jsonPath, json);
     }

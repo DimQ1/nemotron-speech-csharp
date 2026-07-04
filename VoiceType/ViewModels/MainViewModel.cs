@@ -489,7 +489,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         try
         {
             if (saveAudio)
-                session.AudioFilePath = _recognition.SaveAudio(session.Id);
+                session.AudioFilePath = _recognition.SaveAudio(session.FileNameBase);
 
             SessionManager.SaveSession(session);
         }

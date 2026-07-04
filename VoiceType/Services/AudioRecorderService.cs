@@ -1,20 +1,24 @@
 using System.IO;
-using System.Buffers;
+using System.Threading.Channels;
 using NAudio.Lame;
 using NAudio.Wave;
 
 namespace VoiceType.Services;
 
 /// <summary>
-/// Records audio samples directly to a temporary MP3 file using NAudio + LAME.
-/// Avoids buffering the full session in memory or round-tripping through WAV.
+/// Records audio to MP3 on-the-fly via a background encoder thread.
+/// Append only performs PCM conversion; MP3 encoding runs on a background thread.
 /// </summary>
 public sealed class AudioRecorderService : IDisposable
 {
     private readonly int _sampleRate;
     private readonly object _sync = new();
-    private LameMP3FileWriter? _mp3Writer;
+    private Channel<byte[]>? _channel;
+    private Task? _encoderTask;
+    private CancellationTokenSource? _cts;
     private string? _tempMp3Path;
+    private LameMP3FileWriter? _mp3Writer;
+    private Exception? _encoderException;
     private bool _hasAudio;
     private bool _recording;
 
@@ -24,40 +28,52 @@ public sealed class AudioRecorderService : IDisposable
     {
         lock (_sync)
         {
-            CleanupWriter(deleteTempFile: true);
+            Cleanup();
+            _cts = new CancellationTokenSource();
+            _channel = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(32)
+            {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = true
+            });
             _tempMp3Path = Path.Combine(Path.GetTempPath(), $"VoiceType_{Guid.NewGuid():N}.mp3.tmp");
             _mp3Writer = new LameMP3FileWriter(_tempMp3Path, new WaveFormat(_sampleRate, 16, 1), LAMEPreset.STANDARD);
+            _encoderException = null;
             _hasAudio = false;
             _recording = true;
+
+            _encoderTask = Task.Run(() => EncodeLoop(_cts.Token));
         }
     }
 
     public void Append(float[] samples)
     {
-        lock (_sync)
+        if (!_recording || _channel is null || samples.Length == 0)
+            return;
+
+        // Convert to PCM bytes under no lock — fast path
+        var pcm = new byte[samples.Length * 2];
+        int offset = 0;
+        foreach (var sample in samples)
         {
-            if (!_recording || _mp3Writer is null || samples.Length == 0)
-                return;
-
-            var pcmBytes = ArrayPool<byte>.Shared.Rent(samples.Length * sizeof(short));
-            try
-            {
-                int offset = 0;
-                foreach (var sample in samples)
-                {
-                    var pcm = ToPcm16(sample);
-                    pcmBytes[offset++] = (byte)(pcm & 0xFF);
-                    pcmBytes[offset++] = (byte)((pcm >> 8) & 0xFF);
-                }
-
-                _mp3Writer.Write(pcmBytes, 0, offset);
-                _hasAudio = true;
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(pcmBytes);
-            }
+            var s = ToPcm16(sample);
+            pcm[offset++] = (byte)(s & 0xFF);
+            pcm[offset++] = (byte)((s >> 8) & 0xFF);
         }
+
+        try
+        {
+            _channel.Writer.WriteAsync(pcm).AsTask().GetAwaiter().GetResult();
+        }
+        catch (ChannelClosedException)
+        {
+            return;
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+
+        _hasAudio = true;
     }
 
     public string? StopAndSave(string filePath)
@@ -65,9 +81,17 @@ public sealed class AudioRecorderService : IDisposable
         lock (_sync)
         {
             _recording = false;
-            if (!_hasAudio || _mp3Writer is null || string.IsNullOrEmpty(_tempMp3Path))
+            _channel?.Writer.Complete();
+
+            // Wait for encoder to finish
+            try { _encoderTask?.GetAwaiter().GetResult(); }
+            catch { }
+
+            CleanupEncoder();
+
+            if (_encoderException is not null || !_hasAudio || string.IsNullOrEmpty(_tempMp3Path) || !File.Exists(_tempMp3Path))
             {
-                CleanupWriter(deleteTempFile: true);
+                Cleanup();
                 return null;
             }
 
@@ -78,7 +102,6 @@ public sealed class AudioRecorderService : IDisposable
 
             try
             {
-                CleanupWriter(deleteTempFile: false);
                 File.Move(_tempMp3Path, mp3Path, overwrite: true);
                 _tempMp3Path = null;
                 _hasAudio = false;
@@ -86,8 +109,8 @@ public sealed class AudioRecorderService : IDisposable
             }
             catch
             {
-                CleanupWriter(deleteTempFile: true);
                 try { File.Delete(mp3Path); } catch { }
+                Cleanup();
                 return null;
             }
         }
@@ -98,23 +121,57 @@ public sealed class AudioRecorderService : IDisposable
         lock (_sync)
         {
             _recording = false;
-            CleanupWriter(deleteTempFile: true);
-            _hasAudio = false;
+            _channel?.Writer.TryComplete();
+            _cts?.Cancel();
+            Cleanup();
         }
     }
 
-    private void CleanupWriter(bool deleteTempFile)
+    private async Task EncodeLoop(CancellationToken ct)
+    {
+        try
+        {
+            var writer = _mp3Writer;
+            var reader = _channel?.Reader;
+            if (writer is null || reader is null) return;
+
+            await foreach (var pcm in reader.ReadAllAsync(ct).ConfigureAwait(false))
+            {
+                writer.Write(pcm, 0, pcm.Length);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            _encoderException = ex;
+            Console.Error.WriteLine($"[VoiceType] Encoder error: {ex.Message}");
+        }
+    }
+
+    private void CleanupEncoder()
     {
         _mp3Writer?.Dispose();
         _mp3Writer = null;
+    }
 
-        if (deleteTempFile && !string.IsNullOrEmpty(_tempMp3Path))
+    private void Cleanup()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+        _mp3Writer?.Dispose();
+        _mp3Writer = null;
+        _channel = null;
+        _encoderTask = null;
+        _encoderException = null;
+
+        if (_tempMp3Path is not null)
         {
             try { File.Delete(_tempMp3Path); } catch { }
+            _tempMp3Path = null;
         }
 
-        if (deleteTempFile)
-            _tempMp3Path = null;
+        _hasAudio = false;
     }
 
     private static short ToPcm16(float sample)
