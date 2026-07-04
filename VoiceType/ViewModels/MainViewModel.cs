@@ -91,8 +91,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 _settings.IsTextInjectionEnabled = value;
                 SettingsService.Save(_settings);
 
-                if (value && !IsRecording)
-                    Start();
+                if (value)
+                {
+                    _injectionTargetWindow = GetForegroundWindow();
+                    if (!IsRecording)
+                        Start();
+                }
             }
         }
     }
