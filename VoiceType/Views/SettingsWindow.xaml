@@ -109,7 +109,9 @@
                             <ComboBoxItem Content="InputSimulator"/> <ComboBoxItem Content="SendInput"/> <ComboBoxItem Content="Clipboard"/>
                         </ComboBox>
                         <CheckBox Content="Stop recognition on any keyboard/mouse input"
-                                  IsChecked="{Binding StopOnAnyInput}" Style="{StaticResource DarkCheckBox}"/>
+                                  IsChecked="{Binding StopOnAnyInput}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,6"/>
+                        <CheckBox Content="Pause injection when focus changes to another window"
+                                  IsChecked="{Binding DisableInjectionOnFocusChange}" Style="{StaticResource DarkCheckBox}"/>
                     </StackPanel>
                 </GroupBox>
 
@@ -136,6 +138,10 @@
                         <TextBlock Text="Toggle Mute (Ctrl+Shift+M, Ctrl+Alt+M, etc.)"
                                    Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <TextBox Text="{Binding MuteHotkey, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                        <TextBlock Text="Inject Text (Ctrl+Shift+I, etc.) — manually sends recognized text to the focused window"
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <TextBox Text="{Binding InjectTextHotkey, UpdateSourceTrigger=PropertyChanged}"
                                  Style="{StaticResource DarkTextBox}"/>
                     </StackPanel>
                 </GroupBox>

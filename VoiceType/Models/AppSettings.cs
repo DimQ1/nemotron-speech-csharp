@@ -27,6 +27,12 @@ public sealed class AppSettings
     // ── Injection ───────────────────────────────────
     public InjectionMethod TextInjectionMethod { get; set; } = InjectionMethod.InputSimulator;
     public bool StopOnAnyInput { get; set; } = true;
+    public bool IsTextInjectionEnabled { get; set; } = true;
+    /// <summary>When true, pauses text injection if the user switches to a different window during recording.</summary>
+    public bool DisableInjectionOnFocusChange { get; set; } = true;
+
+    // ── UI ──────────────────────────────────────────
+    public bool IsAutoScrollEnabled { get; set; } = true;
 
     // ── Sessions ────────────────────────────────────
     public bool SaveSessions { get; set; } = true;
@@ -44,6 +50,8 @@ public sealed class AppSettings
     // ── Hotkey ──────────────────────────────────────
     public string ToggleHotkey { get; set; } = "Ctrl+Shift+V";
     public string MuteHotkey { get; set; } = "Ctrl+Shift+M";
+    /// <summary>Hotkey to manually inject the current recognized text into the focused window.</summary>
+    public string InjectTextHotkey { get; set; } = "Ctrl+Shift+I";
 
     // ── Downloader ───────────────────────────────────
     public string DownloaderRepoId { get; set; } = "";

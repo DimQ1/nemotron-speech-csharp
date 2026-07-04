@@ -158,7 +158,7 @@ public sealed class RecognitionService : IDisposable
         var final = _recognizer!.Flush();
         if (final is not null) _accumulatedText.Append(final);
 
-        var finalProcessed = PostProcessingPipeline.Process(_accumulatedText.ToString(), compiledProcRules);
+        var finalProcessed = PostProcessingPipeline.ProcessFinal(_accumulatedText.ToString(), compiledProcRules);
 
         FinalResult?.Invoke(finalProcessed);
         Stopped?.Invoke();

@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using VoiceType.Services;
 using VoiceType.ViewModels;
 
@@ -17,8 +18,22 @@ public partial class MainWindow : Window
         InitializeComponent();
         _vm = DataContext as MainViewModel;
 
+        if (_vm is not null)
+            _vm.PropertyChanged += OnViewModelPropertyChanged;
+
         Loaded += OnLoaded;
         Closed += OnClosed;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.FloatingText) && _vm is not null && _vm.IsAutoScrollEnabled)
+        {
+            // Auto-scroll to the latest text even when window doesn't have focus.
+            // Use Loaded priority so layout has been updated before we scroll.
+            Dispatcher.BeginInvoke(new Action(() => TextScroller.ScrollToBottom()),
+                DispatcherPriority.Loaded);
+        }
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)

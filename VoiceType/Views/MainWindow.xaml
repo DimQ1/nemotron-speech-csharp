@@ -69,7 +69,7 @@
             </Border>
 
             <!-- Text area (selectable + copyable) -->
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="14,10">
+            <ScrollViewer x:Name="TextScroller" Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="14,10">
                 <TextBox x:Name="TextDisplay"
                          Text="{Binding FloatingText, Mode=OneWay}"
                          Foreground="{StaticResource FgBrush}"
@@ -104,6 +104,8 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0"
@@ -111,7 +113,7 @@
                                    Foreground="{StaticResource FgSecondaryBrush}"
                                    TextWrapping="Wrap"
                                    VerticalAlignment="Center"
-                                   Text="Ctrl+Shift+V to toggle • Any key/mouse stops"/>
+                                   Text="Ctrl+Shift+V toggle • Ctrl+Shift+I inject • Any key/mouse stops"/>
 
                         <Grid Grid.Row="1" Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
@@ -137,6 +139,20 @@
                                     Command="{Binding CopyCommand}"
                                     CommandParameter="{Binding ElementName=TextDisplay}"/>
                         </Grid>
+
+                        <CheckBox Grid.Row="2"
+                                  Content="Auto-scroll"
+                                  Margin="0,6,0,0"
+                                  IsChecked="{Binding IsAutoScrollEnabled}"
+                                  Style="{StaticResource DarkCheckBox}"
+                                  VerticalAlignment="Center"/>
+
+                        <CheckBox Grid.Row="3"
+                                  Content="Pause injection on focus change"
+                                  Margin="0,6,0,0"
+                                  IsChecked="{Binding DisableInjectionOnFocusChange}"
+                                  Style="{StaticResource DarkCheckBox}"
+                                  VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>
             </Border>

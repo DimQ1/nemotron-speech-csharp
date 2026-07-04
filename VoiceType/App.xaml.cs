@@ -1,6 +1,8 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using VoiceType.Services;
+using VoiceType.ViewModels;
 
 namespace VoiceType;
 
@@ -30,5 +32,12 @@ public partial class App : Application
         // Ensure settings directory exists
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceType");
         Directory.CreateDirectory(dir);
+
+        // Save settings on exit to persist any state not captured by individual property setters
+        Exit += (s, args) =>
+        {
+            if (MainWindow is Views.MainWindow mainWindow && mainWindow.DataContext is MainViewModel vm)
+                SettingsService.Save(vm.Settings);
+        };
     }
 }

@@ -8,7 +8,7 @@ namespace VoiceType.Services;
 /// Applies a configured pipeline of text post-processing rules.
 /// Removes artifacts, normalises whitespace, and cleans recognition output.
 /// </summary>
-public static class PostProcessingPipeline
+public static partial class PostProcessingPipeline
 {
     public sealed record CompiledRule(Regex Regex, string Replacement);
 
@@ -45,7 +45,11 @@ public static class PostProcessingPipeline
         foreach (var rule in rules)
             result = rule.Regex.Replace(result, rule.Replacement);
 
-        return result.Trim();
+        // Collapse multiple whitespace characters into a single space,
+        // but preserve boundary spaces needed for streaming chunk concatenation.
+        result = WhitespaceRegex().Replace(result, " ");
+
+        return result;
     }
 
     /// <summary>Apply all enabled rules to the raw transcription text.</summary>
@@ -53,4 +57,13 @@ public static class PostProcessingPipeline
     {
         return Process(raw, CompileRules(rules, enabled));
     }
+
+    /// <summary>Apply rules and trim the final result (use for end-of-session, not per-chunk).</summary>
+    public static string ProcessFinal(string raw, IReadOnlyList<CompiledRule> rules)
+    {
+        return Process(raw, rules).Trim();
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\s+")]
+    private static partial Regex WhitespaceRegex();
 }

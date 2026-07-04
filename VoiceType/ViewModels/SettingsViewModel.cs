@@ -49,6 +49,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
         ToggleHotkey = settings.ToggleHotkey;
         MuteHotkey = settings.MuteHotkey;
+        InjectTextHotkey = settings.InjectTextHotkey;
+        DisableInjectionOnFocusChange = settings.DisableInjectionOnFocusChange;
         PostProcessingEnabled = settings.PostProcessingEnabled;
         Rules = new ObservableCollection<PostProcessingRule>(settings.PostProcessingRules);
 
@@ -138,6 +140,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     // ── Injection ───────────────────────────────────
     public InjectionMethod TextInjectionMethod { get; set; }
     public bool StopOnAnyInput { get; set; }
+    public bool DisableInjectionOnFocusChange { get; set; }
 
     // ── Sessions ────────────────────────────────────
     public bool SaveSessions { get; set; }
@@ -147,6 +150,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     // ── Hotkey ─────────────────────────────────────
     public string ToggleHotkey { get; set; } = "Ctrl+Shift+V";
     public string MuteHotkey { get; set; } = "Ctrl+Shift+M";
+    public string InjectTextHotkey { get; set; } = "Ctrl+Shift+I";
 
     // ── Post-processing ─────────────────────────────
     public bool PostProcessingEnabled { get; set; }
@@ -175,11 +179,15 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         AudioSource = AudioSource,
         TextInjectionMethod = TextInjectionMethod,
         StopOnAnyInput = StopOnAnyInput,
+        IsTextInjectionEnabled = _original.IsTextInjectionEnabled,
+        IsAutoScrollEnabled = _original.IsAutoScrollEnabled,
         SaveSessions = SaveSessions,
         SessionsPath = SessionsPath,
         SaveAudioMp3 = SaveAudioMp3,
         ToggleHotkey = ToggleHotkey,
         MuteHotkey = MuteHotkey,
+        InjectTextHotkey = InjectTextHotkey,
+        DisableInjectionOnFocusChange = DisableInjectionOnFocusChange,
         PostProcessingEnabled = PostProcessingEnabled,
         PostProcessingRules = Rules.ToList(),
         DownloaderRepoId = _original.DownloaderRepoId,

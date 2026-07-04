@@ -273,13 +273,27 @@ public sealed class Unit_ModelDownloaderViewModelTests
         var rules = new List<PostProcessingRule>
         {
             new() { Pattern = "<auto>", Replacement = "", Enabled = true },
-            new() { Pattern = "\\s+", Replacement = " ", Enabled = true }
         };
 
         var compiled = PostProcessingPipeline.CompileRules(rules, enabled: true);
         var processed = PostProcessingPipeline.Process("  hello   <auto>  world  ", compiled);
 
-        Assert.Equal("hello world", processed);
+        // Process collapses whitespace but does NOT trim (preserves chunk boundaries for streaming)
+        Assert.Equal(" hello world ", processed);
+    }
+
+    [Fact]
+    public void PostProcessingPipeline_ProcessFinal_TrimsResult()
+    {
+        var rules = new List<PostProcessingRule>
+        {
+            new() { Pattern = "<auto>", Replacement = "", Enabled = true },
+        };
+
+        var compiled = PostProcessingPipeline.CompileRules(rules, enabled: true);
+        var final = PostProcessingPipeline.ProcessFinal("  hello   <auto>  world  ", compiled);
+
+        Assert.Equal("hello world", final);
     }
 
     // ── ParseRepoId ─────────────────────────────────────────────

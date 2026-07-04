@@ -12,6 +12,7 @@ public sealed class GlobalInputHook : IDisposable
 {
     private const int WH_KEYBOARD_LL = 13;
     private const int WH_MOUSE_LL = 14;
+    private const int LLKHF_INJECTED = 0x10;
     private const int WM_KEYDOWN = 0x0100;
     private const int WM_SYSKEYDOWN = 0x0104;
     private const int WM_LBUTTONDOWN = 0x0201;
@@ -53,7 +54,11 @@ public sealed class GlobalInputHook : IDisposable
     private nint KbdCallback(int nCode, nint wParam, nint lParam)
     {
         if (nCode >= 0 && wParam is WM_KEYDOWN or WM_SYSKEYDOWN)
-            InputDetected?.Invoke();
+        {
+            var data = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+            if ((data.flags & LLKHF_INJECTED) == 0)
+                InputDetected?.Invoke();
+        }
         return CallNextHookEx(_kbdHookId, nCode, wParam, lParam);
     }
 
@@ -76,4 +81,14 @@ public sealed class GlobalInputHook : IDisposable
 
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern nint GetModuleHandle(string lpModuleName);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KBDLLHOOKSTRUCT
+    {
+        public uint vkCode;
+        public uint scanCode;
+        public int flags;
+        public uint time;
+        public nint dwExtraInfo;
+    }
 }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
@@ -16,6 +17,9 @@ namespace VoiceType.ViewModels;
 /// </summary>
 public sealed class MainViewModel : INotifyPropertyChanged
 {
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
+
     private readonly RecognitionService _recognition = new();
     private readonly GlobalInputHook _hook = new();
     private AppSettings _settings;
@@ -27,16 +31,25 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isCaptureMuted;
     private int _toggleHotkeyId;
     private int _muteHotkeyId;
+    private int _injectTextHotkeyId;
+    private nint _injectionTargetWindow;
     private RecognitionSession? _currentSession;
     private readonly object _partialResultGate = new();
     private readonly DispatcherTimer _partialResultTimer;
     private string? _pendingPartialText;
     private bool _hasPendingPartial;
-    private bool _isTextInjectionEnabled = true;
+    private bool _isTextInjectionEnabled;
+    private bool _isAutoScrollEnabled;
+    private bool _disableInjectionOnFocusChange;
 
     public MainViewModel()
     {
         _settings = SettingsService.Load();
+
+        _isTextInjectionEnabled = _settings.IsTextInjectionEnabled;
+        _isAutoScrollEnabled = _settings.IsAutoScrollEnabled;
+        _disableInjectionOnFocusChange = _settings.DisableInjectionOnFocusChange;
+
         StartCommand = new RelayCommand(Start, () => !IsRecording);
         StopCommand = new RelayCommand(Stop, () => IsRecording);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
@@ -59,10 +72,50 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     // ── Properties ──────────────────────────────────
 
+    /// <summary>Current settings snapshot (for persistence on exit).</summary>
+    internal AppSettings Settings => _settings;
+
     public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
     public string RecognizedText { get => _recognizedText; set => SetProperty(ref _recognizedText, value); }
     public string FloatingText { get => _floatingText; set => SetProperty(ref _floatingText, value); }
-    public bool IsTextInjectionEnabled { get => _isTextInjectionEnabled; set => SetProperty(ref _isTextInjectionEnabled, value); }
+    public bool IsTextInjectionEnabled
+    {
+        get => _isTextInjectionEnabled;
+        set
+        {
+            if (SetProperty(ref _isTextInjectionEnabled, value))
+            {
+                _settings.IsTextInjectionEnabled = value;
+                SettingsService.Save(_settings);
+            }
+        }
+    }
+
+    public bool IsAutoScrollEnabled
+    {
+        get => _isAutoScrollEnabled;
+        set
+        {
+            if (SetProperty(ref _isAutoScrollEnabled, value))
+            {
+                _settings.IsAutoScrollEnabled = value;
+                SettingsService.Save(_settings);
+            }
+        }
+    }
+
+    public bool DisableInjectionOnFocusChange
+    {
+        get => _disableInjectionOnFocusChange;
+        set
+        {
+            if (SetProperty(ref _disableInjectionOnFocusChange, value))
+            {
+                _settings.DisableInjectionOnFocusChange = value;
+                SettingsService.Save(_settings);
+            }
+        }
+    }
     public bool IsCaptureMuted
     {
         get => _isCaptureMuted;
@@ -103,6 +156,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public void RegisterHotkey(nint hwnd)
     {
+        GlobalHotkeyService.UnregisterAll();
+        _toggleHotkeyId = 0;
+        _muteHotkeyId = 0;
+        _injectTextHotkeyId = 0;
+
         var toggle = _settings.ToggleHotkey;
         if (!string.IsNullOrEmpty(toggle))
             _toggleHotkeyId = GlobalHotkeyService.Register(hwnd, toggle);
@@ -110,6 +168,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var mute = _settings.MuteHotkey;
         if (!string.IsNullOrEmpty(mute))
             _muteHotkeyId = GlobalHotkeyService.Register(hwnd, mute);
+
+        var inject = _settings.InjectTextHotkey;
+        if (!string.IsNullOrEmpty(inject))
+            _injectTextHotkeyId = GlobalHotkeyService.Register(hwnd, inject);
     }
 
     /// <summary>Handle WM_HOTKEY by hotkey ID. Returns true if handled.</summary>
@@ -125,7 +187,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
             ToggleMute();
             return true;
         }
+        if (hotkeyId == _injectTextHotkeyId && _injectTextHotkeyId != 0)
+        {
+            InjectCurrentText();
+            return true;
+        }
         return false;
+    }
+
+    /// <summary>
+    /// Manually inject the current recognized text into the focused window.
+    /// Triggered by the InjectText hotkey.
+    /// </summary>
+    public void InjectCurrentText()
+    {
+        if (string.IsNullOrEmpty(_floatingText)) return;
+        TextInjector.Inject(_floatingText, _settings.TextInjectionMethod);
     }
 
     // ── Commands ────────────────────────────────────
@@ -168,12 +245,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void Start()
     {
         if (IsRecording) return;
-        _settings = SettingsService.Load();
+        ApplySettingsSnapshot(SettingsService.Load());
 
         StatusText = "Initializing engine...";
         RecognizedText = "";
         FloatingText = "";
         _lastInjectedLength = 0;
+        _injectionTargetWindow = GetForegroundWindow();
         lock (_partialResultGate)
         {
             _pendingPartialText = null;
@@ -184,7 +262,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             // Compute ModelPath from root + selection if not set directly
             if (string.IsNullOrEmpty(_settings.ModelPath) && !string.IsNullOrEmpty(_settings.ModelsRootPath))
+            {
                 _settings.ModelPath = Path.Combine(_settings.ModelsRootPath, _settings.SelectedModel);
+                SettingsService.Save(_settings);
+            }
 
             Console.WriteLine($"[VoiceType] Initializing recognizer: path={_settings.ModelPath}, ep={_settings.ExecutionProvider}, lang={_settings.Language}, vad={_settings.UseVad}");
             _recognition.Initialize(_settings);
@@ -228,7 +309,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         settingsWindow.Owner = Application.Current.MainWindow;
         if (settingsWindow.ShowDialog() == true)
         {
-            _settings = settingsWindow.ResultSettings;
+            ApplySettingsSnapshot(settingsWindow.ResultSettings);
             // Re-register hotkey with new binding
             var hwnd = new System.Windows.Interop.WindowInteropHelper(Application.Current.MainWindow).Handle;
             RegisterHotkey(hwnd);
@@ -243,6 +324,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             Application.Current.Dispatcher.BeginInvoke(Stop);
         }
+    }
+
+    /// <summary>
+    /// Returns true if text injection is allowed into the current foreground window.
+    /// When <see cref="DisableInjectionOnFocusChange"/> is enabled, this checks that
+    /// the foreground window hasn't changed since recording started.
+    /// </summary>
+    private bool CanInjectToTargetWindow()
+    {
+        if (!_disableInjectionOnFocusChange) return true;
+        if (_injectionTargetWindow == nint.Zero) return true;
+        return GetForegroundWindow() == _injectionTargetWindow;
     }
 
     private void OnPartialResult(string text)
@@ -270,7 +363,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             FloatingText = text;
 
             // Inject any remaining delta not yet sent
-            if (IsTextInjectionEnabled && text.Length > _lastInjectedLength)
+            if (IsTextInjectionEnabled && text.Length > _lastInjectedLength && CanInjectToTargetWindow())
             {
                 var delta = text[_lastInjectedLength..];
                 TextInjector.Inject(delta, _settings.TextInjectionMethod);
@@ -328,6 +421,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         if (!IsTextInjectionEnabled || text.Length <= _lastInjectedLength)
             return;
 
+        if (!CanInjectToTargetWindow())
+        {
+            // Focus changed — skip injection but keep tracking length
+            _lastInjectedLength = text.Length;
+            return;
+        }
+
         var delta = text[_lastInjectedLength..];
         TextInjector.Inject(delta, _settings.TextInjectionMethod);
         _lastInjectedLength = text.Length;
@@ -346,6 +446,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             Console.Error.WriteLine($"[VoiceType] Session save error: {ex}");
         }
+    }
+
+    private void ApplySettingsSnapshot(AppSettings settings)
+    {
+        _settings = settings;
+
+        _isTextInjectionEnabled = settings.IsTextInjectionEnabled;
+        _isAutoScrollEnabled = settings.IsAutoScrollEnabled;
+        _disableInjectionOnFocusChange = settings.DisableInjectionOnFocusChange;
+
+        OnPropertyChanged(nameof(IsTextInjectionEnabled));
+        OnPropertyChanged(nameof(IsAutoScrollEnabled));
+        OnPropertyChanged(nameof(DisableInjectionOnFocusChange));
     }
 
     // ── INotifyPropertyChanged ──────────────────────
