@@ -224,7 +224,7 @@ public sealed class Unit_ModelDownloaderViewModelTests
     }
 
     [Fact]
-    public void AudioRecorderService_StopAndSave_WithSamples_WritesMp3()
+    public async Task AudioRecorderService_StopAndSave_WithSamples_WritesMp3()
     {
         using var recorder = new AudioRecorderService(16000);
         recorder.Start();
@@ -232,7 +232,7 @@ public sealed class Unit_ModelDownloaderViewModelTests
         var samples = Enumerable.Range(0, 4000)
             .Select(i => (float)Math.Sin(2 * Math.PI * 440 * i / 16000))
             .ToArray();
-        recorder.Append(samples);
+        await recorder.AppendAsync(samples);
 
         var outputBasePath = Path.Combine(Path.GetTempPath(), $"VoiceType_audio_{Guid.NewGuid():N}");
         string? result = null;

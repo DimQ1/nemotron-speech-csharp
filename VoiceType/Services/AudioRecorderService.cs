@@ -7,13 +7,13 @@ namespace VoiceType.Services;
 
 /// <summary>
 /// Records audio to MP3 on-the-fly via a background encoder thread.
-/// Append only performs PCM conversion; MP3 encoding runs on a background thread.
+/// Append only buffers float samples; PCM conversion and MP3 encoding run on a background thread.
 /// </summary>
 public sealed class AudioRecorderService : IDisposable
 {
     private readonly int _sampleRate;
     private readonly object _sync = new();
-    private Channel<byte[]>? _channel;
+    private Channel<float[]>? _channel;
     private Task? _encoderTask;
     private CancellationTokenSource? _cts;
     private string? _tempMp3Path;
@@ -30,7 +30,7 @@ public sealed class AudioRecorderService : IDisposable
         {
             Cleanup();
             _cts = new CancellationTokenSource();
-            _channel = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(32)
+            _channel = Channel.CreateBounded<float[]>(new BoundedChannelOptions(32)
             {
                 FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = true
@@ -45,24 +45,15 @@ public sealed class AudioRecorderService : IDisposable
         }
     }
 
-    public void Append(float[] samples)
+    public async Task AppendAsync(float[] samples)
     {
         if (!_recording || _channel is null || samples.Length == 0)
             return;
 
-        // Convert to PCM bytes under no lock — fast path
-        var pcm = new byte[samples.Length * 2];
-        int offset = 0;
-        foreach (var sample in samples)
-        {
-            var s = ToPcm16(sample);
-            pcm[offset++] = (byte)(s & 0xFF);
-            pcm[offset++] = (byte)((s >> 8) & 0xFF);
-        }
-
+        // Buffer samples — PCM conversion and MP3 encoding run on background thread
         try
         {
-            _channel.Writer.WriteAsync(pcm).AsTask().GetAwaiter().GetResult();
+            await _channel.Writer.WriteAsync(samples).ConfigureAwait(false);
         }
         catch (ChannelClosedException)
         {
@@ -135,8 +126,9 @@ public sealed class AudioRecorderService : IDisposable
             var reader = _channel?.Reader;
             if (writer is null || reader is null) return;
 
-            await foreach (var pcm in reader.ReadAllAsync(ct).ConfigureAwait(false))
+            await foreach (var samples in reader.ReadAllAsync(ct).ConfigureAwait(false))
             {
+                var pcm = ConvertToPcm(samples);
                 writer.Write(pcm, 0, pcm.Length);
             }
         }
@@ -146,6 +138,17 @@ public sealed class AudioRecorderService : IDisposable
             _encoderException = ex;
             Console.Error.WriteLine($"[VoiceType] Encoder error: {ex.Message}");
         }
+    }
+
+    private byte[] ConvertToPcm(float[] samples)
+    {
+        var pcm = new byte[samples.Length * 2];
+        var buffer = new WaveBuffer(pcm);
+        for (int i = 0; i < samples.Length; i++)
+        {
+            buffer.ShortBuffer[i] = ToPcm16(samples[i]);
+        }
+        return pcm;
     }
 
     private void CleanupEncoder()
@@ -177,8 +180,7 @@ public sealed class AudioRecorderService : IDisposable
     private static short ToPcm16(float sample)
     {
         var clamped = Math.Clamp(sample, -1f, 1f);
-        return clamped <= -1f
-            ? short.MinValue
-            : (short)(clamped * short.MaxValue);
+        // Round to nearest integer — avoids truncation bias (e.g. 16383.5 → 16384, not 16383)
+        return (short)MathF.Round(clamped * short.MaxValue);
     }
 }

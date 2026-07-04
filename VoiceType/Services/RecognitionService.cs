@@ -87,7 +87,7 @@ public sealed class RecognitionService : IDisposable
         _captureThread.Start();
 
         // Processing loop on thread pool
-        Task.Run(() => ProcessLoop());
+        Task.Run(async () => await ProcessLoop().ConfigureAwait(false));
     }
 
     public void Stop()
@@ -105,7 +105,7 @@ public sealed class RecognitionService : IDisposable
         Console.WriteLine($"[VoiceType] Capture {(muted ? "muted" : "unmuted")}");
     }
 
-    private void ProcessLoop()
+    private async Task ProcessLoop()
     {
         var lastAudio = DateTime.UtcNow;
 
@@ -127,7 +127,8 @@ public sealed class RecognitionService : IDisposable
                     continue;
                 }
 
-                _audioRecorder?.Append(batch);
+                if (_audioRecorder is not null)
+                    await _audioRecorder.AppendAsync(batch).ConfigureAwait(false);
 
                 var raw = _recognizer!.ProcessAudio(batch);
                 if (raw is not null)
