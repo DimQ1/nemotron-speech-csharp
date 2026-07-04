@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Windows;
 using VoiceType.ViewModels;
 
@@ -7,6 +8,11 @@ namespace VoiceType.Views;
 public partial class ModelDownloaderWindow : Window
 {
     private readonly ModelDownloaderViewModel _vm;
+
+    public static ModelDownloaderWindow? FindOpenInstance() =>
+        Application.Current.Windows
+            .OfType<ModelDownloaderWindow>()
+            .FirstOrDefault(window => window.IsLoaded);
 
     public string? ResultPath => _vm.ResultPath;
     public string? ResultModelPath => _vm.ResultModelPath;
