@@ -81,16 +81,11 @@ public sealed class BufferedCaptureSource : IAudioSource
         if (loopbackSource is null && micSource is null)
             throw new InvalidOperationException("No audio sources configured");
 
-        // Read exactly one cycle's worth of samples each iteration.
-        // This ties output to wall-clock time — no clock drift between sources.
-        int samplesPerCycle = _targetRate * DrainIntervalMs / 1000;
-        var loopBuf = new float[samplesPerCycle];
-        var micBuf = new float[samplesPerCycle];
-
-        // ── Main drain loop — wall-clock-paced, independent source reads ──
-        // Reads mic and loopback separately each cycle; zero-fills a silent
-        // source so the other continues uninterrupted (unlike MixingSampleProvider
-        // which blocks when any input is empty).
+        // ── Main drain loop — drain all available audio each cycle ──
+        // Reads ALL buffered audio from each source independently and
+        // mixes them. A silent source is zero-filled so the other continues
+        // uninterrupted (unlike MixingSampleProvider which blocks on empty inputs).
+        var chunkBuf = new float[4096];
         while (state.IsRunning)
         {
             Thread.Sleep(DrainIntervalMs);
@@ -98,18 +93,18 @@ public sealed class BufferedCaptureSource : IAudioSource
 
             try
             {
-                int loopRead = loopbackSource?.Read(loopBuf, 0, samplesPerCycle) ?? 0;
-                int micRead = micSource?.Read(micBuf, 0, samplesPerCycle) ?? 0;
+                var loopSamples = DrainAll(loopbackSource, chunkBuf);
+                var micSamples = DrainAll(micSource, chunkBuf);
 
-                int count = Math.Max(loopRead, micRead);
+                int count = Math.Max(loopSamples.Count, micSamples.Count);
                 if (count == 0) continue;
 
                 var batch = new float[count];
                 for (int i = 0; i < count; i++)
                 {
                     float s = 0f;
-                    if (i < loopRead) s += loopBuf[i];
-                    if (i < micRead) s += micBuf[i];
+                    if (i < loopSamples.Count) s += loopSamples[i];
+                    if (i < micSamples.Count) s += micSamples[i];
                     batch[i] = s;
                 }
 
@@ -125,18 +120,18 @@ public sealed class BufferedCaptureSource : IAudioSource
         // ── Final drain ────────────────────────────────────────────
         try
         {
-            int loopRead = loopbackSource?.Read(loopBuf, 0, loopBuf.Length) ?? 0;
-            int micRead = micSource?.Read(micBuf, 0, micBuf.Length) ?? 0;
+            var loopSamples = DrainAll(loopbackSource, chunkBuf);
+            var micSamples = DrainAll(micSource, chunkBuf);
 
-            int count = Math.Max(loopRead, micRead);
+            int count = Math.Max(loopSamples.Count, micSamples.Count);
             if (count > 0)
             {
                 var batch = new float[count];
                 for (int i = 0; i < count; i++)
                 {
                     float s = 0f;
-                    if (i < loopRead) s += loopBuf[i];
-                    if (i < micRead) s += micBuf[i];
+                    if (i < loopSamples.Count) s += loopSamples[i];
+                    if (i < micSamples.Count) s += micSamples[i];
                     batch[i] = s;
                 }
                 buffer.Enqueue(batch);
@@ -173,6 +168,21 @@ public sealed class BufferedCaptureSource : IAudioSource
             source = new WdlResamplingSampleProvider(source, _targetRate);
 
         return source;
+    }
+
+    /// <summary>Read all available samples from a source into a list.</summary>
+    private static List<float> DrainAll(ISampleProvider? source, float[] readBuf)
+    {
+        var result = new List<float>();
+        if (source is null) return result;
+
+        int read;
+        while ((read = source.Read(readBuf, 0, readBuf.Length)) > 0)
+        {
+            for (int i = 0; i < read; i++)
+                result.Add(readBuf[i]);
+        }
+        return result;
     }
 
     private static BufferedWaveProvider CreateBuffer(WaveFormat format) => new(format)
