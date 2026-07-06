@@ -47,6 +47,9 @@ public partial class MainWindow : Window
         source?.AddHook(WndProcHook);
 
         _vm?.RegisterHotkey(hwnd);
+
+        // Auto-start recognition if enabled in settings
+        _vm?.TryAutoStart();
     }
 
     private void OnClosed(object? sender, EventArgs e)
@@ -68,6 +71,11 @@ public partial class MainWindow : Window
     {
         if (e.ChangedButton == MouseButton.Left)
             DragMove();
+    }
+
+    private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)

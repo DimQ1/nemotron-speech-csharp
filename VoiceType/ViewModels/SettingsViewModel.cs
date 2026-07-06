@@ -52,6 +52,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         MuteHotkey = settings.MuteHotkey;
         InjectTextHotkey = settings.InjectTextHotkey;
         DisableInjectionOnFocusChange = settings.DisableInjectionOnFocusChange;
+        AutoStartRecognition = settings.AutoStartRecognition;
         PostProcessingEnabled = settings.PostProcessingEnabled;
         Rules = new ObservableCollection<PostProcessingRule>(settings.PostProcessingRules);
 
@@ -142,6 +143,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public InjectionMethod TextInjectionMethod { get; set; }
     public bool StopOnAnyInput { get; set; }
     public bool DisableInjectionOnFocusChange { get; set; }
+    public bool AutoStartRecognition { get; set; }
 
     // ── Sessions ────────────────────────────────────
     public bool SaveSessions { get; set; }
@@ -189,6 +191,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         MuteHotkey = MuteHotkey,
         InjectTextHotkey = InjectTextHotkey,
         DisableInjectionOnFocusChange = DisableInjectionOnFocusChange,
+        AutoStartRecognition = AutoStartRecognition,
         PostProcessingEnabled = PostProcessingEnabled,
         PostProcessingRules = Rules.ToList(),
         DownloaderRepoId = _original.DownloaderRepoId,

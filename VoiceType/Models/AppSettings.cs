@@ -33,6 +33,8 @@ public sealed class AppSettings
 
     // ── UI ──────────────────────────────────────────
     public bool IsAutoScrollEnabled { get; set; } = true;
+    /// <summary>Automatically start recognition when the app launches.</summary>
+    public bool AutoStartRecognition { get; set; } = false;
 
     // ── Sessions ────────────────────────────────────
     public bool SaveSessions { get; set; } = true;

@@ -85,7 +85,9 @@
                         </ComboBox>
 
                         <CheckBox Content="Use Voice Activity Detection (VAD)"
-                                  IsChecked="{Binding UseVad}" Style="{StaticResource DarkCheckBox}"/>
+                                  IsChecked="{Binding UseVad}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,6"/>
+                        <CheckBox Content="Auto-start recognition on app launch"
+                                  IsChecked="{Binding AutoStartRecognition}" Style="{StaticResource DarkCheckBox}"/>
                     </StackPanel>
                 </GroupBox>
 

@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Windows.Shell;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
@@ -43,6 +44,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isTextInjectionEnabled;
     private bool _isAutoScrollEnabled;
     private bool _disableInjectionOnFocusChange;
+    private bool _isActivelyInjecting;
 
     public MainViewModel()
     {
@@ -107,6 +109,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     if (!IsRecording)
                         Start();
                 }
+
+                IsActivelyInjecting = _isTextInjectionEnabled && IsRecording;
             }
         }
     }
@@ -154,6 +158,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             if (!SetProperty(ref _isRecording, value))
                 return;
 
+            IsActivelyInjecting = value && IsTextInjectionEnabled;
             OnPropertyChanged(nameof(RecordButtonText));
             OnPropertyChanged(nameof(RecordingIndicator));
         }
@@ -164,6 +169,29 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ? (IsCaptureMuted ? "🔇 Muted" : "🔴 Recording...")
         : "⚪ Idle";
 
+    /// <summary>
+    /// True when the app is recording AND text injection is enabled —
+    /// drives the taskbar progress indicator.
+    /// </summary>
+    public bool IsActivelyInjecting
+    {
+        get => _isActivelyInjecting;
+        private set
+        {
+            if (SetProperty(ref _isActivelyInjecting, value))
+                OnPropertyChanged(nameof(TaskbarProgressState));
+        }
+    }
+
+    /// <summary>
+    /// Shows a green pulsing indicator on the taskbar button when
+    /// the app is actively injecting recognized text into a target window.
+    /// </summary>
+    public TaskbarItemProgressState TaskbarProgressState =>
+        IsActivelyInjecting
+            ? TaskbarItemProgressState.Indeterminate
+            : TaskbarItemProgressState.None;
+
     public ICommand StartCommand { get; }
     public ICommand StopCommand { get; }
     public ICommand OpenSettingsCommand { get; }
@@ -173,6 +201,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ICommand MuteCommand { get; }
 
     // ── Hotkey ──────────────────────────────────────
+
+    /// <summary>
+    /// Called after the window is fully loaded. Starts recognition automatically
+    /// if <see cref="AppSettings.AutoStartRecognition"/> is enabled.
+    /// </summary>
+    public void TryAutoStart()
+    {
+        if (_settings.AutoStartRecognition && !IsRecording)
+            Start();
+    }
 
     public void RegisterHotkey(nint hwnd)
     {
