@@ -94,6 +94,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 if (value)
                 {
                     _injectionTargetWindow = GetForegroundWindow();
+
+                    // When re-enabling injection after manual field switch,
+                    // inject the full accumulated text into the new target window.
+                    if (!string.IsNullOrEmpty(_floatingText))
+                    {
+                        _lastInjectedLength = 0;
+                        TextInjector.Inject(_floatingText, _settings.TextInjectionMethod);
+                        _lastInjectedLength = _floatingText.Length;
+                    }
+
                     if (!IsRecording)
                         Start();
                 }
