@@ -45,6 +45,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isAutoScrollEnabled;
     private bool _disableInjectionOnFocusChange;
     private bool _isActivelyInjecting;
+    private bool _injectionExplicitlyEnabled;
 
     public MainViewModel()
     {
@@ -96,6 +97,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 if (value)
                 {
                     _injectionTargetWindow = GetForegroundWindow();
+                    _injectionExplicitlyEnabled = true;
 
                     if (!IsRecording)
                         Start();
@@ -417,6 +419,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// </summary>
     private bool CanInjectToTargetWindow()
     {
+        if (_injectionExplicitlyEnabled) return true;
         if (!_disableInjectionOnFocusChange) return true;
         if (_injectionTargetWindow == nint.Zero) return true;
         return GetForegroundWindow() == _injectionTargetWindow;
@@ -521,6 +524,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var delta = text[_lastInjectedLength..];
         TextInjector.Inject(delta, _settings.TextInjectionMethod);
         _lastInjectedLength = text.Length;
+        _injectionExplicitlyEnabled = false;
     }
 
     private void PersistSession(RecognitionSession session, bool saveAudio)
