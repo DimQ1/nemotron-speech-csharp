@@ -45,8 +45,8 @@ jobs:
       - name: Run VoiceType unit tests
         run: dotnet test VoiceType.Tests/VoiceType.Tests.csproj -c Release -p:GpuArch=CPU --filter "FullyQualifiedName~Unit_"
 
-  publish_cpu:
-    name: Publish CPU CI Artifact
+  publish:
+    name: Publish CI Artifact
     runs-on: windows-latest
     needs: test
 
@@ -59,36 +59,12 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Publish VoiceType (CPU)
-        run: dotnet publish VoiceType/VoiceType.csproj -c Release -p:GpuArch=CPU -o build/VoiceType-release-cpu
+      - name: Publish VoiceType (win-x64, self-contained)
+        run: dotnet publish VoiceType/VoiceType.csproj -c Release -p:GpuArch=CPU -r win-x64 --self-contained -o build/VoiceType-release
 
-      - name: Upload CPU artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: VoiceType-ci-cpu-${{ github.run_number }}
-          path: build/VoiceType-release-cpu
-          if-no-files-found: error
-
-  publish_gpu:
-    name: Publish GPU CI Artifact
-    runs-on: windows-latest
-    needs: test
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Publish VoiceType (GPU)
-        run: dotnet publish VoiceType/VoiceType.csproj -c Release -p:GpuArch=Standard -o build/VoiceType-release-gpu
-
-      - name: Upload GPU artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: VoiceType-ci-gpu-${{ github.run_number }}
-          path: build/VoiceType-release-gpu
+          name: VoiceType-ci-${{ github.run_number }}
+          path: build/VoiceType-release
           if-no-files-found: error

@@ -31,7 +31,7 @@ jobs:
         run: dotnet test VoiceType.Tests/VoiceType.Tests.csproj -c Release -p:GpuArch=CPU --filter "FullyQualifiedName~Unit_"
 
   publish_cpu:
-    name: Publish CPU Release
+    name: Publish Release
     runs-on: windows-latest
     needs: test
 
@@ -44,71 +44,33 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Publish VoiceType (CPU)
-        run: dotnet publish VoiceType/VoiceType.csproj -c Release -p:GpuArch=CPU -o build/VoiceType-release-cpu
+      - name: Publish VoiceType (win-x64, self-contained)
+        run: dotnet publish VoiceType/VoiceType.csproj -c Release -p:GpuArch=CPU -r win-x64 --self-contained -o build/VoiceType-release
 
-      - name: Create CPU archive
+      - name: Create archive
         shell: pwsh
-        run: Compress-Archive -Path build/VoiceType-release-cpu/* -DestinationPath build/VoiceType-${{ github.ref_name }}-cpu.zip -Force
+        run: Compress-Archive -Path build/VoiceType-release/* -DestinationPath build/VoiceType-${{ github.ref_name }}.zip -Force
 
-      - name: Upload CPU artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: VoiceType-${{ github.ref_name }}-cpu
-          path: build/VoiceType-${{ github.ref_name }}-cpu.zip
-          if-no-files-found: error
-
-  publish_gpu:
-    name: Publish GPU Release
-    runs-on: windows-latest
-    needs: test
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Publish VoiceType (GPU)
-        run: dotnet publish VoiceType/VoiceType.csproj -c Release -p:GpuArch=Standard -o build/VoiceType-release-gpu
-
-      - name: Create GPU archive
-        shell: pwsh
-        run: Compress-Archive -Path build/VoiceType-release-gpu/* -DestinationPath build/VoiceType-${{ github.ref_name }}-gpu.zip -Force
-
-      - name: Upload GPU artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: VoiceType-${{ github.ref_name }}-gpu
-          path: build/VoiceType-${{ github.ref_name }}-gpu.zip
+          name: VoiceType-${{ github.ref_name }}
+          path: build/VoiceType-${{ github.ref_name }}.zip
           if-no-files-found: error
 
   publish_release:
-    name: Publish GitHub Release Assets
+    name: Publish GitHub Release
     runs-on: windows-latest
-    needs:
-      - publish_cpu
-      - publish_gpu
+    needs: publish_cpu
 
     steps:
-      - name: Download CPU artifact
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: VoiceType-${{ github.ref_name }}-cpu
-          path: build/release-assets/cpu
-
-      - name: Download GPU artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: VoiceType-${{ github.ref_name }}-gpu
-          path: build/release-assets/gpu
+          name: VoiceType-${{ github.ref_name }}
+          path: build/release-assets
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            build/release-assets/cpu/VoiceType-${{ github.ref_name }}-cpu.zip
-            build/release-assets/gpu/VoiceType-${{ github.ref_name }}-gpu.zip
+          files: build/release-assets/VoiceType-${{ github.ref_name }}.zip
