@@ -28,7 +28,6 @@ public sealed class BufferedCaptureSource : IAudioSource
 
     public void Start(ConcurrentQueueWrapper buffer, ManualResetEventSlim signal, CaptureState state)
     {
-        // ── Set up capture devices ──────────────────────────────────
         var useLoopback = _mode is CaptureMode.Loopback or CaptureMode.Mix;
         var useMic = _mode is CaptureMode.Mic or CaptureMode.Mix;
 
@@ -57,9 +56,7 @@ public sealed class BufferedCaptureSource : IAudioSource
 
         if (useMic)
         {
-            micCapture = new WaveInEvent();
-            // Use 16 kHz mono for mic — same as current MicAudioSource
-            micCapture.WaveFormat = new WaveFormat(16000, 16, 1);
+            micCapture = new WaveInEvent { WaveFormat = new WaveFormat(16000, 16, 1) };
             micProvider = CreateBuffer(micCapture.WaveFormat);
             micCapture.DataAvailable += (_, ev) =>
             {
@@ -74,7 +71,26 @@ public sealed class BufferedCaptureSource : IAudioSource
             micCapture.StartRecording();
         }
 
-        // ── Main drain loop (timer-like, runs on this thread) ──────
+        // Build lazy normalization pipeline(s) — mono + resample direct from ring buffers.
+        // No pre-drain, no intermediate float[] copies.
+        ISampleProvider? loopbackSource = loopbackProvider is not null
+            ? CreateNormalizedProvider(loopbackProvider) : null;
+        ISampleProvider? micSource = micProvider is not null
+            ? CreateNormalizedProvider(micProvider) : null;
+
+        if (loopbackSource is null && micSource is null)
+            throw new InvalidOperationException("No audio sources configured");
+
+        // Read exactly one cycle's worth of samples each iteration.
+        // This ties output to wall-clock time — no clock drift between sources.
+        int samplesPerCycle = _targetRate * DrainIntervalMs / 1000;
+        var loopBuf = new float[samplesPerCycle];
+        var micBuf = new float[samplesPerCycle];
+
+        // ── Main drain loop — wall-clock-paced, independent source reads ──
+        // Reads mic and loopback separately each cycle; zero-fills a silent
+        // source so the other continues uninterrupted (unlike MixingSampleProvider
+        // which blocks when any input is empty).
         while (state.IsRunning)
         {
             Thread.Sleep(DrainIntervalMs);
@@ -82,12 +98,23 @@ public sealed class BufferedCaptureSource : IAudioSource
 
             try
             {
-                var batch = DrainBuffers(loopbackProvider, micProvider);
-                if (batch.Length > 0)
+                int loopRead = loopbackSource?.Read(loopBuf, 0, samplesPerCycle) ?? 0;
+                int micRead = micSource?.Read(micBuf, 0, samplesPerCycle) ?? 0;
+
+                int count = Math.Max(loopRead, micRead);
+                if (count == 0) continue;
+
+                var batch = new float[count];
+                for (int i = 0; i < count; i++)
                 {
-                    buffer.Enqueue(batch);
-                    signal.Set();
+                    float s = 0f;
+                    if (i < loopRead) s += loopBuf[i];
+                    if (i < micRead) s += micBuf[i];
+                    batch[i] = s;
                 }
+
+                buffer.Enqueue(batch);
+                signal.Set();
             }
             catch
             {
@@ -95,101 +122,55 @@ public sealed class BufferedCaptureSource : IAudioSource
             }
         }
 
-        // ── Final drain ─────────────────────────────────────────────
+        // ── Final drain ────────────────────────────────────────────
         try
         {
-            var finalBatch = DrainBuffers(loopbackProvider, micProvider);
-            if (finalBatch.Length > 0)
+            int loopRead = loopbackSource?.Read(loopBuf, 0, loopBuf.Length) ?? 0;
+            int micRead = micSource?.Read(micBuf, 0, micBuf.Length) ?? 0;
+
+            int count = Math.Max(loopRead, micRead);
+            if (count > 0)
             {
-                buffer.Enqueue(finalBatch);
+                var batch = new float[count];
+                for (int i = 0; i < count; i++)
+                {
+                    float s = 0f;
+                    if (i < loopRead) s += loopBuf[i];
+                    if (i < micRead) s += micBuf[i];
+                    batch[i] = s;
+                }
+                buffer.Enqueue(batch);
                 signal.Set();
             }
         }
         catch { }
 
-        // ── Cleanup ─────────────────────────────────────────────────
+        // ── Cleanup ────────────────────────────────────────────────
         loopbackCapture?.StopRecording();
         loopbackCapture?.Dispose();
         micCapture?.StopRecording();
         micCapture?.Dispose();
+
+        // Dispose the normalization pipeline.
+        // WdlResamplingSampleProvider holds unmanaged WDL resampler state.
+        (loopbackSource as IDisposable)?.Dispose();
+        (micSource as IDisposable)?.Dispose();
     }
 
     /// <summary>
-    /// Drain all available audio from the buffer(s), mix if both are present,
-    /// resample to target rate, and return as mono float[].
+    /// Wraps a <see cref="BufferedWaveProvider"/> in a lazy normalization pipeline:
+    /// mono downmix + resample to target rate. Reads flow directly from the ring
+    /// buffer — no intermediate float[] allocations.
     /// </summary>
-    private float[] DrainBuffers(BufferedWaveProvider? loopback, BufferedWaveProvider? mic)
+    private ISampleProvider CreateNormalizedProvider(BufferedWaveProvider provider)
     {
-        var sources = new List<ISampleProvider>(2);
+        ISampleProvider source = provider.ToSampleProvider();
 
-        if (loopback is not null && loopback.BufferedDuration > TimeSpan.Zero)
-        {
-            var loopbackSamples = ReadAllSamples(loopback);
-            if (loopbackSamples.Length > 0)
-                sources.Add(CreateNormalizedSource(loopbackSamples, loopback.WaveFormat, 1f));
-        }
-
-        if (mic is not null && mic.BufferedDuration > TimeSpan.Zero)
-        {
-            var micSamples = ReadAllSamples(mic);
-            if (micSamples.Length > 0)
-                sources.Add(CreateNormalizedSource(micSamples, mic.WaveFormat, 1f));
-        }
-
-        if (sources.Count == 0)
-            return [];
-
-        // Mix multiple sources or pass single source through
-        ISampleProvider mixed = sources.Count switch
-        {
-            1 => sources[0],
-            _ => new MixingSampleProvider(sources),
-        };
-
-        // Read all available samples
-        var result = new List<float>(_targetRate * 2); // ~2 second capacity
-        var readBuf = new float[4096];
-        int read;
-        while ((read = mixed.Read(readBuf, 0, readBuf.Length)) > 0)
-        {
-            for (int i = 0; i < read; i++)
-                result.Add(readBuf[i]);
-        }
-
-        return result.ToArray();
-    }
-
-    /// <summary>Read all currently buffered samples from a BufferedWaveProvider.</summary>
-    private static float[] ReadAllSamples(BufferedWaveProvider provider)
-    {
-        var sampleProvider = provider.ToSampleProvider();
-        var bufferedBytes = provider.BufferedBytes;
-        var maxFrames = bufferedBytes / (provider.WaveFormat.BitsPerSample / 8);
-        if (maxFrames <= 0) return [];
-
-        var buffer = new float[maxFrames];
-        int totalRead = sampleProvider.Read(buffer, 0, maxFrames);
-        if (totalRead <= 0) return [];
-
-        // Trim to actual read
-        if (totalRead < buffer.Length)
-            Array.Resize(ref buffer, totalRead);
-
-        return buffer;
-    }
-
-    private ISampleProvider CreateNormalizedSource(float[] samples, WaveFormat sourceFormat, float gain)
-    {
-        ISampleProvider source = new FloatArraySampleProvider(samples, sourceFormat);
-
-        if (source.WaveFormat.Channels > 1)
+        if (provider.WaveFormat.Channels > 1)
             source = source.ToMono();
 
-        if (source.WaveFormat.SampleRate != _targetRate)
+        if (provider.WaveFormat.SampleRate != _targetRate)
             source = new WdlResamplingSampleProvider(source, _targetRate);
-
-        if (Math.Abs(gain - 1f) > float.Epsilon)
-            source = new VolumeSampleProvider(source) { Volume = gain };
 
         return source;
     }
@@ -202,26 +183,4 @@ public sealed class BufferedCaptureSource : IAudioSource
     };
 
     public void Dispose() { }
-
-    /// <summary>
-    /// Wraps a float[] array as an <see cref="ISampleProvider"/> with the given source format.
-    /// Used to feed drained buffers into the mixing pipeline.
-    /// </summary>
-    private sealed class FloatArraySampleProvider(float[] samples, WaveFormat sourceFormat) : ISampleProvider
-    {
-        private int _position;
-
-        public WaveFormat WaveFormat { get; } = sourceFormat;
-
-        public int Read(float[] buffer, int offset, int count)
-        {
-            int available = samples.Length - _position;
-            int toCopy = Math.Min(count, available);
-            if (toCopy <= 0) return 0;
-
-            Array.Copy(samples, _position, buffer, offset, toCopy);
-            _position += toCopy;
-            return toCopy;
-        }
-    }
 }

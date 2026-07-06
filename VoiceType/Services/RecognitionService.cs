@@ -24,6 +24,7 @@ public sealed class RecognitionService : IDisposable
     private CaptureState? _captureState;
     private bool _isRunning;
     private volatile bool _captureMuted;
+    private Task? _processTask;
     private readonly StringBuilder _accumulatedText = new();
     private readonly StringBuilder _partialProcessedText = new();
 
@@ -62,6 +63,9 @@ public sealed class RecognitionService : IDisposable
         if (_recognizer is null) Initialize(settings);
         if (_recognizer is null) throw new InvalidOperationException("Recognizer not initialized.");
 
+        // Dispose previous session resources before creating new ones
+        CleanupPreviousSession();
+
         _accumulatedText.Clear();
         _partialProcessedText.Clear();
         _isRunning = true;
@@ -86,8 +90,8 @@ public sealed class RecognitionService : IDisposable
         }) { IsBackground = true };
         _captureThread.Start();
 
-        // Processing loop on thread pool
-        Task.Run(async () => await ProcessLoop().ConfigureAwait(false));
+        // Processing loop on thread pool — track task to await on restart
+        _processTask = Task.Run(async () => await ProcessLoop().ConfigureAwait(false));
     }
 
     public void Stop()
@@ -179,12 +183,39 @@ public sealed class RecognitionService : IDisposable
     public void Dispose()
     {
         _isRunning = false;
+        CleanupPreviousSession();
+        _recognizer?.Dispose();
+    }
+
+    /// <summary>
+    /// Dispose all per-session resources (recorder, audio source, sync primitives)
+    /// to prevent memory/file-handle leaks across recognition restarts.
+    /// </summary>
+    private void CleanupPreviousSession()
+    {
         if (_captureState is not null)
             _captureState.IsRunning = false;
-        _recognizer?.Dispose();
-        _audioRecorder?.Dispose();
-        _audioSource?.Dispose();
         _signal?.Set();
+
+        // Wait for the previous ProcessLoop task to fully complete
+        // before disposing its resources — prevents use-after-dispose.
+        if (_processTask is not null)
+        {
+            try { _processTask.GetAwaiter().GetResult(); } catch { }
+            _processTask = null;
+        }
+
+        _audioRecorder?.Dispose();
+        _audioRecorder = null;
+
+        _audioSource?.Dispose();
+        _audioSource = null;
+
+        _signal?.Dispose();
+        _signal = null;
+
+        _buffer = null;
+        _captureState = null;
     }
 
     private static void Warmup(IStreamingSpeechRecognizer recognizer)

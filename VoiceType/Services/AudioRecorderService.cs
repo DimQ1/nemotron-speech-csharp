@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using NAudio.Lame;
 using NAudio.Wave;
@@ -140,13 +141,14 @@ public sealed class AudioRecorderService : IDisposable
         }
     }
 
-    private byte[] ConvertToPcm(float[] samples)
+    private static byte[] ConvertToPcm(float[] samples)
     {
         var pcm = new byte[samples.Length * 2];
-        var buffer = new WaveBuffer(pcm);
+        var shorts = MemoryMarshal.Cast<byte, short>(pcm.AsSpan());
         for (int i = 0; i < samples.Length; i++)
         {
-            buffer.ShortBuffer[i] = ToPcm16(samples[i]);
+            var s = ToPcm16(samples[i]);
+            shorts[i] = s;
         }
         return pcm;
     }
