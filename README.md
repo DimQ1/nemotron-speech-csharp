@@ -89,9 +89,38 @@ dotnet run --project NemotronSpeech -c Release -- "models-onnx/cpu" --mic cpu --
 # Audio file
 dotnet run --project NemotronSpeech -c Release -- "models-onnx/cpu" "audio.wav" cpu --language en
 
+# Audio file with word-level timestamps
+dotnet run --project NemotronSpeech -c Release -- "models-onnx/cpu" "audio.wav" cpu --word-timestamps
+
 # System audio loopback
 dotnet run --project NemotronSpeech -c Release -- "models-onnx/cpu" --loopback cpu
 ```
+
+### Word Timestamps (`--word-timestamps`)
+
+File-mode only. Outputs each word with its `[start → end]` time in seconds:
+
+```
+============================================================
+  Perhaps he made up to the party afterwards and took her...
+============================================================
+
+  Word timings (25 words):
+------------------------------------------------------------
+  [0.56s -> 1.00s] Perhaps
+  [1.00s -> 1.12s] he
+  [1.12s -> 1.40s] made
+  ...
+```
+
+| Aspect | Detail |
+|--------|--------|
+| **Granularity** | ~560ms per chunk, refined by token-count weighting |
+| **Punctuation** | Merged into preceding word (no standalone `.` or `,` entries) |
+| **Language tags** | `<en-US>`, `<de-DE>` etc. filtered from timing output |
+| **Time distribution** | Weighted by estimated token count per word (Phase 2) |
+| **Model** | `SpeechLib/Models/WordTiming.cs` — `Word`, `StartSeconds`, `EndSeconds` |
+| **CLI flag** | `--word-timestamps` (ignored in live/mic mode) |
 
 ## Model Conversion
 
@@ -155,9 +184,10 @@ Mic/Loopback ──→ NAudio WASAPI ──→ ConcurrentQueue<float[]> (lock-fr
 | `AppOptions.cs` | CLI parsing |
 | `LanguageMapper.cs` | BCP-47 → lang_id |
 | `ModelSession.cs` | ORT model lifecycle |
+| `WordTiming.cs` | Word + start/end time record |
 | `AudioSource.cs` | `IAudioSource` + Mic/Loopback/Mix |
 | `AudioUtils.cs` | Convert, Resample, LoadFile |
-| `Transcriber.cs` | RunFile, RunLive orchestration |
+| `Transcriber.cs` | RunFile, RunLive orchestration, word timing |
 
 ---
 

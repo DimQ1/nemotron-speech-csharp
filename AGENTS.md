@@ -29,6 +29,9 @@ dotnet test VoiceType.Tests/VoiceType.Tests.csproj --filter "FullyQualifiedName~
 
 # E2E tests only (real HuggingFace API)
 dotnet test VoiceType.Tests/VoiceType.Tests.csproj --filter "FullyQualifiedName~E2E_"
+
+# Word-timestamp tests (unit + E2E regression, needs model + sample-0.mp3 for E2E)
+dotnet test VoiceType.Tests/VoiceType.Tests.csproj -c Release --filter "FullyQualifiedName~WordTimings"
 ```
 
 - **Framework:** xUnit 2.9.0
@@ -65,11 +68,12 @@ VoiceType.Tests (net10.0-windows, xUnit)
 | **ImplicitUsings** | `enable` everywhere |
 | **File-scoped namespaces** | `namespace VoiceType.Services;` |
 | **Private fields** | `_camelCase` — `_isRunning`, `_recognizer` |
-| **Interfaces** | `I` prefix in `Interfaces/` folder |
+| **Interfaces** | `I` prefix in `Interfaces/` folder. Default interface methods for optional features (e.g. `LastTokenCount => 0`). |
 | **MVVM** | Manual `INotifyPropertyChanged` + custom `RelayCommand`/`AsyncRelayCommand` in `ViewModels/Commands.cs` |
 | **Services** | `sealed class : IDisposable` or `static class` in `Services/` |
 | **WPF dispatcher** | All UI updates via `Application.Current.Dispatcher.Invoke()` in ViewModels |
 | **Events vs callbacks** | Services use `event Action<T>?` pattern; ViewModels subscribe and dispatch to UI |
+| **DecodeResult** | `ModelSession.DecodeTokens()` returns `DecodeResult(Text, TokenCount)` — a `readonly record struct`. Interface impls discard `.TokenCount` via `.Text`.
 
 ## Critical Pitfalls
 
@@ -115,15 +119,19 @@ Cannot be reassigned after construction. Use `Clear()` + `AddRange()` instead.
 | **Audio pipeline** | `SpeechLib/Audio/ConcurrentQueueWrapper.cs`, `SpeechLib/Transcriber.cs` |
 | **CLI entry** | `NemotronSpeech/Program.cs`, `NemotronSpeech/AppOptions.cs` |
 | **ONNX GenAI** | `NemotronSpeech/ModelSession.cs` |
+| **Word timestamps** | `SpeechLib/Models/WordTiming.cs`, `SpeechLib/Transcriber.cs` (AddWordTimings) |
 | **WPF main VM** | `VoiceType/ViewModels/MainViewModel.cs` |
 | **Downloader** | `VoiceType/Services/ModelDownloaderService.cs`, `VoiceType/ViewModels/ModelDownloaderViewModel.cs` |
 | **Text injection** | `VoiceType/Services/TextInjector.cs` |
 | **Commands** | `VoiceType/ViewModels/Commands.cs` |
 | **App startup** | `VoiceType/App.xaml.cs` |
+| **Tests** | `VoiceType.Tests/Unit_WordTimingsTests.cs`, `VoiceType.Tests/E2E_WordTimingsRegressionTests.cs` |
+| **Baseline** | `VoiceType.Tests/Data/sample-0-wordtimings-baseline.txt` |
 
 ## Related Docs
 
 - [README.md](README.md) — project overview, models, demo
 - [converter/README.md](converter/README.md) — NeMo → ONNX conversion (Python)
+- [Doc/nemotron-3.5-asr-timestamps-analysis.md](Doc/nemotron-3.5-asr-timestamps-analysis.md) — model timestamp capabilities (RNN-T durations, frame rate, token-level alignment)
 - `.claude/skills/nemotron-backend/SKILL.md` — Claude-specific backend patterns
 - `.claude/skills/nemotron-ui/SKILL.md` — Claude-specific UI patterns
