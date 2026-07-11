@@ -43,6 +43,9 @@ public static class Transcriber
         {
             int remaining = Math.Min(recognizer.ChunkSamples, audio.Length - i);
             var chunk = audio[i..(i + remaining)];
+
+            // Capture token count BEFORE ProcessAudio (it's set by the previous call's DecodeTokens).
+            // We read it after ProcessAudio returns, when LastTokenCount reflects the current chunk.
             var text = recognizer.ProcessAudio(chunk);
 
             if (text is not null)
@@ -53,7 +56,7 @@ public static class Transcriber
                 {
                     double chunkStart = i / sampleRate;
                     double chunkEnd = (i + remaining) / sampleRate;
-                    AddWordTimings(timings, text, chunkStart, chunkEnd);
+                    AddWordTimings(timings, text, chunkStart, chunkEnd, recognizer.LastTokenCount);
                 }
             }
         }
@@ -65,11 +68,11 @@ public static class Transcriber
 
             if (wordTimestamps)
             {
-                // Flush covers remaining audio — use the last chunk end to total duration
                 double flushStart = (audio.Length - (audio.Length % recognizer.ChunkSamples)) / sampleRate;
                 if (timings.Count > 0)
                     flushStart = timings[^1].EndSeconds;
-                AddWordTimings(timings, flush, flushStart, totalDuration);
+                int tokenCount = recognizer.LastTokenCount;
+                AddWordTimings(timings, flush, flushStart, totalDuration, tokenCount);
             }
         }
 
@@ -92,7 +95,7 @@ public static class Transcriber
     }
 
     private static void AddWordTimings(List<WordTiming> timings, string text,
-        double chunkStartSec, double chunkEndSec)
+        double chunkStartSec, double chunkEndSec, int tokenCount = 0)
     {
         // Strip language tags — they are metadata, not spoken words.
         text = LanguageTagPattern.Replace(text, "").Trim();
@@ -105,36 +108,57 @@ public static class Transcriber
         // Classify tokens: words vs punctuation-only.
         // Punctuation tokens are merged into the preceding word's time span.
         var words = new List<string>();
-        var isPunct = new List<bool>();
         foreach (var token in rawTokens)
         {
             if (IsPunctuationOnly(token))
             {
-                // Attach to previous word if one exists.
                 if (words.Count > 0)
                     words[^1] += token;
-                // Otherwise drop (leading punctuation with no word to attach to).
             }
             else
             {
                 words.Add(token);
-                isPunct.Add(false);
             }
         }
 
         if (words.Count == 0) return;
 
-        // Weight time distribution by character length of each word.
-        double totalLen = words.Sum(w => (double)w.Length);
         double duration = chunkEndSec - chunkStartSec;
-        double offset = chunkStartSec;
 
-        foreach (var word in words)
+        // Phase 2: use token count for token-aware time distribution.
+        // Each non-blank token ≈ one encoder frame (~80ms) of speech.
+        // Estimate tokens per word from the chunk's avg chars-per-token ratio,
+        // then distribute chunk time proportionally to estimated token counts.
+        double totalWeight;
+        double[] weights;
+
+        if (tokenCount > 0)
         {
-            double wordDuration = duration * (word.Length / totalLen);
+            double totalChars = words.Sum(w => (double)w.Length);
+            double avgCharsPerToken = totalChars / tokenCount;
+
+            weights = new double[words.Count];
+            for (int i = 0; i < words.Count; i++)
+            {
+                // Estimate token count per word, minimum 1 token per word.
+                weights[i] = Math.Max(1.0, words[i].Length / avgCharsPerToken);
+            }
+            totalWeight = weights.Sum();
+        }
+        else
+        {
+            // Fallback: weight by character length.
+            weights = words.Select(w => (double)w.Length).ToArray();
+            totalWeight = weights.Sum();
+        }
+
+        double offset = chunkStartSec;
+        for (int i = 0; i < words.Count; i++)
+        {
+            double wordDuration = duration * (weights[i] / totalWeight);
             timings.Add(new WordTiming
             {
-                Word = word,
+                Word = words[i],
                 StartSeconds = offset,
                 EndSeconds = offset + wordDuration
             });

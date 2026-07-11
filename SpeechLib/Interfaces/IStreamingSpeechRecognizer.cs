@@ -24,4 +24,10 @@ public interface IStreamingSpeechRecognizer : IDisposable
     /// Call once at the end of the audio stream.
     /// </summary>
     string? Flush();
+
+    /// <summary>
+    /// Number of non-blank tokens produced by the most recent <see cref="ProcessAudio"/> or <see cref="Flush"/> call.
+    /// Returns 0 if the implementation does not track token counts.
+    /// </summary>
+    int LastTokenCount => 0;
 }

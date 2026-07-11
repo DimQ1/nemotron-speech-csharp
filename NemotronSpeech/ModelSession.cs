@@ -86,7 +86,7 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         var inputs = _processor.Process(chunk);
         if (inputs is null) return null;
         _generator.SetInputs(inputs);
-        return DecodeTokens();
+        return DecodeTokens().Text;
     }
 
     /// <inheritdoc />
@@ -95,21 +95,29 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         var inputs = _processor.Flush();
         if (inputs is null) return null;
         _generator.SetInputs(inputs);
-        return DecodeTokens();
+        return DecodeTokens().Text;
     }
 
     int IStreamingSpeechRecognizer.SampleRate => SampleRate;
     int IStreamingSpeechRecognizer.ChunkSamples => ChunkSamples;
 
-    public string DecodeTokens()
+    /// <summary>Number of tokens produced by the most recent <see cref="DecodeTokens"/> call.</summary>
+    public int LastTokenCount { get; private set; }
+
+    /// <summary>Result of a single decode pass: decoded text + token count.</summary>
+    public readonly record struct DecodeResult(string Text, int TokenCount);
+
+    public DecodeResult DecodeTokens()
     {
         var text = new StringBuilder();
+        int tokenCount = 0;
         while (!_generator.IsDone())
         {
             _generator.GenerateNextToken();
             var tokens = _generator.GetNextTokens();
             if (tokens.Length > 0)
             {
+                tokenCount++;
                 var t = _tokenizerStream.Decode(tokens[0]);
                 if (!string.IsNullOrEmpty(t))
                 {
@@ -117,7 +125,9 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
                 }
             }
         }
-        return text.ToString();
+        var result = new DecodeResult(text.ToString(), tokenCount);
+        LastTokenCount = tokenCount;
+        return result;
     }
 
     public void Dispose()
