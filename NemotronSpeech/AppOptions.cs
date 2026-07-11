@@ -10,6 +10,7 @@ public sealed record AppOptions
     public string ExecutionProvider { get; init; } = "follow_config";
     public string LanguageArg { get; init; } = "";
     public bool UseVad { get; init; }
+    public bool WordTimestamps { get; init; }
     public CaptureMode Mode { get; init; } = CaptureMode.File;
 
     public bool IsLive => Mode != CaptureMode.File;
@@ -33,6 +34,8 @@ public sealed record AppOptions
                     opts = opts with { LanguageArg = args[++i] }; break;
                 case "--use_vad" when i + 1 < args.Length && args[i + 1] == "true":
                     opts = opts with { UseVad = true }; i++; break;
+                case "--word-timestamps":
+                    opts = opts with { WordTimestamps = true }; break;
                 default:
                     // Recognise known EP names first, then fall back to audio file
                     if (args[i] is "cpu" or "cuda" or "dml" or "tensorrt" or "NvTensorRtRtx" or "follow_config")

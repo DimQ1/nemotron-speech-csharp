@@ -26,6 +26,9 @@ try
 
     if (opts.IsLive)
     {
+        if (opts.WordTimestamps)
+            Console.WriteLine("  Note: --word-timestamps is ignored in live mode (file mode only).");
+
         var source = Transcriber.CreateAudioSource(opts.Mode, session.SampleRate);
 
         var label = opts.Mode switch
@@ -40,12 +43,12 @@ try
     }
     else
     {
-        Transcriber.RunFile(opts.AudioFile!, session);
+        Transcriber.RunFile(opts.AudioFile!, session, opts.WordTimestamps, out _);
     }
 }
 catch (Exception ex) when (ex is ArgumentException or DirectoryNotFoundException)
 {
     Console.WriteLine($"Error: {ex.Message}");
-    Console.WriteLine("Usage: NemotronSpeech <model_path> <audio_file|--mic|--loopback|--mix> [ep] [--language <code>]");
+    Console.WriteLine("Usage: NemotronSpeech <model_path> <audio_file|--mic|--loopback|--mix> [ep] [--language <code>] [--word-timestamps]");
 }
 

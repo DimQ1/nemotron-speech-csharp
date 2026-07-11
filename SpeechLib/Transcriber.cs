@@ -1,6 +1,7 @@
 using SpeechLib.Audio;
 using SpeechLib.Models;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SpeechLib;
 
@@ -10,32 +11,145 @@ namespace SpeechLib;
 /// </summary>
 public static class Transcriber
 {
+    /// <summary>Regex to match language tags like &lt;en-US&gt;, &lt;bg-BG&gt;, &lt;de-DE&gt;.</summary>
+    private static readonly Regex LanguageTagPattern = new(
+        @"<\w{2,3}(-\w{2,4})?>", RegexOptions.Compiled);
+
     /// <summary>Transcribe a pre-recorded audio file.</summary>
     public static string RunFile(string audioPath, IStreamingSpeechRecognizer recognizer)
+        => RunFile(audioPath, recognizer, wordTimestamps: false, out _);
+
+    /// <summary>
+    /// Transcribe a pre-recorded audio file with optional word-level timestamps.
+    /// </summary>
+    /// <param name="audioPath">Path to the audio file.</param>
+    /// <param name="recognizer">The speech recognizer.</param>
+    /// <param name="wordTimestamps">When true, computes and outputs word-level start/end times.</param>
+    /// <param name="timings">Receives the list of word timings (empty when <paramref name="wordTimestamps"/> is false).</param>
+    /// <returns>The full transcript text.</returns>
+    public static string RunFile(string audioPath, IStreamingSpeechRecognizer recognizer,
+        bool wordTimestamps, out List<WordTiming> timings)
     {
         var audio = AudioUtils.LoadFile(audioPath, recognizer.SampleRate);
-        Console.WriteLine($"Audio: {audio.Length / (double)recognizer.SampleRate:F1}s ({audio.Length} samples)");
+        var totalDuration = audio.Length / (double)recognizer.SampleRate;
+        Console.WriteLine($"Audio: {totalDuration:F1}s ({audio.Length} samples)");
         Console.WriteLine(new string('-', 60));
 
         var transcript = new StringBuilder();
+        timings = new List<WordTiming>();
+        var sampleRate = (double)recognizer.SampleRate;
+
         for (int i = 0; i < audio.Length; i += recognizer.ChunkSamples)
         {
             int remaining = Math.Min(recognizer.ChunkSamples, audio.Length - i);
             var chunk = audio[i..(i + remaining)];
             var text = recognizer.ProcessAudio(chunk);
+
             if (text is not null)
+            {
                 transcript.Append(text);
+
+                if (wordTimestamps)
+                {
+                    double chunkStart = i / sampleRate;
+                    double chunkEnd = (i + remaining) / sampleRate;
+                    AddWordTimings(timings, text, chunkStart, chunkEnd);
+                }
+            }
         }
 
         var flush = recognizer.Flush();
         if (flush is not null)
+        {
             transcript.Append(flush);
+
+            if (wordTimestamps)
+            {
+                // Flush covers remaining audio — use the last chunk end to total duration
+                double flushStart = (audio.Length - (audio.Length % recognizer.ChunkSamples)) / sampleRate;
+                if (timings.Count > 0)
+                    flushStart = timings[^1].EndSeconds;
+                AddWordTimings(timings, flush, flushStart, totalDuration);
+            }
+        }
 
         Console.WriteLine($"\n{new string('=', 60)}");
         Console.WriteLine($"  {transcript.ToString().Trim()}");
         Console.WriteLine(new string('=', 60));
 
+        if (wordTimestamps && timings.Count > 0)
+        {
+            Console.WriteLine($"\n  Word timings ({timings.Count} words):");
+            Console.WriteLine(new string('-', 60));
+            foreach (var wt in timings)
+            {
+                Console.WriteLine($"  [{wt.StartSeconds:F2}s -> {wt.EndSeconds:F2}s] {wt.Word}");
+            }
+            Console.WriteLine(new string('-', 60));
+        }
+
         return transcript.ToString();
+    }
+
+    private static void AddWordTimings(List<WordTiming> timings, string text,
+        double chunkStartSec, double chunkEndSec)
+    {
+        // Strip language tags — they are metadata, not spoken words.
+        text = LanguageTagPattern.Replace(text, "").Trim();
+        if (text.Length == 0) return;
+
+        // Split into tokens.
+        var rawTokens = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (rawTokens.Length == 0) return;
+
+        // Classify tokens: words vs punctuation-only.
+        // Punctuation tokens are merged into the preceding word's time span.
+        var words = new List<string>();
+        var isPunct = new List<bool>();
+        foreach (var token in rawTokens)
+        {
+            if (IsPunctuationOnly(token))
+            {
+                // Attach to previous word if one exists.
+                if (words.Count > 0)
+                    words[^1] += token;
+                // Otherwise drop (leading punctuation with no word to attach to).
+            }
+            else
+            {
+                words.Add(token);
+                isPunct.Add(false);
+            }
+        }
+
+        if (words.Count == 0) return;
+
+        // Weight time distribution by character length of each word.
+        double totalLen = words.Sum(w => (double)w.Length);
+        double duration = chunkEndSec - chunkStartSec;
+        double offset = chunkStartSec;
+
+        foreach (var word in words)
+        {
+            double wordDuration = duration * (word.Length / totalLen);
+            timings.Add(new WordTiming
+            {
+                Word = word,
+                StartSeconds = offset,
+                EndSeconds = offset + wordDuration
+            });
+            offset += wordDuration;
+        }
+    }
+
+    private static bool IsPunctuationOnly(string token)
+    {
+        foreach (char c in token)
+        {
+            if (!char.IsPunctuation(c) && c != '\'')
+                return false;
+        }
+        return true;
     }
 
     /// <summary>
