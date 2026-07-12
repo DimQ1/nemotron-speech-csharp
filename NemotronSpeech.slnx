@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/DiarizationConverter/">
+    <Project Path="DiarizationConverter/DiarizationTest/DiarizationTest.csproj" />
+  </Folder>
   <Project Path="BenchmarkSuite1/BenchmarkSuite1.csproj" />
   <Project Path="NemotronSpeech/NemotronSpeech.csproj" />
   <Project Path="SpeechLib/SpeechLib.csproj" />

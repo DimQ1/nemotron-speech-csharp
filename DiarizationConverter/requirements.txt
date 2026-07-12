@@ -1,0 +1,14 @@
+# DiarizationConverter — ONNX Model Conversion & Test Suite
+# 
+# Python dependencies for model download, export, quantization, and verification.
+
+torch>=2.1.0
+onnx>=1.15.0
+onnxruntime>=1.17.0
+nemo-toolkit>=1.22.0
+huggingface_hub>=0.20.0
+transformers>=4.36.0
+numpy>=1.24.0
+soundfile>=0.12.0
+librosa>=0.10.0
+tqdm>=4.66.0

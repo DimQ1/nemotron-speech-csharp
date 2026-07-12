@@ -35,10 +35,13 @@
                     <TextBlock Text="🎙 VoiceType" Foreground="{StaticResource FgBrush}"
                                FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="📥" Style="{StaticResource IconButton}"
+                        <Button Content="&#x1F4C2;" Style="{StaticResource IconButton}"
+                                ToolTip="Batch Audio Transcription"
+                                Command="{Binding OpenBatchWindowCommand}"/>
+                        <Button Content="&#x1F4E5;" Style="{StaticResource IconButton}"
                                 ToolTip="Download Models"
                                 Command="{Binding OpenModelDownloaderCommand}"/>
-                        <Button Content="⚙" Style="{StaticResource IconButton}"
+                        <Button Content="&#x2699;" Style="{StaticResource IconButton}"
                                 ToolTip="Settings"
                                 Command="{Binding OpenSettingsCommand}"/>
                         <Button Content="_" Style="{StaticResource IconButton}"

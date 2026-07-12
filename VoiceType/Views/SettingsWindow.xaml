@@ -50,9 +50,11 @@
                                     Command="{Binding OpenModelDownloaderCommand}"/>
                         </Grid>
 
-                        <TextBlock Text="{Binding ModelPath, StringFormat='Full path: {0}'}" 
-                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="10" 
-                                   Margin="0,0,0,8" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" 
+                                   Margin="0,0,0,8" TextTrimming="CharacterEllipsis">
+                            <Run Text="Full path: "/>
+                            <Run Text="{Binding ModelPath, Mode=OneWay}" Foreground="{StaticResource FgBrush}"/>
+                        </TextBlock>
 
                         <TextBlock Text="Execution Provider" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <ComboBox SelectedValue="{Binding ExecutionProvider}" SelectedValuePath="Content"

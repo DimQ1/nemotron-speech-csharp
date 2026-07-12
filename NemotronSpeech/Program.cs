@@ -24,6 +24,14 @@ try
         Console.WriteLine("  Model: single-language (no lang_id needed)");
     Console.WriteLine("  Use VAD: " + session.VadStatus);
 
+    IDiarizationService? diarization = null;
+    if (opts.DiarizationModel is not null)
+    {
+        Console.WriteLine($"  Diarization: {opts.DiarizationModel}");
+        diarization = new SortformerDiarizationService(opts.DiarizationModel);
+    }
+    using var diarizationDisposable = diarization;
+
     if (opts.IsLive)
     {
         if (opts.WordTimestamps)
@@ -39,16 +47,16 @@ try
             _ => ""
         };
 
-        Transcriber.RunLive(source, label, session);
+        Transcriber.RunLive(source, label, session, diarization);
     }
     else
     {
-        Transcriber.RunFile(opts.AudioFile!, session, opts.WordTimestamps, out _);
+        Transcriber.RunFile(opts.AudioFile!, session, opts.WordTimestamps, out _, diarization);
     }
 }
 catch (Exception ex) when (ex is ArgumentException or DirectoryNotFoundException)
 {
     Console.WriteLine($"Error: {ex.Message}");
-    Console.WriteLine("Usage: NemotronSpeech <model_path> <audio_file|--mic|--loopback|--mix> [ep] [--language <code>] [--word-timestamps]");
+    Console.WriteLine("Usage: NemotronSpeech <model_path> <audio_file|--mic|--loopback|--mix> [ep] [--language <code>] [--word-timestamps] [--diarization <model_path>]");
 }
 

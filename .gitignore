@@ -7,6 +7,10 @@ __pycache__/
 # ── Models (large files — download separately) ───
 models-onnx/
 models-original/
+Models/
+DiarizationConverter/models/
+DiarizationConverter/raw/
+DiarizationConverter/dataset/
 build/
 converter/build/
 

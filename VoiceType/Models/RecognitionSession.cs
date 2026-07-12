@@ -20,6 +20,7 @@ public sealed class RecognitionSession
     public string AudioSource { get; init; } = "Mic";
 
     public string RecognizedText { get; set; } = "";
+
     public string? AudioFilePath { get; set; }
 
     public bool IsComplete { get; set; }

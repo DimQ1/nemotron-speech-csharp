@@ -39,6 +39,20 @@ public sealed class RecognitionService : IDisposable
 
     public void Initialize(AppSettings settings)
     {
+        _recognizer = CreateRecognizer(settings);
+    }
+
+    /// <summary>Initialize on a background thread to keep UI responsive.</summary>
+    public Task InitializeAsync(AppSettings settings)
+    {
+        return Task.Run(() =>
+        {
+            _recognizer = CreateRecognizer(settings);
+        });
+    }
+
+    private static ModelSession CreateRecognizer(AppSettings settings)
+    {
         var modelPath = string.IsNullOrEmpty(settings.ModelPath)
             ? Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx", ModelSubfolder(settings.ExecutionProvider))
             : settings.ModelPath;
@@ -55,7 +69,7 @@ public sealed class RecognitionService : IDisposable
             repetition_penalty = settings.RepetitionPenalty
         };
 
-        _recognizer = new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
+        return new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
     }
 
     public void Start(AppSettings settings)
@@ -135,6 +149,7 @@ public sealed class RecognitionService : IDisposable
                     await _audioRecorder.AppendAsync(batch).ConfigureAwait(false);
 
                 var raw = _recognizer!.ProcessAudio(batch);
+
                 if (raw is not null)
                 {
                     _accumulatedText.Append(raw);
@@ -162,7 +177,10 @@ public sealed class RecognitionService : IDisposable
 
         // Flush
         var final = _recognizer!.Flush();
-        if (final is not null) _accumulatedText.Append(final);
+        if (final is not null)
+        {
+            _accumulatedText.Append(final);
+        }
 
         var finalProcessed = PostProcessingPipeline.ProcessFinal(_accumulatedText.ToString(), compiledProcRules);
 

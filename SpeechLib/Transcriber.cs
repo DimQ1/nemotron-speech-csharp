@@ -17,18 +17,19 @@ public static class Transcriber
 
     /// <summary>Transcribe a pre-recorded audio file.</summary>
     public static string RunFile(string audioPath, IStreamingSpeechRecognizer recognizer)
-        => RunFile(audioPath, recognizer, wordTimestamps: false, out _);
+        => RunFile(audioPath, recognizer, wordTimestamps: false, out _, diarization: null);
 
     /// <summary>
-    /// Transcribe a pre-recorded audio file with optional word-level timestamps.
+    /// Transcribe a pre-recorded audio file with optional word-level timestamps and speaker diarization.
     /// </summary>
     /// <param name="audioPath">Path to the audio file.</param>
     /// <param name="recognizer">The speech recognizer.</param>
     /// <param name="wordTimestamps">When true, computes and outputs word-level start/end times.</param>
     /// <param name="timings">Receives the list of word timings (empty when <paramref name="wordTimestamps"/> is false).</param>
-    /// <returns>The full transcript text.</returns>
+    /// <param name="diarization">Optional diarization service for speaker identification.</param>
+    /// <returns>The full transcript text, optionally annotated with speaker labels.</returns>
     public static string RunFile(string audioPath, IStreamingSpeechRecognizer recognizer,
-        bool wordTimestamps, out List<WordTiming> timings)
+        bool wordTimestamps, out List<WordTiming> timings, IDiarizationService? diarization = null)
     {
         var audio = AudioUtils.LoadFile(audioPath, recognizer.SampleRate);
         var totalDuration = audio.Length / (double)recognizer.SampleRate;
@@ -77,6 +78,42 @@ public static class Transcriber
         }
 
         Console.WriteLine($"\n{new string('=', 60)}");
+
+        // ── Diarization: merge ASR word timings with speaker segments ──
+        if (diarization is not null && timings.Count > 0)
+        {
+            Console.WriteLine("  Running speaker diarization...");
+            var segments = diarization.Diarize(audio);
+            Console.WriteLine($"  Found {segments.Count} speaker segments from {segments.Select(s => s.SpeakerId).Distinct().Count()} speakers");
+
+            // Assign each word to a speaker based on time overlap
+            var speakerTexts = new Dictionary<string, List<string>>();
+            foreach (var wt in timings)
+            {
+                double wordMid = (wt.StartSeconds + wt.EndSeconds) / 2.0;
+                var bestSeg = segments
+                    .Where(s => wordMid >= s.StartSeconds && wordMid <= s.EndSeconds)
+                    .MaxBy(s => s.EndSeconds - s.StartSeconds);
+
+                string speaker = bestSeg?.SpeakerId ?? "SPEAKER_??";
+                if (!speakerTexts.ContainsKey(speaker))
+                    speakerTexts[speaker] = new List<string>();
+                speakerTexts[speaker].Add(wt.Word);
+            }
+
+            // Output transcript grouped by speaker
+            Console.WriteLine(new string('-', 60));
+            foreach (var (speaker, words) in speakerTexts.OrderBy(kv => kv.Key))
+            {
+                Console.Write($"  {speaker}: ");
+                Console.WriteLine(string.Join(" ", words));
+            }
+            Console.WriteLine(new string('-', 60));
+
+            Console.WriteLine($"\n{new string('=', 60)}");
+            Console.WriteLine("  [Raw transcript]");
+        }
+
         Console.WriteLine($"  {transcript.ToString().Trim()}");
         Console.WriteLine(new string('=', 60));
 
@@ -182,6 +219,14 @@ public static class Transcriber
     /// The recognizer buffers internally and returns results when ready.
     /// </summary>
     public static string RunLive(IAudioSource source, string label, IStreamingSpeechRecognizer recognizer)
+        => RunLive(source, label, recognizer, diarization: null);
+
+    /// <summary>
+    /// Transcribe from a live audio source with optional speaker diarization.
+    /// Diarization runs at the end on the accumulated audio buffer (not real-time).
+    /// </summary>
+    public static string RunLive(IAudioSource source, string label,
+        IStreamingSpeechRecognizer recognizer, IDiarizationService? diarization)
     {
         Console.WriteLine($"  Capture: {label}");
         Console.WriteLine($"  Sample rate: {recognizer.SampleRate} Hz, Chunk: {recognizer.ChunkSamples} samples " +
@@ -193,6 +238,7 @@ public static class Transcriber
         var dataSignal = new ManualResetEventSlim(false);
         var captureState = new CaptureState();
         var transcript = new StringBuilder();
+        var allAudio = diarization is not null ? new List<float[]>() : null;
 
         Warmup(recognizer);
 
@@ -211,6 +257,7 @@ public static class Transcriber
                 var text = recognizer.ProcessAudio(batch);
                 if (text is not null)
                     transcript.Append(text);
+                allAudio?.Add(batch);
                 gotData = true;
             }
 
@@ -236,6 +283,21 @@ public static class Transcriber
         var flush = recognizer.Flush();
         if (flush is not null)
             transcript.Append(flush);
+
+        // Run diarization on accumulated audio
+        if (diarization is not null && allAudio is not null && allAudio.Count > 0)
+        {
+            var fullAudio = allAudio.SelectMany(a => a).ToArray();
+            if (fullAudio.Length > diarization.SampleRate * 1)
+            {
+                Console.WriteLine($"\n  Running diarization on {fullAudio.Length / (double)diarization.SampleRate:F1}s...");
+                var segments = diarization.Diarize(fullAudio);
+                Console.WriteLine($"  Speakers: {segments.Select(s => s.SpeakerId).Distinct().Count()}, Segments: {segments.Count}");
+                foreach (var seg in segments)
+                    Console.WriteLine($"    {seg.SpeakerId}: [{seg.StartSeconds:F1}s - {seg.EndSeconds:F1}s]");
+                Console.WriteLine(new string('-', 60));
+            }
+        }
 
         Console.WriteLine($"\n{new string('=', 60)}");
         Console.WriteLine($"  {transcript.ToString().Trim()}");

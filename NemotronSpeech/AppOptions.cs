@@ -11,6 +11,7 @@ public sealed record AppOptions
     public string LanguageArg { get; init; } = "";
     public bool UseVad { get; init; }
     public bool WordTimestamps { get; init; }
+    public string? DiarizationModel { get; init; }
     public CaptureMode Mode { get; init; } = CaptureMode.File;
 
     public bool IsLive => Mode != CaptureMode.File;
@@ -36,6 +37,8 @@ public sealed record AppOptions
                     opts = opts with { UseVad = true }; i++; break;
                 case "--word-timestamps":
                     opts = opts with { WordTimestamps = true }; break;
+                case "--diarization" when i + 1 < args.Length:
+                    opts = opts with { DiarizationModel = args[++i] }; break;
                 default:
                     // Recognise known EP names first, then fall back to audio file
                     if (args[i] is "cpu" or "cuda" or "dml" or "tensorrt" or "NvTensorRtRtx" or "follow_config")

@@ -11,6 +11,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using VoiceType.Models;
 using VoiceType.Services;
+using SpeechLib.Models;
 
 namespace VoiceType.ViewModels;
 
@@ -55,12 +56,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _isAutoScrollEnabled = _settings.IsAutoScrollEnabled;
         _disableInjectionOnFocusChange = _settings.DisableInjectionOnFocusChange;
 
-        StartCommand = new RelayCommand(Start, () => !IsRecording);
+        StartCommand = new AsyncRelayCommand(StartAsync, () => !IsRecording);
         StopCommand = new RelayCommand(Stop, () => IsRecording);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
         ToggleCommand = new RelayCommand(Toggle);
         CopyCommand = new RelayCommand(CopyText);
         OpenModelDownloaderCommand = new RelayCommand(OpenModelDownloader);
+        OpenBatchWindowCommand = new RelayCommand(OpenBatchWindow);
         MuteCommand = new RelayCommand(ToggleMute, () => IsRecording);
 
         _hook.InputDetected += OnInputDetected;
@@ -82,7 +84,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
     public string RecognizedText { get => _recognizedText; set => SetProperty(ref _recognizedText, value); }
-    public string FloatingText { get => _floatingText; set => SetProperty(ref _floatingText, value); }
+    
+    public string FloatingText
+    {
+        get => _floatingText;
+        set => SetProperty(ref _floatingText, value);
+    }
+
     public bool IsTextInjectionEnabled
     {
         get => _isTextInjectionEnabled;
@@ -100,7 +108,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     _injectionExplicitlyEnabled = true;
 
                     if (!IsRecording)
-                        Start();
+                        _ = StartAsync();
                 }
 
                 IsActivelyInjecting = _isTextInjectionEnabled && IsRecording;
@@ -191,6 +199,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ICommand ToggleCommand { get; }
     public ICommand CopyCommand { get; }
     public ICommand OpenModelDownloaderCommand { get; }
+    public ICommand OpenBatchWindowCommand { get; }
     public ICommand MuteCommand { get; }
 
     // ── Hotkey ──────────────────────────────────────
@@ -202,7 +211,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void TryAutoStart()
     {
         if (_settings.AutoStartRecognition && !IsRecording)
-            Start();
+            _ = StartAsync();
     }
 
     public void RegisterHotkey(nint hwnd)
@@ -272,7 +281,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void Toggle()
     {
         if (IsRecording) Stop();
-        else Start();
+        else _ = StartAsync();
     }
 
     public void ToggleMute()
@@ -316,16 +325,26 @@ public sealed class MainViewModel : INotifyPropertyChanged
         window.Show();
     }
 
-    private void Start()
+    private void OpenBatchWindow()
+    {
+        var batchWindow = new Views.BatchAudioWindow
+        {
+            Owner = Application.Current.MainWindow
+        };
+        batchWindow.Show();
+    }
+
+    private async Task StartAsync()
     {
         if (IsRecording) return;
         ApplySettingsSnapshot(SettingsService.Load());
 
-        StatusText = "Initializing engine...";
+        StatusText = "Loading model...";
         RecognizedText = "";
         FloatingText = "";
         _lastInjectedLength = 0;
         _injectionTargetWindow = GetForegroundWindow();
+
         lock (_partialResultGate)
         {
             _pendingPartialText = null;
@@ -334,7 +353,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            // Compute ModelPath from root + selection if not set directly
             if (string.IsNullOrEmpty(_settings.ModelPath) && !string.IsNullOrEmpty(_settings.ModelsRootPath))
             {
                 _settings.ModelPath = Path.Combine(_settings.ModelsRootPath, _settings.SelectedModel);
@@ -342,7 +360,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             }
 
             Console.WriteLine($"[VoiceType] Initializing recognizer: path={_settings.ModelPath}, ep={_settings.ExecutionProvider}, lang={_settings.Language}, vad={_settings.UseVad}");
-            _recognition.Initialize(_settings);
+            await _recognition.InitializeAsync(_settings).ConfigureAwait(true);
             Console.WriteLine("[VoiceType] Recognizer initialized OK");
 
             _currentSession = SessionManager.CreateSession(

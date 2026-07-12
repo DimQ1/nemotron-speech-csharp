@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>DiarizationTest</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    Choose ONNX Runtime provider:
+      Default (CPU):    dotnet build
+      DML (GPU):        dotnet build -p:GpuArch=DML
+  -->
+  <PropertyGroup>
+    <GpuArch Condition="'$(GpuArch)' == ''">CPU</GpuArch>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.3.0" />
+  </ItemGroup>
+
+  <Choose>
+    <When Condition="'$(GpuArch)' == 'DML'">
+      <PropertyGroup>
+        <DefineConstants>$(DefineConstants);GPU_DML</DefineConstants>
+      </PropertyGroup>
+      <ItemGroup>
+        <!-- DirectML provider: ORT 1.24.4 for DML EP (latest available with DML package) -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.24.4" />
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <!-- ORT 1.27.1 — Conformer MHA fusion, DQ→MatMulNBits v2, +25% CPU perf -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.27.1" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+
+</Project>
