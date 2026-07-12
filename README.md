@@ -118,6 +118,40 @@ File-mode only. Outputs each word with its `[start → end]` time in seconds:
 | **Granularity** | ~560ms per chunk, refined by token-count weighting |
 | **Punctuation** | Merged into preceding word (no standalone `.` or `,` entries) |
 | **Language tags** | `<en-US>`, `<de-DE>` etc. filtered from timing output |
+
+## Speaker Diarization
+
+Speaker diarization ("who spoke when") is available in the [VoiceType](VoiceType/README.md) batch transcription window. Uses NVIDIA Sortformer 4spk-v2 exported to ONNX.
+
+### Models (HuggingFace)
+
+| Model | Size | Speed | Repo |
+|-------|------|-------|------|
+| Sortformer FP32 | 470 MB | 16× real-time | [`DimQ1/sortformer-4spk-v2-onnx-fp32-cpu`](https://huggingface.co/DimQ1/sortformer-4spk-v2-onnx-fp32-cpu) |
+| Sortformer INT8 | 129 MB | 29× real-time | [`DimQ1/sortformer-4spk-v2-onnx-int8-cpu`](https://huggingface.co/DimQ1/sortformer-4spk-v2-onnx-int8-cpu) |
+| Sortformer INT4 | 73 MB | 33× real-time | [`DimQ1/sortformer-4spk-v2-onnx-int4-cpu`](https://huggingface.co/DimQ1/sortformer-4spk-v2-onnx-int4-cpu) |
+
+### Test Dataset
+
+100 real speech samples (LibriSpeech test-clean) for diarization evaluation:
+
+→ [`DimQ1/sortformer-diarization-test-set`](https://huggingface.co/datasets/DimQ1/sortformer-diarization-test-set)
+
+```python
+from huggingface_hub import snapshot_download
+dataset_path = snapshot_download("DimQ1/sortformer-diarization-test-set", repo_type="dataset")
+```
+
+### Similar Datasets for Diarization
+
+| Dataset | Description | Source |
+|---------|-------------|--------|
+| **LibriSpeech** | 1000h English read speech | [openslr.org/12](https://www.openslr.org/12) |
+| **VoxCeleb 1&2** | 7000+ celebrity speakers | [robots.ox.ac.uk/~vgg/data/voxceleb](https://www.robots.ox.ac.uk/~vgg/data/voxceleb/) |
+| **AMI Corpus** | 100h meeting recordings | [groups.inf.ed.ac.uk/ami/corpus](https://groups.inf.ed.ac.uk/ami/corpus/) |
+| **CALLHOME** | Multilingual telephone speech | [catalog.ldc.upenn.edu/LDC97S42](https://catalog.ldc.upenn.edu/LDC97S42) |
+| **DIHARD III** | Challenging diarization benchmark | [dihardchallenge.github.io/dihard3](https://dihardchallenge.github.io/dihard3/) |
+| **MUSAN** | Music/speech/noise for augmentation | [openslr.org/17](https://www.openslr.org/17/) |
 | **Time distribution** | Weighted by estimated token count per word (Phase 2) |
 | **Model** | `SpeechLib/Models/WordTiming.cs` — `Word`, `StartSeconds`, `EndSeconds` |
 | **CLI flag** | `--word-timestamps` (ignored in live/mic mode) |
