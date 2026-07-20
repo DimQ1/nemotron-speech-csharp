@@ -7,7 +7,7 @@ Encoder: INT8 QDQ (~2.5 GB -> ~700 MB)
 Decoder: INT8 QDQ (~57 MB -> ~15 MB)
 Joint:   INT8 QDQ (~36 MB -> ~10 MB)
 
-Output: models-onnx/qnn-int8/
+Output: modules/asr/qnn-int8/
 
 Usage:
     cd converter
@@ -27,8 +27,8 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 _RECIPE_ROOT = _SCRIPT_DIR.parent
 _PROJECT_ROOT = _RECIPE_ROOT.parent
 
-SRC_DIR = _PROJECT_ROOT / "models-onnx" / "qnn"
-DST_DIR = _PROJECT_ROOT / "models-onnx" / "qnn-int8"
+SRC_DIR = _PROJECT_ROOT / "modules" / "asr" / "qnn"
+DST_DIR = _PROJECT_ROOT / "modules" / "asr" / "qnn-int8"
 
 
 class DummyCalibrationDataReader(CalibrationDataReader):

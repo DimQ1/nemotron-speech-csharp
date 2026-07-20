@@ -4,7 +4,11 @@ __pycache__/
 *.pyc
 *.egg-info/
 
-# ── Models (large files — download separately) ───
+# ── Models & modules (large files — download separately) ───
+# Ready-to-use models, grouped by module (asr/diarization/denoise)
+modules/
+# Temporary/intermediate conversion artifacts, caches, datasets
+work/
 models-onnx/
 models-original/
 build/

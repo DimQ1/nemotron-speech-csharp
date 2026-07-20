@@ -62,7 +62,7 @@ public class ModelSessionCpuBenchmark
     private ModelSession CreateSession()
     {
         var repoRoot = FindRepoRoot();
-        var modelPath = Path.Combine(repoRoot, "models-onnx", ModelVariant);
+        var modelPath = Path.Combine(repoRoot, "modules", "asr", ModelVariant);
         var searchOptions = new GeneratorParamsArgs
         {
             num_beams = NumBeams,
@@ -95,11 +95,11 @@ public class ModelSessionCpuBenchmark
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            if (Directory.Exists(Path.Combine(dir.FullName, "models-onnx")) && Directory.Exists(Path.Combine(dir.FullName, "Test-Audio")))
+            if (Directory.Exists(Path.Combine(dir.FullName, "modules")) && Directory.Exists(Path.Combine(dir.FullName, "Test-Audio")))
                 return dir.FullName;
             dir = dir.Parent;
         }
 
-        throw new DirectoryNotFoundException("Repository root containing models-onnx and Test-Audio was not found.");
+        throw new DirectoryNotFoundException("Repository root containing modules/ and Test-Audio was not found.");
     }
 }

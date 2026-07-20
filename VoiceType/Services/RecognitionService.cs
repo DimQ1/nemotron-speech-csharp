@@ -40,7 +40,7 @@ public sealed class RecognitionService : IDisposable
     public void Initialize(AppSettings settings)
     {
         var modelPath = string.IsNullOrEmpty(settings.ModelPath)
-            ? Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx", ModelSubfolder(settings.ExecutionProvider))
+            ? Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "modules", "asr", ModelSubfolder(settings.ExecutionProvider))
             : settings.ModelPath;
 
         if (!Path.IsPathRooted(modelPath))

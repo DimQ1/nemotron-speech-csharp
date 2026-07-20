@@ -6,7 +6,7 @@ QNN-specific requirements:
   - Static shapes preferred (QNN struggles with dynamic axes)
   - torch.export / dynamo exporter disabled (standard torch.onnx.export is more QNN-friendly)
 
-Output: models-onnx/qnn/ with encoder.onnx, decoder.onnx, joint.onnx,
+Output: modules/asr/qnn/ with encoder.onnx, decoder.onnx, joint.onnx,
         genai_config.json, audio_processor_config.json, tokenizer, Silero VAD.
 
 Usage:
@@ -32,7 +32,7 @@ _TOKENIZER_SCRIPT = _RECIPE_ROOT / "scripts" / "export_tokenizer.py"
 
 # --------------- defaults ---------------
 DEFAULT_NEMO = str(_RECIPE_ROOT.parent / "models-original" / "nemotron-3.5-asr-streaming-0.6b.nemo")
-DEFAULT_OUTPUT = str(_RECIPE_ROOT.parent / "models-onnx" / "qnn")
+DEFAULT_OUTPUT = str(_RECIPE_ROOT.parent / "modules" / "asr" / "qnn")
 
 
 def _resolve(path: str) -> Path:

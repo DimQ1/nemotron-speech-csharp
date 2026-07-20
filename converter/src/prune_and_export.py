@@ -32,7 +32,7 @@ except Exception as e:
 
 MODEL_NAME = "nvidia/NVIDIA-Nemotron-3.5-ASR-Streaming-Multilingual-0.6b"
 OUTPUT_DIR = _RECIPE_ROOT / "build" / "onnx_models_pruned"
-MODELS_DST = _RECIPE_ROOT.parent / "models-onnx" / "cpu-pruned"
+MODELS_DST = _RECIPE_ROOT.parent / "modules" / "asr" / "cpu-pruned"
 PRUNE_KEEP_EVERY = 2  # Keep every Nth layer (2 = half)
 
 # Updated constants after pruning
@@ -253,7 +253,7 @@ def main():
     subprocess.run(cmd, cwd=str(_SCRIPT_DIR))
 
     # VAD
-    vad_src = _RECIPE_ROOT.parent / "models-onnx" / "cpu" / "silero_vad.onnx"
+    vad_src = _RECIPE_ROOT.parent / "modules" / "asr" / "cpu" / "silero_vad.onnx"
     if vad_src.exists():
         shutil.copy2(vad_src, OUTPUT_DIR / "silero_vad.onnx")
 
@@ -344,8 +344,8 @@ def main():
     with open(OUTPUT_DIR / "genai_config.json", "w") as f:
         json.dump(genai_config, f, indent=2)
 
-    # 7. Copy to models-onnx
-    print("\n── Step 7: Copy to models-onnx/cpu-pruned ──")
+    # 7. Copy to modules/asr
+    print("\n── Step 7: Copy to modules/asr/cpu-pruned ──")
     MODELS_DST.mkdir(parents=True, exist_ok=True)
     for f in OUTPUT_DIR.glob("*"):
         if f.is_file():

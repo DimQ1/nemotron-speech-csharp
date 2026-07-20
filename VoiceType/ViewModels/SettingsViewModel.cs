@@ -129,7 +129,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             System.Windows.Application.Current.MainWindow).Handle;
         var path = FolderBrowser.Show("Select root folder with model subfolders",
             Directory.Exists(ModelsRootPath) ? ModelsRootPath
-                : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx")),
+                : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "modules", "asr")),
             hwnd);
         if (path is not null)
             ModelsRootPath = path;

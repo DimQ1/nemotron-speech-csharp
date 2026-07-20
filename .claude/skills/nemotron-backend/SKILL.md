@@ -267,5 +267,5 @@ Key rules:
 
 1. Build for target GPU: `dotnet build NemotronSpeech -c Release [-p:GpuArch=...]`
 2. Copy CUDA/cuDNN DLLs to output `runtimes\win-x64\native\`
-3. Export/download ONNX model to `models-onnx/<variant>/`
+3. Export/download ONNX model to `modules/asr/<variant>/`
 4. Run: `dotnet run --project NemotronSpeech -c Release --no-build -- "<model_path>" <mode> [ep] [--language <code>]`

@@ -41,7 +41,7 @@ except Exception as e:
 
 MODEL_NAME = "nvidia/NVIDIA-Nemotron-3.5-ASR-Streaming-Multilingual-0.6b"
 OUTPUT_DIR = _RECIPE_ROOT / "build" / "onnx_models_ru_en"
-MODELS_DST = _RECIPE_ROOT.parent / "models-onnx" / "cpu-ru-en"
+MODELS_DST = _RECIPE_ROOT.parent / "modules" / "asr" / "cpu-ru-en"
 
 # Language IDs to keep: 0=en, 1=en-GB, 11=ru
 KEEP_LANG_IDS = [0, 1, 11]
@@ -519,7 +519,7 @@ def main():
     subprocess.run(cmd, cwd=str(_SCRIPT_DIR))
 
     # Copy VAD
-    vad_src = _RECIPE_ROOT.parent / "models-onnx" / "cpu" / "silero_vad.onnx"
+    vad_src = _RECIPE_ROOT.parent / "modules" / "asr" / "cpu" / "silero_vad.onnx"
     if vad_src.exists():
         shutil.copy2(vad_src, OUTPUT_DIR / "silero_vad.onnx")
 
@@ -632,8 +632,8 @@ def main():
     with open(OUTPUT_DIR / "audio_processor_config.json", "w") as f:
         json.dump(audio_config, f, indent=2)
 
-    # 11. Copy to models-onnx
-    print("\n── Step 11: Copy to models-onnx/cpu-ru-en ──")
+    # 11. Copy to modules/asr
+    print("\n── Step 11: Copy to modules/asr/cpu-ru-en ──")
     MODELS_DST.mkdir(parents=True, exist_ok=True)
     for f in OUTPUT_DIR.glob("*"):
         if f.is_file():

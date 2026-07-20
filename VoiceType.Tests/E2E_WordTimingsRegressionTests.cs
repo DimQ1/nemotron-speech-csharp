@@ -15,7 +15,7 @@ public sealed class E2E_WordTimingsRegressionTests
     private static readonly string RepoRoot = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 
-    private static string ModelPath => Path.Combine(RepoRoot, "Models", "nemotron-3.5-asr-streaming-0.6b-onnx-fp32-cpu");
+    private static string ModelPath => Path.Combine(RepoRoot, "modules", "asr", "nemotron-3.5-asr-streaming-0.6b-onnx-fp32-cpu");
     private static string AudioPath => Path.Combine(RepoRoot, "Test-Audio", "sample-0.mp3");
     private static string BaselinePath => Path.Combine(
         AppContext.BaseDirectory, "..", "..", "..", "Data", "sample-0-wordtimings-baseline.txt");

@@ -109,7 +109,7 @@ Default rules:
 ## Running
 
 ```powershell
-# Ensure model is available at models-onnx/cpu/
+# Ensure model is available at modules/asr/cpu/
 dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=CPU
 dotnet run --project VoiceType -c Release
 ```

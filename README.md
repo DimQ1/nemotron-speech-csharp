@@ -21,8 +21,11 @@ nemotron-speech-csharp/
 ├── NemotronSpeech/               # 🎙️ Nemotron ONNX GenAI recognizer (CLI + engine)
 ├── VoiceType/                    # 🖥️ WPF desktop app (streaming dictation)
 ├── converter/                    # 🐍 Python model converter (NeMo → ONNX)
-├── models-onnx/                  # 🧠 Pre-converted ONNX models (CPU, CUDA, DML, QNN)
-├── models-original/              # 📦 Original NeMo model
+├── modules/                      # 🧠 Ready models by module (git-ignored)
+│   ├── asr/                      #    ASR models (cpu, cpu-ru-en, qnn, ...)
+│   ├── diarization/              #    Sortformer diarization models
+│   └── denoise/                  #    DeepFilterNet3 denoise model
+├── work/                         # 🛠️ Temp/intermediate conversion artifacts (git-ignored)
 └── Test-Audio/                   # 🎵 Test audio files
 ```
 
@@ -84,16 +87,16 @@ graph TD
 
 ```powershell
 # Microphone with VAD, Russian
-dotnet run --project NemotronSpeech -c Release -- "models-onnx/cpu" --mic cpu --language ru --use_vad true
+dotnet run --project NemotronSpeech -c Release -- "modules/asr/cpu" --mic cpu --language ru --use_vad true
 
 # Audio file
-dotnet run --project NemotronSpeech -c Release -- "models-onnx/cpu" "audio.wav" cpu --language en
+dotnet run --project NemotronSpeech -c Release -- "modules/asr/cpu" "audio.wav" cpu --language en
 
 # Audio file with word-level timestamps
-dotnet run --project NemotronSpeech -c Release -- "models-onnx/cpu" "audio.wav" cpu --word-timestamps
+dotnet run --project NemotronSpeech -c Release -- "modules/asr/cpu" "audio.wav" cpu --word-timestamps
 
 # System audio loopback
-dotnet run --project NemotronSpeech -c Release -- "models-onnx/cpu" --loopback cpu
+dotnet run --project NemotronSpeech -c Release -- "modules/asr/cpu" --loopback cpu
 ```
 
 ### Word Timestamps (`--word-timestamps`)

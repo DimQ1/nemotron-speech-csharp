@@ -52,7 +52,7 @@ NemotronSpeech <model_path> <audio_file|--mic|--loopback|--mix> [ep] [--language
 
 | Argument | Description |
 |----------|-------------|
-| `model_path` | Path to ONNX model folder (`models-onnx/cpu`) |
+| `model_path` | Path to ONNX model folder (`modules/asr/cpu`) |
 | `audio_file` | WAV/MP3 file to transcribe |
 | `--mic` | Live microphone capture |
 | `--loopback` | System audio loopback capture |
@@ -65,13 +65,13 @@ NemotronSpeech <model_path> <audio_file|--mic|--loopback|--mix> [ep] [--language
 
 ```powershell
 # Russian, microphone, VAD on, CPU
-dotnet run -- "models-onnx/cpu" --mic cpu --language ru --use_vad true
+dotnet run -- "modules/asr/cpu" --mic cpu --language ru --use_vad true
 
 # English, audio file, CUDA
-dotnet run -- "models-onnx/gpu-cuda" "meeting.wav" cuda --language en
+dotnet run -- "modules/asr/gpu-cuda" "meeting.wav" cuda --language en
 
 # Auto-detect language, loopback, DML
-dotnet run -- "models-onnx/dml" --loopback dml --language auto
+dotnet run -- "modules/asr/dml" --loopback dml --language auto
 ```
 
 ## ModelSession as a Library
@@ -80,7 +80,7 @@ dotnet run -- "models-onnx/dml" --loopback dml --language auto
 
 ```csharp
 using var session = new ModelSession(
-    "models-onnx/cpu",       // model path
+    "modules/asr/cpu",       // model path
     "cpu",                   // execution provider
     "ru",                    // language (null = single-lang model)
     useVad: true             // enable Silero VAD
