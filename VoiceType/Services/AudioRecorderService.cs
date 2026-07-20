@@ -36,7 +36,7 @@ public sealed class AudioRecorderService : IDisposable
                 FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = true
             });
-            _tempMp3Path = Path.Combine(Path.GetTempPath(), $"VoiceType_{Guid.NewGuid():N}.mp3.tmp");
+            _tempMp3Path = Path.Combine(AppPaths.EnsureTempDir(), $"VoiceType_{Guid.NewGuid():N}.mp3.tmp");
             _mp3Writer = new LameMP3FileWriter(_tempMp3Path, new WaveFormat(_sampleRate, 16, 1), LAMEPreset.STANDARD);
             _encoderException = null;
             _hasAudio = false;

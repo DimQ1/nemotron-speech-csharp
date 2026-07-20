@@ -33,11 +33,10 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         NumBeams = settings.NumBeams;
         RepetitionPenalty = settings.RepetitionPenalty;
 
-        // Set default models root if empty
+        // Set default models root if empty (data/Models next to the app)
         if (string.IsNullOrEmpty(ModelsRootPath))
         {
-            var defaultRoot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "models-onnx");
-            ModelsRootPath = Path.GetFullPath(defaultRoot);
+            ModelsRootPath = Services.AppPaths.ModelsDir;
         }
 
         AudioSource = settings.AudioSource;

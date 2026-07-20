@@ -7,8 +7,7 @@ namespace VoiceType.Services;
 /// <summary>Loads and saves <see cref="AppSettings"/> as JSON.</summary>
 public static class SettingsService
 {
-    private static readonly string FilePath =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceType", "settings.json");
+    private static readonly string FilePath = AppPaths.SettingsFile;
 
     public static AppSettings Load()
     {

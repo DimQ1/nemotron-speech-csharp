@@ -187,7 +187,7 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
         var hwnd = owner is not null ? new WindowInteropHelper(owner).Handle : IntPtr.Zero;
         var path = FolderBrowser.Show("Select root folder for downloaded models",
             Directory.Exists(ModelsRootPath) ? ModelsRootPath
-                : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), hwnd);
+                : Services.AppPaths.DataRoot, hwnd);
         if (path is not null) ModelsRootPath = path;
     }
 
@@ -195,7 +195,7 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
     {
         if (!string.IsNullOrWhiteSpace(settings.ModelsRootPath) && Directory.Exists(settings.ModelsRootPath))
             return settings.ModelsRootPath;
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceType", "Models");
+        return Services.AppPaths.ModelsDir;
     }
 
     public void Dispose() { _service.Dispose(); }
@@ -210,7 +210,7 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
     {
         if (!string.IsNullOrWhiteSpace(settings.DownloaderModelsRootPath)) return settings.DownloaderModelsRootPath;
         if (!string.IsNullOrWhiteSpace(settings.ModelsRootPath)) return settings.ModelsRootPath;
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceType", "Models");
+        return Services.AppPaths.ModelsDir;
     }
 
     public static string ResolveDownloaderSelectedFoldersRepoId(AppSettings settings) =>

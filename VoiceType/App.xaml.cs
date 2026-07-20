@@ -16,9 +16,8 @@ public partial class App : Application
         DispatcherUnhandledException += (s, args) =>
         {
             Console.Error.WriteLine($"!!! DISPATCHER EXCEPTION: {args.Exception}");
-            File.AppendAllText(
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "VoiceType", "error.log"),
+            AppPaths.EnsureDataRoot();
+            File.AppendAllText(AppPaths.ErrorLogFile,
                 $"[{DateTime.Now}] {args.Exception}\n");
             args.Handled = true;
         };
@@ -29,9 +28,10 @@ public partial class App : Application
             Console.Error.WriteLine($"!!! UNHANDLED EXCEPTION: {ex}");
         };
 
-        // Ensure settings directory exists
-        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceType");
-        Directory.CreateDirectory(dir);
+        // Ensure app data directories exist (data/ next to the executable)
+        AppPaths.EnsureDataRoot();
+        AppPaths.EnsureSessionsDir();
+        AppPaths.EnsureModelsDir();
 
         // Save settings on exit to persist any state not captured by individual property setters
         Exit += (s, args) =>

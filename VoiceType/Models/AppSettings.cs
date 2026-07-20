@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using VoiceType.Services;
 
 namespace VoiceType.Models;
 
@@ -38,8 +39,7 @@ public sealed class AppSettings
 
     // ── Sessions ────────────────────────────────────
     public bool SaveSessions { get; set; } = true;
-    public string SessionsPath { get; set; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceType", "Sessions");
+    public string SessionsPath { get; set; } = AppPaths.SessionsDir;
     public bool SaveAudioMp3 { get; set; } = false;
 
     // ── Post-processing ─────────────────────────────

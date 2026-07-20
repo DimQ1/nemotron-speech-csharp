@@ -7,8 +7,7 @@ namespace VoiceType.Services;
 /// <summary>Manages speech recognition sessions: creation, persistence, listing.</summary>
 public static class SessionManager
 {
-    private static string SessionsDir =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceType", "Sessions");
+    private static string SessionsDir => AppPaths.SessionsDir;
 
     public static string EnsureDirectory()
     {
