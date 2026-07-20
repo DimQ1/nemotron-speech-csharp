@@ -47,6 +47,9 @@
       </PropertyGroup>
       <ItemGroup>
         <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.14.1" />
+        <!-- Override transitive ORT 1.23.0 -> 1.25.1: Nemotron conformer MHA fusion,
+             MatMulNBits DP4A tiling / K-parallelism improvements -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.25.1" />
       </ItemGroup>
     </When>
 

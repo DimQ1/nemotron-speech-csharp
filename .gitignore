@@ -27,6 +27,7 @@ data/
 *.snupkg
 *.nuget.g.props
 *.nuget.g.targets
+BenchmarkDotNet.Artifacts/
 
 # ── Visual Studio ────────────────────────────────
 .vs/
