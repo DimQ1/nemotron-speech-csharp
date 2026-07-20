@@ -46,6 +46,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _disableInjectionOnFocusChange;
     private bool _isActivelyInjecting;
     private bool _injectionExplicitlyEnabled;
+    private bool _isInitializing;
 
     public MainViewModel()
     {
@@ -55,7 +56,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _isAutoScrollEnabled = _settings.IsAutoScrollEnabled;
         _disableInjectionOnFocusChange = _settings.DisableInjectionOnFocusChange;
 
-        StartCommand = new RelayCommand(Start, () => !IsRecording);
+        StartCommand = new AsyncRelayCommand(StartAsync, () => !IsRecording && !IsInitializing);
         StopCommand = new RelayCommand(Stop, () => IsRecording);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
         ToggleCommand = new RelayCommand(Toggle);
@@ -99,8 +100,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     _injectionTargetWindow = GetForegroundWindow();
                     _injectionExplicitlyEnabled = true;
 
-                    if (!IsRecording)
-                        Start();
+                    if (!IsRecording && !IsInitializing)
+                        _ = StartAsync();
                 }
 
                 IsActivelyInjecting = _isTextInjectionEnabled && IsRecording;
@@ -157,10 +158,21 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public string RecordButtonText => IsRecording ? "⏹ Stop" : "🎤 Start";
+    public string RecordButtonText => IsInitializing ? "⏳ Initializing..." : (IsRecording ? "⏹ Stop" : "🎤 Start");
     public string RecordingIndicator => IsRecording
         ? (IsCaptureMuted ? "🔇 Muted" : "🔴 Recording...")
         : "⚪ Idle";
+
+    /// <summary>True while the recognition engine is being initialized (blocks Start command).</summary>
+    public bool IsInitializing
+    {
+        get => _isInitializing;
+        private set
+        {
+            if (SetProperty(ref _isInitializing, value))
+                OnPropertyChanged(nameof(RecordButtonText));
+        }
+    }
 
     /// <summary>
     /// True when the app is recording AND text injection is enabled —
@@ -201,8 +213,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// </summary>
     public void TryAutoStart()
     {
-        if (_settings.AutoStartRecognition && !IsRecording)
-            Start();
+        if (_settings.AutoStartRecognition && !IsRecording && !IsInitializing)
+            _ = StartAsync();
     }
 
     public void RegisterHotkey(nint hwnd)
@@ -272,7 +284,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void Toggle()
     {
         if (IsRecording) Stop();
-        else Start();
+        else if (!IsInitializing) _ = StartAsync();
     }
 
     public void ToggleMute()
@@ -316,11 +328,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         window.Show();
     }
 
-    private void Start()
+    private async Task StartAsync()
     {
-        if (IsRecording) return;
+        if (IsRecording || IsInitializing) return;
         ApplySettingsSnapshot(SettingsService.Load());
 
+        IsInitializing = true;
         StatusText = "Initializing engine...";
         RecognizedText = "";
         FloatingText = "";
@@ -342,8 +355,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
             }
 
             Console.WriteLine($"[VoiceType] Initializing recognizer: path={_settings.ModelPath}, ep={_settings.ExecutionProvider}, lang={_settings.Language}, vad={_settings.UseVad}");
-            _recognition.Initialize(_settings);
-            Console.WriteLine("[VoiceType] Recognizer initialized OK");
+
+            // Run heavy initialization on background thread to keep UI responsive
+            await Task.Run(() =>
+            {
+                _recognition.Initialize(_settings);
+                Console.WriteLine("[VoiceType] Recognizer initialized OK");
+            });
 
             _currentSession = SessionManager.CreateSession(
                 _settings.Language, "Nemotron", _settings.AudioSource);
@@ -357,8 +375,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
             StatusText = "Listening...";
 
             Console.WriteLine("[VoiceType] Starting recognition...");
-            _recognition.Start(_settings);
-            Console.WriteLine("[VoiceType] Recognition started OK");
+
+            // Start recognition on background thread (includes warmup)
+            await Task.Run(() =>
+            {
+                _recognition.Start(_settings);
+                Console.WriteLine("[VoiceType] Recognition started OK");
+            });
         }
         catch (Exception ex)
         {
@@ -366,6 +389,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
             _partialResultTimer.Stop();
             StatusText = $"Error: {ex.Message}";
             IsRecording = false;
+        }
+        finally
+        {
+            IsInitializing = false;
         }
     }
 
