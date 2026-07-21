@@ -27,7 +27,9 @@ target_link_directories(nemotron_swish_cpu PRIVATE
 target_link_libraries(nemotron_swish_cpu PRIVATE onnxruntime)
 
 if(MSVC)
-    target_compile_options(nemotron_swish_cpu PRIVATE /O2 /EHsc /arch:AVX2)
+    # /fp:fast lets MSVC auto-vectorize the std::exp loop into packed AVX2
+    # polynomial evaluation instead of per-element libm calls.
+    target_compile_options(nemotron_swish_cpu PRIVATE /O2 /EHsc /arch:AVX2 /fp:fast)
 endif()
 
 # The DLL must sit next to the managed binaries that load it via

@@ -45,15 +45,64 @@ struct SwishKernel {
         Ort::UnownedValue output = ctx.GetOutput(0, dimensions.data(), dimensions.size());
         float* Y = output.GetTensorMutableData<float>();
 
-        // 3. Y = X * sigmoid(alpha * X) = X / (1 + exp(-alpha * X)).
-        //    The loop is auto-vectorizable (AVX2 via /arch:AVX2).
-        for (int64_t i = 0; i < element_count; ++i) {
-            const float x = X[i];
-            Y[i] = x / (1.0f + std::exp(-alpha_ * x));
+        // 3. Y = X * sigmoid(alpha * X), parallelized over the ORT thread pool.
+        //    KernelContext::ParallelFor(fn, total, num_batch, usr) invokes
+        //    fn(usr, i) for i in [0, total) on the session's intra-op threads
+        //    (the same pool the built-in kernels use). We process one chunk of
+        //    kChunkSize elements per invocation to amortize the dispatch cost.
+        const float alpha = alpha_;
+        if (element_count < kParallelThreshold) {
+            ComputeRange(X, Y, 0, element_count, alpha);
+            return;
         }
+
+        struct Payload {
+            const float* X;
+            float* Y;
+            int64_t total;
+            float alpha;
+        } payload{X, Y, element_count, alpha};
+
+        const int64_t num_chunks = (element_count + kChunkSize - 1) / kChunkSize;
+        ctx.ParallelFor(
+            [](void* user_data, size_t chunk_index) {
+                const auto* p = static_cast<const Payload*>(user_data);
+                const int64_t begin = static_cast<int64_t>(chunk_index) * kChunkSize;
+                const int64_t end =
+                    (begin + kChunkSize < p->total) ? begin + kChunkSize : p->total;
+                ComputeRange(p->X, p->Y, begin, end, p->alpha);
+            },
+            static_cast<size_t>(num_chunks),
+            /*num_batch=*/0,  // let ORT pick the batch count from its thread pool
+            &payload);
     }
 
 private:
+    // Below this size the ParallelFor dispatch overhead exceeds the gain.
+    static constexpr int64_t kParallelThreshold = 1 << 14;  // 16K elements
+    // Elements handled per ParallelFor invocation (~cache-friendly chunk).
+    static constexpr int64_t kChunkSize = 1 << 12;  // 4K floats = 16 KB
+
+    static inline void ComputeRange(const float* X, float* Y, int64_t begin, int64_t end,
+                                    float alpha) {
+        // Numerically stable sigmoid: for ax >= 0 use 1/(1+exp(-ax)),
+        // for ax < 0 use e/(1+e) with e = exp(ax) — avoids exp() overflow for
+        // large |alpha*x| and keeps the same branchless-per-sign cost profile.
+        // The loop body is auto-vectorizable (AVX2 via /arch:AVX2, /O2).
+        for (int64_t i = begin; i < end; ++i) {
+            const float x = X[i];
+            const float ax = alpha * x;
+            float sig;
+            if (ax >= 0.0f) {
+                sig = 1.0f / (1.0f + std::exp(-ax));
+            } else {
+                const float e = std::exp(ax);
+                sig = e / (1.0f + e);
+            }
+            Y[i] = x * sig;
+        }
+    }
+
     float alpha_;
 };
 

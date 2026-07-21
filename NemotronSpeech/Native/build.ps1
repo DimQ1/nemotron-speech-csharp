@@ -107,7 +107,9 @@ else {
     try {
         # libvcruntime.lib provides __CxxFrameHandler4 / __GSHandlerCheck_EH4
         # (it lives in the ScopeCppSDK VC\lib, not in the UCRT lib dir).
-        & cl /LD /O2 /EHsc /std:c++17 /arch:AVX2 /MD `
+        # /fp:fast lets MSVC auto-vectorize the std::exp loop into packed AVX2
+        # polynomial evaluation instead of per-element libm calls.
+        & cl /LD /O2 /EHsc /std:c++17 /arch:AVX2 /fp:fast /MD `
             /Fe"$dllPath" /Fo"$buildDir\\" `
             "$srcPath" `
             /link onnxruntime.lib libvcruntime.lib `
