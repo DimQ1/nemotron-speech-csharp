@@ -29,6 +29,25 @@
     <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
   </ItemGroup>
 
+  <!-- Native Swish-24 custom-op library (see Native/swish_cpu.cpp).
+       Built before the managed project and deployed next to the binaries.
+       Only relevant for the CPU build that overrides ORT to 1.25.1;
+       the build script is a no-op when cmake is unavailable. -->
+  <Target Name="BuildSwishCustomOp" BeforeTargets="BeforeBuild"
+          Condition="'$(GpuArch)' == 'CPU'">
+    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Native\build.ps1&quot;"
+          ContinueOnError="WarnAndContinue" />
+  </Target>
+
+  <ItemGroup Condition="'$(GpuArch)' == 'CPU'">
+    <None Include="Native\build\nemotron_swish_cpu.dll"
+          Condition="Exists('Native\build\nemotron_swish_cpu.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <!-- Flatten: the DLL must sit next to the exe, not under Native\build -->
+      <TargetPath>nemotron_swish_cpu.dll</TargetPath>
+    </None>
+  </ItemGroup>
+
   <Choose>
     <!-- Blackwell (RTX 50) — nightly ORT -->
     <When Condition="'$(GpuArch)' == 'Blackwell'">

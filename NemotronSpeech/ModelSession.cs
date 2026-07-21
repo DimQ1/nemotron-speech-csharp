@@ -1,5 +1,6 @@
 using CommonUtils;
 using Microsoft.ML.OnnxRuntimeGenAI;
+using NemotronSpeech.Native;
 using SpeechLib;
 using System.Text;
 using System.Text.Json;
@@ -56,7 +57,11 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         };
 
         _config = Common.GetConfig(modelPath, executionProvider, null, searchOptions);
-        
+
+        // Register the Swish-24 CPU kernel if the model uses opset-24 Swish nodes
+        // (opt-in via genai_config.json: model.session.session_options.use_swish_custom_op).
+        CustomOpLibrary.RegisterIfNeeded(modelPath);
+
         _model = new Model(_config);
         _processor = new StreamingProcessor(_model);
 
