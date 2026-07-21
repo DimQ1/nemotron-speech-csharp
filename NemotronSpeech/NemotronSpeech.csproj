@@ -67,8 +67,10 @@
       <ItemGroup>
         <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.14.1" />
         <!-- Override transitive ORT 1.23.0 -> 1.25.1: Nemotron conformer MHA fusion,
-             MatMulNBits DP4A tiling / K-parallelism improvements -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.25.1" />
+             MatMulNBits DP4A tiling / K-parallelism improvements.
+             GeneratePathProperty exposes $(PkgMicrosoft_ML_OnnxRuntime) for the
+             native-asset copy target below. -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.25.1" GeneratePathProperty="true" />
       </ItemGroup>
     </When>
 
@@ -92,5 +94,22 @@
       </ItemGroup>
     </Otherwise>
   </Choose>
+
+  <!-- NuGet only copies native runtime assets from the package that ORIGINALLY
+       provided the dependency (GenAI -> ORT 1.23.0). A direct PackageReference
+       override bumps the managed assembly but leaves the stale 1.23 native DLL
+       in the output, which then rejects opset-24 models. Copy the real 1.25.1
+       native assets over the output after build (CPU branch only). -->
+  <Target Name="CopyOrt1251NativeAssets" AfterTargets="Build"
+          Condition="'$(GpuArch)' == 'CPU' and Exists('$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\onnxruntime.dll')">
+    <ItemGroup>
+      <_Ort1251Native Include="$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_Ort1251Native)"
+          DestinationFolder="$(OutputPath)runtimes\win-x64\native"
+          SkipUnchangedFiles="false" />
+    <Message Importance="High"
+             Text="Copied ORT 1.25.1 native assets to $(OutputPath)runtimes\win-x64\native" />
+  </Target>
 
 </Project>
