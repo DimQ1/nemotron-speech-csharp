@@ -72,6 +72,40 @@ public sealed class AvailableModel : INotifyPropertyChanged
             SizeDisplay = "757 MB",
             Precision = "INT4"
         },
+
+        // ── opset 24 builds (require ONNX Runtime ≥ 1.25) ─────────────
+        new()
+        {
+            Name = "INT4 opset24 · 0.56s — Fast, low latency",
+            RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu",
+            Description = "4-bit k-quant, opset 24, 0.56s window — low latency real-time dictation",
+            SizeDisplay = "749 MB",
+            Precision = "INT4"
+        },
+        new()
+        {
+            Name = "INT4 opset24 · 1.12s — Best INT4 accuracy",
+            RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c112-cpu",
+            Description = "4-bit k-quant, opset 24, 1.12s window — best accuracy for quantized build",
+            SizeDisplay = "749 MB",
+            Precision = "INT4"
+        },
+        new()
+        {
+            Name = "FP32 opset24 · 0.56s — Full precision",
+            RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-opset24-c056-cpu",
+            Description = "Full precision FP32, opset 24, 0.56s window",
+            SizeDisplay = "2,479 MB",
+            Precision = "FP32"
+        },
+        new()
+        {
+            Name = "FP32 opset24 · 1.12s — Max accuracy",
+            RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-opset24-c112-cpu",
+            Description = "Full precision FP32, opset 24, 1.12s window — maximum accuracy",
+            SizeDisplay = "2,479 MB",
+            Precision = "FP32"
+        },
     };
 
     public event PropertyChangedEventHandler? PropertyChanged;

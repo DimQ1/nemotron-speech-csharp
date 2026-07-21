@@ -48,6 +48,11 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
         new() { Display = "CPU (INT8) — best quality, ~1020 MB", RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int8-cpu" },
         new() { Display = "CPU (INT4) — best perf/quality, ~760 MB", RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-cpu" },
         new() { Display = "CPU (FP32) — full precision, ~2 GB",     RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-cpu" },
+        // opset 24 builds (require ONNX Runtime ≥ 1.25)
+        new() { Display = "CPU (INT4, opset24, 0.56s) — fast, low latency, ~749 MB", RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu" },
+        new() { Display = "CPU (INT4, opset24, 1.12s) — best INT4 accuracy, ~749 MB", RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c112-cpu" },
+        new() { Display = "CPU (FP32, opset24, 0.56s) — full precision, ~2 GB", RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-opset24-c056-cpu" },
+        new() { Display = "CPU (FP32, opset24, 1.12s) — max accuracy, ~2 GB",   RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-opset24-c112-cpu" },
     ];
 
     // ── Properties ───────────────────────────────────
