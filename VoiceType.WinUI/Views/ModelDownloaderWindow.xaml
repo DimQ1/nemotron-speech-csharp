@@ -11,7 +11,6 @@
 
     <Grid Background="{StaticResource BgBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="32"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -20,23 +19,8 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Custom Title bar -->
-        <Grid x:Name="AppTitleBar" Grid.Row="0" Background="{StaticResource BgSecondaryBrush}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Text="Model Downloader" Foreground="{StaticResource FgBrush}"
-                       FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
-                       Margin="12,0,0,0"/>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="0">
-                <Button Content="&#xE8BB;" Style="{StaticResource IconButton}"
-                        Click="CloseButton_Click" ToolTipService.ToolTip="Close"/>
-            </StackPanel>
-        </Grid>
-
         <!-- Model Selection -->
-        <Border Grid.Row="1" Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="12,8,12,8">
+        <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="12,8,12,8">
             <StackPanel>
                 <TextBlock Text="Select Model" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                 <ComboBox ItemsSource="{x:Bind ViewModel.ModelOptions}"

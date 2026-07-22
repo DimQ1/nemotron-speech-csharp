@@ -37,9 +37,8 @@ public sealed partial class ModelDownloaderWindow : Window
             AppWindow.Resize(new SizeInt32(480, 360));
         }
 
-        // Custom title bar
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(AppTitleBar);
+        // Use standard system title bar
+        ExtendsContentIntoTitleBar = false;
 
         _openInstance = this;
         this.Closed += (_, _) =>

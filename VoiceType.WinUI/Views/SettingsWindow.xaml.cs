@@ -28,9 +28,8 @@ public sealed partial class SettingsWindow : Window
             AppWindow.Resize(new SizeInt32(480, 480));
         }
 
-        // Custom title bar
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(AppTitleBar);
+        // Use standard system title bar
+        ExtendsContentIntoTitleBar = false;
 
         _vm.RequestClose += () =>
         {

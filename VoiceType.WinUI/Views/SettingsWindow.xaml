@@ -10,27 +10,12 @@
 
     <Grid Background="{StaticResource BgBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="32"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Custom Title bar -->
-        <Grid x:Name="AppTitleBar" Grid.Row="0" Background="{StaticResource BgSecondaryBrush}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Text="VoiceType Settings" Foreground="{StaticResource FgBrush}"
-                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
-                       Margin="12,0,0,0"/>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="0">
-                <Button Content="&#xE8BB;" Style="{StaticResource IconButton}"
-                        Click="CloseButton_Click" ToolTipService.ToolTip="Close"/>
-            </StackPanel>
-        </Grid>
-
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="8,4,8,0">
+        <!-- Content (system title bar is used) -->
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Margin="8,4,8,0">
             <StackPanel Margin="0,0,0,8">
 
                 <!-- ── Engine ── -->

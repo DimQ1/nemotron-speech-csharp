@@ -48,9 +48,8 @@ public sealed partial class MainWindow : Window
             AppWindow.Resize(new SizeInt32(420, 520));
         }
 
-        // Extend content into title bar and set custom title bar
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(AppTitleBar);
+        // Use standard system title bar (no custom title bar)
+        ExtendsContentIntoTitleBar = false;
 
         // Apply always-on-top from settings
         ApplyAlwaysOnTop(_vm.AlwaysOnTop);
