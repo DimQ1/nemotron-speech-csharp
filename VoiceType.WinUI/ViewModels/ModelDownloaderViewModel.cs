@@ -31,7 +31,11 @@ public sealed class ModelDownloaderViewModel : INotifyPropertyChanged, IDisposab
         _dispatcher = dispatcher;
         var settings = SettingsService.Load();
         ModelsRootPath = ResolveModelsRootPath(settings);
-        SelectedModel = AvailableModels.FirstOrDefault();
+
+        // Pre-select recommended model (CPU INT4 0.56s opset24)
+        SelectedModel = AvailableModels.FirstOrDefault(m =>
+            m.RepoId == MainViewModel.RecommendedModelRepo)
+            ?? AvailableModels.FirstOrDefault();
 
         DownloadCommand = new AsyncRelayCommand(DownloadModel, () => SelectedModel is not null && !IsDownloading);
         CancelCommand = new RelayCommand(() => _service.Cancel(), () => IsDownloading);

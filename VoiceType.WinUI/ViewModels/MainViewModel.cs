@@ -42,6 +42,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isActivelyInjecting;
     private bool _injectionExplicitlyEnabled;
     private bool _isInitializing;
+    private bool _isModelAvailable;
+    private string _modelStatusText = "";
     private readonly DispatcherQueue _dispatcher;
 
     /// <summary>HWND of the main window — set by MainWindow after loading.</summary>
@@ -72,6 +74,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _partialResultTimer = _dispatcher.CreateTimer();
         _partialResultTimer.Interval = TimeSpan.FromMilliseconds(50);
         _partialResultTimer.Tick += (_, _) => FlushPendingPartialResult();
+
+        // Check model availability on startup
+        CheckModelAvailability();
     }
 
     // ── Properties ──────────────────────────────────
@@ -188,6 +193,54 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public System.Windows.Input.ICommand CopyCommand { get; }
     public System.Windows.Input.ICommand OpenModelDownloaderCommand { get; }
     public System.Windows.Input.ICommand MuteCommand { get; }
+
+    // ── Model availability ──────────────────────────
+
+    /// <summary>True when a usable model is found on disk.</summary>
+    public bool IsModelAvailable
+    {
+        get => _isModelAvailable;
+        private set
+        {
+            if (SetProperty(ref _isModelAvailable, value))
+                OnPropertyChanged(nameof(ShowModelWarning));
+        }
+    }
+
+    /// <summary>Status text about model availability (shown in UI).</summary>
+    public string ModelStatusText
+    {
+        get => _modelStatusText;
+        private set => SetProperty(ref _modelStatusText, value);
+    }
+
+    /// <summary>Show warning banner when no model is available.</summary>
+    public bool ShowModelWarning => !IsModelAvailable;
+
+    /// <summary>Recommended model repo for quick download.</summary>
+    public static string RecommendedModelRepo => "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu";
+    public static string RecommendedModelDisplay => "CPU (INT4, opset24, 0.56s) — fast, low latency, ~749 MB";
+
+    private void CheckModelAvailability()
+    {
+        var modelPath = _settings.ModelPath;
+        if (string.IsNullOrEmpty(modelPath) && !string.IsNullOrEmpty(_settings.ModelsRootPath))
+            modelPath = Path.Combine(_settings.ModelsRootPath, _settings.SelectedModel);
+
+        if (!string.IsNullOrEmpty(modelPath) && Directory.Exists(modelPath))
+        {
+            var configPath = Path.Combine(modelPath, "genai_config.json");
+            IsModelAvailable = File.Exists(configPath);
+            ModelStatusText = IsModelAvailable
+                ? $"Model ready: {Path.GetFileName(modelPath)}"
+                : $"Model folder exists but genai_config.json missing: {modelPath}";
+        }
+        else
+        {
+            IsModelAvailable = false;
+            ModelStatusText = "No model found. Download recommended:";
+        }
+    }
 
     // ── Hotkey ──────────────────────────────────────
 

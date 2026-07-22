@@ -1,35 +1,23 @@
 using System.IO;
-using Windows.Storage;
 
 namespace VoiceType.WinUI.Services;
 
 /// <summary>
-/// Centralized data paths. For MSIX packaged apps, data lives in
-/// <c>%LOCALAPPDATA%\Packages\&lt;pkg&gt;\LocalState\data</c>.
-/// Falls back to <c>&lt;app dir&gt;/data</c> for unpackaged.
+/// Centralized data paths. All app data lives under <c>%LOCALAPPDATA%\VoiceType</c>.
 /// </summary>
 public static class AppPaths
 {
     private static string? _dataRoot;
 
-    /// <summary>Root data folder. MSIX: LocalState/data. Unpackaged: appdir/data.</summary>
+    /// <summary>Root data folder: <c>%LOCALAPPDATA%\VoiceType</c>.</summary>
     public static string DataRoot
     {
         get
         {
             if (_dataRoot is not null) return _dataRoot;
 
-            try
-            {
-                // MSIX packaged — use LocalState
-                var localState = ApplicationData.Current.LocalFolder.Path;
-                _dataRoot = Path.Combine(localState, "data");
-            }
-            catch
-            {
-                // Unpackaged — next to exe
-                _dataRoot = Path.Combine(AppContext.BaseDirectory, "data");
-            }
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            _dataRoot = Path.Combine(localAppData, "VoiceType");
             return _dataRoot;
         }
     }

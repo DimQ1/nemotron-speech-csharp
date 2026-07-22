@@ -13,6 +13,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -40,8 +41,30 @@
             </StackPanel>
         </Grid>
 
+        <!-- Model warning banner -->
+        <Border Grid.Row="1" Background="{StaticResource RedBrush}" Padding="14,8"
+                Visibility="{x:Bind ViewModel.ShowModelWarning, Mode=OneWay}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{x:Bind ViewModel.ModelStatusText, Mode=OneWay}"
+                               Foreground="White" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    <TextBlock Text="Recommended: CPU (INT4, opset24, 0.56s) — fast, low latency, ~749 MB"
+                               Foreground="#FFCCCC" FontSize="11" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Button Grid.Column="1" Content="Download"
+                        Background="White" Foreground="{StaticResource RedBrush}"
+                        BorderThickness="0" Padding="12,6" FontSize="12" FontWeight="SemiBold"
+                        VerticalAlignment="Center" Margin="12,0,0,0"
+                        Command="{x:Bind ViewModel.OpenModelDownloaderCommand}"/>
+            </Grid>
+        </Border>
+
         <!-- Status bar -->
-        <Border Grid.Row="1" Background="{StaticResource BgSecondaryBrush}" Padding="14,8">
+        <Border Grid.Row="2" Background="{StaticResource BgSecondaryBrush}" Padding="14,8">
             <Grid>
                 <StackPanel Orientation="Horizontal">
                     <Ellipse x:Name="StatusDot" Width="8" Height="8" Margin="0,0,8,0"
@@ -56,7 +79,7 @@
         </Border>
 
         <!-- Text area -->
-        <ScrollViewer x:Name="TextScroller" Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="14,10">
+        <ScrollViewer x:Name="TextScroller" Grid.Row="3" VerticalScrollBarVisibility="Auto" Margin="14,10">
             <TextBox x:Name="TextDisplay"
                      Text="{x:Bind ViewModel.FloatingText, Mode=OneWay}"
                      Foreground="{StaticResource FgBrush}"
@@ -69,7 +92,7 @@
         </ScrollViewer>
 
         <!-- Bottom controls -->
-        <Border Grid.Row="3" Background="{StaticResource BgSecondaryBrush}"
+        <Border Grid.Row="4" Background="{StaticResource BgSecondaryBrush}"
                 Padding="14,12">
             <StackPanel>
                 <Button Content="{x:Bind ViewModel.RecordButtonText, Mode=OneWay}"
