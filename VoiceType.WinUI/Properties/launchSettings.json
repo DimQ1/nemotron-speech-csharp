@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "VoiceType.WinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "VoiceType.WinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

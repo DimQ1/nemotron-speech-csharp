@@ -3,5 +3,6 @@
   <Project Path="NemotronSpeech/NemotronSpeech.csproj" />
   <Project Path="SpeechLib/SpeechLib.csproj" />
   <Project Path="VoiceType.Tests/VoiceType.Tests.csproj" />
+  <Project Path="VoiceType.WinUI/VoiceType.WinUI.csproj" />
   <Project Path="VoiceType/VoiceType.csproj" />
 </Solution>
