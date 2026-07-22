@@ -1,16 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Application
-    x:Class="VoiceType_WinUI.App"
+    x:Class="VoiceType.WinUI.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:VoiceType_WinUI">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+
+            <!-- Colors -->
+            <SolidColorBrush x:Key="AccentBrush" Color="#0078D4"/>
+            <SolidColorBrush x:Key="AccentHoverBrush" Color="#1A8CE8"/>
+            <SolidColorBrush x:Key="BgBrush" Color="#1A1A1A"/>
+            <SolidColorBrush x:Key="BgSecondaryBrush" Color="#2A2A2A"/>
+            <SolidColorBrush x:Key="BgTertiaryBrush" Color="#3E3E3E"/>
+            <SolidColorBrush x:Key="BgDropdownBrush" Color="#333333"/>
+            <SolidColorBrush x:Key="BgSelectedBrush" Color="#005A9E"/>
+            <SolidColorBrush x:Key="FgBrush" Color="#F0F0F0"/>
+            <SolidColorBrush x:Key="FgSecondaryBrush" Color="#BBBBBB"/>
+            <SolidColorBrush x:Key="RedBrush" Color="#FF5A5A"/>
+            <SolidColorBrush x:Key="GreenBrush" Color="#16C60C"/>
+
+            <!-- Styles -->
+            <Style TargetType="Button" x:Key="PrimaryButton">
+                <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="16,8"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="CornerRadius" Value="6"/>
+            </Style>
+
+            <Style TargetType="Button" x:Key="IconButton">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="FontSize" Value="16"/>
+                <Setter Property="Width" Value="36"/>
+                <Setter Property="Height" Value="36"/>
+            </Style>
+
+            <Style TargetType="TextBox" x:Key="DarkTextBox">
+                <Setter Property="Background" Value="{StaticResource BgSecondaryBrush}"/>
+                <Setter Property="Foreground" Value="{StaticResource FgBrush}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BgTertiaryBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="8,6"/>
+            </Style>
+
+            <Style TargetType="CheckBox" x:Key="DarkCheckBox">
+                <Setter Property="Foreground" Value="{StaticResource FgBrush}"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+            </Style>
+
+            <Style TargetType="ComboBox" x:Key="DarkComboBox">
+                <Setter Property="Background" Value="{StaticResource BgSecondaryBrush}"/>
+                <Setter Property="Foreground" Value="{StaticResource FgBrush}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BgTertiaryBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="FontSize" Value="13"/>
+            </Style>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -1,0 +1,242 @@
+<Window
+    x:Class="VoiceType.WinUI.Views.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="VoiceType Settings">
+
+    <Window.SystemBackdrop>
+        <DesktopAcrylicBackdrop/>
+    </Window.SystemBackdrop>
+
+    <Grid Background="{StaticResource BgBrush}" Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,0,16">
+
+                <!-- ── Engine ── -->
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Speech Engine" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                        <TextBlock Text="Models Root Folder" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{x:Bind ViewModel.ModelsRootPath, Mode=TwoWay}" Style="{StaticResource DarkTextBox}"/>
+                            <Button Grid.Column="1" Content="..." Margin="8,0,0,0"
+                                    Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
+                                    BorderThickness="0" Padding="10,6" FontSize="13" FontWeight="Bold"
+                                    Command="{x:Bind ViewModel.BrowseRootCommand}"
+                                    ToolTipService.ToolTip="Browse for models root folder"/>
+                        </Grid>
+
+                        <TextBlock Text="Model" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox ItemsSource="{x:Bind ViewModel.AvailableModels}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedModel, Mode=TwoWay}"
+                                      Style="{StaticResource DarkComboBox}"/>
+                            <Button Grid.Column="1" Content="Download..." Margin="8,0,0,0"
+                                    Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
+                                    BorderThickness="0" Padding="12,6" FontSize="12"
+                                    Command="{x:Bind ViewModel.OpenModelDownloaderCommand}"/>
+                        </Grid>
+
+                        <TextBlock Text="{x:Bind ViewModel.ModelPath, Mode=OneWay}"
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="10"
+                                   Margin="0,0,0,8" TextTrimming="CharacterEllipsis"/>
+
+                        <TextBlock Text="Execution Provider" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <ComboBox SelectedValue="{x:Bind ViewModel.ExecutionProvider, Mode=TwoWay}" SelectedValuePath="Content"
+                                  Style="{StaticResource DarkComboBox}" Margin="0,0,0,8">
+                            <ComboBoxItem Content="cpu"/>
+                            <ComboBoxItem Content="cuda"/>
+                            <ComboBoxItem Content="dml"/>
+                            <ComboBoxItem Content="follow_config"/>
+                        </ComboBox>
+
+                        <TextBlock Text="Language (BCP-47 code or 'auto')" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <ComboBox IsEditable="True"
+                                  Text="{x:Bind ViewModel.Language, Mode=TwoWay}"
+                                  Style="{StaticResource DarkComboBox}" Margin="0,0,0,8">
+                            <ComboBoxItem Content="auto"/>
+                            <ComboBoxItem Content="en"/>
+                            <ComboBoxItem Content="ru"/>
+                            <ComboBoxItem Content="de"/>
+                            <ComboBoxItem Content="fr"/>
+                            <ComboBoxItem Content="es"/>
+                            <ComboBoxItem Content="zh"/>
+                            <ComboBoxItem Content="ja"/>
+                            <ComboBoxItem Content="ko"/>
+                            <ComboBoxItem Content="pt"/>
+                            <ComboBoxItem Content="it"/>
+                            <ComboBoxItem Content="ar"/>
+                            <ComboBoxItem Content="hi"/>
+                            <ComboBoxItem Content="tr"/>
+                            <ComboBoxItem Content="uk"/>
+                            <ComboBoxItem Content="pl"/>
+                            <ComboBoxItem Content="nl"/>
+                        </ComboBox>
+
+                        <CheckBox Content="Use Voice Activity Detection (VAD)"
+                                  IsChecked="{x:Bind ViewModel.UseVad, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,6"/>
+                        <CheckBox Content="Auto-start recognition on app launch"
+                                  IsChecked="{x:Bind ViewModel.AutoStartRecognition, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Capture ── -->
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Audio Capture" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Audio Source" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <ComboBox SelectedValue="{x:Bind ViewModel.AudioSource, Mode=TwoWay}" SelectedValuePath="Content"
+                                  Style="{StaticResource DarkComboBox}">
+                            <ComboBoxItem Content="Mic"/>
+                            <ComboBoxItem Content="Loopback"/>
+                            <ComboBoxItem Content="Mix"/>
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Text Injection ── -->
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Text Injection" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Injection Method" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <ComboBox SelectedValue="{x:Bind ViewModel.TextInjectionMethod, Mode=TwoWay}" SelectedValuePath="Content"
+                                  Style="{StaticResource DarkComboBox}" Margin="0,0,0,8">
+                            <ComboBoxItem Content="InputSimulator"/>
+                            <ComboBoxItem Content="SendInput"/>
+                            <ComboBoxItem Content="Clipboard"/>
+                        </ComboBox>
+                        <CheckBox Content="Stop recognition on any keyboard/mouse input"
+                                  IsChecked="{x:Bind ViewModel.StopOnAnyInput, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,6"/>
+                        <CheckBox Content="Pause injection when focus changes to another window"
+                                  IsChecked="{x:Bind ViewModel.DisableInjectionOnFocusChange, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Sessions ── -->
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Session Recording" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <CheckBox Content="Save recognition sessions"
+                                  IsChecked="{x:Bind ViewModel.SaveSessions, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,6"/>
+                        <TextBlock Text="Sessions Path" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <TextBox Text="{x:Bind ViewModel.SessionsPath, Mode=TwoWay}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,6"/>
+                        <CheckBox Content="Save audio as MP3"
+                                  IsChecked="{x:Bind ViewModel.SaveAudioMp3, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Hotkeys ── -->
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Global Hotkeys" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Toggle Recognition (Ctrl+Shift+V, Ctrl+Alt+R, etc.)"
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <TextBox Text="{x:Bind ViewModel.ToggleHotkey, Mode=TwoWay}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                        <TextBlock Text="Toggle Mute (Ctrl+Shift+M, Ctrl+Alt+M, etc.)"
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <TextBox Text="{x:Bind ViewModel.MuteHotkey, Mode=TwoWay}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                        <TextBlock Text="Toggle Text Injection (Ctrl+Shift+I, etc.)"
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <TextBox Text="{x:Bind ViewModel.InjectTextHotkey, Mode=TwoWay}"
+                                 Style="{StaticResource DarkTextBox}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Post-processing ── -->
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Post-Processing Pipeline" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <CheckBox Content="Enable post-processing"
+                                  IsChecked="{x:Bind ViewModel.PostProcessingEnabled, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,8"/>
+
+                        <Grid Margin="0,0,0,4">
+                            <TextBlock Text="Rules" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12"/>
+                            <Button Content="+ Add Rule" HorizontalAlignment="Right"
+                                    Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
+                                    BorderThickness="0" Padding="8,3" FontSize="11"
+                                    Command="{x:Bind ViewModel.AddRuleCommand}"/>
+                        </Grid>
+
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Rules}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource BgTertiaryBrush}"
+                                            CornerRadius="4" Padding="8,6" Margin="0,0,0,4">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- Rule name + delete -->
+                                            <Grid Grid.Row="0" Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}"
+                                                          VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay}"
+                                                         Style="{StaticResource DarkTextBox}" FontSize="12"
+                                                         FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="2" Content="✕"
+                                                        Background="Transparent" Foreground="{StaticResource RedBrush}"
+                                                        BorderThickness="0" Width="24" Height="24" FontSize="12"
+                                                        Click="DeleteRule_Click" Tag="{Binding}"/>
+                                            </Grid>
+
+                                            <!-- Pattern → Replacement -->
+                                            <Grid Grid.Row="1">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding Pattern, Mode=TwoWay}"
+                                                         Style="{StaticResource DarkTextBox}" FontSize="11"
+                                                         Margin="0,0,4,0"/>
+                                                <TextBlock Grid.Column="1" Text="→" Foreground="{StaticResource FgSecondaryBrush}"
+                                                           VerticalAlignment="Center" Margin="4,0"/>
+                                                <TextBox Grid.Column="2" Text="{Binding Replacement, Mode=TwoWay}"
+                                                         Style="{StaticResource DarkTextBox}" FontSize="11"
+                                                         Margin="4,0,0,0"/>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Bottom buttons -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="Cancel" Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
+                    BorderThickness="0" Padding="16,8" Margin="0,0,8,0"
+                    Command="{x:Bind ViewModel.CancelCommand}"/>
+            <Button Content="Save" Style="{StaticResource PrimaryButton}"
+                    Command="{x:Bind ViewModel.SaveCommand}"/>
+        </StackPanel>
+    </Grid>
+</Window>

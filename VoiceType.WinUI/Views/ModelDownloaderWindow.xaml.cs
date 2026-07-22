@@ -1,0 +1,39 @@
+using Microsoft.UI.Xaml;
+using VoiceType.WinUI.ViewModels;
+using WinRT.Interop;
+
+namespace VoiceType.WinUI.Views;
+
+public sealed partial class ModelDownloaderWindow : Window
+{
+    private readonly ModelDownloaderViewModel _vm;
+    private static ModelDownloaderWindow? _openInstance;
+
+    public static ModelDownloaderWindow? OpenInstance => _openInstance;
+
+    public ModelDownloaderViewModel ViewModel => _vm;
+    public string? ResultPath => _vm.ResultPath;
+    public string? ResultModelPath => _vm.ResultModelPath;
+    public bool WasDownloaded => _vm.WasDownloaded;
+
+    /// <summary>Pre-fill the models root path for the downloader.</summary>
+    public string ModelsRootPath
+    {
+        get => _vm.ModelsRootPath;
+        set => _vm.ModelsRootPath = value;
+    }
+
+    public ModelDownloaderWindow()
+    {
+        InitializeComponent();
+        _vm = new ModelDownloaderViewModel(this.DispatcherQueue);
+        _vm.OwnerWindowHandle = WindowNative.GetWindowHandle(this);
+
+        _openInstance = this;
+        this.Closed += (_, _) =>
+        {
+            _openInstance = null;
+            _vm.Dispose();
+        };
+    }
+}

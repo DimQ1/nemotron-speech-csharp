@@ -153,4 +153,27 @@ WASDK 2.3.1 транзитивно тянет `Microsoft.Windows.AI.MachineLearn
 - [ ] MSIX-пакет Release-сборки (`dotnet publish` / `msbuild -t:Publish`) + `.appinstaller` для автообновлений
 - [ ] Замена placeholder-ассетов (`Assets/*.png`, `AppIcon.ico` → `microphone.ico` из VoiceType)
 - [ ] Publisher/Identity в манифесте (`CN=AppPublisher` → реальный для Store/сайдлоада)
-- [ ] Перенос сервисов/VM/Views (этапы 2–4)
+- [x] Перенос сервисов/VM/Views (этапы 2–4)
+
+## Этапы 2–4 — выполнено (2026-07-22)
+
+**Этап 2 — Сервисы** ✅
+- Перенесены без изменений: `AudioRecorderService`, `RecognitionService`, `PostProcessingPipeline`, `SessionManager`, `ModelDownloaderService`, `SettingsService`, `AppPaths`, `GlobalInputHook`
+- Адаптированы:
+  - `GlobalHotkeyService` — `KeyInterop` (WPF) → прямой маппинг key names → VK codes
+  - `TextInjector` — `System.Windows.Clipboard` (WPF) → Win32 `OpenClipboard`/`SetClipboardData`/`GetClipboardData`
+  - `FolderBrowser` — `SHBrowseForFolder` → `Windows.Storage.Pickers.FolderPicker` (async)
+
+**Этап 3 — ViewModels** ✅
+- `Commands.cs` — `CommandManager.RequerySuggested` (WPF) → ручной `RaiseCanExecuteChanged()` (WinUI 3 нет CommandManager)
+- `MainViewModel` — `Dispatcher.Invoke` → `DispatcherQueue.TryEnqueue`, `DispatcherTimer` → `DispatcherQueueTimer`, убран `TaskbarItemProgressState` (WPF), добавлен `MainWindowHandle`
+- `SettingsViewModel` — `WindowInteropHelper` → `OwnerWindowHandle`, `FolderBrowser.Show` → `FolderBrowser.ShowAsync`
+- `ModelDownloaderViewModel` — `Dispatcher.CurrentDispatcher` → `DispatcherQueue` (ctor param), `AvailableModels` → `ModelOptions` (instance property для x:Bind)
+
+**Этап 4 — Views** ✅
+- `App.xaml` — перенесены цвета и стили, упрощены (WinUI 3 нет Triggers, GroupBox template)
+- `MainWindow` — `x:Bind` вместо `Binding`, `DesktopAcrylicBackdrop`, window subclassing для WM_HOTKEY (вместо `HwndSource`), `AppWindow.Hide()` вместо `WindowState`
+- `SettingsWindow` — `GroupBox` → `Border`+`StackPanel`, `FindAncestor` → Click handler, `x:Bind` везде
+- `ModelDownloaderWindow` — `x:Bind`, `FindOpenInstance` → `OpenInstance` static property
+
+**Сборка:** ✅ 0 ошибок, 0 предупреждений
