@@ -52,6 +52,10 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
 
+        // Apply always-on-top from settings
+        ApplyAlwaysOnTop(_vm.AlwaysOnTop);
+        _vm.AlwaysOnTopChanged += ApplyAlwaysOnTop;
+
         // Register hotkey immediately — Activated may not fire if window starts active
         _vm.RegisterHotkey(_hwnd);
         _vm.TryAutoStart();
@@ -128,4 +132,27 @@ public sealed partial class MainWindow : Window
     {
         this.Close();
     }
+
+    private void DismissModelWarning_Click(object sender, RoutedEventArgs e)
+    {
+        _vm?.DismissModelWarning();
+    }
+
+    private void ApplyAlwaysOnTop(bool topmost)
+    {
+        if (AppWindow is null) return;
+        // WinUI 3: use SetWindowPos via AppWindow
+        var hwnd = WindowNative.GetWindowHandle(this);
+        if (hwnd != nint.Zero)
+        {
+            const int HWND_TOPMOST = -1;
+            const int HWND_NOTOPMOST = -2;
+            const uint SWP_NOMOVE = 0x0002;
+            const uint SWP_NOSIZE = 0x0001;
+            SetWindowPos(hwnd, topmost ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(nint hWnd, int hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 }

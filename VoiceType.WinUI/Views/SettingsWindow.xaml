@@ -106,7 +106,9 @@
                         <CheckBox Content="Use Voice Activity Detection (VAD)"
                                   IsChecked="{x:Bind ViewModel.UseVad, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,6"/>
                         <CheckBox Content="Auto-start recognition on app launch"
-                                  IsChecked="{x:Bind ViewModel.AutoStartRecognition, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}"/>
+                                  IsChecked="{x:Bind ViewModel.AutoStartRecognition, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,6"/>
+                        <CheckBox Content="Keep window always on top"
+                                  IsChecked="{x:Bind ViewModel.AlwaysOnTop, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}"/>
                     </StackPanel>
                 </Border>
 

@@ -36,6 +36,8 @@ public sealed class AppSettings
     public bool IsAutoScrollEnabled { get; set; } = true;
     /// <summary>Automatically start recognition when the app launches.</summary>
     public bool AutoStartRecognition { get; set; } = false;
+    /// <summary>Keep the main window always on top of other windows.</summary>
+    public bool AlwaysOnTop { get; set; } = true;
 
     // ── Sessions ────────────────────────────────────
     public bool SaveSessions { get; set; } = true;

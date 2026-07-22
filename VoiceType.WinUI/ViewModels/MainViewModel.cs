@@ -43,7 +43,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _injectionExplicitlyEnabled;
     private bool _isInitializing;
     private bool _isModelAvailable;
+    private bool _modelWarningDismissed;
     private string _modelStatusText = "";
+    private bool _alwaysOnTop;
     private readonly DispatcherQueue _dispatcher;
 
     /// <summary>HWND of the main window — set by MainWindow after loading.</summary>
@@ -57,6 +59,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _isTextInjectionEnabled = _settings.IsTextInjectionEnabled;
         _isAutoScrollEnabled = _settings.IsAutoScrollEnabled;
         _disableInjectionOnFocusChange = _settings.DisableInjectionOnFocusChange;
+        _alwaysOnTop = _settings.AlwaysOnTop;
+        _modelWarningDismissed = false;
 
         StartCommand = new AsyncRelayCommand(StartAsync, () => !IsRecording && !IsInitializing);
         StopCommand = new RelayCommand(Stop, () => IsRecording);
@@ -214,8 +218,33 @@ public sealed class MainViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _modelStatusText, value);
     }
 
-    /// <summary>Show warning banner when no model is available.</summary>
-    public bool ShowModelWarning => !IsModelAvailable;
+    /// <summary>Show warning banner when no model is available and not dismissed.</summary>
+    public bool ShowModelWarning => !IsModelAvailable && !_modelWarningDismissed;
+
+    /// <summary>Dismiss the model warning banner (user chose not to download).</summary>
+    public void DismissModelWarning()
+    {
+        _modelWarningDismissed = true;
+        OnPropertyChanged(nameof(ShowModelWarning));
+    }
+
+    /// <summary>Keep the main window always on top.</summary>
+    public bool AlwaysOnTop
+    {
+        get => _alwaysOnTop;
+        set
+        {
+            if (SetProperty(ref _alwaysOnTop, value))
+            {
+                _settings.AlwaysOnTop = value;
+                SettingsService.Save(_settings);
+                AlwaysOnTopChanged?.Invoke(value);
+            }
+        }
+    }
+
+    /// <summary>Fired when AlwaysOnTop changes so the window can update its Z-order.</summary>
+    public event Action<bool>? AlwaysOnTopChanged;
 
     /// <summary>Recommended model repo for quick download.</summary>
     public static string RecommendedModelRepo => "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu";
@@ -240,6 +269,21 @@ public sealed class MainViewModel : INotifyPropertyChanged
             IsModelAvailable = false;
             ModelStatusText = "No model found. Download recommended:";
         }
+    }
+
+    private void ApplySettingsSnapshot(AppSettings settings)
+    {
+        _settings = settings;
+
+        _isTextInjectionEnabled = settings.IsTextInjectionEnabled;
+        _isAutoScrollEnabled = settings.IsAutoScrollEnabled;
+        _disableInjectionOnFocusChange = settings.DisableInjectionOnFocusChange;
+        _alwaysOnTop = settings.AlwaysOnTop;
+
+        OnPropertyChanged(nameof(IsTextInjectionEnabled));
+        OnPropertyChanged(nameof(IsAutoScrollEnabled));
+        OnPropertyChanged(nameof(DisableInjectionOnFocusChange));
+        OnPropertyChanged(nameof(AlwaysOnTop));
     }
 
     // ── Hotkey ──────────────────────────────────────
@@ -599,19 +643,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             Console.Error.WriteLine($"[VoiceType] Session save error: {ex}");
         }
-    }
-
-    private void ApplySettingsSnapshot(AppSettings settings)
-    {
-        _settings = settings;
-
-        _isTextInjectionEnabled = settings.IsTextInjectionEnabled;
-        _isAutoScrollEnabled = settings.IsAutoScrollEnabled;
-        _disableInjectionOnFocusChange = settings.DisableInjectionOnFocusChange;
-
-        OnPropertyChanged(nameof(IsTextInjectionEnabled));
-        OnPropertyChanged(nameof(IsAutoScrollEnabled));
-        OnPropertyChanged(nameof(DisableInjectionOnFocusChange));
     }
 
     // ── INotifyPropertyChanged ──────────────────────
