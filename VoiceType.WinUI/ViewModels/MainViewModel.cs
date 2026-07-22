@@ -156,10 +156,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public string RecordButtonText => IsInitializing ? "⏳ Initializing..." : (IsRecording ? "⏹ Stop" : "🎤 Start");
+    public string RecordButtonText => IsInitializing ? "Initializing..." : (IsRecording ? "Stop" : "Start");
     public string RecordingIndicator => IsRecording
-        ? (IsCaptureMuted ? "🔇 Muted" : "🔴 Recording...")
-        : "⚪ Idle";
+        ? (IsCaptureMuted ? "Muted" : "Recording...")
+        : "Idle";
 
     /// <summary>True while the recognition engine is being initialized (blocks Start command).</summary>
     public bool IsInitializing
@@ -284,7 +284,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void CopyText()
     {
         if (!string.IsNullOrEmpty(_floatingText))
-            TextInjector.Inject(_floatingText, Models.InjectionMethod.Clipboard);
+            TextInjector.CopyToClipboard(_floatingText);
     }
 
     private void OpenModelDownloader()

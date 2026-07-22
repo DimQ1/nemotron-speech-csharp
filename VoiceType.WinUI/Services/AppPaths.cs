@@ -1,16 +1,38 @@
 using System.IO;
+using Windows.Storage;
 
 namespace VoiceType.WinUI.Services;
 
 /// <summary>
-/// Centralized data paths. All app data lives under <c>data/</c> next to the
-/// application executable, so the app is portable and works on first run.
+/// Centralized data paths. For MSIX packaged apps, data lives in
+/// <c>%LOCALAPPDATA%\Packages\&lt;pkg&gt;\LocalState\data</c>.
+/// Falls back to <c>&lt;app dir&gt;/data</c> for unpackaged.
 /// </summary>
 public static class AppPaths
 {
-    /// <summary>Root data folder: <c>&lt;app dir&gt;/data</c>.</summary>
-    public static string DataRoot { get; } =
-        Path.Combine(AppContext.BaseDirectory, "data");
+    private static string? _dataRoot;
+
+    /// <summary>Root data folder. MSIX: LocalState/data. Unpackaged: appdir/data.</summary>
+    public static string DataRoot
+    {
+        get
+        {
+            if (_dataRoot is not null) return _dataRoot;
+
+            try
+            {
+                // MSIX packaged — use LocalState
+                var localState = ApplicationData.Current.LocalFolder.Path;
+                _dataRoot = Path.Combine(localState, "data");
+            }
+            catch
+            {
+                // Unpackaged — next to exe
+                _dataRoot = Path.Combine(AppContext.BaseDirectory, "data");
+            }
+            return _dataRoot;
+        }
+    }
 
     /// <summary>Downloaded models: <c>data/Models</c>.</summary>
     public static string ModelsDir => Path.Combine(DataRoot, "Models");

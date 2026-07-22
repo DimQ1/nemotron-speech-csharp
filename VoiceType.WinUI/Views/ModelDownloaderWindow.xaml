@@ -9,8 +9,9 @@
         <DesktopAcrylicBackdrop/>
     </Window.SystemBackdrop>
 
-    <Grid Background="{StaticResource BgBrush}" Margin="16">
+    <Grid Background="{StaticResource BgBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -19,14 +20,29 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <!-- Custom Title bar -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Background="{StaticResource BgSecondaryBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Model Downloader" Foreground="{StaticResource FgBrush}"
+                       FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Margin="12,0,0,0"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="0">
+                <Button Content="&#xE8BB;" Style="{StaticResource IconButton}"
+                        Click="CloseButton_Click" ToolTipService.ToolTip="Close"/>
+            </StackPanel>
+        </Grid>
+
         <!-- Model Selection -->
-        <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+        <Border Grid.Row="1" Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="12,8,12,8">
             <StackPanel>
-                <TextBlock Text="Select Model" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <TextBlock Text="Select Model" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                 <ComboBox ItemsSource="{x:Bind ViewModel.ModelOptions}"
                           SelectedItem="{x:Bind ViewModel.SelectedModel, Mode=TwoWay}"
                           DisplayMemberPath="Display"
-                          Style="{StaticResource DarkComboBox}" Margin="0,0,0,8"
+                          Style="{StaticResource DarkComboBox}" Margin="0,0,0,6"
                           IsEnabled="{x:Bind ViewModel.IsIdle, Mode=OneWay}"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -35,9 +51,9 @@
                     </Grid.ColumnDefinitions>
                     <TextBox Grid.Column="0" Text="{x:Bind ViewModel.ModelsRootPath, Mode=TwoWay}"
                              Style="{StaticResource DarkTextBox}" FontSize="11"/>
-                    <Button Grid.Column="1" Content="..." Margin="8,0,0,0"
+                    <Button Grid.Column="1" Content="..." Margin="6,0,0,0"
                             Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
-                            BorderThickness="0" Padding="10,6" FontSize="13" FontWeight="Bold"
+                            BorderThickness="0" Padding="8,4" FontSize="12" FontWeight="Bold"
                             Command="{x:Bind ViewModel.BrowseRootCommand}"
                             ToolTipService.ToolTip="Browse download folder"/>
                 </Grid>
@@ -45,7 +61,7 @@
         </Border>
 
         <!-- File Progress -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,4">
+        <StackPanel Grid.Row="2" Margin="12,0,12,4">
             <Grid Margin="0,0,0,2">
                 <TextBlock Text="{x:Bind ViewModel.CurrentFile, Mode=OneWay}" Foreground="{StaticResource FgSecondaryBrush}"
                            FontSize="11" TextTrimming="CharacterEllipsis"/>
@@ -56,12 +72,12 @@
                                Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" Margin="8,0,0,0"/>
                 </StackPanel>
             </Grid>
-            <ProgressBar Height="8" Value="{x:Bind ViewModel.FileProgress, Mode=OneWay}" Minimum="0" Maximum="100"
+            <ProgressBar Height="6" Value="{x:Bind ViewModel.FileProgress, Mode=OneWay}" Minimum="0" Maximum="100"
                          Foreground="{StaticResource AccentBrush}" Background="{StaticResource BgTertiaryBrush}"/>
         </StackPanel>
 
         <!-- Total Progress -->
-        <StackPanel Grid.Row="2" Margin="0,0,0,10">
+        <StackPanel Grid.Row="3" Margin="12,0,12,8">
             <Grid Margin="0,0,0,2">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Files: " Foreground="{StaticResource FgBrush}" FontSize="11"/>
@@ -76,23 +92,23 @@
                                Foreground="{StaticResource GreenBrush}" FontSize="11" Margin="8,0,0,0"/>
                 </StackPanel>
             </Grid>
-            <ProgressBar Height="8" Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}" Minimum="0" Maximum="100"
+            <ProgressBar Height="6" Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}" Minimum="0" Maximum="100"
                          Foreground="{StaticResource GreenBrush}" Background="{StaticResource BgTertiaryBrush}"/>
         </StackPanel>
 
         <!-- Status -->
-        <TextBlock Grid.Row="3" Text="{x:Bind ViewModel.Status, Mode=OneWay}" Foreground="{StaticResource FgSecondaryBrush}"
-                   FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="4" Text="{x:Bind ViewModel.Status, Mode=OneWay}" Foreground="{StaticResource FgSecondaryBrush}"
+                   FontSize="11" Margin="12,0,12,4" TextWrapping="Wrap"/>
 
-        <Grid Grid.Row="4"/>
+        <Grid Grid.Row="5"/>
 
         <!-- Buttons -->
-        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="12,4">
             <Button Content="Cancel" Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
-                    BorderThickness="0" Padding="14,8" Margin="0,0,8,0" FontSize="13"
+                    BorderThickness="0" Padding="12,6" Margin="0,0,6,0" FontSize="12"
                     Command="{x:Bind ViewModel.CancelCommand}"
                     Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay}"/>
-            <Button Content="Download &amp; Install" Style="{StaticResource PrimaryButton}" Padding="20,8" FontSize="13"
+            <Button Content="Download &amp; Install" Style="{StaticResource PrimaryButton}" Padding="16,6" FontSize="12"
                     Command="{x:Bind ViewModel.DownloadCommand}"
                     Visibility="{x:Bind ViewModel.IsIdle, Mode=OneWay}"/>
         </StackPanel>

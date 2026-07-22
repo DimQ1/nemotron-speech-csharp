@@ -8,14 +8,30 @@
         <DesktopAcrylicBackdrop/>
     </Window.SystemBackdrop>
 
-    <Grid Background="{StaticResource BgBrush}" Margin="16">
+    <Grid Background="{StaticResource BgBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="0,0,0,16">
+        <!-- Custom Title bar -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Background="{StaticResource BgSecondaryBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="VoiceType Settings" Foreground="{StaticResource FgBrush}"
+                       FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Margin="12,0,0,0"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="0">
+                <Button Content="&#xE8BB;" Style="{StaticResource IconButton}"
+                        Click="CloseButton_Click" ToolTipService.ToolTip="Close"/>
+            </StackPanel>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="12,8,12,0">
+            <StackPanel Margin="0,0,0,12">
 
                 <!-- ── Engine ── -->
                 <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
@@ -231,11 +247,11 @@
         </ScrollViewer>
 
         <!-- Bottom buttons -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="12,4">
             <Button Content="Cancel" Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
-                    BorderThickness="0" Padding="16,8" Margin="0,0,8,0"
+                    BorderThickness="0" Padding="12,6" Margin="0,0,6,0" FontSize="12"
                     Command="{x:Bind ViewModel.CancelCommand}"/>
-            <Button Content="Save" Style="{StaticResource PrimaryButton}"
+            <Button Content="Save" Style="{StaticResource PrimaryButton}" Padding="16,6" FontSize="12"
                     Command="{x:Bind ViewModel.SaveCommand}"/>
         </StackPanel>
     </Grid>

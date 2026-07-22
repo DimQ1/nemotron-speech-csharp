@@ -42,14 +42,21 @@ public static class GlobalHotkeyService
         _hwnd = hwnd;
 
         if (!TryParse(hotkeyString, out uint mods, out uint vk))
+        {
+            Console.WriteLine($"[VoiceType] Hotkey parse failed: {hotkeyString}");
             return 0;
+        }
 
         int id = _nextId++;
         if (RegisterHotKey(hwnd, id, mods, vk))
         {
             _registeredIds.Add(id);
+            Console.WriteLine($"[VoiceType] Hotkey registered: {hotkeyString} -> id={id}, vk=0x{vk:X}, mods=0x{mods:X}");
             return id;
         }
+
+        var err = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+        Console.WriteLine($"[VoiceType] Hotkey registration failed: {hotkeyString}, error={err}");
         return 0;
     }
 

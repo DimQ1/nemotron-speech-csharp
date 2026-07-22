@@ -88,6 +88,13 @@ public static class TextInjector
         }
     }
 
+    /// <summary>Copy text to clipboard without pasting (for Copy button).</summary>
+    public static void CopyToClipboard(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        ClipboardSetText(text);
+    }
+
     // ── Unicode text entry (like InputSimulatorPlus.TextEntry) ──
 
     /// <summary>

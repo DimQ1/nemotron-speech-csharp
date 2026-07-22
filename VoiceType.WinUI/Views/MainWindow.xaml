@@ -11,31 +11,34 @@
 
     <Grid Background="{StaticResource BgBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="32"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Title bar -->
-        <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}">
-            <Grid Margin="14,0">
-                <TextBlock Text="🎙 VoiceType" Foreground="{StaticResource FgBrush}"
-                           FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="📥" Style="{StaticResource IconButton}"
-                            ToolTipService.ToolTip="Download Models"
-                            Command="{x:Bind ViewModel.OpenModelDownloaderCommand}"/>
-                    <Button Content="⚙" Style="{StaticResource IconButton}"
-                            ToolTipService.ToolTip="Settings"
-                            Command="{x:Bind ViewModel.OpenSettingsCommand}"/>
-                    <Button Content="_" Style="{StaticResource IconButton}"
-                            Click="MinimizeButton_Click" ToolTipService.ToolTip="Minimize"/>
-                    <Button Content="✕" Style="{StaticResource IconButton}"
-                            Click="CloseButton_Click" ToolTipService.ToolTip="Close"/>
-                </StackPanel>
-            </Grid>
-        </Border>
+        <!-- Custom Title bar (replaces system title bar) -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Background="{StaticResource BgSecondaryBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="🎙 VoiceType" Foreground="{StaticResource FgBrush}"
+                       FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Margin="12,0,0,0"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="0">
+                <Button Content="&#xE896;" Style="{StaticResource IconButton}"
+                        ToolTipService.ToolTip="Download Models"
+                        Command="{x:Bind ViewModel.OpenModelDownloaderCommand}"/>
+                <Button Content="&#xE713;" Style="{StaticResource IconButton}"
+                        ToolTipService.ToolTip="Settings"
+                        Command="{x:Bind ViewModel.OpenSettingsCommand}"/>
+                <Button Content="&#xE921;" Style="{StaticResource IconButton}"
+                        Click="MinimizeButton_Click" ToolTipService.ToolTip="Minimize"/>
+                <Button Content="&#xE8BB;" Style="{StaticResource IconButton}"
+                        Click="CloseButton_Click" ToolTipService.ToolTip="Close"/>
+            </StackPanel>
+        </Grid>
 
         <!-- Status bar -->
         <Border Grid.Row="1" Background="{StaticResource BgSecondaryBrush}" Padding="14,8">
@@ -101,13 +104,15 @@
                                   VerticalAlignment="Center"/>
 
                         <Button Grid.Column="1"
-                                Content="📋 Copy"
+                                Content="&#xE8C8;"
+                                FontFamily="Segoe MDL2 Assets"
                                 Margin="12,0,0,0"
                                 Background="{StaticResource BgTertiaryBrush}"
                                 Foreground="{StaticResource FgBrush}"
                                 BorderThickness="0"
                                 Padding="10,4"
-                                FontSize="11"
+                                FontSize="14"
+                                ToolTipService.ToolTip="Copy text"
                                 Command="{x:Bind ViewModel.CopyCommand}"/>
                     </Grid>
 

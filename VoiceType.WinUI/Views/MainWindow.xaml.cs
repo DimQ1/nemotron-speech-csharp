@@ -1,10 +1,13 @@
 using System.Runtime.InteropServices;
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using VoiceType.WinUI.Services;
 using VoiceType.WinUI.ViewModels;
 using WinRT.Interop;
+using Windows.Graphics;
 
 namespace VoiceType.WinUI.Views;
 
@@ -12,18 +15,19 @@ public sealed partial class MainWindow : Window
 {
     private MainViewModel? _vm;
     private nint _hwnd;
-    private WndProcDelegate? _newWndProc;
-    private nint _oldWndProc;
+    private SubclassProc? _subclassProc;
+    private nint _subclassId = 1;
 
-    private delegate nint WndProcDelegate(nint hWnd, uint msg, nint wParam, nint lParam);
+    private delegate nint SubclassProc(nint hWnd, uint uMsg, nint wParam, nint lParam, nint uIdSubclass, nint dwRefData);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
+    [DllImport("comctl32.dll", SetLastError = true)]
+    private static extern bool SetWindowSubclass(nint hWnd, SubclassProc pfnSubclass, nint uIdSubclass, nint dwRefData);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern nint CallWindowProc(nint lpPrevWndFunc, nint hWnd, uint msg, nint wParam, nint lParam);
+    [DllImport("comctl32.dll", SetLastError = true)]
+    private static extern bool RemoveWindowSubclass(nint hWnd, SubclassProc pfnSubclass, nint uIdSubclass);
 
-    private const int GWLP_WNDPROC = -4;
+    [DllImport("comctl32.dll", SetLastError = true)]
+    private static extern nint DefSubclassProc(nint hWnd, uint uMsg, nint wParam, nint lParam);
 
     public MainWindow()
     {
@@ -37,6 +41,31 @@ public sealed partial class MainWindow : Window
         // Get HWND for hotkey registration
         _hwnd = WindowNative.GetWindowHandle(this);
         _vm.MainWindowHandle = _hwnd;
+
+        // Compact window size (was 420x520 in WPF)
+        if (AppWindow is not null)
+        {
+            AppWindow.Resize(new SizeInt32(420, 520));
+            // Set presenter to disable resize
+            if (AppWindow.Presenter is OverlappedPresenter presenter)
+            {
+                presenter.IsResizable = false;
+                presenter.IsMaximizable = false;
+            }
+        }
+
+        // Extend content into title bar and set custom title bar
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
+
+        // Register hotkey immediately — Activated may not fire if window starts active
+        _vm.RegisterHotkey(_hwnd);
+        _vm.TryAutoStart();
+        SubclassWindow();
+
+        // Debug log
+        AppPaths.EnsureDataRoot();
+        File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now}] MainWindow created: hwnd=0x{_hwnd:X}, hotkey registered\n");
     }
 
     public MainViewModel? ViewModel => _vm;
@@ -58,17 +87,7 @@ public sealed partial class MainWindow : Window
 
     private void OnActivated(object sender, WindowActivatedEventArgs args)
     {
-        if (args.WindowActivationState != WindowActivationState.Deactivated)
-        {
-            // Register global hotkey
-            _vm?.RegisterHotkey(_hwnd);
-
-            // Auto-start recognition if enabled in settings
-            _vm?.TryAutoStart();
-
-            // Subclass window to hook WM_HOTKEY
-            SubclassWindow();
-        }
+        // Hotkey registration moved to constructor — Activated may not fire on first launch
     }
 
     private void OnClosed(object sender, WindowEventArgs args)
@@ -79,30 +98,35 @@ public sealed partial class MainWindow : Window
 
     private void SubclassWindow()
     {
-        _newWndProc = WndProcHook;
-        _oldWndProc = SetWindowLongPtr(_hwnd, GWLP_WNDPROC, Marshal.GetFunctionPointerForDelegate(_newWndProc));
+        _subclassProc = WndProcHook;
+        var ok = SetWindowSubclass(_hwnd, _subclassProc, _subclassId, nint.Zero);
+        var err = Marshal.GetLastWin32Error();
+        Console.WriteLine($"[VoiceType] SetWindowSubclass: hwnd=0x{_hwnd:X}, ok={ok}, error={err}");
     }
 
     private void UnsubclassWindow()
     {
-        if (_oldWndProc != nint.Zero)
-            SetWindowLongPtr(_hwnd, GWLP_WNDPROC, _oldWndProc);
+        if (_subclassProc is not null)
+            RemoveWindowSubclass(_hwnd, _subclassProc, _subclassId);
     }
 
-    private nint WndProcHook(nint hwnd, uint msg, nint wParam, nint lParam)
+    private nint WndProcHook(nint hwnd, uint msg, nint wParam, nint lParam, nint uIdSubclass, nint dwRefData)
     {
         if (msg == GlobalHotkeyService.WmHotkey)
         {
             var hotkeyId = wParam.ToInt32();
+            Console.WriteLine($"[VoiceType] WM_HOTKEY received: id={hotkeyId}");
+            AppPaths.EnsureDataRoot();
+            File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now}] WM_HOTKEY: id={hotkeyId}\n");
             _vm?.HandleHotkey(hotkeyId);
             return nint.Zero;
         }
-        return CallWindowProc(_oldWndProc, hwnd, msg, wParam, lParam);
+        return DefSubclassProc(hwnd, msg, wParam, lParam);
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
     {
-        // WinUI 3: hide window via AppWindow
+        // Compact minimize — hide to taskbar
         this.AppWindow?.Hide();
     }
 

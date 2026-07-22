@@ -37,9 +37,11 @@
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}"/>
                 <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="FontSize" Value="16"/>
-                <Setter Property="Width" Value="36"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Width" Value="40"/>
                 <Setter Property="Height" Value="36"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
             </Style>
 
             <Style TargetType="TextBox" x:Key="DarkTextBox">

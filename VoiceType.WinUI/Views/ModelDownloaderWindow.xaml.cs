@@ -1,6 +1,8 @@
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using VoiceType.WinUI.ViewModels;
 using WinRT.Interop;
+using Windows.Graphics;
 
 namespace VoiceType.WinUI.Views;
 
@@ -29,11 +31,31 @@ public sealed partial class ModelDownloaderWindow : Window
         _vm = new ModelDownloaderViewModel(this.DispatcherQueue);
         _vm.OwnerWindowHandle = WindowNative.GetWindowHandle(this);
 
+        // Compact size
+        if (AppWindow is not null)
+        {
+            AppWindow.Resize(new SizeInt32(480, 360));
+            if (AppWindow.Presenter is OverlappedPresenter presenter)
+            {
+                presenter.IsResizable = false;
+                presenter.IsMaximizable = false;
+            }
+        }
+
+        // Custom title bar
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
+
         _openInstance = this;
         this.Closed += (_, _) =>
         {
             _openInstance = null;
             _vm.Dispose();
         };
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        this.Close();
     }
 }
