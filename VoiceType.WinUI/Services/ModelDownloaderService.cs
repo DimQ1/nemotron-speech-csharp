@@ -123,7 +123,7 @@ public sealed class ModelDownloaderService : IDisposable
 
             foreach (var file in folder.Files)
             {
-                var url = $"{_huggingFaceBaseUrl}/{repoId}/resolve/main/{file.RelativePath}";
+                var url = CreateResolveUrl(repoId, file.RelativePath);
                 var relativePath = file.RelativePath.Contains('/')
                     ? file.RelativePath[(file.RelativePath.IndexOf('/') + 1)..]
                     : file.RelativePath;
@@ -168,7 +168,7 @@ public sealed class ModelDownloaderService : IDisposable
                 if (rfilename.StartsWith(".")) continue;
                 var size = sib.TryGetProperty("size", out var sz) ? sz.GetInt64() : 0;
                 var dest = Path.Combine(targetRoot, subfolder, rfilename);
-                var fileUrl = $"{_huggingFaceBaseUrl}/{repoId}/resolve/main/{rfilename}";
+                var fileUrl = CreateResolveUrl(repoId, rfilename);
                 files.Add(new FileToDownload(fileUrl, dest, Path.Combine(subfolder, rfilename).Replace('\\', '/'), size));
             }
         }
@@ -325,7 +325,11 @@ public sealed class ModelDownloaderService : IDisposable
         ct.ThrowIfCancellationRequested();
 
         using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var reason = $"{(int)response.StatusCode} ({response.ReasonPhrase})";
+            throw new HttpRequestException($"Hugging Face rejected '{Path.GetFileName(dest)}': {reason}", null, response.StatusCode);
+        }
 
         // Use Content-Length from the response (after redirect) as authoritative file size
         var actualSize = response.Content.Headers.ContentLength > 0
@@ -363,6 +367,12 @@ public sealed class ModelDownloaderService : IDisposable
         >= 1_000 => $"{bytes / 1_000.0:F1} KB",
         _ => $"{bytes} B"
     };
+
+    private string CreateResolveUrl(string repoId, string relativePath)
+    {
+        var escapedPath = string.Join('/', relativePath.Split('/').Select(Uri.EscapeDataString));
+        return $"{_huggingFaceBaseUrl}/{repoId}/resolve/main/{escapedPath}";
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════

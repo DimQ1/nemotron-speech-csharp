@@ -10,12 +10,20 @@
 
     <Grid Background="{StaticResource BgBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Content (system title bar is used) -->
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Margin="8,4,8,0">
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Background="{StaticResource BgSecondaryBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
+                <FontIcon Glyph="&#xE713;" FontSize="16" Foreground="{StaticResource AccentBrush}"/>
+                <TextBlock Text="Settings" Foreground="{StaticResource FgBrush}"
+                           Style="{ThemeResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="8,4,8,0">
             <StackPanel Margin="0,0,0,8">
 
                 <!-- ── Engine ── -->
@@ -234,7 +242,7 @@
         </ScrollViewer>
 
         <!-- Bottom buttons -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="12,4">
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="12,8">
             <Button Content="Cancel" Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
                     BorderThickness="0" Padding="12,6" Margin="0,0,6,0" FontSize="12"
                     Command="{x:Bind ViewModel.CancelCommand}"/>

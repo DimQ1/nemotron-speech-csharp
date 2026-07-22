@@ -17,10 +17,19 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Background="{StaticResource BgSecondaryBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
+                <FontIcon Glyph="&#xE896;" FontSize="16" Foreground="{StaticResource AccentBrush}"/>
+                <TextBlock Text="Model downloader" Foreground="{StaticResource FgBrush}"
+                           Style="{ThemeResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+
         <!-- Model Selection -->
-        <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="12,8,12,8">
+        <Border Grid.Row="1" Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="12,8,12,8">
             <StackPanel>
                 <TextBlock Text="Select Model" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                 <ComboBox ItemsSource="{x:Bind ViewModel.ModelOptions}"

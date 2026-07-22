@@ -61,7 +61,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
-    <ProjectReference Include="..\NemotronSpeech\NemotronSpeech.csproj" />
+    <!-- The shipped models are CPU ONNX builds. This also deploys ORT 1.25.1
+         and nemotron_swish_cpu.dll required by the opset-24 c056 model. -->
+    <ProjectReference Include="..\NemotronSpeech\NemotronSpeech.csproj" AdditionalProperties="GpuArch=CPU" />
   </ItemGroup>
 
   <!--
@@ -80,4 +82,35 @@
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
   </PropertyGroup>
+
+  <!-- Copy nemotron_swish_cpu.dll and ORT 1.25.1 native DLL into AppX.
+       ORT 1.25.1 is required by opset-24 ONNX models. The stale 1.23 DLL
+       from the GenAI transitive dependency is overwritten. -->
+  <Target Name="CopyOrt1251AndSwishOpToAppX" AfterTargets="Build">
+    <!-- ORT 1.25.1 from NuGet cache (CPU-only, no CUDA providers) -->
+    <PropertyGroup>
+      <_Ort1251Cache>$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime\1.25.1\runtimes\win-x64\native\</_Ort1251Cache>
+    </PropertyGroup>
+    <ItemGroup>
+      <_Ort1251Native Include="$(_Ort1251Cache)*.dll"
+                      Condition="Exists('$(_Ort1251Cache)')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_Ort1251Native)"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="false"
+          Condition="'@(_Ort1251Native)' != ''" />
+    <Copy SourceFiles="@(_Ort1251Native)"
+          DestinationFolder="$(OutputPath)AppX"
+          SkipUnchangedFiles="false"
+          Condition="'@(_Ort1251Native)' != ''" />
+    <!-- Swish-24 custom op DLL -->
+    <ItemGroup>
+      <_SwishDll Include="$(OutputPath)nemotron_swish_cpu.dll"
+                 Condition="Exists('$(OutputPath)nemotron_swish_cpu.dll')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SwishDll)"
+          DestinationFolder="$(OutputPath)AppX"
+          SkipUnchangedFiles="false"
+          Condition="'@(_SwishDll)' != ''" />
+  </Target>
 </Project>

@@ -463,6 +463,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[VoiceType] Start error: {ex}");
+            AppPaths.EnsureDataRoot();
+            File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now}] Recognition initialization failed: {ex}\n");
             _partialResultTimer.Stop();
             StatusText = $"Error: {ex.Message}";
             IsRecording = false;

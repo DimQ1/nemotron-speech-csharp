@@ -39,6 +39,17 @@ try:
 except Exception:
     pass
 
+# Patch Olive OnnxConversion for torch >= 2.12 (torch.onnx.export dropped the
+# 'fallback' kwarg that Olive 0.8 still passes with dynamo=True).
+_SCRIPT_DIR_EARLY = Path(__file__).resolve().parent
+try:
+    if str(_SCRIPT_DIR_EARLY) not in sys.path:
+        sys.path.insert(0, str(_SCRIPT_DIR_EARLY))
+    from src import patch_olive_torch_export
+    patch_olive_torch_export.patch_olive_torch_export()
+except Exception:
+    pass
+
 # Ensure the recipe root is on sys.path so `from src.nemotron_model_load import ...` works
 # regardless of where the script is invoked from.
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -57,22 +68,109 @@ def _resolve(path: str) -> Path:
     return p if p.is_absolute() else _SCRIPT_DIR / p
 
 
-def _run_olive_pipeline(config_name: str, output_dir: str, output_subdir: str, model_path: str = None):
+def _to_new_run_format(config: dict) -> dict:
+    """Convert a legacy (engine-style) Olive config to the Olive >= 0.7 RunConfig schema.
+
+    Legacy configs in this recipe use the pre-0.7 layout:
+      input_model / systems / passes{NAME:{type, ...}} / target / output_dir / no_artifacts
+
+    Olive >= 0.7 expects:
+      input_model / systems / passes{NAME:{type, config:{...}}} / pass_flows /
+      engine{target, output_dir, ...}
+
+    Pass-specific top-level keys (everything except 'type') move under 'config'.
+    """
+    new: dict = {}
+
+    if "input_model" in config:
+        new["input_model"] = config["input_model"]
+    if "systems" in config:
+        new["systems"] = config["systems"]
+
+    # engine: target / output_dir (+ packaging to drop artifacts)
+    engine: dict = {}
+    if "target" in config:
+        engine["target"] = config["target"]
+    if "output_dir" in config:
+        engine["output_dir"] = config["output_dir"]
+    new["engine"] = engine
+
+    # passes: split 'type' from the rest of the pass params
+    legacy_passes = config.get("passes", {})
+    new_passes: dict = {}
+    for name, p in legacy_passes.items():
+        p = dict(p)
+        ptype = p.pop("type", None)
+        host = p.pop("host", None)
+        entry: dict = {"type": ptype, "config": p}
+        if host is not None:
+            entry["host"] = host
+        new_passes[name] = entry
+    new["passes"] = new_passes
+
+    # pass_flows: run all passes in declaration order as a single flow
+    if "pass_flows" in config:
+        new["pass_flows"] = config["pass_flows"]
+    else:
+        new["pass_flows"] = [list(legacy_passes.keys())]
+
+    # Unique workflow id keyed by chunk size + opset so that Olive does NOT
+    # reuse a cached export produced for a different streaming window.
+    if "workflow_id" not in new:
+        try:
+            from src import nemotron_model_load as _nml
+            _cs = str(_nml._chunk_size()).replace(".", "p")
+        except Exception:
+            _cs = "default"
+        _op = ""
+        for p in legacy_passes.values():
+            if p.get("type") == "OnnxConversion":
+                _op = f"_ops{p.get('target_opset', '')}"
+                break
+        new["workflow_id"] = f"nemotron_{_cs}{_op}"
+
+    return new
+
+
+def _run_olive_pipeline(config_name: str, output_dir: str, output_subdir: str, model_path: str = None, target_opset: int = None):
     """Run an Olive pipeline from a JSON config, overriding output_dir."""
-    from olive import run as olive_run
+    # Olive >= 0.7 moved the programmatic entry point to olive.workflows.run
+    try:
+        from olive.workflows import run as olive_run
+    except ImportError:  # older Olive exposes olive.run at the top level
+        from olive import run as olive_run
 
     config_path = _SCRIPT_DIR / config_name
     with open(config_path) as f:
         config = json.load(f)
 
-    config["output_dir"] = str(_resolve(output_dir) / output_subdir)
+    output_dir_abs = str(_resolve(output_dir) / output_subdir)
     if model_path is not None:
         config["input_model"]["model_path"] = model_path
+    if target_opset is not None:
+        # Override the opset in every OnnxConversion pass.
+        for p in config.get("passes", {}).values():
+            if p.get("type") == "OnnxConversion":
+                p["target_opset"] = target_opset
+
+    # If a previous flatten() already replaced the component dir with a file,
+    # remove it so Olive can recreate the output directory.
+    if os.path.isfile(output_dir_abs):
+        os.remove(output_dir_abs)
+
+    # Detect the config schema version and adapt.
+    is_new_format = "engine" in config or "pass_flows" in config
+    if is_new_format:
+        run_config = config
+        run_config.setdefault("engine", {})["output_dir"] = output_dir_abs
+    else:
+        config["output_dir"] = output_dir_abs
+        run_config = _to_new_run_format(config)
 
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".json", dir=str(_SCRIPT_DIR), delete=False
     ) as tmp:
-        json.dump(config, tmp, indent=4)
+        json.dump(run_config, tmp, indent=4)
         tmp_path = tmp.name
 
     try:
@@ -81,7 +179,7 @@ def _run_olive_pipeline(config_name: str, output_dir: str, output_subdir: str, m
         Path(tmp_path).unlink(missing_ok=True)
 
 
-def run_olive_pipelines(output_dir: str, model_path: str = None, encoder_precision: str = "int4", execution_provider: str = "cpu"):
+def run_olive_pipelines(output_dir: str, model_path: str = None, encoder_precision: str = "int4", execution_provider: str = "cpu", target_opset: int = None):
     """Run all Olive pipelines: encoder (FP32, INT4, or INT8), decoder (FP32), joint (FP32).
 
     Args:
@@ -89,6 +187,7 @@ def run_olive_pipelines(output_dir: str, model_path: str = None, encoder_precisi
         model_path: Path to the .nemo model file or HF repo name.
         encoder_precision: "fp32", "int4", or "int8".
         execution_provider: "cpu" (default) or "dml".
+        target_opset: ONNX target opset (e.g. 21 or 24). None keeps the config default.
     """
     ep_suffix = {"cpu": "_cpu", "dml": "_dml", "cuda": "_cuda"}.get(execution_provider, "_cpu")
     ep_label = {"cpu": "CPU", "dml": "DML", "cuda": "CUDA"}.get(execution_provider, "CPU")
@@ -102,15 +201,15 @@ def run_olive_pipelines(output_dir: str, model_path: str = None, encoder_precisi
     else:
         encoder_config = f"nemotron_encoder_int4{ep_suffix}.json"
         print(f"=== Stage 1: Olive Encoder ({ep_label}, OnnxConversion -> INT4 quant) ===")
-    _run_olive_pipeline(encoder_config, output_dir, "encoder.onnx", model_path)
+    _run_olive_pipeline(encoder_config, output_dir, "encoder.onnx", model_path, target_opset)
     print()
 
     print(f"=== Stage 2: Olive Decoder ({ep_label}, OnnxConversion, FP32) ===")
-    _run_olive_pipeline(f"nemotron_decoder_fp32{ep_suffix}.json", output_dir, "decoder.onnx", model_path)
+    _run_olive_pipeline(f"nemotron_decoder_fp32{ep_suffix}.json", output_dir, "decoder.onnx", model_path, target_opset)
     print()
 
     print(f"=== Stage 3: Olive Joint ({ep_label}, OnnxConversion, FP32) ===")
-    _run_olive_pipeline(f"nemotron_joint_fp32{ep_suffix}.json", output_dir, "joint.onnx", model_path)
+    _run_olive_pipeline(f"nemotron_joint_fp32{ep_suffix}.json", output_dir, "joint.onnx", model_path, target_opset)
     print()
 
 
@@ -317,8 +416,12 @@ def download_silero_vad(output_dir: str):
     print()
 
 
+import os
+
+
 def main():
-    from src.nemotron_model_load import MODEL_NAME, CHUNK_SIZE
+    from src.nemotron_model_load import MODEL_NAME
+    from src import nemotron_model_load
 
     parser = argparse.ArgumentParser(
         description="Optimize Nemotron Speech Streaming for CPU or DML inference"
@@ -345,7 +448,30 @@ def main():
         default="cpu",
         help="Execution provider: cpu, dml (DirectML), or cuda. Default: cpu.",
     )
+    parser.add_argument(
+        "--target-opset",
+        type=int,
+        default=None,
+        help="ONNX target opset for all OnnxConversion passes (e.g. 21 or 24). "
+             "Default keeps the value from the JSON config.",
+    )
+    parser.add_argument(
+        "--chunk-size",
+        type=float,
+        choices=[0.08, 0.16, 0.56, 1.12],
+        default=None,
+        help="Streaming chunk size in seconds (0.08/0.16/0.56/1.12). Larger windows "
+             "give more encoder context (better WER) at higher latency. Default: "
+             "NEMOTRON_CHUNK_SIZE env var or 0.56.",
+    )
     args = parser.parse_args()
+
+    # Apply chunk size BEFORE any model_load import reads the constant.
+    # nemotron_model_load reads NEMOTRON_CHUNK_SIZE at import time, and Olive
+    # imports the script fresh (by path) inside each conversion pass, so the
+    # env var is the single reliable way to propagate the value everywhere.
+    if args.chunk_size is not None:
+        os.environ["NEMOTRON_CHUNK_SIZE"] = str(args.chunk_size)
 
     # Validate model name — the Olive configs and model_load.py constants are
     # specific to the 0.6B model architecture.
@@ -361,16 +487,19 @@ def main():
         model_path=args.model_name,
         encoder_precision=args.encoder_precision,
         execution_provider=args.execution_provider,
+        target_opset=args.target_opset,
     )
 
     # Stage 4: Export tokenizer
     run_tokenizer_export(model_name=args.model_name, output_dir=args.output_dir)
 
-    # Stage 5: Generate config files (chunk_size matches the hardcoded export shapes)
+    # Stage 5: Generate config files (chunk_size matches the export shapes).
+    # Read the effective value lazily so that --chunk-size / NEMOTRON_CHUNK_SIZE
+    # (applied before model load) is honored.
     generate_configs(
         model_name=args.model_name,
         output_dir=args.output_dir,
-        chunk_size=CHUNK_SIZE,
+        chunk_size=nemotron_model_load._chunk_size(),
     )
 
     # Stage 6: Download Silero VAD

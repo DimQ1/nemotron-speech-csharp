@@ -26,7 +26,24 @@ import torch.nn.functional as F
 # per NVIDIA's documentation (best latency/accuracy trade-off). The value is
 # not available from a HuggingFace config — it lives inside the .nemo archive
 # as encoder.att_context_size and requires loading the full model to read.
-CHUNK_SIZE = 0.56  # seconds (NVIDIA recommended: best latency/accuracy trade-off)
+#
+# It can be overridden per-export via the NEMOTRON_CHUNK_SIZE environment
+# variable so that a single recipe can produce encoders tuned for different
+# accuracy/latency windows (0.08 / 0.16 / 0.56 / 1.12 seconds).
+import os as _os
+
+
+def _chunk_size() -> float:
+    """Read the streaming chunk size (seconds) from the environment.
+
+    Read lazily (not at import time) so that --chunk-size applied after the
+    module is first imported still takes effect.
+    """
+    return float(_os.environ.get("NEMOTRON_CHUNK_SIZE", "0.56"))
+
+
+# Backwards-compatible module attribute (default value at import).
+CHUNK_SIZE = _chunk_size()
 MEL_FEATURES = 128
 SUBSAMPLING_FACTOR = 8
 
@@ -46,12 +63,14 @@ LEFT_CHUNKS = 10
 MODEL_NAME = "nvidia/NVIDIA-Nemotron-3.5-ASR-Streaming-Multilingual-0.6b"
 
 
-def get_att_context_size(chunk_size: float = CHUNK_SIZE, left_chunks: int = LEFT_CHUNKS):
+def get_att_context_size(chunk_size: float = None, left_chunks: int = LEFT_CHUNKS):
     """Compute attention context size for the streaming encoder.
 
     left_context = left_chunks * chunk_encoded_frames;
     right_context is indexed by chunk_size.
     """
+    if chunk_size is None:
+        chunk_size = _chunk_size()
     right_context = {0.08: 0, 0.16: 1, 0.56: 6, 1.12: 13}.get(chunk_size, 13)
     chunk_encoded_frames = int(chunk_size * 100) // SUBSAMPLING_FACTOR
     left_context = left_chunks * chunk_encoded_frames
@@ -60,8 +79,9 @@ def get_att_context_size(chunk_size: float = CHUNK_SIZE, left_chunks: int = LEFT
 
 def _get_streaming_shapes():
     """Compute static streaming tensor shapes from the shared constants."""
+    chunk_size = _chunk_size()
     pre_encode_cache = 9
-    chunk_mel_frames = int(CHUNK_SIZE * 100)  # 56 for 0.56s
+    chunk_mel_frames = int(chunk_size * 100)  # 56 for 0.56s
     static_mel_frames = chunk_mel_frames + pre_encode_cache  # 65
     chunk_encoded_frames = chunk_mel_frames // SUBSAMPLING_FACTOR  # 7
     last_channel_cache_size = LEFT_CHUNKS * chunk_encoded_frames  # 70

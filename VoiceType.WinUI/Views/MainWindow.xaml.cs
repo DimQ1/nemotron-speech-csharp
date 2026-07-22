@@ -42,14 +42,8 @@ public sealed partial class MainWindow : Window
         _hwnd = WindowNative.GetWindowHandle(this);
         _vm.MainWindowHandle = _hwnd;
 
-        // Compact window size (was 420x520 in WPF)
-        if (AppWindow is not null)
-        {
-            AppWindow.Resize(new SizeInt32(420, 520));
-        }
-
-        // Use standard system title bar (no custom title bar)
-        ExtendsContentIntoTitleBar = false;
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
 
         // Apply always-on-top from settings
         ApplyAlwaysOnTop(_vm.AlwaysOnTop);
@@ -60,9 +54,27 @@ public sealed partial class MainWindow : Window
         _vm.TryAutoStart();
         SubclassWindow();
 
-        // Debug log
-        AppPaths.EnsureDataRoot();
-        File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now}] MainWindow created: hwnd=0x{_hwnd:X}, hotkey registered\n");
+    }
+
+    /// <summary>
+    /// Configure the compact vertical window before it is visible, avoiding a resize flash.
+    /// Called from App.OnLaunched BEFORE Activate().
+    /// </summary>
+    public void ConfigureWindow()
+    {
+        if (_hwnd != nint.Zero)
+        {
+            var dpi = GetWindowDpi(_hwnd);
+            var w = (int)(372f * dpi / 96f);
+            var h = (int)(600f * dpi / 96f);
+            SetWindowPos(_hwnd, 0, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
+        }
+
+        if (AppWindow?.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.IsResizable = true;
+            presenter.IsMaximizable = false;
+        }
     }
 
     public MainViewModel? ViewModel => _vm;
@@ -84,7 +96,6 @@ public sealed partial class MainWindow : Window
 
     private void OnActivated(object sender, WindowActivatedEventArgs args)
     {
-        // Hotkey registration moved to constructor — Activated may not fire on first launch
     }
 
     private void OnClosed(object sender, WindowEventArgs args)
@@ -139,19 +150,32 @@ public sealed partial class MainWindow : Window
 
     private void ApplyAlwaysOnTop(bool topmost)
     {
-        if (AppWindow is null) return;
-        // WinUI 3: use SetWindowPos via AppWindow
-        var hwnd = WindowNative.GetWindowHandle(this);
-        if (hwnd != nint.Zero)
+        if (AppWindow?.Presenter is OverlappedPresenter presenter)
         {
-            const int HWND_TOPMOST = -1;
-            const int HWND_NOTOPMOST = -2;
-            const uint SWP_NOMOVE = 0x0002;
-            const uint SWP_NOSIZE = 0x0001;
-            SetWindowPos(hwnd, topmost ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+            presenter.IsAlwaysOnTop = topmost;
         }
     }
 
+    // ── Win32 interop for DPI-aware window sizing ──
+
+    private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOZORDER = 0x0004;
+    private const uint MONITOR_DEFAULTTONEAREST = 2;
+    private const int MDT_EFFECTIVE_DPI = 0;
+
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(nint hWnd, int hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern nint MonitorFromWindow(nint hWnd, uint dwFlags);
+
+    [DllImport("shcore.dll")]
+    private static extern int GetDpiForMonitor(nint hmonitor, int dpiType, out uint dpiX, out uint dpiY);
+
+    private static int GetWindowDpi(nint hwnd)
+    {
+        var hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        _ = GetDpiForMonitor(hmon, MDT_EFFECTIVE_DPI, out var dpiX, out _);
+        return (int)dpiX;
+    }
 }

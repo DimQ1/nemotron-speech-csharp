@@ -5,6 +5,9 @@ namespace VoiceType.WinUI;
 
 public partial class App : Application
 {
+    /// <summary>Static reference to the main window (WinUI 3 best practice).</summary>
+    public static Views.MainWindow? MainWindow { get; private set; }
+
     public App()
     {
         InitializeComponent();
@@ -27,7 +30,8 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        var window = new Views.MainWindow();
-        window.Activate();
+        MainWindow = new Views.MainWindow();
+        MainWindow.ConfigureWindow();
+        MainWindow.Activate();
     }
 }
