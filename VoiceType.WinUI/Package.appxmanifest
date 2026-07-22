@@ -35,12 +35,12 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="VoiceType.WinUI"
-        Description="VoiceType.WinUI"
+        DisplayName="VoiceType"
+        Description="Voice dictation with Nemotron ASR"
         BackgroundColor="transparent"
-        Square150x150Logo="Assets\Square150x150Logo.png"
-        Square44x44Logo="Assets\Square44x44Logo.png">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+        Square150x150Logo="Assets\app-icon.png"
+        Square44x44Logo="Assets\app-icon.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\app-icon.png" />
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
     </Application>

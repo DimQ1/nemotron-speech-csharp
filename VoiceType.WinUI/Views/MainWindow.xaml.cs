@@ -46,12 +46,6 @@ public sealed partial class MainWindow : Window
         if (AppWindow is not null)
         {
             AppWindow.Resize(new SizeInt32(420, 520));
-            // Set presenter to disable resize
-            if (AppWindow.Presenter is OverlappedPresenter presenter)
-            {
-                presenter.IsResizable = false;
-                presenter.IsMaximizable = false;
-            }
         }
 
         // Extend content into title bar and set custom title bar

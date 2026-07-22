@@ -22,15 +22,10 @@ public sealed partial class SettingsWindow : Window
         _vm = new SettingsViewModel(currentSettings);
         _vm.OwnerWindowHandle = WindowNative.GetWindowHandle(this);
 
-        // Compact size
+        // Compact size — resizable
         if (AppWindow is not null)
         {
-            AppWindow.Resize(new SizeInt32(520, 560));
-            if (AppWindow.Presenter is OverlappedPresenter presenter)
-            {
-                presenter.IsResizable = false;
-                presenter.IsMaximizable = false;
-            }
+            AppWindow.Resize(new SizeInt32(480, 480));
         }
 
         // Custom title bar

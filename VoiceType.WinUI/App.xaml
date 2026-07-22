@@ -54,7 +54,10 @@
 
             <Style TargetType="CheckBox" x:Key="DarkCheckBox">
                 <Setter Property="Foreground" Value="{StaticResource FgBrush}"/>
-                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="MinHeight" Value="0"/>
+                <Setter Property="MinWidth" Value="0"/>
+                <Setter Property="Padding" Value="0"/>
                 <Setter Property="VerticalContentAlignment" Value="Center"/>
             </Style>
 

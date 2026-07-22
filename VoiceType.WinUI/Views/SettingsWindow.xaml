@@ -22,7 +22,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <TextBlock Text="VoiceType Settings" Foreground="{StaticResource FgBrush}"
-                       FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                        Margin="12,0,0,0"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="0">
                 <Button Content="&#xE8BB;" Style="{StaticResource IconButton}"
@@ -30,13 +30,13 @@
             </StackPanel>
         </Grid>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="12,8,12,0">
-            <StackPanel Margin="0,0,0,12">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="8,4,8,0">
+            <StackPanel Margin="0,0,0,8">
 
                 <!-- ── Engine ── -->
-                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="8" Margin="0,0,0,8">
                     <StackPanel>
-                        <TextBlock Text="Speech Engine" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Speech Engine" Foreground="{StaticResource FgBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
 
                         <TextBlock Text="Models Root Folder" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <Grid Margin="0,0,0,8">
@@ -47,7 +47,7 @@
                             <TextBox Text="{x:Bind ViewModel.ModelsRootPath, Mode=TwoWay}" Style="{StaticResource DarkTextBox}"/>
                             <Button Grid.Column="1" Content="..." Margin="8,0,0,0"
                                     Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
-                                    BorderThickness="0" Padding="10,6" FontSize="13" FontWeight="Bold"
+                                    BorderThickness="0" Padding="10,6" FontSize="12" FontWeight="Bold"
                                     Command="{x:Bind ViewModel.BrowseRootCommand}"
                                     ToolTipService.ToolTip="Browse for models root folder"/>
                         </Grid>
@@ -111,9 +111,9 @@
                 </Border>
 
                 <!-- ── Capture ── -->
-                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="8" Margin="0,0,0,8">
                     <StackPanel>
-                        <TextBlock Text="Audio Capture" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Audio Capture" Foreground="{StaticResource FgBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <TextBlock Text="Audio Source" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <ComboBox SelectedValue="{x:Bind ViewModel.AudioSource, Mode=TwoWay}" SelectedValuePath="Content"
                                   Style="{StaticResource DarkComboBox}">
@@ -125,9 +125,9 @@
                 </Border>
 
                 <!-- ── Text Injection ── -->
-                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="8" Margin="0,0,0,8">
                     <StackPanel>
-                        <TextBlock Text="Text Injection" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Text Injection" Foreground="{StaticResource FgBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <TextBlock Text="Injection Method" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <ComboBox SelectedValue="{x:Bind ViewModel.TextInjectionMethod, Mode=TwoWay}" SelectedValuePath="Content"
                                   Style="{StaticResource DarkComboBox}" Margin="0,0,0,8">
@@ -143,9 +143,9 @@
                 </Border>
 
                 <!-- ── Sessions ── -->
-                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="8" Margin="0,0,0,8">
                     <StackPanel>
-                        <TextBlock Text="Session Recording" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Session Recording" Foreground="{StaticResource FgBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <CheckBox Content="Save recognition sessions"
                                   IsChecked="{x:Bind ViewModel.SaveSessions, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,6"/>
                         <TextBlock Text="Sessions Path" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
@@ -157,9 +157,9 @@
                 </Border>
 
                 <!-- ── Hotkeys ── -->
-                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="8" Margin="0,0,0,8">
                     <StackPanel>
-                        <TextBlock Text="Global Hotkeys" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Global Hotkeys" Foreground="{StaticResource FgBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <TextBlock Text="Toggle Recognition (Ctrl+Shift+V, Ctrl+Alt+R, etc.)"
                                    Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <TextBox Text="{x:Bind ViewModel.ToggleHotkey, Mode=TwoWay}"
@@ -176,9 +176,9 @@
                 </Border>
 
                 <!-- ── Post-processing ── -->
-                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="8" Margin="0,0,0,8">
                     <StackPanel>
-                        <TextBlock Text="Post-Processing Pipeline" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Post-Processing Pipeline" Foreground="{StaticResource FgBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <CheckBox Content="Enable post-processing"
                                   IsChecked="{x:Bind ViewModel.PostProcessingEnabled, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,8"/>
 

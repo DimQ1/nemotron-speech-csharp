@@ -118,14 +118,14 @@
 
                     <CheckBox Grid.Row="2"
                               Content="Auto-scroll"
-                              Margin="0,6,0,0"
+                              Margin="0,4,0,0"
                               IsChecked="{x:Bind ViewModel.IsAutoScrollEnabled, Mode=TwoWay}"
                               Style="{StaticResource DarkCheckBox}"
                               VerticalAlignment="Center"/>
 
                     <CheckBox Grid.Row="3"
                               Content="Pause injection on focus change"
-                              Margin="0,6,0,0"
+                              Margin="0,4,0,0"
                               IsChecked="{x:Bind ViewModel.DisableInjectionOnFocusChange, Mode=TwoWay}"
                               Style="{StaticResource DarkCheckBox}"
                               VerticalAlignment="Center"/>

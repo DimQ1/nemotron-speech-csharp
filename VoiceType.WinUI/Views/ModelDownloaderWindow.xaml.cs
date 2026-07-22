@@ -31,15 +31,10 @@ public sealed partial class ModelDownloaderWindow : Window
         _vm = new ModelDownloaderViewModel(this.DispatcherQueue);
         _vm.OwnerWindowHandle = WindowNative.GetWindowHandle(this);
 
-        // Compact size
+        // Compact size — resizable
         if (AppWindow is not null)
         {
             AppWindow.Resize(new SizeInt32(480, 360));
-            if (AppWindow.Presenter is OverlappedPresenter presenter)
-            {
-                presenter.IsResizable = false;
-                presenter.IsMaximizable = false;
-            }
         }
 
         // Custom title bar
