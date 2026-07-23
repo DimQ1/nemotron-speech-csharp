@@ -34,6 +34,7 @@ public sealed class RecognitionStateMachine
         (CurrentState, trigger) switch
         {
             (RecognitionState.Idle, RecognitionTrigger.Start) => true,
+            (RecognitionState.Error, RecognitionTrigger.Start) => true,
             (RecognitionState.Initializing, RecognitionTrigger.InitOk) => true,
             (RecognitionState.Initializing, RecognitionTrigger.InitFail) => true,
             (RecognitionState.Listening, RecognitionTrigger.Mute) => true,
@@ -54,6 +55,7 @@ public sealed class RecognitionStateMachine
         CurrentState = (CurrentState, trigger) switch
         {
             (RecognitionState.Idle, RecognitionTrigger.Start) => RecognitionState.Initializing,
+            (RecognitionState.Error, RecognitionTrigger.Start) => RecognitionState.Initializing,
             (RecognitionState.Initializing, RecognitionTrigger.InitOk) => RecognitionState.Listening,
             (RecognitionState.Initializing, RecognitionTrigger.InitFail) => RecognitionState.Error,
             (RecognitionState.Listening, RecognitionTrigger.Mute) => RecognitionState.Muted,

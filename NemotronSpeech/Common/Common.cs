@@ -198,7 +198,6 @@ namespace CommonUtils
                     // force_spinning_stop prevents busy-waiting after work is done.
                     sessionOptions["intra_op_num_threads"] = optimalIntraThreads;
                     sessionOptions["inter_op_num_threads"] = 1;
-                    sessionOptions["session.force_spinning_stop"] = "1";
                 }
 
                 string overlay = rootNode.ToJsonString();
