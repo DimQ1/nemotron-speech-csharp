@@ -35,8 +35,11 @@ public sealed class RecognitionStateMachine
         {
             (RecognitionState.Idle, RecognitionTrigger.Start) => true,
             (RecognitionState.Error, RecognitionTrigger.Start) => true,
+            (RecognitionState.Listening, RecognitionTrigger.Start) => true,
             (RecognitionState.Initializing, RecognitionTrigger.InitOk) => true,
             (RecognitionState.Initializing, RecognitionTrigger.InitFail) => true,
+            (RecognitionState.Listening, RecognitionTrigger.InitOk) => true,
+            (RecognitionState.Listening, RecognitionTrigger.InitFail) => true,
             (RecognitionState.Listening, RecognitionTrigger.Mute) => true,
             (RecognitionState.Listening, RecognitionTrigger.Stop) => true,
             (RecognitionState.Muted, RecognitionTrigger.Unmute) => true,
@@ -56,8 +59,11 @@ public sealed class RecognitionStateMachine
         {
             (RecognitionState.Idle, RecognitionTrigger.Start) => RecognitionState.Initializing,
             (RecognitionState.Error, RecognitionTrigger.Start) => RecognitionState.Initializing,
+            (RecognitionState.Listening, RecognitionTrigger.Start) => RecognitionState.Listening,
             (RecognitionState.Initializing, RecognitionTrigger.InitOk) => RecognitionState.Listening,
             (RecognitionState.Initializing, RecognitionTrigger.InitFail) => RecognitionState.Error,
+            (RecognitionState.Listening, RecognitionTrigger.InitOk) => RecognitionState.Listening,
+            (RecognitionState.Listening, RecognitionTrigger.InitFail) => RecognitionState.Error,
             (RecognitionState.Listening, RecognitionTrigger.Mute) => RecognitionState.Muted,
             (RecognitionState.Listening, RecognitionTrigger.Stop) => RecognitionState.Finalizing,
             (RecognitionState.Muted, RecognitionTrigger.Unmute) => RecognitionState.Listening,
