@@ -214,6 +214,16 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void Toggle()
     {
+        if (IsRecording && IsCaptureMuted)
+        {
+            // Paused: resume audio processing
+            _recognition.SetMuted(false);
+            IsCaptureMuted = false;
+            StatusText = "Listening...";
+            OnPropertyChanged(nameof(RecordingIndicator));
+            return;
+        }
+
         if (IsRecording) Stop();
         else if (!IsInitializing) _ = StartAsync();
     }
@@ -480,8 +490,17 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void OnInputDetected()
     {
-        if (_settings.StopOnAnyInput)
-            _dispatcher.TryEnqueue(Stop);
+        if (!_settings.StopOnAnyInput) return;
+        if (!IsRecording || IsCaptureMuted) return;
+
+        // Pause audio processing instead of full stop: model stays loaded, recognition resumes quickly.
+        _dispatcher.TryEnqueue(() =>
+        {
+            _recognition.SetMuted(true);
+            IsCaptureMuted = true;
+            StatusText = "Paused (model loaded)";
+            OnPropertyChanged(nameof(RecordingIndicator));
+        });
     }
 
     private bool CanInjectToTargetWindow()
