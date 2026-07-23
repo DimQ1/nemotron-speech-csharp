@@ -1,46 +1,88 @@
 # Aspire Dashboard — Development Telemetry
 
+> ⚠️ **Aspire workload deprecated.** Начиная с .NET 10 Aspire доступен через NuGet-пакеты.
+> Подробнее: https://aka.ms/aspire/support-policy
+
+## OpenTelemetry (уже настроено)
+
+Приложение уже экспортирует логи, метрики и трейсы через **OpenTelemetry Protocol (OTLP)** gRPC
+на `http://localhost:4317` в Development-режиме.
+
+Для просмотра телеметрии можно использовать любой OTLP-совместимый бэкенд:
+
+- **Aspire Dashboard** — рекомендуемый вариант
+- **Jaeger** — для трейсов
+- **Prometheus + Grafana** — для метрик
+- **Seq / Logstash** — для логов
+
 ## Запуск Aspire Dashboard
 
-```powershell
-# Установить глобальный инструмент Aspire Dashboard
-dotnet tool install -g Aspire.Dashboard
+### Способ 1: Через Aspire.Hosting AppHost (рекомендуемый)
 
-# Запустить дашборд
-aspire-dashboard
+Создайте проект `.AppHost` рядом с `VoiceType.WinUI`:
+
+```powershell
+dotnet new aspire --name VoiceType.AppHost
+cd VoiceType.AppHost
+dotnet add reference ../VoiceType.WinUI/VoiceType.WinUI.csproj
 ```
 
-Дашборд будет доступен по адресу: `http://localhost:18888`
+В `Program.cs` добавьте:
+
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+builder.AddProject<Projects.VoiceType_WinUI>("voicetype");
+builder.Run();
+```
+
+Запуск:
+
+```powershell
+dotnet run --project VoiceType.AppHost
+```
+
+### Способ 2: Через Aspire.Dashboard SDK
+
+```powershell
+# Установить SDK (замените на вашу платформу)
+dotnet add package Aspire.Dashboard.Sdk.win-x64 --version 13.4.6
+```
+
+Затем запустить дашборд через `aspire-dashboard` CLI (документация: https://learn.microsoft.com/dotnet/aspire/fundamentals/dashboard/standalone).
+
+### Способ 3: Docker
+
+```powershell
+docker run --rm -it -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard:latest
+```
+
+Дашборд: `http://localhost:18888`
 
 ## Настройка приложения
 
-### Вариант 1: Launch Profile
+Выберите профиль **"VoiceType + Aspire Dashboard"** в VS Code (Run & Debug):
 
-Выберите профиль **"VoiceType + Aspire Dashboard"** в VS Code (Run & Debug → профиль):
-- Устанавливает `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317`
-- Включает `ASPNETCORE_ENVIRONMENT=Development`
-
-### Вариант 2: Ручной запуск
-
-```powershell
-$env:ASPNETCORE_ENVIRONMENT = "Development"
-$env:OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4317"
-dotnet run --project VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:WindowsPackageType=None
+```json
+{
+  "commandName": "MsixPackage",
+  "environmentVariables": {
+    "ASPNETCORE_ENVIRONMENT": "Development",
+    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"
+  }
+}
 ```
 
-## Что вы увидите в дашборде
+## Автономный режим
 
-| Раздел | Что отображается |
-|---|---|
-| **Logs** | Все логи через `ISystemTelemetry` и `ILogger<T>` |
-| **Traces** | Инструментированные HTTP-запросы и операции |
-| **Metrics** | Счётчики событий и ошибок |
-| **Structures** | Структурированные данные телеметрии |
+Без Aspire телеметрия работает без ошибок:
+- Все логи пишутся в `%LOCALAPPDATA%\VoiceType\error.log`
+- Логи через `ILogger<T>` + `Debug.WriteLine`
+- OTLP-экспорт автоматически отключается (`IsOtlpExportEnabled()` = false)
 
 ## Переменные окружения
 
 | Переменная | По умолчанию | Описание |
 |---|---|---|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4317` | gRPC endpoint OTLP |
-| `ASPIRE_DASHBOARD_OTLP_ENDPOINT` | — | Альтернативный endpoint |
+| `ASPIRE_DASHBOARD_OTLP_ENDPOINT` | — | Альтернативный endpoint (legacy) |
 | `ASPNETCORE_ENVIRONMENT` | — | `Development` включает OTLP-экспорт |
