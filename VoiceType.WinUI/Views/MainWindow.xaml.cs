@@ -19,6 +19,8 @@ public sealed partial class MainWindow : Window
     private nint _hwnd;
     private SubclassProc? _subclassProc;
     private nint _subclassId = 1;
+    private readonly List<Window> _childWindows = new();
+    private bool _isTopmostEnabled;
 
     private delegate nint SubclassProc(nint hWnd, uint uMsg, nint wParam, nint lParam, nint uIdSubclass, nint dwRefData);
 
@@ -51,7 +53,8 @@ public sealed partial class MainWindow : Window
         SetTitleBar(AppTitleBar);
 
         // Apply always-on-top from settings
-        ApplyAlwaysOnTop(_vm.AlwaysOnTop);
+        _isTopmostEnabled = _vm.AlwaysOnTop;
+        ApplyAlwaysOnTop(_isTopmostEnabled);
         _vm.AlwaysOnTopChanged += ApplyAlwaysOnTop;
 
         // Register hotkey immediately
@@ -101,6 +104,13 @@ public sealed partial class MainWindow : Window
         var hotkeyService = App.Services.GetRequiredService<IGlobalHotkeyService>();
         hotkeyService.UnregisterAll();
         UnsubclassWindow();
+
+        // Close all child windows when main window closes
+        foreach (var child in _childWindows.ToArray())
+        {
+            try { child.Close(); } catch { }
+        }
+        _childWindows.Clear();
     }
 
     private void SubclassWindow()
@@ -148,16 +158,78 @@ public sealed partial class MainWindow : Window
 
     private void ApplyAlwaysOnTop(bool topmost)
     {
+        _isTopmostEnabled = topmost;
         if (AppWindow?.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsAlwaysOnTop = topmost;
         }
     }
 
+    /// <summary>Register a child window: positions it beside the main window (left/right based on screen space).</summary>
+    public void TrackChildWindow(Window child)
+    {
+        if (child is null || _childWindows.Contains(child)) return;
+
+        _childWindows.Add(child);
+
+        child.Closed += (_, _) =>
+        {
+            _childWindows.Remove(child);
+        };
+
+        // Position child beside main window after it is shown
+        child.Activated += (_, _) => PositionChildBeside(child);
+    }
+
+    /// <summary>Position child window to the left or right of the main window, whichever has more screen space.</summary>
+    private void PositionChildBeside(Window child)
+    {
+        if (child is null || _hwnd == nint.Zero) return;
+
+        var childHwnd = WindowNative.GetWindowHandle(child);
+        if (childHwnd == nint.Zero) return;
+
+        if (!GetWindowRect(_hwnd, out var mainRect)) return;
+        if (!GetWindowRect(childHwnd, out var childRect)) return;
+
+        var mainWidth = mainRect.Right - mainRect.Left;
+        var mainHeight = mainRect.Bottom - mainRect.Top;
+        var childWidth = childRect.Right - childRect.Left;
+        var childHeight = childRect.Bottom - childRect.Top;
+
+        var hmon = MonitorFromWindow(_hwnd, MONITOR_DEFAULTTONEAREST);
+        var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+        if (!GetMonitorInfo(hmon, ref mi)) return;
+
+        var workArea = mi.rcWork;
+        var spaceRight = workArea.Right - mainRect.Right;
+        var spaceLeft = mainRect.Left - workArea.Left;
+
+        int x;
+        if (spaceRight >= childWidth + 8)
+            x = mainRect.Right + 8;
+        else if (spaceLeft >= childWidth + 8)
+            x = mainRect.Left - childWidth - 8;
+        else
+            x = mainRect.Left; // fallback: overlap
+
+        int y = mainRect.Top;
+
+        // Clamp to work area
+        if (x + childWidth > workArea.Right) x = workArea.Right - childWidth;
+        if (x < workArea.Left) x = workArea.Left;
+        if (y + childHeight > workArea.Bottom) y = workArea.Bottom - childHeight;
+        if (y < workArea.Top) y = workArea.Top;
+
+        SetWindowPos(childHwnd, 0, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+
     // ---- Win32 interop ----
 
     private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOZORDER = 0x0004;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOACTIVATE = 0x0010;
     private const uint MONITOR_DEFAULTTONEAREST = 2;
     private const int MDT_EFFECTIVE_DPI = 0;
 
@@ -167,8 +239,32 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern nint MonitorFromWindow(nint hWnd, uint dwFlags);
 
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(nint hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);
+
     [DllImport("shcore.dll")]
     private static extern int GetDpiForMonitor(nint hmonitor, int dpiType, out uint dpiX, out uint dpiY);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
 
     private static int GetWindowDpi(nint hwnd)
     {

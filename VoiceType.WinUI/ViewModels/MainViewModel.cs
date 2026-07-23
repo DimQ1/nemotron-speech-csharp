@@ -245,6 +245,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         var settingsWindow = new Views.SettingsWindow(_settings);
+        App.MainWindow?.TrackChildWindow(settingsWindow);
         settingsWindow.Closed += (_, _) =>
         {
             if (settingsWindow.ViewModel.WasSaved)
@@ -273,6 +274,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         var window = new Views.ModelDownloaderWindow();
+        App.MainWindow?.TrackChildWindow(window);
         window.Closed += (_, _) =>
         {
             if (window.ViewModel.WasDownloaded && window.ViewModel.ResultModelPath is not null)
