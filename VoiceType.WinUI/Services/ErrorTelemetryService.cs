@@ -14,17 +14,12 @@ public sealed class ErrorTelemetryService : ISystemTelemetry, IDisposable
     private readonly ILogger<ErrorTelemetryService> _logger;
     private readonly string _logFile;
     private readonly object _sync = new();
-    private StreamWriter? _logWriter;
-    private readonly FileStream _logStream;
 
     public ErrorTelemetryService(ILogger<ErrorTelemetryService> logger)
     {
         _logger = logger;
         AppPaths.EnsureDataRoot();
         _logFile = AppPaths.ErrorLogFile;
-        // Open with FileShare.ReadWrite so multiple processes/threads don't lock each other.
-        _logStream = new FileStream(_logFile, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-        _logWriter = new StreamWriter(_logStream) { AutoFlush = true };
     }
 
     public void LogError(string category, string message, Exception? ex = null)
@@ -80,7 +75,8 @@ public sealed class ErrorTelemetryService : ISystemTelemetry, IDisposable
         {
             try
             {
-                _logWriter?.WriteLine(line);
+                // Atomic append shared across processes; avoids StreamWriter lock contention.
+                File.AppendAllText(_logFile, line + Environment.NewLine);
             }
             catch { }
         }
@@ -88,6 +84,6 @@ public sealed class ErrorTelemetryService : ISystemTelemetry, IDisposable
 
     public void Dispose()
     {
-        lock (_sync) { _logWriter?.Dispose(); _logStream?.Dispose(); _logWriter = null; }
+        // No-op: file is opened per-write.
     }
 }
