@@ -2,32 +2,32 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Attach to VoiceType.WinUI",
-            "type": "coreclr",
-            "request": "attach",
-            "processName": "VoiceType.WinUI.exe",
-            "requireExactSource": false
-        },
-        {
-            "name": "VoiceType.WinUI (dotnet run — no debug)",
+            "name": "1. Run VoiceType",
             "type": "node-terminal",
             "request": "launch",
             "command": "dotnet run --project VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU",
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "VoiceType.WinUI + Aspire Dashboard",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "$env:ASPNETCORE_ENVIRONMENT='Development'; $env:OTEL_EXPORTER_OTLP_ENDPOINT='http://localhost:4317'; $env:OTEL_SERVICE_NAME='VoiceType.WinUI'; dotnet run --project VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU",
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "name": "VoiceType.WinUI + Telemetry",
+            "name": "2. Run + Telemetry",
             "type": "node-terminal",
             "request": "launch",
             "command": "$env:ASPNETCORE_ENVIRONMENT='Development'; dotnet run --project VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU",
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "3. Run + Aspire Dashboard",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "$env:ASPNETCORE_ENVIRONMENT='Development'; $env:OTEL_EXPORTER_OTLP_ENDPOINT='http://localhost:4317'; dotnet run --project VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "4. Attach Debugger",
+            "type": "coreclr",
+            "request": "attach",
+            "processName": "VoiceType.WinUI.exe",
+            "requireExactSource": false
         }
     ]
 }
