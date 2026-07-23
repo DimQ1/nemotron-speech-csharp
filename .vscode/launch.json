@@ -2,24 +2,24 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "VoiceType.WinUI (Local)",
+            "name": "VoiceType.WinUI (MSIX)",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "build",
-            "program": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/VoiceType.WinUI.exe",
+            "preLaunchTask": "deploy-msix",
+            "program": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX/VoiceType.WinUI.exe",
             "args": [],
-            "cwd": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64",
+            "cwd": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX",
             "console": "internalConsole",
             "stopAtEntry": false
         },
         {
-            "name": "VoiceType.WinUI + Aspire Dashboard",
+            "name": "VoiceType.WinUI + Aspire Dashboard (MSIX)",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "build",
-            "program": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/VoiceType.WinUI.exe",
+            "preLaunchTask": "deploy-msix",
+            "program": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX/VoiceType.WinUI.exe",
             "args": [],
-            "cwd": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64",
+            "cwd": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX",
             "console": "internalConsole",
             "stopAtEntry": false,
             "env": {
@@ -29,24 +29,13 @@
             }
         },
         {
-            "name": "VoiceType.WinUI (Unpackaged)",
+            "name": "VoiceType.WinUI + Telemetry (MSIX)",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "build-unpackaged",
-            "program": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/VoiceType.WinUI.exe",
+            "preLaunchTask": "deploy-msix",
+            "program": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX/VoiceType.WinUI.exe",
             "args": [],
-            "cwd": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64",
-            "console": "internalConsole",
-            "stopAtEntry": false
-        },
-        {
-            "name": "VoiceType.WinUI + Telemetry (standalone)",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "build-unpackaged",
-            "program": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/VoiceType.WinUI.exe",
-            "args": [],
-            "cwd": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64",
+            "cwd": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX",
             "console": "internalConsole",
             "stopAtEntry": false,
             "env": {
