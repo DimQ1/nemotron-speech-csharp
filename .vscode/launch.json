@@ -2,45 +2,32 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "VoiceType.WinUI (MSIX)",
+            "name": "Attach to VoiceType.WinUI",
             "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "deploy-msix",
-            "program": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX/VoiceType.WinUI.exe",
-            "args": [],
-            "cwd": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX",
-            "console": "internalConsole",
-            "stopAtEntry": false
+            "request": "attach",
+            "processName": "VoiceType.WinUI.exe",
+            "requireExactSource": false
         },
         {
-            "name": "VoiceType.WinUI + Aspire Dashboard (MSIX)",
-            "type": "coreclr",
+            "name": "VoiceType.WinUI (dotnet run — no debug)",
+            "type": "node-terminal",
             "request": "launch",
-            "preLaunchTask": "deploy-msix",
-            "program": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX/VoiceType.WinUI.exe",
-            "args": [],
-            "cwd": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX",
-            "console": "internalConsole",
-            "stopAtEntry": false,
-            "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development",
-                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
-                "OTEL_SERVICE_NAME": "VoiceType.WinUI"
-            }
+            "command": "dotnet run --project VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU",
+            "cwd": "${workspaceFolder}"
         },
         {
-            "name": "VoiceType.WinUI + Telemetry (MSIX)",
-            "type": "coreclr",
+            "name": "VoiceType.WinUI + Aspire Dashboard",
+            "type": "node-terminal",
             "request": "launch",
-            "preLaunchTask": "deploy-msix",
-            "program": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX/VoiceType.WinUI.exe",
-            "args": [],
-            "cwd": "${workspaceFolder}/VoiceType.WinUI/bin/Debug/net10.0-windows10.0.26100.0/win-x64/AppX",
-            "console": "internalConsole",
-            "stopAtEntry": false,
-            "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development"
-            }
+            "command": "$env:ASPNETCORE_ENVIRONMENT='Development'; $env:OTEL_EXPORTER_OTLP_ENDPOINT='http://localhost:4317'; $env:OTEL_SERVICE_NAME='VoiceType.WinUI'; dotnet run --project VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "VoiceType.WinUI + Telemetry",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "$env:ASPNETCORE_ENVIRONMENT='Development'; dotnet run --project VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU",
+            "cwd": "${workspaceFolder}"
         }
     ]
 }
