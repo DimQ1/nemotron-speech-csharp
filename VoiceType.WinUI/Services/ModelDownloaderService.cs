@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Diagnostics;
+using VoiceType.WinUI.Interfaces;
 
 namespace VoiceType.WinUI.Services;
 
@@ -12,7 +13,7 @@ namespace VoiceType.WinUI.Services;
 /// Downloads ONNX model files from HuggingFace using the Downloader library
 /// (multipart parallel download, auto-resume, real-time progress).
 /// </summary>
-public sealed class ModelDownloaderService : IDisposable
+public sealed class ModelDownloaderService : IModelDownloaderService
 {
     private readonly HttpClient _http;
     private readonly bool _disposeHttp;

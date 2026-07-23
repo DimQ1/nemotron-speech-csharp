@@ -1,33 +1,36 @@
 using System.IO;
 using System.Text.Json;
+using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
 
 namespace VoiceType.WinUI.Services;
 
-/// <summary>Loads and saves <see cref="AppSettings"/> as JSON.</summary>
-public static class SettingsService
+public sealed class SettingsService : ISettingsService
 {
-    private static readonly string FilePath = AppPaths.SettingsFile;
+    private readonly string _filePath;
 
-    public static AppSettings Load()
+    public SettingsService() : this(AppPaths.SettingsFile) { }
+    public SettingsService(string filePath) => _filePath = filePath;
+
+    public AppSettings Load()
     {
         try
         {
-            if (File.Exists(FilePath))
+            if (File.Exists(_filePath))
             {
-                var json = File.ReadAllText(FilePath);
+                var json = File.ReadAllText(_filePath);
                 return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
             }
         }
-        catch { /* corrupted file → use defaults */ }
+        catch { }
         return new AppSettings();
     }
 
-    public static void Save(AppSettings settings)
+    public void Save(AppSettings settings)
     {
-        var dir = Path.GetDirectoryName(FilePath)!;
+        var dir = Path.GetDirectoryName(_filePath)!;
         Directory.CreateDirectory(dir);
         var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(FilePath, json);
+        File.WriteAllText(_filePath, json);
     }
 }

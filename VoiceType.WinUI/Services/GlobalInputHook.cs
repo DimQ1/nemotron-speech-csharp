@@ -1,6 +1,7 @@
 using System.IO;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using VoiceType.WinUI.Interfaces;
 
 namespace VoiceType.WinUI.Services;
 
@@ -8,7 +9,7 @@ namespace VoiceType.WinUI.Services;
 /// Low-level global keyboard and mouse hook.
 /// Fires <see cref="InputDetected"/> on ANY key press or mouse click.
 /// </summary>
-public sealed class GlobalInputHook : IDisposable
+public sealed class GlobalInputHook : IGlobalInputHook
 {
     private const int WH_KEYBOARD_LL = 13;
     private const int WH_MOUSE_LL = 14;
@@ -56,7 +57,7 @@ public sealed class GlobalInputHook : IDisposable
         if (nCode >= 0 && wParam is WM_KEYDOWN or WM_SYSKEYDOWN)
         {
             var data = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
-            if ((data.flags & LLKHF_INJECTED) == 0 && data.dwExtraInfo != TextInjector.InjectionMarker)
+            if ((data.flags & LLKHF_INJECTED) == 0 && data.dwExtraInfo != TextInjection.SendInputStrategy.InjectionMarker)
                 InputDetected?.Invoke();
         }
         return CallNextHookEx(_kbdHookId, nCode, wParam, lParam);

@@ -1,7 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Runtime.InteropServices;
+using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
 using VoiceType.WinUI.ViewModels;
 using WinRT.Interop;
@@ -18,14 +20,16 @@ public sealed partial class SettingsWindow : Window
 
     public SettingsWindow(AppSettings currentSettings)
     {
-        InitializeComponent();
-        _vm = new SettingsViewModel(currentSettings);
+        // Resolve ISettingsService from DI container
+        var settingsService = App.Services.GetRequiredService<ISettingsService>();
+        _vm = new SettingsViewModel(settingsService, currentSettings);
         _vm.OwnerWindowHandle = WindowNative.GetWindowHandle(this);
+
+        InitializeComponent();
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
 
-        // Apply size BEFORE window is shown — avoids resize flash.
         ApplyWindowSize();
 
         _vm.RequestClose += () =>
@@ -35,10 +39,6 @@ public sealed partial class SettingsWindow : Window
         };
     }
 
-    /// <summary>
-    /// Apply golden-ratio vertical window size in the constructor (before Activate).
-    /// Compact vertical: 360×580 epx (φ≈1.61, 4px grid). DPI-aware.
-    /// </summary>
     public void ApplyWindowSize()
     {
         var hwnd = WindowNative.GetWindowHandle(this);
@@ -67,7 +67,7 @@ public sealed partial class SettingsWindow : Window
         this.Close();
     }
 
-    // ── Win32 interop ──
+    // ---- Win32 interop ----
 
     private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOZORDER = 0x0004;

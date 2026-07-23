@@ -1,19 +1,21 @@
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Services;
 using VoiceType.WinUI.ViewModels;
 using WinRT.Interop;
-using Windows.Graphics;
 
 namespace VoiceType.WinUI.Views;
 
 public sealed partial class MainWindow : Window
 {
-    private MainViewModel? _vm;
+    private readonly MainViewModel _vm;
+    private const int WM_HOTKEY = 0x0312;
     private nint _hwnd;
     private SubclassProc? _subclassProc;
     private nint _subclassId = 1;
@@ -29,10 +31,13 @@ public sealed partial class MainWindow : Window
     [DllImport("comctl32.dll", SetLastError = true)]
     private static extern nint DefSubclassProc(nint hWnd, uint uMsg, nint wParam, nint lParam);
 
-    public MainWindow()
+    public MainWindow(MainViewModel viewModel)
     {
+        // ViewModel must be set BEFORE InitializeComponent for x:Bind to work
+        _vm = viewModel;
+
         InitializeComponent();
-        _vm = new MainViewModel(this.DispatcherQueue);
+
         _vm.PropertyChanged += OnViewModelPropertyChanged;
 
         this.Activated += OnActivated;
@@ -49,17 +54,12 @@ public sealed partial class MainWindow : Window
         ApplyAlwaysOnTop(_vm.AlwaysOnTop);
         _vm.AlwaysOnTopChanged += ApplyAlwaysOnTop;
 
-        // Register hotkey immediately — Activated may not fire if window starts active
+        // Register hotkey immediately
         _vm.RegisterHotkey(_hwnd);
         _vm.TryAutoStart();
         SubclassWindow();
-
     }
 
-    /// <summary>
-    /// Configure the compact vertical window before it is visible, avoiding a resize flash.
-    /// Called from App.OnLaunched BEFORE Activate().
-    /// </summary>
     public void ConfigureWindow()
     {
         if (_hwnd != nint.Zero)
@@ -77,30 +77,29 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    public MainViewModel? ViewModel => _vm;
+    public MainViewModel ViewModel => _vm;
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainViewModel.FloatingText) && _vm is not null && _vm.IsAutoScrollEnabled)
+        if (e.PropertyName == nameof(MainViewModel.FloatingText) && _vm.IsAutoScrollEnabled)
         {
             DispatcherQueue.TryEnqueue(() => TextScroller.ChangeView(null, double.MaxValue, null));
         }
 
         if (e.PropertyName == nameof(MainViewModel.IsRecording))
         {
-            StatusDot.Fill = _vm?.IsRecording == true
+            StatusDot.Fill = _vm.IsRecording
                 ? (Brush)Application.Current.Resources["RedBrush"]
                 : (Brush)Application.Current.Resources["FgSecondaryBrush"];
         }
     }
 
-    private void OnActivated(object sender, WindowActivatedEventArgs args)
-    {
-    }
+    private void OnActivated(object sender, WindowActivatedEventArgs args) { }
 
     private void OnClosed(object sender, WindowEventArgs args)
     {
-        GlobalHotkeyService.UnregisterAll();
+        var hotkeyService = App.Services.GetRequiredService<IGlobalHotkeyService>();
+        hotkeyService.UnregisterAll();
         UnsubclassWindow();
     }
 
@@ -120,13 +119,13 @@ public sealed partial class MainWindow : Window
 
     private nint WndProcHook(nint hwnd, uint msg, nint wParam, nint lParam, nint uIdSubclass, nint dwRefData)
     {
-        if (msg == GlobalHotkeyService.WmHotkey)
+        if (msg == WM_HOTKEY)
         {
             var hotkeyId = wParam.ToInt32();
             Console.WriteLine($"[VoiceType] WM_HOTKEY received: id={hotkeyId}");
             AppPaths.EnsureDataRoot();
             File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now}] WM_HOTKEY: id={hotkeyId}\n");
-            _vm?.HandleHotkey(hotkeyId);
+            _vm.HandleHotkey(hotkeyId);
             return nint.Zero;
         }
         return DefSubclassProc(hwnd, msg, wParam, lParam);
@@ -134,7 +133,6 @@ public sealed partial class MainWindow : Window
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
     {
-        // Compact minimize — hide to taskbar
         this.AppWindow?.Hide();
     }
 
@@ -145,7 +143,7 @@ public sealed partial class MainWindow : Window
 
     private void DismissModelWarning_Click(object sender, RoutedEventArgs e)
     {
-        _vm?.DismissModelWarning();
+        _vm.DismissModelWarning();
     }
 
     private void ApplyAlwaysOnTop(bool topmost)
@@ -156,7 +154,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    // ── Win32 interop for DPI-aware window sizing ──
+    // ---- Win32 interop ----
 
     private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOZORDER = 0x0004;

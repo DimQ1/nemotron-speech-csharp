@@ -53,10 +53,18 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.3.1" />
     <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="3.0.0" />
+    <!-- MVVM (source generators for INotifyPropertyChanged and ICommand) -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <!-- DI container & logging abstractions -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <!-- Audio -->
     <PackageReference Include="NAudio" Version="2.3.0" />
     <PackageReference Include="NAudio.Lame" Version="2.1.0" />
     <!-- Exclude native ORT from Windows AI (conflicts with Microsoft.ML.OnnxRuntimeGenAI.Cuda in NemotronSpeech) -->
     <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
+    <!-- Force managed ORT 1.25.1 assembly (transitive 1.23 from GenAI is overridden) -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.25.1" ExcludeAssets="native" />
   </ItemGroup>
 
   <ItemGroup>
@@ -85,7 +93,9 @@
 
   <!-- Copy nemotron_swish_cpu.dll and ORT 1.25.1 native DLL into AppX.
        ORT 1.25.1 is required by opset-24 ONNX models. The stale 1.23 DLL
-       from the GenAI transitive dependency is overwritten. -->
+       from the GenAI transitive dependency is overwritten.
+       NOTE: Use dotnet build/run with -p:GpuArch=CPU for correct NemotronSpeech
+       dependency (ORT 1.25.1). Default build uses CUDA profile (ORT 1.23). -->
   <Target Name="CopyOrt1251AndSwishOpToAppX" AfterTargets="Build">
     <!-- ORT 1.25.1 from NuGet cache (CPU-only, no CUDA providers) -->
     <PropertyGroup>
@@ -103,6 +113,10 @@
           DestinationFolder="$(OutputPath)AppX"
           SkipUnchangedFiles="false"
           Condition="'@(_Ort1251Native)' != ''" />
+    <!-- Remove stale CUDA provider DLLs (incompatible with ORT 1.25.1 and unused on CPU) -->
+    <Delete Files="$(OutputPath)AppX\onnxruntime_providers_cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_cuda.dll')" />
+    <Delete Files="$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll')" />
+    <Delete Files="$(OutputPath)AppX\onnxruntime-genai-cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime-genai-cuda.dll')" />
     <!-- Swish-24 custom op DLL -->
     <ItemGroup>
       <_SwishDll Include="$(OutputPath)nemotron_swish_cpu.dll"

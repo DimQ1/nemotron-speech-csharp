@@ -1,74 +1,133 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
+using VoiceType.WinUI.Interfaces;
+using VoiceType.WinUI.Messages;
 using VoiceType.WinUI.Models;
 using VoiceType.WinUI.Services;
+using VoiceType.WinUI.Services.Recognition;
 
 namespace VoiceType.WinUI.ViewModels;
 
-/// <summary>
-/// ViewModel for the main floating recognition window.
-/// WinUI 3: DispatcherQueue instead of Dispatcher, no CommandManager.
-/// </summary>
-public sealed class MainViewModel : INotifyPropertyChanged
+public sealed partial class MainViewModel : ObservableObject
 {
     [DllImport("user32.dll")]
     private static extern nint GetForegroundWindow();
 
-    private readonly RecognitionService _recognition = new();
-    private readonly GlobalInputHook _hook = new();
+    private readonly IRecognitionService _recognition;
+    private readonly IGlobalInputHook _hook;
+    private readonly ITextInjector _textInjector;
+    private readonly ISettingsService _settingsService;
+    private readonly ISessionManager _sessionManager;
+    private readonly IGlobalHotkeyService _hotkeyService;
+    private readonly IPostProcessingPipeline _postProcessing;
+    private readonly DispatcherQueue _dispatcher;
+    private readonly RecognitionStateMachine _stateMachine = new();
+    private readonly DispatcherQueueTimer _partialResultTimer;
+    private readonly object _partialResultGate = new();
+
     private AppSettings _settings;
-    private string _statusText = "Ready";
-    private string _recognizedText = "";
-    private string _floatingText = "";
     private int _lastInjectedLength;
-    private bool _isRecording;
-    private bool _isCaptureMuted;
     private int _toggleHotkeyId;
     private int _muteHotkeyId;
     private int _injectTextHotkeyId;
     private nint _injectionTargetWindow;
     private RecognitionSession? _currentSession;
     private Views.SettingsWindow? _settingsWindow;
-    private readonly object _partialResultGate = new();
-    private readonly DispatcherQueueTimer _partialResultTimer;
     private string? _pendingPartialText;
     private bool _hasPendingPartial;
-    private bool _isTextInjectionEnabled;
-    private bool _isAutoScrollEnabled;
-    private bool _disableInjectionOnFocusChange;
-    private bool _isActivelyInjecting;
     private bool _injectionExplicitlyEnabled;
-    private bool _isInitializing;
-    private bool _isModelAvailable;
     private bool _modelWarningDismissed;
-    private string _modelStatusText = "";
-    private bool _alwaysOnTop;
-    private readonly DispatcherQueue _dispatcher;
 
-    /// <summary>HWND of the main window — set by MainWindow after loading.</summary>
+    // ---- Observable properties (source-generated) ----
+
+    [ObservableProperty]
+    private string _statusText = "Ready";
+
+    [ObservableProperty]
+    private string _recognizedText = "";
+
+    [ObservableProperty]
+    private string _floatingText = "";
+
+    [ObservableProperty]
+    private bool _isTextInjectionEnabled;
+
+    [ObservableProperty]
+    private bool _isAutoScrollEnabled;
+
+    [ObservableProperty]
+    private bool _disableInjectionOnFocusChange;
+
+    [ObservableProperty]
+    private bool _isCaptureMuted;
+
+    [ObservableProperty]
+    private bool _isRecording;
+
+    [ObservableProperty]
+    private bool _isInitializing;
+
+    [ObservableProperty]
+    private bool _isModelAvailable;
+
+    [ObservableProperty]
+    private string _modelStatusText = "";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowModelWarning))]
+    private bool _alwaysOnTop;
+
+    [ObservableProperty]
+    private bool _isActivelyInjecting;
+
     public nint MainWindowHandle { get; set; }
 
-    public MainViewModel(DispatcherQueue dispatcher)
+    // ---- Computed properties ----
+
+    public string RecordButtonText => IsInitializing ? "Initializing..." : (IsRecording ? "Stop" : "Start");
+
+    public string RecordingIndicator => IsRecording
+        ? (IsCaptureMuted ? "Muted" : "Recording...")
+        : "Idle";
+
+    public bool ShowModelWarning => !IsModelAvailable && !_modelWarningDismissed;
+
+    public static string RecommendedModelRepo => "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu";
+    public static string RecommendedModelDisplay => "CPU (INT4, opset24, 0.56s) -- fast, low latency, ~749 MB";
+
+    // ---- Events ----
+
+    public event Action<bool>? AlwaysOnTopChanged;
+
+    // ---- Constructor ----
+
+    public MainViewModel(
+        IRecognitionService recognition,
+        IGlobalInputHook hook,
+        ITextInjector textInjector,
+        ISettingsService settingsService,
+        ISessionManager sessionManager,
+        IGlobalHotkeyService hotkeyService,
+        IPostProcessingPipeline postProcessing,
+        DispatcherQueue dispatcher)
     {
+        _recognition = recognition;
+        _hook = hook;
+        _textInjector = textInjector;
+        _settingsService = settingsService;
+        _sessionManager = sessionManager;
+        _hotkeyService = hotkeyService;
+        _postProcessing = postProcessing;
         _dispatcher = dispatcher;
-        _settings = SettingsService.Load();
+        _settings = settingsService.Load();
 
-        _isTextInjectionEnabled = _settings.IsTextInjectionEnabled;
-        _isAutoScrollEnabled = _settings.IsAutoScrollEnabled;
-        _disableInjectionOnFocusChange = _settings.DisableInjectionOnFocusChange;
-        _alwaysOnTop = _settings.AlwaysOnTop;
-        _modelWarningDismissed = false;
-
-        StartCommand = new AsyncRelayCommand(StartAsync, () => !IsRecording && !IsInitializing);
-        StopCommand = new RelayCommand(Stop, () => IsRecording);
-        OpenSettingsCommand = new RelayCommand(OpenSettings);
-        ToggleCommand = new RelayCommand(Toggle);
-        CopyCommand = new RelayCommand(CopyText);
-        OpenModelDownloaderCommand = new RelayCommand(OpenModelDownloader);
-        MuteCommand = new RelayCommand(ToggleMute, () => IsRecording);
+        IsTextInjectionEnabled = _settings.IsTextInjectionEnabled;
+        IsAutoScrollEnabled = _settings.IsAutoScrollEnabled;
+        DisableInjectionOnFocusChange = _settings.DisableInjectionOnFocusChange;
+        AlwaysOnTop = _settings.AlwaysOnTop;
 
         _hook.InputDetected += OnInputDetected;
         _recognition.PartialResult += OnPartialResult;
@@ -79,176 +138,219 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _partialResultTimer.Interval = TimeSpan.FromMilliseconds(50);
         _partialResultTimer.Tick += (_, _) => FlushPendingPartialResult();
 
-        // Check model availability on startup
+        // Listen for ModelDownloaded messages
+        WeakReferenceMessenger.Default.Register<ModelDownloadedMessage>(this, (r, m) =>
+        {
+            _settings.ModelsRootPath = m.Value.ModelsRootPath;
+            _settings.ModelPath = m.Value.ModelPath;
+            _settingsService.Save(_settings);
+        });
+
         CheckModelAvailability();
     }
 
-    // ── Properties ──────────────────────────────────
+    // ---- Property change hooks ----
 
-    /// <summary>Current settings snapshot (for persistence on exit).</summary>
-    internal AppSettings Settings => _settings;
-
-    public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
-    public string RecognizedText { get => _recognizedText; set => SetProperty(ref _recognizedText, value); }
-    public string FloatingText { get => _floatingText; set => SetProperty(ref _floatingText, value); }
-    public bool IsTextInjectionEnabled
+    partial void OnIsTextInjectionEnabledChanged(bool value)
     {
-        get => _isTextInjectionEnabled;
-        set
+        _lastInjectedLength = FloatingText.Length;
+        _settings.IsTextInjectionEnabled = value;
+        _settingsService.Save(_settings);
+
+        if (value)
         {
-            if (SetProperty(ref _isTextInjectionEnabled, value))
+            _injectionTargetWindow = GetForegroundWindow();
+            _injectionExplicitlyEnabled = true;
+
+            if (!IsRecording && !IsInitializing)
+                _ = StartAsync();
+        }
+
+        IsActivelyInjecting = IsTextInjectionEnabled && IsRecording;
+    }
+
+    partial void OnIsAutoScrollEnabledChanged(bool value)
+    {
+        _settings.IsAutoScrollEnabled = value;
+        _settingsService.Save(_settings);
+    }
+
+    partial void OnDisableInjectionOnFocusChangeChanged(bool value)
+    {
+        _settings.DisableInjectionOnFocusChange = value;
+        _settingsService.Save(_settings);
+    }
+
+    partial void OnAlwaysOnTopChanged(bool value)
+    {
+        _settings.AlwaysOnTop = value;
+        _settingsService.Save(_settings);
+        AlwaysOnTopChanged?.Invoke(value);
+    }
+
+    partial void OnIsRecordingChanged(bool value)
+    {
+        IsActivelyInjecting = value && IsTextInjectionEnabled;
+        OnPropertyChanged(nameof(RecordButtonText));
+        OnPropertyChanged(nameof(RecordingIndicator));
+    }
+
+    partial void OnIsCaptureMutedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(RecordingIndicator));
+    }
+
+    partial void OnIsInitializingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(RecordButtonText));
+    }
+
+    partial void OnIsModelAvailableChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowModelWarning));
+    }
+
+    // ---- Commands ----
+
+    [RelayCommand]
+    private void Toggle()
+    {
+        if (IsRecording) Stop();
+        else if (!IsInitializing) _ = StartAsync();
+    }
+
+    [RelayCommand]
+    private void Copy()
+    {
+        if (!string.IsNullOrEmpty(FloatingText))
+            _textInjector.CopyToClipboard(FloatingText);
+    }
+
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        if (_settingsWindow is not null)
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+
+        var settingsWindow = new Views.SettingsWindow(_settings);
+        settingsWindow.Closed += (_, _) =>
+        {
+            if (settingsWindow.ViewModel.WasSaved)
             {
-                _lastInjectedLength = _floatingText.Length;
-                _settings.IsTextInjectionEnabled = value;
-                SettingsService.Save(_settings);
+                var newSettings = settingsWindow.ViewModel.BuildSettings();
+                ApplySettingsSnapshot(newSettings);
 
-                if (value)
-                {
-                    _injectionTargetWindow = GetForegroundWindow();
-                    _injectionExplicitlyEnabled = true;
+                if (MainWindowHandle != nint.Zero)
+                    RegisterHotkey(MainWindowHandle);
 
-                    if (!IsRecording && !IsInitializing)
-                        _ = StartAsync();
-                }
-
-                IsActivelyInjecting = _isTextInjectionEnabled && IsRecording;
+                WeakReferenceMessenger.Default.Send(new SettingsSavedMessage(newSettings));
             }
-        }
+            _settingsWindow = null;
+        };
+        _settingsWindow = settingsWindow;
+        settingsWindow.Activate();
     }
 
-    public bool IsAutoScrollEnabled
+    [RelayCommand]
+    private void OpenModelDownloader()
     {
-        get => _isAutoScrollEnabled;
-        set
+        if (Views.ModelDownloaderWindow.OpenInstance is not null)
         {
-            if (SetProperty(ref _isAutoScrollEnabled, value))
+            Views.ModelDownloaderWindow.OpenInstance.Activate();
+            return;
+        }
+
+        var window = new Views.ModelDownloaderWindow();
+        window.Closed += (_, _) =>
+        {
+            if (window.ViewModel.WasDownloaded && window.ViewModel.ResultModelPath is not null)
             {
-                _settings.IsAutoScrollEnabled = value;
-                SettingsService.Save(_settings);
+                var msg = new ModelDownloadedMessage(
+                    window.ViewModel.ResultPath ?? _settings.ModelsRootPath,
+                    window.ViewModel.ResultModelPath);
+                WeakReferenceMessenger.Default.Send(msg);
             }
-        }
+        };
+        window.Activate();
     }
 
-    public bool DisableInjectionOnFocusChange
+    // ---- Hotkey ----
+
+    public void TryAutoStart()
     {
-        get => _disableInjectionOnFocusChange;
-        set
+        if (_settings.AutoStartRecognition && !IsRecording && !IsInitializing)
+            _ = StartAsync();
+    }
+
+    public void RegisterHotkey(nint hwnd)
+    {
+        _hotkeyService.UnregisterAll();
+        _toggleHotkeyId = 0;
+        _muteHotkeyId = 0;
+        _injectTextHotkeyId = 0;
+
+        var toggle = _settings.ToggleHotkey;
+        if (!string.IsNullOrEmpty(toggle))
+            _toggleHotkeyId = _hotkeyService.Register(hwnd, toggle);
+
+        var mute = _settings.MuteHotkey;
+        if (!string.IsNullOrEmpty(mute))
+            _muteHotkeyId = _hotkeyService.Register(hwnd, mute);
+
+        var inject = _settings.InjectTextHotkey;
+        if (!string.IsNullOrEmpty(inject))
+            _injectTextHotkeyId = _hotkeyService.Register(hwnd, inject);
+    }
+
+    public bool HandleHotkey(int hotkeyId)
+    {
+        if (hotkeyId == _toggleHotkeyId && _toggleHotkeyId != 0)
         {
-            if (SetProperty(ref _disableInjectionOnFocusChange, value))
-            {
-                _settings.DisableInjectionOnFocusChange = value;
-                SettingsService.Save(_settings);
-            }
+            Toggle();
+            return true;
         }
-    }
-    public bool IsCaptureMuted
-    {
-        get => _isCaptureMuted;
-        set
+        if (hotkeyId == _muteHotkeyId && _muteHotkeyId != 0)
         {
-            if (SetProperty(ref _isCaptureMuted, value))
-                OnPropertyChanged(nameof(RecordingIndicator));
+            ToggleMute();
+            return true;
         }
-    }
-
-    public bool IsRecording
-    {
-        get => _isRecording;
-        set
+        if (hotkeyId == _injectTextHotkeyId && _injectTextHotkeyId != 0)
         {
-            if (!SetProperty(ref _isRecording, value))
-                return;
-
-            IsActivelyInjecting = value && IsTextInjectionEnabled;
-            OnPropertyChanged(nameof(RecordButtonText));
-            OnPropertyChanged(nameof(RecordingIndicator));
+            ToggleTextInjection();
+            return true;
         }
+        return false;
     }
 
-    public string RecordButtonText => IsInitializing ? "Initializing..." : (IsRecording ? "Stop" : "Start");
-    public string RecordingIndicator => IsRecording
-        ? (IsCaptureMuted ? "Muted" : "Recording...")
-        : "Idle";
-
-    /// <summary>True while the recognition engine is being initialized (blocks Start command).</summary>
-    public bool IsInitializing
+    public void ToggleTextInjection()
     {
-        get => _isInitializing;
-        private set
-        {
-            if (SetProperty(ref _isInitializing, value))
-                OnPropertyChanged(nameof(RecordButtonText));
-        }
+        var wasRecording = IsRecording;
+        var enable = !IsTextInjectionEnabled;
+        IsTextInjectionEnabled = enable;
+
+        if (!enable)
+            StatusText = "Text injection disabled";
+        else if (wasRecording)
+            StatusText = "Text injection enabled";
     }
 
-    /// <summary>
-    /// True when the app is recording AND text injection is enabled.
-    /// </summary>
-    public bool IsActivelyInjecting
+    public void InjectCurrentText()
     {
-        get => _isActivelyInjecting;
-        private set => SetProperty(ref _isActivelyInjecting, value);
+        if (!IsTextInjectionEnabled) return;
+        if (string.IsNullOrEmpty(FloatingText)) return;
+        _textInjector.Inject(_floatingText, _settings.TextInjectionMethod);
     }
 
-    public System.Windows.Input.ICommand StartCommand { get; }
-    public System.Windows.Input.ICommand StopCommand { get; }
-    public System.Windows.Input.ICommand OpenSettingsCommand { get; }
-    public System.Windows.Input.ICommand ToggleCommand { get; }
-    public System.Windows.Input.ICommand CopyCommand { get; }
-    public System.Windows.Input.ICommand OpenModelDownloaderCommand { get; }
-    public System.Windows.Input.ICommand MuteCommand { get; }
+    // ---- Model availability ----
 
-    // ── Model availability ──────────────────────────
-
-    /// <summary>True when a usable model is found on disk.</summary>
-    public bool IsModelAvailable
-    {
-        get => _isModelAvailable;
-        private set
-        {
-            if (SetProperty(ref _isModelAvailable, value))
-                OnPropertyChanged(nameof(ShowModelWarning));
-        }
-    }
-
-    /// <summary>Status text about model availability (shown in UI).</summary>
-    public string ModelStatusText
-    {
-        get => _modelStatusText;
-        private set => SetProperty(ref _modelStatusText, value);
-    }
-
-    /// <summary>Show warning banner when no model is available and not dismissed.</summary>
-    public bool ShowModelWarning => !IsModelAvailable && !_modelWarningDismissed;
-
-    /// <summary>Dismiss the model warning banner (user chose not to download).</summary>
     public void DismissModelWarning()
     {
         _modelWarningDismissed = true;
         OnPropertyChanged(nameof(ShowModelWarning));
     }
-
-    /// <summary>Keep the main window always on top.</summary>
-    public bool AlwaysOnTop
-    {
-        get => _alwaysOnTop;
-        set
-        {
-            if (SetProperty(ref _alwaysOnTop, value))
-            {
-                _settings.AlwaysOnTop = value;
-                SettingsService.Save(_settings);
-                AlwaysOnTopChanged?.Invoke(value);
-            }
-        }
-    }
-
-    /// <summary>Fired when AlwaysOnTop changes so the window can update its Z-order.</summary>
-    public event Action<bool>? AlwaysOnTopChanged;
-
-    /// <summary>Recommended model repo for quick download.</summary>
-    public static string RecommendedModelRepo => "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu";
-    public static string RecommendedModelDisplay => "CPU (INT4, opset24, 0.56s) — fast, low latency, ~749 MB";
 
     private void CheckModelAvailability()
     {
@@ -274,7 +376,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void ApplySettingsSnapshot(AppSettings settings)
     {
         _settings = settings;
-
         _isTextInjectionEnabled = settings.IsTextInjectionEnabled;
         _isAutoScrollEnabled = settings.IsAutoScrollEnabled;
         _disableInjectionOnFocusChange = settings.DisableInjectionOnFocusChange;
@@ -286,87 +387,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(AlwaysOnTop));
     }
 
-    // ── Hotkey ──────────────────────────────────────
-
-    /// <summary>
-    /// Called after the window is fully loaded. Starts recognition automatically
-    /// if <see cref="AppSettings.AutoStartRecognition"/> is enabled.
-    /// </summary>
-    public void TryAutoStart()
-    {
-        if (_settings.AutoStartRecognition && !IsRecording && !IsInitializing)
-            _ = StartAsync();
-    }
-
-    public void RegisterHotkey(nint hwnd)
-    {
-        GlobalHotkeyService.UnregisterAll();
-        _toggleHotkeyId = 0;
-        _muteHotkeyId = 0;
-        _injectTextHotkeyId = 0;
-
-        var toggle = _settings.ToggleHotkey;
-        if (!string.IsNullOrEmpty(toggle))
-            _toggleHotkeyId = GlobalHotkeyService.Register(hwnd, toggle);
-
-        var mute = _settings.MuteHotkey;
-        if (!string.IsNullOrEmpty(mute))
-            _muteHotkeyId = GlobalHotkeyService.Register(hwnd, mute);
-
-        var inject = _settings.InjectTextHotkey;
-        if (!string.IsNullOrEmpty(inject))
-            _injectTextHotkeyId = GlobalHotkeyService.Register(hwnd, inject);
-    }
-
-    /// <summary>Handle WM_HOTKEY by hotkey ID. Returns true if handled.</summary>
-    public bool HandleHotkey(int hotkeyId)
-    {
-        if (hotkeyId == _toggleHotkeyId && _toggleHotkeyId != 0)
-        {
-            Toggle();
-            return true;
-        }
-        if (hotkeyId == _muteHotkeyId && _muteHotkeyId != 0)
-        {
-            ToggleMute();
-            return true;
-        }
-        if (hotkeyId == _injectTextHotkeyId && _injectTextHotkeyId != 0)
-        {
-            ToggleTextInjection();
-            return true;
-        }
-        return false;
-    }
-
-    /// <summary>Toggle automatic text injection from the global hotkey.</summary>
-    public void ToggleTextInjection()
-    {
-        var wasRecording = IsRecording;
-        var enable = !IsTextInjectionEnabled;
-        IsTextInjectionEnabled = enable;
-
-        if (!enable)
-            StatusText = "Text injection disabled";
-        else if (wasRecording)
-            StatusText = "Text injection enabled";
-    }
-
-    /// <summary>Manually inject the current recognized text into the focused window.</summary>
-    public void InjectCurrentText()
-    {
-        if (!IsTextInjectionEnabled) return;
-        if (string.IsNullOrEmpty(_floatingText)) return;
-        TextInjector.Inject(_floatingText, _settings.TextInjectionMethod);
-    }
-
-    // ── Commands ────────────────────────────────────
-
-    public void Toggle()
-    {
-        if (IsRecording) Stop();
-        else if (!IsInitializing) _ = StartAsync();
-    }
+    // ---- Recognition lifecycle ----
 
     public void ToggleMute()
     {
@@ -374,41 +395,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var newMuted = !IsCaptureMuted;
         _recognition.SetMuted(newMuted);
         IsCaptureMuted = newMuted;
+
+        if (_stateMachine.IsActive)
+            _stateMachine.Fire(newMuted ? RecognitionTrigger.Mute : RecognitionTrigger.Unmute);
+
         StatusText = newMuted ? "Muted (audio discarded)" : "Listening...";
         OnPropertyChanged(nameof(RecordingIndicator));
-    }
-
-    private void CopyText()
-    {
-        if (!string.IsNullOrEmpty(_floatingText))
-            TextInjector.CopyToClipboard(_floatingText);
-    }
-
-    private void OpenModelDownloader()
-    {
-        if (Views.ModelDownloaderWindow.OpenInstance is not null)
-        {
-            Views.ModelDownloaderWindow.OpenInstance.Activate();
-            return;
-        }
-
-        var window = new Views.ModelDownloaderWindow();
-        window.Closed += (_, _) =>
-        {
-            if (window.ViewModel.WasDownloaded && window.ViewModel.ResultModelPath is not null)
-            {
-                _settings.ModelsRootPath = window.ViewModel.ResultPath ?? _settings.ModelsRootPath;
-                _settings.ModelPath = window.ViewModel.ResultModelPath;
-                SettingsService.Save(_settings);
-            }
-        };
-        window.Activate();
     }
 
     private async Task StartAsync()
     {
         if (IsRecording || IsInitializing) return;
-        ApplySettingsSnapshot(SettingsService.Load());
+        ApplySettingsSnapshot(_settingsService.Load());
 
         IsInitializing = true;
         StatusText = "Initializing engine...";
@@ -424,44 +422,40 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            // Compute ModelPath from root + selection if not set directly
+            _stateMachine.Fire(RecognitionTrigger.Start);
+
             if (string.IsNullOrEmpty(_settings.ModelPath) && !string.IsNullOrEmpty(_settings.ModelsRootPath))
             {
                 _settings.ModelPath = Path.Combine(_settings.ModelsRootPath, _settings.SelectedModel);
-                SettingsService.Save(_settings);
+                _settingsService.Save(_settings);
             }
 
-            Console.WriteLine($"[VoiceType] Initializing recognizer: path={_settings.ModelPath}, ep={_settings.ExecutionProvider}, lang={_settings.Language}, vad={_settings.UseVad}");
-
-            // Run heavy initialization on background thread to keep UI responsive
             await Task.Run(() =>
             {
                 _recognition.Initialize(_settings);
-                Console.WriteLine("[VoiceType] Recognizer initialized OK");
             });
 
-            _currentSession = SessionManager.CreateSession(
+            _stateMachine.Fire(RecognitionTrigger.InitOk);
+
+            _currentSession = _sessionManager.CreateSession(
                 _settings.Language, "Nemotron", _settings.AudioSource);
 
-            Console.WriteLine("[VoiceType] Installing global hooks...");
             _hook.Install();
-            Console.WriteLine("[VoiceType] Hooks installed OK");
 
             IsRecording = true;
             _partialResultTimer.Start();
             StatusText = "Listening...";
 
-            Console.WriteLine("[VoiceType] Starting recognition...");
-
-            // Start recognition on background thread (includes warmup)
             await Task.Run(() =>
             {
                 _recognition.Start(_settings);
-                Console.WriteLine("[VoiceType] Recognition started OK");
             });
         }
         catch (Exception ex)
         {
+            if (_stateMachine.CurrentState == RecognitionState.Initializing)
+                _stateMachine.Fire(RecognitionTrigger.InitFail);
+
             Console.Error.WriteLine($"[VoiceType] Start error: {ex}");
             AppPaths.EnsureDataRoot();
             File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now}] Recognition initialization failed: {ex}\n");
@@ -483,49 +477,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         StatusText = "Finalizing...";
     }
 
-    private void OpenSettings()
-    {
-        if (_settingsWindow is not null)
-        {
-            _settingsWindow.Activate();
-            return;
-        }
-
-        var settingsWindow = new Views.SettingsWindow(_settings);
-        settingsWindow.Closed += (_, _) =>
-        {
-            if (settingsWindow.ViewModel.WasSaved)
-            {
-                ApplySettingsSnapshot(settingsWindow.ViewModel.BuildSettings());
-                // Re-register hotkey with new binding
-                if (MainWindowHandle != nint.Zero)
-                    RegisterHotkey(MainWindowHandle);
-            }
-            _settingsWindow = null;
-        };
-        _settingsWindow = settingsWindow;
-        settingsWindow.Activate();
-    }
-
-    // ── Event handlers ──────────────────────────────
+    // ---- Event handlers ----
 
     private void OnInputDetected()
     {
         if (_settings.StopOnAnyInput)
-        {
             _dispatcher.TryEnqueue(Stop);
-        }
     }
 
-    /// <summary>
-    /// Returns true if text injection is allowed into the current foreground window.
-    /// When <see cref="DisableInjectionOnFocusChange"/> is enabled, this checks that
-    /// the foreground window hasn't changed since recording started.
-    /// </summary>
     private bool CanInjectToTargetWindow()
     {
         if (_injectionExplicitlyEnabled) return true;
-        if (!_disableInjectionOnFocusChange) return true;
+        if (!DisableInjectionOnFocusChange) return true;
         if (_injectionTargetWindow == nint.Zero) return true;
         return GetForegroundWindow() == _injectionTargetWindow;
     }
@@ -554,11 +517,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
             RecognizedText = text;
             FloatingText = text;
 
-            // Inject any remaining delta not yet sent
             if (IsTextInjectionEnabled && text.Length > _lastInjectedLength && CanInjectToTargetWindow())
             {
                 var delta = text[_lastInjectedLength..];
-                TextInjector.Inject(delta, _settings.TextInjectionMethod);
+                _textInjector.Inject(delta, _settings.TextInjectionMethod);
             }
             _lastInjectedLength = 0;
 
@@ -621,13 +583,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         if (!CanInjectToTargetWindow())
         {
-            // Focus changed — skip injection but keep tracking length
             _lastInjectedLength = text.Length;
             return;
         }
 
         var delta = text[_lastInjectedLength..];
-        TextInjector.Inject(delta, _settings.TextInjectionMethod);
+        _textInjector.Inject(delta, _settings.TextInjectionMethod);
         _lastInjectedLength = text.Length;
         _injectionExplicitlyEnabled = false;
     }
@@ -639,28 +600,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
             if (saveAudio)
                 session.AudioFilePath = _recognition.SaveAudio(session.FileNameBase);
 
-            SessionManager.SaveSession(session);
+            _sessionManager.SaveSession(session);
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[VoiceType] Session save error: {ex}");
         }
     }
-
-    // ── INotifyPropertyChanged ──────────────────────
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? name = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(name);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

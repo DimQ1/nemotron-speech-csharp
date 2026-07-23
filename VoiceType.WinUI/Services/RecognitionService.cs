@@ -5,6 +5,7 @@ using NemotronSpeech;
 using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Models;
+using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
 
 namespace VoiceType.WinUI.Services;
@@ -13,8 +14,12 @@ namespace VoiceType.WinUI.Services;
 /// Wraps <see cref="IStreamingSpeechRecognizer"/> lifecycle and
 /// provides a simple high-level API for the UI layer.
 /// </summary>
-public sealed class RecognitionService : IDisposable
+public sealed class RecognitionService : IRecognitionService
 {
+    private readonly ISettingsService? _settingsService;
+    private readonly IPostProcessingPipeline? _postProcessing;
+    private readonly ISessionManager? _sessionManager;
+
     private IStreamingSpeechRecognizer? _recognizer;
     private AudioRecorderService? _audioRecorder;
     private IAudioSource? _audioSource;
@@ -27,6 +32,18 @@ public sealed class RecognitionService : IDisposable
     private Task? _processTask;
     private readonly StringBuilder _accumulatedText = new();
     private readonly StringBuilder _partialProcessedText = new();
+
+    public RecognitionService() { }
+
+    public RecognitionService(
+        ISettingsService settingsService,
+        IPostProcessingPipeline postProcessing,
+        ISessionManager sessionManager)
+    {
+        _settingsService = settingsService;
+        _postProcessing = postProcessing;
+        _sessionManager = sessionManager;
+    }
 
     public event Action<string>? PartialResult;
     public event Action<string>? FinalResult;
@@ -114,10 +131,11 @@ public sealed class RecognitionService : IDisposable
         var lastAudio = DateTime.UtcNow;
 
         // Cache post-processing settings once � avoid disk I/O on every audio chunk
-        var procSettings = SettingsService.Load();
+        var procSettings = (_settingsService ?? new SettingsService()).Load();
         var procRules = procSettings.PostProcessingRules;
         var procEnabled = procSettings.PostProcessingEnabled;
-        var compiledProcRules = PostProcessingPipeline.CompileRules(procRules, procEnabled);
+        var postProc = _postProcessing ?? new PostProcessingPipeline();
+        var compiledProcRules = postProc.CompileRules(procRules, procEnabled);
 
         while ((_captureState?.IsRunning == true) || (_buffer?.IsEmpty == false))
         {
@@ -138,7 +156,7 @@ public sealed class RecognitionService : IDisposable
                 if (raw is not null)
                 {
                     _accumulatedText.Append(raw);
-                    var processedDelta = PostProcessingPipeline.Process(raw, compiledProcRules);
+                    var processedDelta = postProc.Process(raw, compiledProcRules);
                     if (!string.IsNullOrEmpty(processedDelta))
                         _partialProcessedText.Append(processedDelta);
 
@@ -164,7 +182,7 @@ public sealed class RecognitionService : IDisposable
         var final = _recognizer!.Flush();
         if (final is not null) _accumulatedText.Append(final);
 
-        var finalProcessed = PostProcessingPipeline.ProcessFinal(_accumulatedText.ToString(), compiledProcRules);
+        var finalProcessed = postProc.ProcessFinal(_accumulatedText.ToString(), compiledProcRules);
 
         FinalResult?.Invoke(finalProcessed);
         Stopped?.Invoke();
@@ -175,7 +193,8 @@ public sealed class RecognitionService : IDisposable
     public string? SaveAudio(string fileNameBase)
     {
         if (_audioRecorder is null) return null;
-        var dir = SessionManager.EnsureDirectory();
+        var sessionMgr = _sessionManager ?? new SessionManager();
+        var dir = sessionMgr.EnsureDirectory();
         var path = Path.Combine(dir, fileNameBase);
         return _audioRecorder.StopAndSave(path);
     }

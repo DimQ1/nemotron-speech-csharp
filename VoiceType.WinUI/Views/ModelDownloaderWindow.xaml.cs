@@ -1,6 +1,8 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using System.Runtime.InteropServices;
+using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.ViewModels;
 using WinRT.Interop;
 
@@ -18,7 +20,6 @@ public sealed partial class ModelDownloaderWindow : Window
     public string? ResultModelPath => _vm.ResultModelPath;
     public bool WasDownloaded => _vm.WasDownloaded;
 
-    /// <summary>Pre-fill the models root path for the downloader.</summary>
     public string ModelsRootPath
     {
         get => _vm.ModelsRootPath;
@@ -27,14 +28,15 @@ public sealed partial class ModelDownloaderWindow : Window
 
     public ModelDownloaderWindow()
     {
-        InitializeComponent();
-        _vm = new ModelDownloaderViewModel(this.DispatcherQueue);
+        // Resolve ViewModel from DI container
+        _vm = App.Services.GetRequiredService<ModelDownloaderViewModel>();
         _vm.OwnerWindowHandle = WindowNative.GetWindowHandle(this);
+
+        InitializeComponent();
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
 
-        // Apply size BEFORE window is shown — avoids resize flash.
         ApplyWindowSize();
 
         _openInstance = this;
@@ -45,10 +47,6 @@ public sealed partial class ModelDownloaderWindow : Window
         };
     }
 
-    /// <summary>
-    /// Apply golden-ratio horizontal window size in the constructor (before Activate).
-    /// Compact horizontal: 600×372 epx (φ≈1.61 inverted, 4px grid). DPI-aware.
-    /// </summary>
     public void ApplyWindowSize()
     {
         var hwnd = WindowNative.GetWindowHandle(this);
@@ -71,7 +69,7 @@ public sealed partial class ModelDownloaderWindow : Window
         this.Close();
     }
 
-    // ── Win32 interop ──
+    // ---- Win32 interop ----
 
     private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOZORDER = 0x0004;

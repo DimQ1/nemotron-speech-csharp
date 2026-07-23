@@ -1,21 +1,18 @@
 using System.IO;
 using System.Text.RegularExpressions;
+using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
 
 namespace VoiceType.WinUI.Services;
 
-/// <summary>
-/// Applies a configured pipeline of text post-processing rules.
-/// Removes artifacts, normalises whitespace, and cleans recognition output.
-/// </summary>
-public static partial class PostProcessingPipeline
+public sealed partial class PostProcessingPipeline : IPostProcessingPipeline
 {
     public sealed record CompiledRule(Regex Regex, string Replacement);
 
-    public static IReadOnlyList<CompiledRule> CompileRules(List<PostProcessingRule> rules, bool enabled)
+    public IReadOnlyList<CompiledRule> CompileRules(List<PostProcessingRule> rules, bool enabled)
     {
         if (!enabled || rules.Count == 0)
-            return [];
+            return Array.Empty<CompiledRule>();
 
         var compiled = new List<CompiledRule>(rules.Count);
         foreach (var rule in rules)
@@ -30,13 +27,13 @@ public static partial class PostProcessingPipeline
                         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled),
                     rule.Replacement));
             }
-            catch { /* skip malformed regex */ }
+            catch { }
         }
 
         return compiled;
     }
 
-    public static string Process(string raw, IReadOnlyList<CompiledRule> rules)
+    public string Process(string raw, IReadOnlyList<CompiledRule> rules)
     {
         if (rules.Count == 0 || string.IsNullOrEmpty(raw))
             return raw;
@@ -45,25 +42,20 @@ public static partial class PostProcessingPipeline
         foreach (var rule in rules)
             result = rule.Regex.Replace(result, rule.Replacement);
 
-        // Collapse multiple whitespace characters into a single space,
-        // but preserve boundary spaces needed for streaming chunk concatenation.
         result = WhitespaceRegex().Replace(result, " ");
-
         return result;
     }
 
-    /// <summary>Apply all enabled rules to the raw transcription text.</summary>
-    public static string Process(string raw, List<PostProcessingRule> rules, bool enabled)
+    public string Process(string raw, List<PostProcessingRule> rules, bool enabled)
     {
         return Process(raw, CompileRules(rules, enabled));
     }
 
-    /// <summary>Apply rules and trim the final result (use for end-of-session, not per-chunk).</summary>
-    public static string ProcessFinal(string raw, IReadOnlyList<CompiledRule> rules)
+    public string ProcessFinal(string raw, IReadOnlyList<CompiledRule> rules)
     {
         return Process(raw, rules).Trim();
     }
 
-    [System.Text.RegularExpressions.GeneratedRegex(@"\s+")]
+    [GeneratedRegex("""\s+""")]
     private static partial Regex WhitespaceRegex();
 }

@@ -1,14 +1,13 @@
 using System.Runtime.InteropServices;
-using Microsoft.UI.Input;
+using VoiceType.WinUI.Interfaces;
 
 namespace VoiceType.WinUI.Services;
 
 /// <summary>
 /// Registers a global system-wide hotkey via <c>RegisterHotKey</c> WinAPI.
 /// The owning window receives <c>WM_HOTKEY</c> (0x0312) messages.
-/// WinUI 3: no WPF KeyInterop — parse key strings directly to VK codes.
 /// </summary>
-public static class GlobalHotkeyService
+public sealed class GlobalHotkeyService : IGlobalHotkeyService
 {
     private const int WM_HOTKEY = 0x0312;
     private const int MOD_ALT = 0x0001;
@@ -17,9 +16,9 @@ public static class GlobalHotkeyService
     private const int MOD_WIN = 0x0008;
     private const int MOD_NOREPEAT = 0x4000;
 
-    private static int _nextId = 1;
-    private static nint _hwnd;
-    private static readonly List<int> _registeredIds = new();
+    private int _nextId = 1;
+    private nint _hwnd;
+    private readonly List<int> _registeredIds = new();
 
     [DllImport("user32.dll")]
     private static extern bool RegisterHotKey(nint hWnd, int id, uint fsModifiers, uint vk);
@@ -27,17 +26,10 @@ public static class GlobalHotkeyService
     [DllImport("user32.dll")]
     private static extern bool UnregisterHotKey(nint hWnd, int id);
 
-    /// <summary>Message code for WM_HOTKEY.</summary>
-    public static int WmHotkey => WM_HOTKEY;
+    public int WmHotkey => WM_HOTKEY;
+    public bool IsRegistered => _registeredIds.Count > 0;
 
-    /// <summary>Whether any hotkey is currently registered.</summary>
-    public static bool IsRegistered => _registeredIds.Count > 0;
-
-    /// <summary>
-    /// Parse a hotkey string (e.g. "Ctrl+Shift+V") and register it.
-    /// Returns the hotkey ID (0 = failure) which is passed as wParam in WM_HOTKEY.
-    /// </summary>
-    public static int Register(nint hwnd, string hotkeyString)
+    public int Register(nint hwnd, string hotkeyString)
     {
         _hwnd = hwnd;
 
@@ -55,21 +47,19 @@ public static class GlobalHotkeyService
             return id;
         }
 
-        var err = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+        var err = Marshal.GetLastWin32Error();
         Console.WriteLine($"[VoiceType] Hotkey registration failed: {hotkeyString}, error={err}");
         return 0;
     }
 
-    /// <summary>Unregister a specific hotkey by ID.</summary>
-    public static void Unregister(int id)
+    public void Unregister(int id)
     {
         if (_hwnd != nint.Zero)
             UnregisterHotKey(_hwnd, id);
         _registeredIds.Remove(id);
     }
 
-    /// <summary>Unregister all hotkeys.</summary>
-    public static void UnregisterAll()
+    public void UnregisterAll()
     {
         foreach (var id in _registeredIds.ToArray())
         {
@@ -79,11 +69,7 @@ public static class GlobalHotkeyService
         _registeredIds.Clear();
     }
 
-    /// <summary>
-    /// Parse "Ctrl+Shift+V" → modifiers + virtual key code.
-    /// WinUI 3: no WPF KeyInterop — map common key names directly.
-    /// </summary>
-    public static bool TryParse(string hotkey, out uint modifiers, out uint vk)
+    public bool TryParse(string hotkey, out uint modifiers, out uint vk)
     {
         modifiers = 0;
         vk = 0;
@@ -110,8 +96,6 @@ public static class GlobalHotkeyService
         if (keyPart is null) return false;
 
         vk = ParseKeyToVk(keyPart);
-
-        // Prevent hotkey from auto-repeating
         modifiers |= MOD_NOREPEAT;
 
         return vk != 0 && modifiers != MOD_NOREPEAT;
@@ -122,7 +106,6 @@ public static class GlobalHotkeyService
         if (keyPart.Length == 1)
         {
             char c = char.ToUpperInvariant(keyPart[0]);
-            // Letters A-Z → VK 0x41–0x5A; digits 0-9 → VK 0x30–0x39
             if (c is >= 'A' and <= 'Z') return (uint)c;
             if (c is >= '0' and <= '9') return (uint)c;
         }

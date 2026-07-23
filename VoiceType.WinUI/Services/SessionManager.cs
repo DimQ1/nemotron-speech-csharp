@@ -1,21 +1,21 @@
 using System.IO;
 using System.Text.Json;
+using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
 
 namespace VoiceType.WinUI.Services;
 
-/// <summary>Manages speech recognition sessions: creation, persistence, listing.</summary>
-public static class SessionManager
+public sealed class SessionManager : ISessionManager
 {
     private static string SessionsDir => AppPaths.SessionsDir;
 
-    public static string EnsureDirectory()
+    public string EnsureDirectory()
     {
         Directory.CreateDirectory(SessionsDir);
         return SessionsDir;
     }
 
-    public static RecognitionSession CreateSession(string language, string engine, string audioSource)
+    public RecognitionSession CreateSession(string language, string engine, string audioSource)
     {
         return new RecognitionSession
         {
@@ -25,15 +25,15 @@ public static class SessionManager
         };
     }
 
-    public static void SaveSession(RecognitionSession session)
+    public void SaveSession(RecognitionSession session)
     {
         var dir = EnsureDirectory();
-        var jsonPath = Path.Combine(dir, $"{session.FileNameBase}.json");
+        var jsonPath = Path.Combine(dir, string.Concat(session.FileNameBase, ".json"));
         var json = JsonSerializer.Serialize(session, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(jsonPath, json);
     }
 
-    public static List<RecognitionSession> LoadSessions()
+    public List<RecognitionSession> LoadSessions()
     {
         var dir = EnsureDirectory();
         var sessions = new List<RecognitionSession>();
@@ -44,7 +44,7 @@ public static class SessionManager
                 var s = JsonSerializer.Deserialize<RecognitionSession>(File.ReadAllText(f));
                 if (s is not null) sessions.Add(s);
             }
-            catch { /* skip corrupted */ }
+            catch { }
         }
         return sessions.OrderByDescending(s => s.StartedAt).ToList();
     }
