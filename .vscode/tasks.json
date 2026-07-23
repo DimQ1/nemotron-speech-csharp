@@ -1,0 +1,47 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/VoiceType.WinUI/VoiceType.WinUI.csproj",
+                "-c", "Debug",
+                "-p:GpuArch=CPU"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build-unpackaged",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/VoiceType.WinUI/VoiceType.WinUI.csproj",
+                "-c", "Debug",
+                "-p:WindowsPackageType=None",
+                "-p:GpuArch=CPU"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "aspire-dashboard",
+            "command": "docker",
+            "type": "process",
+            "args": [
+                "run", "--rm", "-it",
+                "-p", "18888:18888",
+                "-p", "4317:18889",
+                "mcr.microsoft.com/dotnet/aspire-dashboard:latest"
+            ],
+            "problemMatcher": [],
+            "isBackground": true,
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
