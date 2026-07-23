@@ -55,10 +55,12 @@
             <Style TargetType="CheckBox" x:Key="DarkCheckBox">
                 <Setter Property="Foreground" Value="{StaticResource FgBrush}"/>
                 <Setter Property="FontSize" Value="12"/>
-                <Setter Property="MinHeight" Value="32"/>
-                <Setter Property="MinWidth" Value="32"/>
-                <Setter Property="Padding" Value="4"/>
+                <Setter Property="MinHeight" Value="0"/>
+                <Setter Property="MinWidth" Value="0"/>
+                <Setter Property="Padding" Value="6,2"/>
+                <Setter Property="CornerRadius" Value="4"/>
                 <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
             </Style>
 
             <Style TargetType="ComboBox" x:Key="DarkComboBox">
@@ -68,7 +70,11 @@
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="FontSize" Value="13"/>
                 <Setter Property="MinHeight" Value="36"/>
-                <Setter Property="Padding" Value="8,4"/>
+                <Setter Property="MinWidth" Value="220"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                <Setter Property="MaxDropDownHeight" Value="320"/>
+                <Setter Property="Padding" Value="10,6"/>
                 <Setter Property="VerticalContentAlignment" Value="Center"/>
             </Style>
 

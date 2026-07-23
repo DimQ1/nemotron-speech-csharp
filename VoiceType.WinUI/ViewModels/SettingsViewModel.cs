@@ -47,6 +47,20 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private InjectionMethod _textInjectionMethod = InjectionMethod.InputSimulator;
 
+    /// <summary>
+    /// String representation of <see cref="TextInjectionMethod"/> for ComboBox binding.
+    /// Keeps the enum in the model while letting XAML bind to string values.
+    /// </summary>
+    public string TextInjectionMethodString
+    {
+        get => TextInjectionMethod.ToString();
+        set
+        {
+            if (Enum.TryParse<InjectionMethod>(value, out var method))
+                TextInjectionMethod = method;
+        }
+    }
+
     [ObservableProperty]
     private bool _stopOnAnyInput = true;
 

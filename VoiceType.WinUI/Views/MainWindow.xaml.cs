@@ -177,8 +177,21 @@ public sealed partial class MainWindow : Window
             _childWindows.Remove(child);
         };
 
-        // Position child beside main window after it is shown
-        child.Activated += (_, _) => PositionChildBeside(child);
+        // Child windows must also be AlwaysOnTop so they appear beside the main window,
+        // not behind it. The main window has AlwaysOnTop=true.
+        if (child.AppWindow?.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.IsAlwaysOnTop = true;
+        }
+
+        // Position after the window is fully rendered (Activated fires too early).
+        child.Activated += (_, _) =>
+        {
+            child.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+            {
+                PositionChildBeside(child);
+            });
+        };
     }
 
     /// <summary>Position child window to the left or right of the main window, whichever has more screen space.</summary>
@@ -235,6 +248,9 @@ public sealed partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(nint hWnd, int hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool BringWindowToTop(nint hWnd);
 
     [DllImport("user32.dll")]
     private static extern nint MonitorFromWindow(nint hWnd, uint dwFlags);

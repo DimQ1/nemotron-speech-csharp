@@ -68,14 +68,12 @@
                         <ComboBox SelectedValue="{x:Bind ViewModel.ExecutionProvider, Mode=TwoWay}" SelectedValuePath="Content"
                                   Style="{StaticResource DarkComboBox}" Margin="0,0,0,8">
                             <ComboBoxItem Content="cpu"/>
-                            <ComboBoxItem Content="cuda"/>
-                            <ComboBoxItem Content="dml"/>
                             <ComboBoxItem Content="follow_config"/>
                         </ComboBox>
 
                         <TextBlock Text="Language (BCP-47 code or 'auto')" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
-                        <ComboBox IsEditable="True"
-                                  Text="{x:Bind ViewModel.Language, Mode=TwoWay}"
+                        <ComboBox SelectedValue="{x:Bind ViewModel.Language, Mode=TwoWay}"
+                                  SelectedValuePath="Content"
                                   Style="{StaticResource DarkComboBox}" Margin="0,0,0,8">
                             <ComboBoxItem Content="auto"/>
                             <ComboBoxItem Content="en"/>
@@ -124,7 +122,7 @@
                     <StackPanel>
                         <TextBlock Text="Text Injection" Foreground="{StaticResource FgBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <TextBlock Text="Injection Method" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
-                        <ComboBox SelectedValue="{x:Bind ViewModel.TextInjectionMethod, Mode=TwoWay}" SelectedValuePath="Content"
+                        <ComboBox SelectedValue="{x:Bind ViewModel.TextInjectionMethodString, Mode=TwoWay}" SelectedValuePath="Content"
                                   Style="{StaticResource DarkComboBox}" Margin="0,0,0,8">
                             <ComboBoxItem Content="InputSimulator"/>
                             <ComboBoxItem Content="SendInput"/>
@@ -189,6 +187,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="{StaticResource BgTertiaryBrush}"
+                                            HorizontalAlignment="Stretch"
                                             CornerRadius="4" Padding="8,6" Margin="0,0,0,4">
                                         <Grid>
                                             <Grid.RowDefinitions>
@@ -204,10 +203,12 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}"
+                                                          Style="{StaticResource DarkCheckBox}"
                                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
                                                 <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay}"
                                                          Style="{StaticResource DarkTextBox}" FontSize="12"
-                                                         FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                         FontWeight="SemiBold" VerticalAlignment="Center"
+                                                         HorizontalAlignment="Stretch"/>
                                                 <Button Grid.Column="2" Content="✕"
                                                         Background="Transparent" Foreground="{StaticResource RedBrush}"
                                                         BorderThickness="0" Width="24" Height="24" FontSize="12"

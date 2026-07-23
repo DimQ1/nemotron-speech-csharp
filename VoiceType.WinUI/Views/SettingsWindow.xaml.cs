@@ -43,8 +43,8 @@ public sealed partial class SettingsWindow : Window
     {
         var hwnd = WindowNative.GetWindowHandle(this);
         var dpi = GetWindowDpi(hwnd);
-        var w = (int)(360f * dpi / 96f);
-        var h = (int)(580f * dpi / 96f);
+        var w = (int)(460f * dpi / 96f);
+        var h = (int)(640f * dpi / 96f);
 
         if (hwnd != nint.Zero)
             SetWindowPos(hwnd, 0, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
