@@ -2,14 +2,19 @@
   "profiles": {
     "VoiceType (Local)": {
       "commandName": "MsixPackage",
-      "nativeDebugging": false
+      "nativeDebugging": false,
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
+        "OTEL_SERVICE_NAME": "VoiceType.WinUI"
+      }
     },
     "VoiceType + Aspire Dashboard": {
       "commandName": "MsixPackage",
       "nativeDebugging": false,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:18890/",
         "OTEL_SERVICE_NAME": "VoiceType.WinUI"
       }
     },

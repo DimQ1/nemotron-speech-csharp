@@ -15,7 +15,7 @@ namespace VoiceType.WinUI.Services;
 public static class TelemetryConfiguration
 {
     public const string ServiceName = "VoiceType.WinUI";
-    public const string DefaultOtlpEndpoint = "http://localhost:4317";
+    public const string DefaultOtlpEndpoint = "http://localhost:18890/";
 
     /// <summary>Configure OpenTelemetry logging with OTLP export to Aspire Dashboard.</summary>
     public static void ConfigureLogging(ILoggingBuilder builder)
@@ -35,7 +35,7 @@ public static class TelemetryConfiguration
             options.AddOtlpExporter(otlpOptions =>
             {
                 otlpOptions.Endpoint = new Uri(endpoint);
-                otlpOptions.Protocol = OtlpExportProtocol.Grpc;
+                otlpOptions.Protocol = OtlpExportProtocol.HttpProtobuf;
             });
         });
     }

@@ -80,6 +80,18 @@ public partial class App : Application
     {
         Environment.SetEnvironmentVariable("ORT_DISABLE_MODEL_VALIDATION", "1");
 
+        // Ensure development telemetry defaults are set before DI configures logging.
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT"))
+            && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")))
+        {
+            Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
+        }
+
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")))
+        {
+            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:18890/");
+        }
+
         var services = new ServiceCollection();
         ConfigureServices(services);
         Services = services.BuildServiceProvider();
@@ -88,6 +100,12 @@ public partial class App : Application
         if (TelemetryConfiguration.IsOtlpExportEnabled())
         {
             _openTelemetry = TelemetryConfiguration.StartOpenTelemetrySdk();
+            var endpoint = TelemetryConfiguration.GetOtlpEndpoint();
+            Telemetry.LogInfo("App", $"OpenTelemetry SDK started, OTLP endpoint: {endpoint}");
+        }
+        else
+        {
+            Telemetry.LogInfo("App", "OpenTelemetry SDK NOT started (no OTLP endpoint / not dev mode)");
         }
 
         Telemetry.LogInfo("App", "VoiceType.WinUI started");
