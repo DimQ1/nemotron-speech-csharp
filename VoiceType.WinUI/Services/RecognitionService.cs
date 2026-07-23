@@ -19,6 +19,7 @@ public sealed class RecognitionService : IRecognitionService
     private readonly ISettingsService? _settingsService;
     private readonly IPostProcessingPipeline? _postProcessing;
     private readonly ISessionManager? _sessionManager;
+    private readonly ISystemTelemetry? _telemetry;
 
     private IStreamingSpeechRecognizer? _recognizer;
     private AudioRecorderService? _audioRecorder;
@@ -38,11 +39,13 @@ public sealed class RecognitionService : IRecognitionService
     public RecognitionService(
         ISettingsService settingsService,
         IPostProcessingPipeline postProcessing,
-        ISessionManager sessionManager)
+        ISessionManager sessionManager,
+        ISystemTelemetry? telemetry = null)
     {
         _settingsService = settingsService;
         _postProcessing = postProcessing;
         _sessionManager = sessionManager;
+        _telemetry = telemetry ?? App.Telemetry;
     }
 
     public event Action<string>? PartialResult;
@@ -123,7 +126,7 @@ public sealed class RecognitionService : IRecognitionService
     public void SetMuted(bool muted)
     {
         _captureMuted = muted;
-        Console.WriteLine($"[VoiceType] Capture {(muted ? "muted" : "unmuted")}");
+        _telemetry?.LogInfo("Recognition", $"Capture {(muted ? "muted" : "unmuted")}");
     }
 
     private async Task ProcessLoop()

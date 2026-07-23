@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using OpenTelemetry;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Services;
 using VoiceType.WinUI.Services.Recognition;
@@ -16,23 +18,61 @@ public partial class App : Application
     /// <summary>Static reference to the main window.</summary>
     public static Views.MainWindow? MainWindow { get; private set; }
 
+    /// <summary>OpenTelemetry provider — disposed on shutdown.</summary>
+    private static IDisposable? _openTelemetry;
+
+    /// <summary>Local telemetry service for structured error logging.</summary>
+    public static ISystemTelemetry Telemetry => Services.GetRequiredService<ISystemTelemetry>();
+
     public App()
     {
         InitializeComponent();
 
         UnhandledException += (s, args) =>
         {
-            Console.Error.WriteLine($"!!! UNHANDLED EXCEPTION: {args.Exception}");
-            AppPaths.EnsureDataRoot();
-            File.AppendAllText(AppPaths.ErrorLogFile,
-                $"[{DateTime.Now}] {args.Exception}\n");
+            var exStr = args.Exception.ToString();
+            Console.Error.WriteLine($"!!! UNHANDLED EXCEPTION: {exStr}");
+
+            try
+            {
+                AppPaths.EnsureDataRoot();
+                File.AppendAllText(AppPaths.ErrorLogFile,
+                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [UNHANDLED] {exStr}\n");
+            }
+            catch { }
+
+            if (Services is not null)
+            {
+                try { Telemetry.LogError("App", "Unhandled UI exception", args.Exception); }
+                catch { }
+            }
+
             args.Handled = true;
         };
 
         AppDomain.CurrentDomain.UnhandledException += (s, args) =>
         {
             var ex = args.ExceptionObject as Exception;
-            Console.Error.WriteLine($"!!! UNHANDLED EXCEPTION: {ex}");
+            var exStr = ex?.ToString() ?? "Unknown error";
+            Console.Error.WriteLine($"!!! APPDOMAIN UNHANDLED EXCEPTION: {exStr}");
+
+            if (Services is not null)
+            {
+                try { Telemetry.LogError("AppDomain", "Unhandled domain exception", ex); }
+                catch { }
+            }
+        };
+
+        TaskScheduler.UnobservedTaskException += (s, args) =>
+        {
+            args.SetObserved();
+            Console.Error.WriteLine($"!!! UNOBSERVED TASK EXCEPTION: {args.Exception}");
+
+            if (Services is not null)
+            {
+                try { Telemetry.LogError("Task", "Unobserved task exception", args.Exception); }
+                catch { }
+            }
         };
     }
 
@@ -40,12 +80,18 @@ public partial class App : Application
     {
         Environment.SetEnvironmentVariable("ORT_DISABLE_MODEL_VALIDATION", "1");
 
-        // Build DI container
         var services = new ServiceCollection();
         ConfigureServices(services);
         Services = services.BuildServiceProvider();
 
-        // Resolve MainWindow from DI
+        // Start OpenTelemetry SDK (exports to Aspire Dashboard in dev mode)
+        if (TelemetryConfiguration.IsOtlpExportEnabled())
+        {
+            _openTelemetry = TelemetryConfiguration.StartOpenTelemetrySdk();
+        }
+
+        Telemetry.LogInfo("App", "VoiceType.WinUI started");
+
         MainWindow = Services.GetRequiredService<Views.MainWindow>();
         MainWindow.ConfigureWindow();
         MainWindow.Activate();
@@ -53,38 +99,40 @@ public partial class App : Application
 
     private static void ConfigureServices(IServiceCollection services)
     {
+        // ---- Logging (structured, with OTLP export to Aspire Dashboard) ----
+        services.AddLogging(builder => TelemetryConfiguration.ConfigureLogging(builder));
+
         // ---- Infrastructure ----
         services.AddSingleton<DispatcherQueue>(_ => DispatcherQueue.GetForCurrentThread());
         services.AddSingleton<IAppPaths, AppPathsAdapter>();
+        services.AddSingleton<ISystemTelemetry, ErrorTelemetryService>();
 
-        // ---- Services (singleton — shared state across app lifetime) ----
+        // ---- Services ----
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<ISessionManager, SessionManager>();
         services.AddSingleton<IPostProcessingPipeline, PostProcessingPipeline>();
         services.AddSingleton<IGlobalHotkeyService, GlobalHotkeyService>();
         services.AddSingleton<ITextInjector, TextInjector>();
 
-        // Recognition — decorated with logging
+        // Recognition (decorated with logging)
         services.AddSingleton<RecognitionService>(sp =>
             new RecognitionService(
                 sp.GetRequiredService<ISettingsService>(),
                 sp.GetRequiredService<IPostProcessingPipeline>(),
-                sp.GetRequiredService<ISessionManager>()));
+                sp.GetRequiredService<ISessionManager>(),
+                sp.GetService<ISystemTelemetry>()));
         services.AddSingleton<IRecognitionService>(sp =>
             new LoggingRecognitionService(sp.GetRequiredService<RecognitionService>()));
 
-        // Input hook — per-instance (re-installed on each session)
         services.AddTransient<IGlobalInputHook, GlobalInputHook>();
-
-        // Downloader — per-window
         services.AddTransient<IModelDownloaderService, ModelDownloaderService>();
 
-        // ---- ViewModels (transient — new instance per window) ----
+        // ---- ViewModels ----
         services.AddTransient<MainViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<ModelDownloaderViewModel>();
 
-        // ---- Views (transient) ----
+        // ---- Views ----
         services.AddTransient<Views.MainWindow>();
     }
 }
