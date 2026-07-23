@@ -47,9 +47,14 @@ public static class CustomOpLibrary
             // RegisterCustomOpLibrary requires an active inference session to
             // take effect. The custom-op domain lives in the ORT environment,
             // so it stays registered for later ORT GenAI sessions.
+            // We use encoder.onnx (the main graph that needs Swish) for the probe session.
+            string probeModel = Path.Combine(modelPath, "encoder.onnx");
+            if (!File.Exists(probeModel))
+                probeModel = modelPath;
+
             using var options = new SessionOptions();
             options.RegisterCustomOpLibrary(libraryPath);
-            using var session = new InferenceSession(modelPath, options);
+            using var session = new InferenceSession(probeModel, options);
             Console.WriteLine($"Custom ops: registered Swish-24 CPU kernel from {libraryPath}");
         }
         catch (Exception ex)

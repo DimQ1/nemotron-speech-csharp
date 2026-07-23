@@ -50,9 +50,10 @@ public static class TelemetryConfiguration
             return null;
 
         var endpoint = GetOtlpEndpoint();
+        var uri = new Uri(endpoint);
         return OpenTelemetrySdk.Create(builder => builder
             .ConfigureResource(r => r.AddService(ServiceName, serviceVersion: GetAppVersion()))
-            .UseOtlpExporter(OtlpExportProtocol.Grpc, new Uri(endpoint))
+            .UseOtlpExporter(OtlpExportProtocol.HttpProtobuf, uri)
         );
     }
 

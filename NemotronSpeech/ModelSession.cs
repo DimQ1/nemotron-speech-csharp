@@ -37,9 +37,6 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         if (!Directory.Exists(modelPath))
             throw new DirectoryNotFoundException($"Model path not found: {modelPath}");
 
-        // Allow unreleased ONNX opsets (e.g. opset 24) — required by the c056 model.
-        Environment.SetEnvironmentVariable("ORT_DISABLE_MODEL_VALIDATION", "1");
-
         using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(modelPath, "genai_config.json")));
         var cfg = json.RootElement.GetProperty("model");
         SampleRate = cfg.GetProperty("sample_rate").GetInt32();
