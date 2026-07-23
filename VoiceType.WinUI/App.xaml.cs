@@ -122,10 +122,13 @@ public partial class App : Application
                 sp.GetRequiredService<ISessionManager>(),
                 sp.GetService<ISystemTelemetry>()));
         services.AddSingleton<IRecognitionService>(sp =>
-            new LoggingRecognitionService(sp.GetRequiredService<RecognitionService>()));
+            new LoggingRecognitionService(
+                sp.GetRequiredService<RecognitionService>(),
+                sp.GetRequiredService<ISystemTelemetry>()));
 
         services.AddTransient<IGlobalInputHook, GlobalInputHook>();
         services.AddTransient<IModelDownloaderService, ModelDownloaderService>();
+        services.AddSingleton<IWindowInterop, WindowInterop>();
 
         // ---- ViewModels ----
         services.AddTransient<MainViewModel>();

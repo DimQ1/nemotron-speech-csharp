@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -13,9 +12,6 @@ namespace VoiceType.WinUI.ViewModels;
 
 public sealed partial class MainViewModel : ObservableObject
 {
-    [DllImport("user32.dll")]
-    private static extern nint GetForegroundWindow();
-
     private readonly IRecognitionService _recognition;
     private readonly IGlobalInputHook _hook;
     private readonly ITextInjector _textInjector;
@@ -23,6 +19,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ISessionManager _sessionManager;
     private readonly IGlobalHotkeyService _hotkeyService;
     private readonly IPostProcessingPipeline _postProcessing;
+    private readonly IWindowInterop _windowInterop;
     private readonly DispatcherQueue _dispatcher;
     private readonly RecognitionStateMachine _stateMachine = new();
     private readonly DispatcherQueueTimer _partialResultTimer;
@@ -112,6 +109,7 @@ public sealed partial class MainViewModel : ObservableObject
         ISessionManager sessionManager,
         IGlobalHotkeyService hotkeyService,
         IPostProcessingPipeline postProcessing,
+        IWindowInterop windowInterop,
         DispatcherQueue dispatcher)
     {
         _recognition = recognition;
@@ -121,6 +119,7 @@ public sealed partial class MainViewModel : ObservableObject
         _sessionManager = sessionManager;
         _hotkeyService = hotkeyService;
         _postProcessing = postProcessing;
+        _windowInterop = windowInterop;
         _dispatcher = dispatcher;
         _settings = settingsService.Load();
 
@@ -159,7 +158,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (value)
         {
-            _injectionTargetWindow = GetForegroundWindow();
+            _injectionTargetWindow = _windowInterop.GetForegroundWindow();
             _injectionExplicitlyEnabled = true;
 
             if (!IsRecording && !IsInitializing)
@@ -413,7 +412,7 @@ public sealed partial class MainViewModel : ObservableObject
         RecognizedText = "";
         FloatingText = "";
         _lastInjectedLength = 0;
-        _injectionTargetWindow = GetForegroundWindow();
+        _injectionTargetWindow = _windowInterop.GetForegroundWindow();
         lock (_partialResultGate)
         {
             _pendingPartialText = null;
@@ -490,7 +489,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (_injectionExplicitlyEnabled) return true;
         if (!DisableInjectionOnFocusChange) return true;
         if (_injectionTargetWindow == nint.Zero) return true;
-        return GetForegroundWindow() == _injectionTargetWindow;
+        return _windowInterop.GetForegroundWindow() == _injectionTargetWindow;
     }
 
     private void OnPartialResult(string text)

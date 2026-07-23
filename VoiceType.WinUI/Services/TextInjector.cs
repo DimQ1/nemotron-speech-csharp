@@ -5,29 +5,34 @@ using VoiceType.WinUI.Services.TextInjection;
 
 namespace VoiceType.WinUI.Services;
 
+/// <summary>
+/// Injects text into the currently focused input field.
+/// Strategy pattern: dispatches to ITextInjectionStrategy based on InjectionMethod.
+/// </summary>
 public sealed class TextInjector : ITextInjector
 {
-    private readonly ITextInjectionStrategy _sendInput;
-    private readonly ITextInjectionStrategy _clipboard;
+    private readonly Dictionary<InjectionMethod, ITextInjectionStrategy> _strategies;
 
     public TextInjector()
     {
-        _sendInput = new SendInputStrategy();
-        _clipboard = new ClipboardStrategy();
+        _strategies = new Dictionary<InjectionMethod, ITextInjectionStrategy>
+        {
+            [InjectionMethod.InputSimulator] = new SendInputStrategy(),
+            [InjectionMethod.SendInput] = new SendInputStrategy(),
+            [InjectionMethod.Clipboard] = new ClipboardStrategy(),
+        };
     }
 
+    /// <summary>Inject text into the currently focused window.</summary>
     public void Inject(string text, InjectionMethod method)
     {
         if (string.IsNullOrEmpty(text)) return;
 
-        var strategy = method switch
-        {
-            InjectionMethod.Clipboard => _clipboard,
-            _ => _sendInput
-        };
-        strategy.Inject(text);
+        if (_strategies.TryGetValue(method, out var strategy))
+            strategy.Inject(text);
     }
 
+    /// <summary>Copy text to clipboard without pasting.</summary>
     public void CopyToClipboard(string text)
     {
         if (string.IsNullOrEmpty(text)) return;

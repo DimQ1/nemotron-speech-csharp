@@ -108,7 +108,7 @@ public sealed partial class MainWindow : Window
         _subclassProc = WndProcHook;
         var ok = SetWindowSubclass(_hwnd, _subclassProc, _subclassId, nint.Zero);
         var err = Marshal.GetLastWin32Error();
-        Console.WriteLine($"[VoiceType] SetWindowSubclass: hwnd=0x{_hwnd:X}, ok={ok}, error={err}");
+        App.Telemetry?.LogInfo("Window", $"SetWindowSubclass: hwnd=0x{_hwnd:X}, ok={ok}, error={err}");
     }
 
     private void UnsubclassWindow()
@@ -122,7 +122,7 @@ public sealed partial class MainWindow : Window
         if (msg == WM_HOTKEY)
         {
             var hotkeyId = wParam.ToInt32();
-            Console.WriteLine($"[VoiceType] WM_HOTKEY received: id={hotkeyId}");
+            App.Telemetry?.LogInfo("Window", $"WM_HOTKEY received: id={hotkeyId}");
             AppPaths.EnsureDataRoot();
             File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now}] WM_HOTKEY: id={hotkeyId}\n");
             _vm.HandleHotkey(hotkeyId);

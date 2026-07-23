@@ -16,6 +16,10 @@ public sealed class GlobalHotkeyService : IGlobalHotkeyService
     private const int MOD_WIN = 0x0008;
     private const int MOD_NOREPEAT = 0x4000;
 
+    private readonly ISystemTelemetry? _telemetry;
+
+    public GlobalHotkeyService(ISystemTelemetry? telemetry = null) => _telemetry = telemetry;
+
     private int _nextId = 1;
     private nint _hwnd;
     private readonly List<int> _registeredIds = new();
@@ -35,7 +39,7 @@ public sealed class GlobalHotkeyService : IGlobalHotkeyService
 
         if (!TryParse(hotkeyString, out uint mods, out uint vk))
         {
-            Console.WriteLine($"[VoiceType] Hotkey parse failed: {hotkeyString}");
+            _telemetry?.LogWarning("Hotkey", $"Parse failed: {hotkeyString}");
             return 0;
         }
 
@@ -43,12 +47,12 @@ public sealed class GlobalHotkeyService : IGlobalHotkeyService
         if (RegisterHotKey(hwnd, id, mods, vk))
         {
             _registeredIds.Add(id);
-            Console.WriteLine($"[VoiceType] Hotkey registered: {hotkeyString} -> id={id}, vk=0x{vk:X}, mods=0x{mods:X}");
+            _telemetry?.LogInfo("Hotkey", $"Registered: {hotkeyString} -> id={id}, vk=0x{vk:X}, mods=0x{mods:X}");
             return id;
         }
 
         var err = Marshal.GetLastWin32Error();
-        Console.WriteLine($"[VoiceType] Hotkey registration failed: {hotkeyString}, error={err}");
+        _telemetry?.LogError("Hotkey", $"Registration failed: {hotkeyString}, error={err}");
         return 0;
     }
 
