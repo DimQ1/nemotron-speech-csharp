@@ -10,13 +10,40 @@ public interface IRecognitionService : IDisposable
     int SampleRate { get; }
     string AccumulatedText { get; }
 
+    /// <summary>Current model lifecycle state.</summary>
+    ModelState ModelState { get; }
+
     event Action<string>? PartialResult;
     event Action<string>? FinalResult;
     event Action? Stopped;
 
-    void Initialize(AppSettings settings);
+    /// <summary>Fires when <see cref="ModelState"/> changes.</summary>
+    event Action<ModelState>? ModelStateChanged;
+
+    /// <summary>
+    /// Load the ASR model into memory asynchronously.
+    /// Does NOT start audio capture. Safe to call multiple times —
+    /// returns immediately if already loaded or loading.
+    /// </summary>
+    Task LoadModelAsync(AppSettings settings);
+
+    /// <summary>
+    /// Unload the model from memory. Safe to call when already unloaded.
+    /// </summary>
+    void UnloadModel();
+
+    /// <summary>
+    /// Start audio capture and recognition.
+    /// Model must be in <see cref="ModelState.Loaded"/> state.
+    /// </summary>
     void Start(AppSettings settings);
+
+    /// <summary>
+    /// Stop audio capture and finalize recognition.
+    /// Model stays loaded in memory.
+    /// </summary>
     void Stop();
+
     void SetMuted(bool muted);
     string? SaveAudio(string fileNameBase);
 }

@@ -65,13 +65,19 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _isRecording;
 
     [ObservableProperty]
-    private bool _isInitializing;
+    private bool _isModelLoading;
+
+    [ObservableProperty]
+    private bool _isModelReady;
+
+    [ObservableProperty]
+    private ModelState _modelStateDisplay = ModelState.Unloaded;
 
     [ObservableProperty]
     private bool _isModelAvailable;
 
     [ObservableProperty]
-    private string _modelStatusText = "";
+    private string _modelStatusText = "No model loaded";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowModelWarning))]
@@ -84,7 +90,9 @@ public sealed partial class MainViewModel : ObservableObject
 
     // ---- Computed properties ----
 
-    public string RecordButtonText => IsInitializing ? "Initializing..." : (IsRecording ? "Stop" : "Start");
+    public string RecordButtonText => IsModelLoading
+        ? "Loading model..."
+        : IsRecording ? "Stop" : "Start";
 
     public string RecordingIndicator => IsRecording
         ? (IsCaptureMuted ? "Muted" : "Recording...")
@@ -132,6 +140,7 @@ public sealed partial class MainViewModel : ObservableObject
         _recognition.PartialResult += OnPartialResult;
         _recognition.FinalResult += OnFinalResult;
         _recognition.Stopped += OnRecognitionStopped;
+        _recognition.ModelStateChanged += OnModelStateChanged;
 
         _partialResultTimer = _dispatcher.CreateTimer();
         _partialResultTimer.Interval = TimeSpan.FromMilliseconds(50);
@@ -143,9 +152,20 @@ public sealed partial class MainViewModel : ObservableObject
             _settings.ModelsRootPath = m.Value.ModelsRootPath;
             _settings.ModelPath = m.Value.ModelPath;
             _settingsService.Save(_settings);
+            // Reload model with new path
+            _ = ReloadModelOnSettingsChangeAsync(_settings);
+        });
+
+        // Listen for SettingsSaved messages — reload model if path/EP changed
+        WeakReferenceMessenger.Default.Register<SettingsSavedMessage>(this, (r, m) =>
+        {
+            _ = ReloadModelOnSettingsChangeAsync(m.Value);
         });
 
         CheckModelAvailability();
+
+        // Preload model at startup (background, non-blocking)
+        _ = LoadModelInBackgroundAsync();
     }
 
     // ---- Property change hooks ----
@@ -161,7 +181,7 @@ public sealed partial class MainViewModel : ObservableObject
             _injectionTargetWindow = _windowInterop.GetForegroundWindow();
             _injectionExplicitlyEnabled = true;
 
-            if (!IsRecording && !IsInitializing)
+            if (!IsRecording && !IsModelLoading)
                 _ = StartAsync();
         }
 
@@ -199,11 +219,6 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(RecordingIndicator));
     }
 
-    partial void OnIsInitializingChanged(bool value)
-    {
-        OnPropertyChanged(nameof(RecordButtonText));
-    }
-
     partial void OnIsModelAvailableChanged(bool value)
     {
         OnPropertyChanged(nameof(ShowModelWarning));
@@ -225,7 +240,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         if (IsRecording) Stop();
-        else if (!IsInitializing) _ = StartAsync();
+        else if (!IsModelLoading) _ = StartAsync();
     }
 
     [RelayCommand]
@@ -292,7 +307,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public void TryAutoStart()
     {
-        if (_settings.AutoStartRecognition && !IsRecording && !IsInitializing)
+        if (_settings.AutoStartRecognition && !IsRecording && !IsModelLoading)
             _ = StartAsync();
     }
 
@@ -355,7 +370,69 @@ public sealed partial class MainViewModel : ObservableObject
         _textInjector.Inject(_floatingText, _settings.TextInjectionMethod);
     }
 
-    // ---- Model availability ----
+    // ---- Model lifecycle ----
+
+    private async Task LoadModelInBackgroundAsync()
+    {
+        var settings = _settingsService.Load();
+        if (string.IsNullOrEmpty(settings.ModelPath) && !string.IsNullOrEmpty(settings.ModelsRootPath))
+        {
+            settings.ModelPath = Path.Combine(settings.ModelsRootPath, settings.SelectedModel);
+            _settings.ModelPath = settings.ModelPath;
+            _settingsService.Save(settings);
+        }
+
+        if (string.IsNullOrEmpty(settings.ModelPath))
+        {
+            _dispatcher.TryEnqueue(() => ModelStatusText = "No model configured — download or select in Settings");
+            return;
+        }
+
+        await _recognition.LoadModelAsync(settings);
+    }
+
+    private async Task ReloadModelOnSettingsChangeAsync(AppSettings newSettings)
+    {
+        var oldModelPath = _settings.ModelPath;
+        var oldEp = _settings.ExecutionProvider;
+
+        _settings = newSettings;
+
+        // Only reload if model path or execution provider changed
+        if (string.Equals(oldModelPath, newSettings.ModelPath, StringComparison.Ordinal)
+            && string.Equals(oldEp, newSettings.ExecutionProvider, StringComparison.Ordinal))
+            return;
+
+        _dispatcher.TryEnqueue(() =>
+        {
+            ModelStatusText = "Reloading model...";
+            IsModelReady = false;
+        });
+
+        _recognition.UnloadModel();
+        await _recognition.LoadModelAsync(newSettings);
+    }
+
+    private void OnModelStateChanged(ModelState state)
+    {
+        _dispatcher.TryEnqueue(() =>
+        {
+            ModelStateDisplay = state;
+            IsModelLoading = state == ModelState.Loading;
+            IsModelReady = state == ModelState.Loaded;
+
+            ModelStatusText = state switch
+            {
+                ModelState.Unloaded => "No model loaded",
+                ModelState.Loading => "Loading model...",
+                ModelState.Loaded => "Model ready",
+                ModelState.Error => "Model load error",
+                _ => ""
+            };
+
+            OnPropertyChanged(nameof(RecordButtonText));
+        });
+    }
 
     public void DismissModelWarning()
     {
@@ -373,15 +450,14 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var configPath = Path.Combine(modelPath, "genai_config.json");
             IsModelAvailable = File.Exists(configPath);
-            ModelStatusText = IsModelAvailable
-                ? $"Model ready: {Path.GetFileName(modelPath)}"
-                : $"Model folder exists but genai_config.json missing: {modelPath}";
         }
         else
         {
             IsModelAvailable = false;
-            ModelStatusText = "No model found. Download recommended:";
         }
+
+        if (!IsModelAvailable)
+            ModelStatusText = "No model found. Download recommended:";
     }
 
     private void ApplySettingsSnapshot(AppSettings settings)
@@ -416,11 +492,47 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task StartAsync()
     {
-        if (IsRecording || IsInitializing) return;
+        if (IsRecording || IsModelLoading) return;
         ApplySettingsSnapshot(_settingsService.Load());
 
-        IsInitializing = true;
-        StatusText = "Initializing engine...";
+        // If model is not loaded, load it first
+        if (_recognition.ModelState != ModelState.Loaded)
+        {
+            if (_recognition.ModelState == ModelState.Loading)
+                return; // Already loading — no-op
+
+            IsModelLoading = true;
+            StatusText = "Loading model...";
+            OnPropertyChanged(nameof(RecordButtonText));
+
+            try
+            {
+                if (string.IsNullOrEmpty(_settings.ModelPath) && !string.IsNullOrEmpty(_settings.ModelsRootPath))
+                {
+                    _settings.ModelPath = Path.Combine(_settings.ModelsRootPath, _settings.SelectedModel);
+                    _settingsService.Save(_settings);
+                }
+
+                await _recognition.LoadModelAsync(_settings);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Model load error: {ex.Message}";
+                return;
+            }
+            finally
+            {
+                IsModelLoading = false;
+                OnPropertyChanged(nameof(RecordButtonText));
+            }
+
+            if (_recognition.ModelState != ModelState.Loaded)
+            {
+                StatusText = "Model not ready";
+                return;
+            }
+        }
+
         RecognizedText = "";
         FloatingText = "";
         _lastInjectedLength = 0;
@@ -434,19 +546,6 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             _stateMachine.Fire(RecognitionTrigger.Start);
-
-            if (string.IsNullOrEmpty(_settings.ModelPath) && !string.IsNullOrEmpty(_settings.ModelsRootPath))
-            {
-                _settings.ModelPath = Path.Combine(_settings.ModelsRootPath, _settings.SelectedModel);
-                _settingsService.Save(_settings);
-            }
-
-            await Task.Run(() =>
-            {
-                _recognition.Initialize(_settings);
-            });
-
-            _stateMachine.Fire(RecognitionTrigger.InitOk);
 
             _currentSession = _sessionManager.CreateSession(
                 _settings.Language, "Nemotron", _settings.AudioSource);
@@ -464,19 +563,14 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            if (_stateMachine.CurrentState == RecognitionState.Initializing)
-                _stateMachine.Fire(RecognitionTrigger.InitFail);
+            _stateMachine.Fire(RecognitionTrigger.Reset);
 
             Console.Error.WriteLine($"[VoiceType] Start error: {ex}");
             AppPaths.EnsureDataRoot();
-            File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now}] Recognition initialization failed: {ex}\n");
+            File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now}] Recognition start failed: {ex}\n");
             _partialResultTimer.Stop();
             StatusText = $"Error: {ex.Message}";
             IsRecording = false;
-        }
-        finally
-        {
-            IsInitializing = false;
         }
     }
 
@@ -500,7 +594,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _recognition.SetMuted(true);
             IsCaptureMuted = true;
-            StatusText = "Paused (model loaded)";
+            StatusText = "Paused (model stays loaded)";
             OnPropertyChanged(nameof(RecordingIndicator));
         });
     }
@@ -545,7 +639,7 @@ public sealed partial class MainViewModel : ObservableObject
             _lastInjectedLength = 0;
 
             IsRecording = false;
-            StatusText = "Done";
+            StatusText = "Ready";
 
             if (_currentSession is not null && _settings.SaveSessions)
             {

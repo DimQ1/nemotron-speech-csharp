@@ -24,6 +24,8 @@ public sealed class LoggingRecognitionService : IRecognitionService
     public int SampleRate => _inner.SampleRate;
     public string AccumulatedText => _inner.AccumulatedText;
 
+    public ModelState ModelState => _inner.ModelState;
+
     public event Action<string>? PartialResult
     {
         add => _inner.PartialResult += value;
@@ -42,13 +44,26 @@ public sealed class LoggingRecognitionService : IRecognitionService
         remove => _inner.Stopped -= value;
     }
 
-    public void Initialize(AppSettings settings)
+    public event Action<ModelState>? ModelStateChanged
+    {
+        add => _inner.ModelStateChanged += value;
+        remove => _inner.ModelStateChanged -= value;
+    }
+
+    public async Task LoadModelAsync(AppSettings settings)
     {
         _telemetry.LogInfo("Recognition",
-            $"Initializing recognizer: path={settings.ModelPath}, ep={settings.ExecutionProvider}, lang={settings.Language}, vad={settings.UseVad}");
+            $"Loading model: path={settings.ModelPath}, ep={settings.ExecutionProvider}, lang={settings.Language}, vad={settings.UseVad}");
         var sw = Stopwatch.StartNew();
-        _inner.Initialize(settings);
-        _telemetry.LogInfo("Recognition", $"Recognizer initialized in {sw.ElapsedMilliseconds}ms");
+        await _inner.LoadModelAsync(settings);
+        _telemetry.LogInfo("Recognition", $"Model loaded in {sw.ElapsedMilliseconds}ms (state={_inner.ModelState})");
+    }
+
+    public void UnloadModel()
+    {
+        _telemetry.LogInfo("Recognition", "Unloading model...");
+        _inner.UnloadModel();
+        _telemetry.LogInfo("Recognition", "Model unloaded");
     }
 
     public void Start(AppSettings settings)

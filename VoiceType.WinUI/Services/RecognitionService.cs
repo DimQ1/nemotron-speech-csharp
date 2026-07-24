@@ -13,6 +13,11 @@ namespace VoiceType.WinUI.Services;
 /// <summary>
 /// Wraps <see cref="IStreamingSpeechRecognizer"/> lifecycle and
 /// provides a simple high-level API for the UI layer.
+///
+/// Model lifecycle is separated from capture lifecycle:
+/// - <see cref="LoadModelAsync"/> loads ONNX model into memory (slow, one-time)
+/// - <see cref="Start"/> / <see cref="Stop"/> control audio capture only
+/// - Model stays loaded across multiple Start/Stop cycles
 /// </summary>
 public sealed class RecognitionService : IRecognitionService
 {
@@ -34,6 +39,10 @@ public sealed class RecognitionService : IRecognitionService
     private readonly StringBuilder _accumulatedText = new();
     private readonly StringBuilder _partialProcessedText = new();
 
+    private ModelState _modelState = ModelState.Unloaded;
+    private CancellationTokenSource? _modelLoadCts;
+    private readonly object _modelGate = new();
+
     public RecognitionService() { }
 
     public RecognitionService(
@@ -51,37 +60,102 @@ public sealed class RecognitionService : IRecognitionService
     public event Action<string>? PartialResult;
     public event Action<string>? FinalResult;
     public event Action? Stopped;
+    public event Action<ModelState>? ModelStateChanged;
 
     public bool IsRunning => _isRunning;
     public bool IsMuted => _captureMuted;
     public int SampleRate => _recognizer?.SampleRate ?? 16000;
     public string AccumulatedText => _accumulatedText.ToString();
 
-    public void Initialize(AppSettings settings)
+    public ModelState ModelState
     {
-        var modelPath = string.IsNullOrEmpty(settings.ModelPath)
-            ? Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "modules", "asr", ModelSubfolder(settings.ExecutionProvider))
-            : settings.ModelPath;
-
-        if (!Path.IsPathRooted(modelPath))
-            modelPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, modelPath));
-
-        var langId = LanguageMapper.Resolve(settings.Language);
-
-        var searchOptions = new GeneratorParamsArgs
+        get => _modelState;
+        private set
         {
-            num_beams = settings.NumBeams,
-            do_sample = false,
-            repetition_penalty = settings.RepetitionPenalty
-        };
-
-        _recognizer = new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
+            if (_modelState == value) return;
+            _modelState = value;
+            ModelStateChanged?.Invoke(value);
+        }
     }
+
+    // ── Model lifecycle ────────────────────────────────────────
+
+    public async Task LoadModelAsync(AppSettings settings)
+    {
+        lock (_modelGate)
+        {
+            if (_modelState is ModelState.Loading or ModelState.Loaded)
+                return; // Already loading or loaded — no-op
+
+            ModelState = ModelState.Loading;
+        }
+
+        // Cancel any in-flight load
+        _modelLoadCts?.Cancel();
+        _modelLoadCts = new CancellationTokenSource();
+        var ct = _modelLoadCts.Token;
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var modelPath = ResolveModelPath(settings);
+
+                var langId = LanguageMapper.Resolve(settings.Language);
+
+                var searchOptions = new GeneratorParamsArgs
+                {
+                    num_beams = settings.NumBeams,
+                    do_sample = false,
+                    repetition_penalty = settings.RepetitionPenalty
+                };
+
+                var newRecognizer = new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
+
+                // Atomically swap recognizers
+                var old = Interlocked.Exchange(ref _recognizer, newRecognizer);
+                old?.Dispose();
+            }, ct);
+
+            ModelState = ModelState.Loaded;
+            _telemetry?.LogInfo("Recognition", "Model loaded successfully");
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled by a newer LoadModelAsync call — don't change state
+        }
+        catch (Exception ex)
+        {
+            ModelState = ModelState.Error;
+            _telemetry?.LogError("Recognition", $"Model load failed: {ex.Message}", ex);
+        }
+    }
+
+    public void UnloadModel()
+    {
+        lock (_modelGate)
+        {
+            if (_modelState == ModelState.Unloaded) return;
+
+            _modelLoadCts?.Cancel();
+            _modelLoadCts = null;
+
+            var old = Interlocked.Exchange(ref _recognizer, null);
+            old?.Dispose();
+
+            ModelState = ModelState.Unloaded;
+            _telemetry?.LogInfo("Recognition", "Model unloaded");
+        }
+    }
+
+    // ── Capture lifecycle ──────────────────────────────────────
 
     public void Start(AppSettings settings)
     {
-        if (_recognizer is null) Initialize(settings);
-        if (_recognizer is null) throw new InvalidOperationException("Recognizer not initialized.");
+        if (_recognizer is null)
+            throw new InvalidOperationException("Model is not loaded. Call LoadModelAsync first.");
 
         // Dispose previous session resources before creating new ones
         CleanupPreviousSession();
@@ -206,7 +280,7 @@ public sealed class RecognitionService : IRecognitionService
     {
         _isRunning = false;
         CleanupPreviousSession();
-        _recognizer?.Dispose();
+        UnloadModel();
     }
 
     /// <summary>
@@ -250,7 +324,20 @@ public sealed class RecognitionService : IRecognitionService
         catch { /* best-effort */ }
     }
 
-    /// <summary>Map execution provider to the matching model subfolder under models-onnx/.</summary>
+    /// <summary>Resolve the model path from settings, falling back to default if empty.</summary>
+    private static string ResolveModelPath(AppSettings settings)
+    {
+        var modelPath = string.IsNullOrEmpty(settings.ModelPath)
+            ? Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "modules", "asr", ModelSubfolder(settings.ExecutionProvider))
+            : settings.ModelPath;
+
+        if (!Path.IsPathRooted(modelPath))
+            modelPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, modelPath));
+
+        return modelPath;
+    }
+
+    /// <summary>Map execution provider to the matching model subfolder.</summary>
     private static string ModelSubfolder(string executionProvider) => executionProvider.ToLowerInvariant() switch
     {
         "cuda" => "gpu-cuda",
