@@ -100,10 +100,19 @@ We will update this policy if data practices change. Continued use of the app co
 ### 3.2. Pricing & Availability
 | Поле | Значение |
 |---|---|
-| **Price** | Free (или укажите свою цену) |
+| **Price** | Free |
 | **Free trial** | Not applicable |
 | **Markets** | All markets (или выберите нужные) |
 | **Release date** | As soon as possible |
+
+### 3.2b. Donations (донаты)
+Добавьте в **Description** приложения блок:
+```
+💝 Поддержать разработку:
+  • IBAN (BYN): BY97PJCB30140010095081080933 (Priorbank)
+  • Карта: 4916 9896 9022 8035
+```
+Или укажите ссылку на `DONATE.md` в GitHub-репо.
 
 ### 3.3. Age ratings
 - Пройдите опросник IARC (International Age Rating Coalition)
