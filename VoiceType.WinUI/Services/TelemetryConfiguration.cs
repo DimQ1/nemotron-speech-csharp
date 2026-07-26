@@ -73,17 +73,30 @@ public static class TelemetryConfiguration
         ?? Environment.GetEnvironmentVariable("ASPIRE_DASHBOARD_OTLP_ENDPOINT")
         ?? DefaultOtlpEndpoint;
 
-    public static bool IsOtlpExportEnabled() =>
-        !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT"))
-        || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPIRE_DASHBOARD_OTLP_ENDPOINT"))
-        || IsDevelopment();
+    public static bool IsOtlpExportEnabled()
+    {
+        // NEVER export telemetry in Store/Release builds — zero network calls.
+#if STORE_RELEASE
+        return false;
+#else
+        return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT"))
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPIRE_DASHBOARD_OTLP_ENDPOINT"))
+            || IsDevelopment();
+#endif
+    }
 
-    private static bool IsDevelopment() =>
-        string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development",
-            StringComparison.OrdinalIgnoreCase)
-        || string.Equals(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT"), "Development",
-            StringComparison.OrdinalIgnoreCase)
-        || Debugger.IsAttached;
+    private static bool IsDevelopment()
+    {
+#if STORE_RELEASE
+        return false;
+#else
+        return string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development",
+                   StringComparison.OrdinalIgnoreCase)
+               || string.Equals(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT"), "Development",
+                   StringComparison.OrdinalIgnoreCase)
+               || Debugger.IsAttached;
+#endif
+    }
 
     private static string GetAppVersion()
     {

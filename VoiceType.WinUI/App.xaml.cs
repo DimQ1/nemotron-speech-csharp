@@ -80,6 +80,7 @@ public partial class App : Application
     {
         Environment.SetEnvironmentVariable("ORT_DISABLE_MODEL_VALIDATION", "1");
 
+#if !STORE_RELEASE
         // Ensure development telemetry defaults are set before DI configures logging.
         if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT"))
             && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")))
@@ -91,6 +92,13 @@ public partial class App : Application
         {
             Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:18890/");
         }
+#else
+        // Store/Release: force production environment, no telemetry.
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")))
+        {
+            Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Production");
+        }
+#endif
 
         var services = new ServiceCollection();
         ConfigureServices(services);

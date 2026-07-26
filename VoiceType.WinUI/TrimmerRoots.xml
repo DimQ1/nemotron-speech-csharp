@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Trimmer root descriptors for VoiceType.WinUI.
+  Preserves types used via reflection by ONNX Runtime GenAI, NAudio, and
+  CommunityToolkit.Mvvm source generators.
+
+  Without these, PublishTrimmed may remove types needed at runtime,
+  causing MissingMethodException / TypeLoadException in production builds.
+-->
+<linker>
+  <!-- ONNX Runtime GenAI — native interop via reflection -->
+  <assembly fullname="Microsoft.ML.OnnxRuntimeGenAI">
+    <type fullname="Microsoft.ML.OnnxRuntimeGenAI.*" preserve="all" />
+  </assembly>
+
+  <!-- ONNX Runtime managed — provider lookup and session options -->
+  <assembly fullname="Microsoft.ML.OnnxRuntime">
+    <type fullname="Microsoft.ML.OnnxRuntime.*" preserve="all" />
+  </assembly>
+
+  <!-- CommunityToolkit.Mvvm source generators use reflection for INotifyPropertyChanged -->
+  <assembly fullname="CommunityToolkit.Mvvm">
+    <type fullname="CommunityToolkit.Mvvm.ComponentModel.*" preserve="all" />
+    <type fullname="CommunityToolkit.Mvvm.Input.*" preserve="all" />
+  </assembly>
+
+  <!-- VoiceType assemblies — ViewModels use source-generated ObservableProperty -->
+  <assembly fullname="VoiceType.WinUI">
+    <type fullname="VoiceType.WinUI.ViewModels.*" preserve="all" />
+    <type fullname="VoiceType.WinUI.Services.*" preserve="all" />
+  </assembly>
+</linker>

@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.ML.OnnxRuntime;
 
-namespace NemotronSpeech.Native;
+namespace SpeechLib.Native;
 
 /// <summary>
 /// Registers the native custom-op library (<c>nemotron_swish_cpu.dll</c>) that

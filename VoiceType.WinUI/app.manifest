@@ -4,16 +4,27 @@
 
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
-      <!-- The ID below informs the system that this application is compatible with OS features first introduced in Windows 10. 
-      It is necessary to support features in unpackaged applications, for example the custom titlebar implementation.
-      For more info see https://docs.microsoft.com/windows/apps/windows-app-sdk/use-windows-app-sdk-run-time#declare-os-compatibility-in-your-application-manifest -->
+      <!-- Windows 10 (version 2004, build 19041) -->
       <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+      <!-- Windows 11 (version 21H2, build 22000) -->
+      <supportedOS Id="{1f676d76-71e0-4231-8b1e-b10f47992802}" />
+      <!-- Windows 11 (version 24H2, build 26100) -->
+      <supportedOS Id="{b66c54f7-2a7e-4f10-8d7b-6f0cf8e41480}" />
     </application>
   </compatibility>
-  
+
+  <!--
+  PerMonitorV2 DPI awareness: essential for crisp text rendering on high-DPI
+  displays (4K, laptops with 150%+ scaling). WinUI 3 requires this mode.
+  -->
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
+      <!-- DPI awareness for WinUI 3 -->
       <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+      <!-- Long-path support: ONNX model paths can exceed 260 chars -->
+      <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
+      <!-- High-performance GPU for ONNX inference (disable battery-saving iGPU) -->
+      <graphicsPreference xmlns="http://schemas.microsoft.com/SMI/2024/WindowsSettings">HighPerformance</graphicsPreference>
     </windowsSettings>
   </application>
 </assembly>

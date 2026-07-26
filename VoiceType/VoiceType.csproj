@@ -19,7 +19,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
-    <ProjectReference Include="..\NemotronSpeech\NemotronSpeech.csproj" />
   </ItemGroup>
 
 </Project>

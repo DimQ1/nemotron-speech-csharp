@@ -1,11 +1,9 @@
-using CommonUtils;
 using Microsoft.ML.OnnxRuntimeGenAI;
-using NemotronSpeech.Native;
-using SpeechLib;
+using SpeechLib.Native;
 using System.Text;
 using System.Text.Json;
 
-namespace NemotronSpeech;
+namespace SpeechLib;
 
 /// <summary>
 /// Nemotron ONNX Runtime GenAI speech recognizer.

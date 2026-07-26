@@ -11,9 +11,17 @@
     <UseWinUI>true</UseWinUI>
     <WinUISDKReferences>false</WinUISDKReferences>
     <EnableMsixTooling>true</EnableMsixTooling>
+    <!-- MSIX packaged desktop app (required for Microsoft Store) -->
+    <WindowsPackageType>MSIX</WindowsPackageType>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);NU1902</NoWarn>
+    <!--
+      SelfContained is ONLY for publish (MSIX package). During build,
+      keep framework-dependent for faster dev iteration.
+      The PublishProfile overrides this to true for the final Store package.
+    -->
+    <SelfContained Condition="'$(SelfContained)' == ''">false</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
@@ -68,7 +76,7 @@
     <!-- Audio -->
     <PackageReference Include="NAudio" Version="2.3.0" />
     <PackageReference Include="NAudio.Lame" Version="2.1.0" />
-    <!-- Exclude native ORT from Windows AI (conflicts with Microsoft.ML.OnnxRuntimeGenAI.Cuda in NemotronSpeech) -->
+    <!-- Exclude native ORT from Windows AI (managed via SpeechLib, which owns ORT GenAI dependencies) -->
     <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
     <!-- Force managed ORT 1.25.1 assembly (transitive 1.23 from GenAI is overridden) -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.25.1" ExcludeAssets="native" />
@@ -76,9 +84,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
-    <!-- The shipped models are CPU ONNX builds. This also deploys ORT 1.25.1
-         and nemotron_swish_cpu.dll required by the opset-24 c056 model. -->
-    <ProjectReference Include="..\NemotronSpeech\NemotronSpeech.csproj" AdditionalProperties="GpuArch=CPU" />
   </ItemGroup>
 
   <!--
@@ -98,11 +103,31 @@
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
   </PropertyGroup>
 
+  <!--
+  Store Release Configuration:
+  - STORE_RELEASE: disables OpenTelemetry OTLP export, enforce production defaults
+  - No OTLP endpoint → telemetry is a no-op, no network calls
+  - DOTNET_ENVIRONMENT=Production → suppresses dev-only code paths
+  -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DefineConstants>$(DefineConstants);STORE_RELEASE</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+  Trimming suppressions for reflection-heavy libraries.
+  ONNX Runtime GenAI and NAudio use reflection — preserve their types.
+  -->
+  <ItemGroup>
+    <TrimmerRootDescriptor Include="TrimmerRoots.xml" Condition="Exists('TrimmerRoots.xml')" />
+  </ItemGroup>
+
   <!-- Copy nemotron_swish_cpu.dll and ORT 1.25.1 native DLL into AppX.
        ORT 1.25.1 is required by opset-24 ONNX models. The stale 1.23 DLL
        from the GenAI transitive dependency is overwritten.
-       NOTE: Use dotnet build/run with -p:GpuArch=CPU for correct NemotronSpeech
-       dependency (ORT 1.25.1). Default build uses CUDA profile (ORT 1.23). -->
+       Also strips PDBs from AppX (Store submission requirement).
+
+       NOTE: SpeechLib owns ORT GenAI dependencies with GpuArch selection.
+       Use -p:GpuArch=CPU for Store/CPU builds. -->
   <Target Name="CopyOrt1251AndSwishOpToAppX" AfterTargets="Build">
     <!-- ORT 1.25.1 from NuGet cache (CPU-only, no CUDA providers) -->
     <PropertyGroup>
@@ -133,5 +158,12 @@
           DestinationFolder="$(OutputPath)AppX"
           SkipUnchangedFiles="false"
           Condition="'@(_SwishDll)' != ''" />
+    <!-- Strip PDBs from AppX — Store submission requirement (no debug symbols in package) -->
+    <ItemGroup>
+      <_AppxPdbs Include="$(OutputPath)AppX\*.pdb" />
+      <_AppxPdbs Include="$(OutputPath)AppX\*.lib" />
+      <_AppxPdbs Include="$(OutputPath)AppX\*.exp" />
+    </ItemGroup>
+    <Delete Files="@(_AppxPdbs)" Condition="'@(_AppxPdbs)' != ''" />
   </Target>
 </Project>
