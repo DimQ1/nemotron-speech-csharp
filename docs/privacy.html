@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoiceType Privacy Policy</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; background: #fff; }
+  h1 { font-size: 24px; border-bottom: 2px solid #0078d4; padding-bottom: 8px; }
+  h2 { font-size: 18px; margin-top: 24px; }
+  .updated { color: #888; font-size: 14px; }
+</style>
+</head>
+<body>
+<h1>VoiceType Privacy Policy</h1>
+<p class="updated">Last updated: 2026-07-26</p>
+
+<h2>Summary</h2>
+<p><strong>VoiceType does NOT collect, transmit, or sell your personal data.</strong> All processing happens locally on your device. VoiceType is an offline-first application — after initial model download, no internet connection is required.</p>
+
+<h2>Data Collection & Processing</h2>
+<h3>Audio Recordings</h3>
+<p>Audio is captured from your microphone for the sole purpose of speech-to-text transcription. All audio processing is performed <strong>locally on your device</strong> using the Nemotron ASR engine (ONNX Runtime). Audio is never uploaded to any server or cloud service. Audio is discarded immediately after transcription.</p>
+
+<h3>Recognized Text</h3>
+<p>Transcribed text is injected directly into the application you are actively using (via Windows text input APIs). Text is <strong>not stored, logged, or transmitted</strong> by VoiceType.</p>
+
+<h3>Model Downloads</h3>
+<p>On first launch, VoiceType downloads speech recognition model files from HuggingFace (huggingface.co). These are anonymous HTTP requests containing <strong>no personal data</strong>. After download, all model inference runs entirely offline on your device.</p>
+
+<h3>Telemetry (Development Mode Only)</h3>
+<p>In development builds only, anonymous performance logs may be exported to a local OpenTelemetry endpoint. This telemetry is <strong>never enabled in production Store builds</strong>. No telemetry data leaves your local network.</p>
+
+<h2>Third-Party Services</h2>
+<p><strong>HuggingFace (huggingface.co):</strong> Used exclusively for downloading ASR model files. No personal data is shared. See <a href="https://huggingface.co/privacy">HuggingFace Privacy Policy</a>.</p>
+<p><strong>ONNX Runtime:</strong> Runs entirely on-device. No data is sent to Microsoft or any third party.</p>
+
+<h2>Data Storage</h2>
+<p>Application settings are stored locally in <code>%LOCALAPPDATA%\VoiceType\</code>. No data is stored outside your device.</p>
+
+<h2>Your Rights (GDPR / CCPA)</h2>
+<p>Since VoiceType does not collect any personal data, there is no personal data to access, delete, correct, or port.</p>
+
+<h2>Contact</h2>
+<p>Email: dimQ1@ya.ru<br>GitHub: <a href="https://github.com/DimQ1/nemotron-speech-csharp">DimQ1/nemotron-speech-csharp</a></p>
+</body>
+</html>
