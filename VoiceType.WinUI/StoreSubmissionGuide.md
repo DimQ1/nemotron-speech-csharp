@@ -135,7 +135,7 @@ Powered by Nemotron ASR running entirely on your device.
 • Works in ANY app — Notepad, Word, browsers, messengers, code editors
 • 100% offline — all processing on your device, no cloud, no privacy concerns
 • Global hotkeys — start/stop dictation even when VoiceType is minimized
-• Multi-language support — auto-detect or choose from 20+ languages
+• 17 languages — auto-detect or choose: EN, RU, DE, FR, ES, ZH, JA, KO, PT, IT, AR, HI, TR, UK, PL, NL
 • Free & open-source — no ads, no subscriptions, no data collection
 
 🔹 HOW IT WORKS:
@@ -169,7 +169,7 @@ VoiceType — быстрый AI-диктовщик, который печата�
 • Работает в ЛЮБОМ приложении — Блокнот, Word, браузер, мессенджеры, редакторы кода
 • 100% офлайн — вся обработка на устройстве, никаких облаков и утечек
 • Глобальные горячие клавиши — старт/стоп диктовки даже когда VoiceType свёрнут
-• Поддержка языков — автоопределение или выбор из 20+ языков
+• 17 языков — автоопределение или выбор: EN, RU, DE, FR, ES, ZH, JA, KO, PT, IT, AR, HI, TR, UK, PL, NL
 • Бесплатно и с открытым кодом — без рекламы, подписок и сбора данных
 
 🔹 КАК РАБОТАЕТ:
@@ -198,7 +198,7 @@ VoiceType НЕ собирает, НЕ передаёт и НЕ продаёт в
 - [x] Works in any Windows application
 - [x] 100% offline — no cloud, total privacy
 - [x] Global hotkeys (Ctrl+Shift+V)
-- [x] 20+ languages supported
+- [x] 17 languages (EN, RU, DE, FR, ES, ZH, JA, KO, PT, IT, AR, HI, TR, UK, PL, NL + auto)
 - [x] Free and open-source
 
 ---
