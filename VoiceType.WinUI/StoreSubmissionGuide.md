@@ -123,6 +123,84 @@ We will update this policy if data practices change. Continued use of the app co
 - Загрузите `.msixupload` файл (см. раздел 6)
 - Выберите архитектуру: **x64** (основная), опционально ARM64
 
+### 3.5. Store Listing Content (скопировать в Partner Center)
+
+#### Description (English)
+```
+VoiceType is a lightning-fast AI dictation app that types what you say — in any application.
+Powered by Nemotron ASR running entirely on your device.
+
+🔹 WHY VOICETYPE:
+• Real-time transcription — words appear as you speak
+• Works in ANY app — Notepad, Word, browsers, messengers, code editors
+• 100% offline — all processing on your device, no cloud, no privacy concerns
+• Global hotkeys — start/stop dictation even when VoiceType is minimized
+• Multi-language support — auto-detect or choose from 20+ languages
+• Free & open-source — no ads, no subscriptions, no data collection
+
+🔹 HOW IT WORKS:
+1. Install VoiceType from Microsoft Store
+2. On first launch, download a speech recognition model (~600 MB, one-time)
+3. Press the hotkey (default: Ctrl+Shift+V) and start speaking
+4. Recognized text appears in your active window — just like magic
+
+🔹 SYSTEM REQUIREMENTS:
+• Windows 10 version 2004+ or Windows 11
+• 8 GB RAM recommended (4 GB minimum)
+• x64 processor
+• ~1 GB free disk space for AI model
+
+🔹 PRIVACY:
+VoiceType does NOT collect, transmit, or sell ANY of your data.
+Microphone audio is processed locally and discarded immediately.
+No internet connection is required after model download.
+
+💝 Support development:
+  IBAN (BYN): BY97PJCB30140010095081080933 (Priorbank)
+```
+
+#### Description (Русский)
+```
+VoiceType — быстрый AI-диктовщик, который печатает то, что вы говорите — в любом приложении.
+На базе Nemotron ASR, работает полностью на вашем устройстве.
+
+🔹 ПОЧЕМУ VOICETYPE:
+• Распознавание в реальном времени — слова появляются по мере речи
+• Работает в ЛЮБОМ приложении — Блокнот, Word, браузер, мессенджеры, редакторы кода
+• 100% офлайн — вся обработка на устройстве, никаких облаков и утечек
+• Глобальные горячие клавиши — старт/стоп диктовки даже когда VoiceType свёрнут
+• Поддержка языков — автоопределение или выбор из 20+ языков
+• Бесплатно и с открытым кодом — без рекламы, подписок и сбора данных
+
+🔹 КАК РАБОТАЕТ:
+1. Установите VoiceType из Microsoft Store
+2. При первом запуске скачайте модель распознавания (~600 МБ, один раз)
+3. Нажмите горячую клавишу (по умолчанию Ctrl+Shift+V) и говорите
+4. Текст появляется в активном окне — как по волшебству
+
+🔹 СИСТЕМНЫЕ ТРЕБОВАНИЯ:
+• Windows 10 версии 2004+ или Windows 11
+• 8 ГБ ОЗУ рекомендуется (4 ГБ минимум)
+• Процессор x64
+• ~1 ГБ свободного места для AI-модели
+
+🔹 КОНФИДЕНЦИАЛЬНОСТЬ:
+VoiceType НЕ собирает, НЕ передаёт и НЕ продаёт ваши данные.
+Аудио с микрофона обрабатывается локально и сразу удаляется.
+Интернет не требуется после загрузки модели.
+
+💝 Поддержать разработку:
+  IBAN (BYN): BY97PJCB30140010095081080933 (Priorbank)
+```
+
+#### App Features (short bullets for Store listing)
+- [x] Real-time speech-to-text with AI
+- [x] Works in any Windows application
+- [x] 100% offline — no cloud, total privacy
+- [x] Global hotkeys (Ctrl+Shift+V)
+- [x] 20+ languages supported
+- [x] Free and open-source
+
 ---
 
 ## 4. Обязательные Store Assets
