@@ -292,24 +292,54 @@ dotnet build VoiceType.WinUI\VoiceType.WinUI.csproj -c Release -p:GpuArch=CPU
 
 ---
 
-## 7. Submission Checklist
+## 7. Partner Center Submission Checklist
 
-Перед отправкой в Store проверьте каждый пункт:
+Ниже чек-лист по страницам Partner Center (соответствует [официальной документации](https://learn.microsoft.com/ru-ru/windows/apps/publish/publish-your-app/msix/create-app-submission)):
 
-- [ ] **Partner Center:** имя приложения зарезервировано
-- [ ] **Package.appxmanifest:** Identity Name/Publisher заменены на значения из Partner Center
-- [ ] **Package.appxmanifest:** PublisherDisplayName соответствует Partner Center
-- [ ] **Package.appxmanifest:** Version обновлён (например, `1.0.1.0`)
-- [ ] **Privacy Policy:** URL рабочий и указан в Partner Center
-- [ ] **App capabilities:** `runFullTrust` justification готов
-- [ ] **App icons:** все размеры в `Assets/`, соответствуют требованиям
-- [ ] **Screenshots:** минимум 1 скриншот 1366×768+ для Store listing
-- [ ] **Age rating:** IARC опросник пройден
-- [ ] **Release build:** `dotnet publish` проходит без ошибок
-- [ ] **WACK test:** App Certification Kit проходит без ошибок
-- [ ] **Code signing:** пакет подписан валидным сертификатом
-- [ ] **Test flight:** пакет установлен и проверен на чистой Windows 10/11 машине
-- [ ] **Store listing:** описание, категория, цена, рынки заполнены
+### 7.1. Pricing & Availability (Цены и доступность)
+- [ ] **Markets:** All possible markets (или выберите нужные)
+- [ ] **Audience:** Public audience
+- [ ] **Discoverability:** Make this product available and discoverable in Microsoft Store
+- [ ] **Schedule:** Release as soon as possible
+- [ ] **Base price:** Free
+- [ ] **Free trial:** Not applicable
+- [ ] **Organization licensing:** Not applicable
+
+### 7.2. Properties (Свойства)
+- [ ] **Category:** Utilities & Tools
+- [ ] **Subcategory:** (необязательно)
+- [ ] **Privacy policy URL:** `https://dimq1.github.io/nemotron-speech-csharp/privacy` (или ваш URL)
+- [ ] **Website:** `https://github.com/DimQ1/nemotron-speech-csharp`
+- [ ] **Support contact:** ваш email
+
+### 7.3. Age Ratings (Возрастные рейтинги)
+- [ ] Пройти IARC-опросник
+- [ ] Рейтинг: **3+ (E for Everyone)**
+
+### 7.4. Packages (Пакеты)
+- [ ] Загрузить `.msixupload` (см. §6)
+- [ ] Архитектура: **x64** (основная), опционально ARM64
+- [ ] **Device family availability:** Windows.Desktop
+
+### 7.5. Store Listing (Список магазина)
+- [ ] **Description:** скопировать из §3.5 (EN + RU)
+- [ ] **What's new in this version:** (можно пропустить для первой версии)
+- [ ] **App features:** 17 languages, real-time, offline, global hotkeys, etc.
+- [ ] **Screenshots:** минимум 1 (рекомендуется 4+), 1366×768+
+- [ ] **Store logos:** все размеры готовы (см. §4)
+- [ ] **Keywords:** voice, dictation, speech-to-text, ASR, AI, offline, nemotron
+- [ ] **Copyright:** © 2026 DimQ1
+
+### 7.6. Submission Options (Параметры отправки)
+- [ ] **Restricted capabilities justification** — ОБЯЗАТЕЛЬНО (см. §5)
+- [ ] **Notes for certification:**
+  ```
+  VoiceType requires internet access only for one-time model download (~600 MB)
+  from HuggingFace. After download, all processing is local. No cloud services.
+  Audio is never uploaded. The app uses runFullTrust for global hotkeys,
+  text injection (Win32 SendInput), and low-level keyboard hooks.
+  ```
+- [ ] **Submission notification audience:** (необязательно)
 
 ---
 
