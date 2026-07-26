@@ -35,7 +35,8 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" />
     <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\AppIcon.ico" />
+    <Content Include="Assets\VoiceType.ico" />
+    <None Remove="Assets\AppIcon.ico" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\Wide310x150Logo.png" />
   </ItemGroup>
@@ -162,6 +163,20 @@
           DestinationFolder="$(OutputPath)AppX"
           SkipUnchangedFiles="false"
           Condition="'@(_SwishDll)' != ''" />
+    <!-- VC++ Runtime (required by ONNX Runtime native DLLs) -->
+    <ItemGroup>
+      <_VcRuntime Include="$(SystemRoot)\System32\vcruntime140.dll" />
+      <_VcRuntime Include="$(SystemRoot)\System32\vcruntime140_1.dll" />
+      <_VcRuntime Include="$(SystemRoot)\System32\msvcp140.dll" />
+      <_VcRuntime Include="$(SystemRoot)\System32\msvcp140_1.dll" />
+      <_VcRuntime Include="$(SystemRoot)\System32\msvcp140_2.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_VcRuntime)"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(_VcRuntime)"
+          DestinationFolder="$(OutputPath)AppX"
+          SkipUnchangedFiles="false" />
     <!-- Strip PDBs from AppX — Store submission requirement (no debug symbols in package) -->
     <ItemGroup>
       <_AppxPdbs Include="$(OutputPath)AppX\*.pdb" />
