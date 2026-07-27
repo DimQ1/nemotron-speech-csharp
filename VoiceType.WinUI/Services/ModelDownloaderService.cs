@@ -78,7 +78,9 @@ public sealed class ModelDownloaderService : IModelDownloaderService
         var response = await _http.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+        var jsonText = await response.Content.ReadAsStringAsync(ct);
+        using var jsonDoc = JsonDocument.Parse(jsonText);
+        var json = jsonDoc.RootElement;
         var allFiles = new List<HfFile>();
 
         if (json.TryGetProperty("siblings", out var siblings))
@@ -158,10 +160,12 @@ public sealed class ModelDownloaderService : IModelDownloaderService
         var url = $"{_huggingFaceBaseUrl}/api/models/{repoId}";
         var response = await _http.GetAsync(url, _cts.Token);
         response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(_cts.Token);
+        var jsonText = await response.Content.ReadAsStringAsync(_cts.Token);
+        using var jsonDoc2 = JsonDocument.Parse(jsonText);
+        var json2 = jsonDoc2.RootElement;
 
         var files = new List<FileToDownload>();
-        if (json.TryGetProperty("siblings", out var siblings))
+        if (json2.TryGetProperty("siblings", out var siblings))
         {
             foreach (var sib in siblings.EnumerateArray())
             {
