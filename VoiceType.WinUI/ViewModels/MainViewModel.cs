@@ -409,6 +409,20 @@ public sealed partial class MainViewModel : ObservableObject
             IsModelReady = false;
         });
 
+        // CRITICAL: Stop recognition before unloading the model.
+        // If we unload while ProcessLoop is running, it will crash with
+        // ObjectDisposedException or NullReferenceException, and the service
+        // gets stuck in a state where Start() can never be called again.
+        if (IsRecording)
+        {
+            _recognition.Stop();
+            // Wait for the ProcessLoop to fully finish (Flush + Stopped event)
+            // The OnRecognitionStopped handler will set IsRecording = false.
+            // Give it a moment to complete gracefully.
+            for (int i = 0; i < 100 && IsRecording; i++)
+                await Task.Delay(10);
+        }
+
         _recognition.UnloadModel();
         await _recognition.LoadModelAsync(newSettings);
     }

@@ -136,6 +136,21 @@ public sealed class RecognitionService : IRecognitionService
 
     public void UnloadModel()
     {
+        // If recognition is running, stop it first to prevent ObjectDisposedException
+        // in ProcessLoop when the recognizer is swapped out.
+        if (_isRunning)
+        {
+            _telemetry?.LogInfo("Recognition", "Stopping recognition before model unload");
+            Stop();
+
+            // Give ProcessLoop a moment to finish gracefully
+            if (_processTask is not null)
+            {
+                try { _processTask.Wait(TimeSpan.FromSeconds(2)); } catch { }
+                _processTask = null;
+            }
+        }
+
         lock (_modelGate)
         {
             if (_modelState == ModelState.Unloaded) return;
@@ -155,7 +170,10 @@ public sealed class RecognitionService : IRecognitionService
 
     public void Start(AppSettings settings)
     {
-        if (_recognizer is null)
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(RecognitionService));
+
+        if (_recognizer is null || _modelState != ModelState.Loaded)
             throw new InvalidOperationException("Model is not loaded. Call LoadModelAsync first.");
 
         // Dispose previous session resources before creating new ones
@@ -195,6 +213,28 @@ public sealed class RecognitionService : IRecognitionService
         if (_captureState is not null)
             _captureState.IsRunning = false;
         _signal?.Set();
+    }
+
+    /// <summary>Full cleanup: stop recognition, wait for ProcessLoop to finish, and reset state.
+    /// Call this before unloading the model to ensure a clean restart later.</summary>
+    public async Task StopAndCleanupAsync()
+    {
+        Stop();
+
+        // Wait for ProcessLoop to complete (max 2 seconds)
+        if (_processTask is not null)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await _processTask.WaitAsync(cts.Token);
+            }
+            catch (OperationCanceledException) { /* best-effort */ }
+            catch { /* ProcessLoop may throw on disposal race */ }
+            _processTask = null;
+        }
+
+        CleanupPreviousSession();
     }
 
     /// <summary>Mute/unmute capture. When muted, audio is discarded without recognition (saves CPU).</summary>
