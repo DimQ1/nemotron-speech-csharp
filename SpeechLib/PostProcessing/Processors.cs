@@ -14,7 +14,10 @@ public sealed partial class LanguageTagStripper : PostProcessorBase
 
     protected override string? ProcessCore(string text)
     {
-        var result = LanguageTagPattern().Replace(text, "").Trim();
+        // Do NOT Trim() here — trimming removes leading/trailing spaces that
+        // separate words across audio chunks, causing words to merge together
+        // (e.g. "такие достаточно " + " массивные" → "такие достаточномассивные").
+        var result = LanguageTagPattern().Replace(text, "");
         return result.Length == 0 ? null : result;
     }
 }
@@ -43,6 +46,7 @@ public sealed class RegexRuleProcessor : PostProcessorBase
 
 /// <summary>
 /// Normalizes whitespace: collapses multiple spaces, trims.
+/// Only applied in ProcessFinal() — NOT in real-time partial results.
 /// </summary>
 public sealed partial class WhitespaceNormalizer : PostProcessorBase
 {
