@@ -28,5 +28,7 @@
   <assembly fullname="VoiceType.WinUI">
     <type fullname="VoiceType.WinUI.ViewModels.*" preserve="all" />
     <type fullname="VoiceType.WinUI.Services.*" preserve="all" />
+    <type fullname="VoiceType.WinUI.Models.*" preserve="all" />
+    <type fullname="VoiceType.WinUI.Serialization.*" preserve="all" />
   </assembly>
 </linker>

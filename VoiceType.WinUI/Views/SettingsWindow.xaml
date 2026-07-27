@@ -186,8 +186,22 @@
                                     Command="{x:Bind ViewModel.AddRuleCommand}"/>
                         </Grid>
 
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.Rules}">
-                            <ItemsControl.ItemTemplate>
+                        <ListView ItemsSource="{x:Bind ViewModel.Rules}"
+                                  SelectionMode="None"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Padding="0">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0,0,0,4"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="MinHeight" Value="0"/>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="models:PostProcessingRule">
                                     <Border Background="{StaticResource BgTertiaryBrush}"
                                             HorizontalAlignment="Stretch"
@@ -237,8 +251,8 @@
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ListView.ItemTemplate>
+                        </ListView>
                     </StackPanel>
                 </Border>
 

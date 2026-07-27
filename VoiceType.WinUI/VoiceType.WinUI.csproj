@@ -41,6 +41,48 @@
     <Content Include="Assets\Wide310x150Logo.png" />
   </ItemGroup>
 
+  <!-- Force netstandard.dll and VC++ runtime into MSIX package.
+       The MSIX packaging targets filter out files not declared as Content,
+       so we must explicitly include these runtime dependencies. -->
+  <ItemGroup>
+    <Content Include="C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.10\netstandard.dll">
+      <Link>netstandard.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(SystemRoot)\System32\vcruntime140.dll">
+      <Link>vcruntime140.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(SystemRoot)\System32\vcruntime140_1.dll">
+      <Link>vcruntime140_1.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(SystemRoot)\System32\msvcp140.dll">
+      <Link>msvcp140.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(SystemRoot)\System32\msvcp140_1.dll">
+      <Link>msvcp140_1.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(SystemRoot)\System32\msvcp140_2.dll">
+      <Link>msvcp140_2.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
@@ -102,10 +144,9 @@
 
   <!-- Publish Properties -->
   <PropertyGroup>
-    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
-    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
-    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
-    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">False</PublishTrimmed>
+    <!-- AOT disabled: CsWinRT marshalling broken with trimming -->
+    <PublishReadyToRun>False</PublishReadyToRun>
+    <PublishTrimmed>False</PublishTrimmed>
   </PropertyGroup>
 
   <!--
@@ -178,10 +219,13 @@
           DestinationFolder="$(OutputPath)AppX"
           SkipUnchangedFiles="false" />
     <!-- netstandard.dll facade (required by .NET Standard 2.0 libraries like NAudio.Lame).
-         Copy from the .NET runtime shared framework. -->
+         Copy from the .NET runtime shared framework using a resolved path. -->
+    <PropertyGroup>
+      <_Net10RuntimeDir>C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.10</_Net10RuntimeDir>
+    </PropertyGroup>
     <ItemGroup>
-      <_NetStandardDll Include="$(DotNetRoot)shared\Microsoft.NETCore.App\$(BundledNETCoreAppTargetFrameworkVersion)\netstandard.dll"
-                       Condition="'$(DotNetRoot)' != ''" />
+      <_NetStandardDll Include="$(_Net10RuntimeDir)\netstandard.dll"
+                       Condition="Exists('$(_Net10RuntimeDir)\netstandard.dll')" />
     </ItemGroup>
     <Copy SourceFiles="@(_NetStandardDll)"
           DestinationFolder="$(OutputPath)"
@@ -189,7 +233,9 @@
           Condition="'@(_NetStandardDll)' != ''" />
     <Copy SourceFiles="@(_NetStandardDll)"
           DestinationFolder="$(OutputPath)AppX"
-          SkipUnchangedFiles="false" />
+          SkipUnchangedFiles="false"
+          Condition="'@(_NetStandardDll)' != ''" />
+    <Warning Text="netstandard.dll not found at $(_Net10RuntimeDir)" Condition="'@(_NetStandardDll)' == ''" />
     <!-- Strip PDBs from AppX — Store submission requirement (no debug symbols in package) -->
     <ItemGroup>
       <_AppxPdbs Include="$(OutputPath)AppX\*.pdb" />
@@ -197,5 +243,30 @@
       <_AppxPdbs Include="$(OutputPath)AppX\*.exp" />
     </ItemGroup>
     <Delete Files="@(_AppxPdbs)" Condition="'@(_AppxPdbs)' != ''" />
+  </Target>
+
+  <!-- Copy netstandard.dll and VC++ runtime into the publish output for MSIX packaging.
+       The AfterTargets="Build" target above only copies to OutputPath; publish uses
+       a different intermediate directory, so we need a separate publish target. -->
+  <Target Name="CopyNetstandardAndVcRuntimeToPublish" AfterTargets="Publish">
+    <PropertyGroup>
+      <_Net10RuntimeDir>C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.10</_Net10RuntimeDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <_PubNetStandardDll Include="$(_Net10RuntimeDir)\netstandard.dll"
+                          Condition="Exists('$(_Net10RuntimeDir)\netstandard.dll')" />
+      <_PubVcRuntime Include="$(SystemRoot)\System32\vcruntime140.dll" />
+      <_PubVcRuntime Include="$(SystemRoot)\System32\vcruntime140_1.dll" />
+      <_PubVcRuntime Include="$(SystemRoot)\System32\msvcp140.dll" />
+      <_PubVcRuntime Include="$(SystemRoot)\System32\msvcp140_1.dll" />
+      <_PubVcRuntime Include="$(SystemRoot)\System32\msvcp140_2.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_PubNetStandardDll)"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="false"
+          Condition="'@(_PubNetStandardDll)' != ''" />
+    <Copy SourceFiles="@(_PubVcRuntime)"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="false" />
   </Target>
 </Project>
