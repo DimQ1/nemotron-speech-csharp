@@ -367,7 +367,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (!IsTextInjectionEnabled) return;
         if (string.IsNullOrEmpty(FloatingText)) return;
-        _textInjector.Inject(_floatingText, _settings.TextInjectionMethod);
+        _textInjector.Inject(FloatingText, _settings.TextInjectionMethod);
     }
 
     // ---- Model lifecycle ----
@@ -463,10 +463,10 @@ public sealed partial class MainViewModel : ObservableObject
     private void ApplySettingsSnapshot(AppSettings settings)
     {
         _settings = settings;
-        _isTextInjectionEnabled = settings.IsTextInjectionEnabled;
-        _isAutoScrollEnabled = settings.IsAutoScrollEnabled;
-        _disableInjectionOnFocusChange = settings.DisableInjectionOnFocusChange;
-        _alwaysOnTop = settings.AlwaysOnTop;
+        IsTextInjectionEnabled = settings.IsTextInjectionEnabled;
+        IsAutoScrollEnabled = settings.IsAutoScrollEnabled;
+        DisableInjectionOnFocusChange = settings.DisableInjectionOnFocusChange;
+        AlwaysOnTop = settings.AlwaysOnTop;
 
         OnPropertyChanged(nameof(IsTextInjectionEnabled));
         OnPropertyChanged(nameof(IsAutoScrollEnabled));
