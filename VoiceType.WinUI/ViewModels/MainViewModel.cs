@@ -178,7 +178,12 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (value)
         {
-            _injectionTargetWindow = _windowInterop.GetForegroundWindow();
+            var foregroundWindow = _windowInterop.GetForegroundWindow();
+            var ownWindow = _windowInterop.GetOwnWindowHandle();
+            // Don't set injection target to our own window
+            _injectionTargetWindow = (ownWindow != nint.Zero && foregroundWindow == ownWindow)
+                ? nint.Zero
+                : foregroundWindow;
             _injectionExplicitlyEnabled = true;
 
             if (!IsRecording && !IsModelLoading)
@@ -550,7 +555,12 @@ public sealed partial class MainViewModel : ObservableObject
         RecognizedText = "";
         FloatingText = "";
         _lastInjectedLength = 0;
-        _injectionTargetWindow = _windowInterop.GetForegroundWindow();
+        var foregroundWindow = _windowInterop.GetForegroundWindow();
+        var ownWindow = _windowInterop.GetOwnWindowHandle();
+        // Don't set injection target to our own window
+        _injectionTargetWindow = (ownWindow != nint.Zero && foregroundWindow == ownWindow)
+            ? nint.Zero
+            : foregroundWindow;
         lock (_partialResultGate)
         {
             _pendingPartialText = null;
@@ -615,6 +625,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     private bool CanInjectToTargetWindow()
     {
+        // Never inject into our own window
+        var ownWindow = _windowInterop.GetOwnWindowHandle();
+        if (ownWindow != nint.Zero && _windowInterop.GetForegroundWindow() == ownWindow)
+            return false;
+
         if (_injectionExplicitlyEnabled) return true;
         if (!DisableInjectionOnFocusChange) return true;
         if (_injectionTargetWindow == nint.Zero) return true;

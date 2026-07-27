@@ -10,4 +10,11 @@ public sealed class WindowInterop : IWindowInterop
     private static extern nint GetForegroundWindowInternal();
 
     public nint GetForegroundWindow() => GetForegroundWindowInternal();
+
+    public nint GetOwnWindowHandle()
+    {
+        return App.MainWindow is not null
+            ? WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow)
+            : nint.Zero;
+    }
 }
