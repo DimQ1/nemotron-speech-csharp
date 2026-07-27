@@ -68,7 +68,8 @@ public sealed partial class MainWindow : Window
         if (_hwnd != nint.Zero)
         {
             var dpi = GetWindowDpi(_hwnd);
-            var w = (int)(372f * dpi / 96f);
+            // Wider to accommodate 3 app buttons + system minimize/maximize/close buttons
+            var w = (int)(420f * dpi / 96f);
             var h = (int)(600f * dpi / 96f);
             SetWindowPos(_hwnd, 0, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
         }
