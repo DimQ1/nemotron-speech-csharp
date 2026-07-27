@@ -2,6 +2,9 @@
     x:Class="VoiceType.WinUI.Views.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:VoiceType.WinUI.Models"
+    xmlns:vm="using:VoiceType.WinUI.ViewModels"
+    x:DataType="vm:SettingsViewModel"
     Title="VoiceType Settings">
 
     <Window.SystemBackdrop>
@@ -185,7 +188,7 @@
 
                         <ItemsControl ItemsSource="{x:Bind ViewModel.Rules}">
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate>
+                                <DataTemplate x:DataType="models:PostProcessingRule">
                                     <Border Background="{StaticResource BgTertiaryBrush}"
                                             HorizontalAlignment="Stretch"
                                             CornerRadius="4" Padding="8,6" Margin="0,0,0,4">
@@ -202,17 +205,17 @@
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}"
+                                                <CheckBox Grid.Column="0" IsChecked="{x:Bind Enabled, Mode=TwoWay}"
                                                           Style="{StaticResource DarkCheckBox}"
                                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay}"
+                                                <TextBox Grid.Column="1" Text="{x:Bind Name, Mode=TwoWay}"
                                                          Style="{StaticResource DarkTextBox}" FontSize="12"
                                                          FontWeight="SemiBold" VerticalAlignment="Center"
                                                          HorizontalAlignment="Stretch"/>
                                                 <Button Grid.Column="2" Content="✕"
                                                         Background="Transparent" Foreground="{StaticResource RedBrush}"
                                                         BorderThickness="0" Width="24" Height="24" FontSize="12"
-                                                        Click="DeleteRule_Click" Tag="{Binding}"/>
+                                                        Click="DeleteRule_Click" Tag="{x:Bind}"/>
                                             </Grid>
 
                                             <!-- Pattern → Replacement -->
@@ -222,12 +225,12 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBox Text="{Binding Pattern, Mode=TwoWay}"
+                                                <TextBox Text="{x:Bind Pattern, Mode=TwoWay}"
                                                          Style="{StaticResource DarkTextBox}" FontSize="11"
                                                          Margin="0,0,4,0"/>
                                                 <TextBlock Grid.Column="1" Text="→" Foreground="{StaticResource FgSecondaryBrush}"
                                                            VerticalAlignment="Center" Margin="4,0"/>
-                                                <TextBox Grid.Column="2" Text="{Binding Replacement, Mode=TwoWay}"
+                                                <TextBox Grid.Column="2" Text="{x:Bind Replacement, Mode=TwoWay}"
                                                          Style="{StaticResource DarkTextBox}" FontSize="11"
                                                          Margin="4,0,0,0"/>
                                             </Grid>
