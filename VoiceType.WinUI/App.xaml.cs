@@ -33,13 +33,7 @@ public partial class App : Application
             var exStr = args.Exception.ToString();
             Console.Error.WriteLine($"!!! UNHANDLED EXCEPTION: {exStr}");
 
-            try
-            {
-                AppPaths.EnsureDataRoot();
-                File.AppendAllText(AppPaths.ErrorLogFile,
-                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [UNHANDLED] {exStr}\n");
-            }
-            catch { }
+            try { App.Telemetry?.LogError("App", $"[UNHANDLED] {exStr}"); } catch { }
 
             if (Services is not null)
             {

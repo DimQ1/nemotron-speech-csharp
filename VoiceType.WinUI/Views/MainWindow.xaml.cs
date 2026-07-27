@@ -134,7 +134,7 @@ public sealed partial class MainWindow : Window
             var hotkeyId = wParam.ToInt32();
             App.Telemetry?.LogInfo("Window", $"WM_HOTKEY received: id={hotkeyId}");
             AppPaths.EnsureDataRoot();
-            File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now}] WM_HOTKEY: id={hotkeyId}\n");
+            // Debug-only hotkey logging removed — was causing file-lock storms
             _vm.HandleHotkey(hotkeyId);
             return nint.Zero;
         }

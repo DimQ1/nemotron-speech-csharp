@@ -37,7 +37,7 @@ public sealed class SettingsService : ISettingsService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Settings] Load FAILED: {ex.Message}");
-            try { File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [ERROR] [Settings] Load failed: {ex}\n"); } catch { }
+            try { App.Telemetry?.LogError("Settings", $"Load failed: {ex.Message}"); } catch { }
         }
         return new AppSettings();
     }
@@ -55,7 +55,7 @@ public sealed class SettingsService : ISettingsService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Settings] Save FAILED: {ex.Message}");
-            try { File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [ERROR] [Settings] Save failed: {ex}\n"); } catch { }
+            try { App.Telemetry?.LogError("Settings", $"Save failed: {ex.Message}"); } catch { }
         }
     }
 }

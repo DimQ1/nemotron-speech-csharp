@@ -41,8 +41,6 @@ public sealed class RecognitionService : IRecognitionService
     private CancellationTokenSource? _modelLoadCts;
     private readonly object _modelGate = new();
 
-    public RecognitionService() { }
-
     public RecognitionService(
         ISettingsService settingsService,
         IPostProcessingPipeline postProcessing,
@@ -277,9 +275,12 @@ public sealed class RecognitionService : IRecognitionService
     public void Dispose()
     {
         _isRunning = false;
+        _disposed = true;
         CleanupPreviousSession();
         UnloadModel();
     }
+
+    private bool _disposed;
 
     /// <summary>
     /// Dispose all per-session resources (recorder, audio source, sync primitives)
@@ -325,9 +326,28 @@ public sealed class RecognitionService : IRecognitionService
     /// <summary>Resolve the model path from settings, falling back to default if empty.</summary>
     private static string ResolveModelPath(AppSettings settings)
     {
-        var modelPath = string.IsNullOrEmpty(settings.ModelPath)
-            ? Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "modules", "asr", ModelSubfolder(settings.ExecutionProvider))
-            : settings.ModelPath;
+        string modelPath;
+
+        if (!string.IsNullOrEmpty(settings.ModelPath))
+        {
+            modelPath = settings.ModelPath;
+        }
+        else
+        {
+            // Packaged MSIX: AppContext.BaseDirectory is immutable WindowsApps path.
+            // Look in user-writable Models dir first, then fall back to dev relative path.
+            var packagedModelsDir = AppPaths.ModelsDir;
+            var devModelDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "modules", "asr", ModelSubfolder(settings.ExecutionProvider));
+
+            // Check if running in a packaged environment (WindowsApps install)
+            bool isPackaged = AppContext.BaseDirectory.Contains("WindowsApps", StringComparison.OrdinalIgnoreCase);
+
+            modelPath = isPackaged
+                ? (Directory.Exists(packagedModelsDir) && Directory.GetDirectories(packagedModelsDir).Length > 0
+                    ? packagedModelsDir
+                    : packagedModelsDir) // still return ModelsDir for downloader to handle
+                : devModelDir;
+        }
 
         if (!Path.IsPathRooted(modelPath))
             modelPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, modelPath));

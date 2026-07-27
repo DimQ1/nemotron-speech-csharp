@@ -567,7 +567,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             Console.Error.WriteLine($"[VoiceType] Start error: {ex}");
             AppPaths.EnsureDataRoot();
-            File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now}] Recognition start failed: {ex}\n");
+            try { App.Telemetry?.LogError("Recognition", $"Start failed: {ex.Message}"); } catch { }
             _partialResultTimer.Stop();
             StatusText = $"Error: {ex.Message}";
             IsRecording = false;
@@ -619,7 +619,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private async void OnFinalResult(string text)
+    private void OnFinalResult(string text)
     {
         RecognitionSession? sessionToSave = null;
         bool saveAudio = false;
@@ -651,10 +651,18 @@ public sealed partial class MainViewModel : ObservableObject
             }
         });
 
-        if (sessionToSave is null)
-            return;
-
-        await Task.Run(() => PersistSession(sessionToSave, saveAudio));
+        // Persist session outside the async-void handler, on the thread pool.
+        // sessionToSave is captured inside the dispatcher lambda above; we
+        // defer the actual persistence to avoid blocking the UI thread.
+        _ = Task.Run(() =>
+        {
+            if (sessionToSave is not null)
+                PersistSession(sessionToSave, saveAudio);
+        }).ContinueWith(t =>
+        {
+            if (t.IsFaulted && t.Exception is not null)
+                App.Telemetry?.LogError("Session", $"Persist failed: {t.Exception.GetBaseException().Message}");
+        }, TaskContinuationOptions.OnlyOnFaulted);
     }
 
     private void OnRecognitionStopped()
