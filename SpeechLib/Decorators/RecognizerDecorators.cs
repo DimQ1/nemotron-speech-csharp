@@ -23,6 +23,9 @@ public sealed class MetricsRecognizerDecorator : IStreamingSpeechRecognizer
     public int ChunkSamples => _inner.ChunkSamples;
     public int LastTokenCount => _inner.LastTokenCount;
 
+    /// <summary>Get the inner recognizer (for unwrapping decorators).</summary>
+    public IStreamingSpeechRecognizer GetInner() => _inner;
+
     /// <summary>Average latency per chunk in milliseconds.</summary>
     public double AverageLatencyMs => _latencies.Count > 0 ? _latencies.Average() : 0;
 

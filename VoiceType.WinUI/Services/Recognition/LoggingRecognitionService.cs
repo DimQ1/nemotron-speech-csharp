@@ -87,4 +87,10 @@ public sealed class LoggingRecognitionService : IRecognitionService
 
     public string? SaveAudio(string fileNameBase) => _inner.SaveAudio(fileNameBase);
     public void Dispose() => _inner.Dispose();
+
+    public void SetLanguage(string language)
+    {
+        _telemetry.LogInfo("Recognition", $"Language changed to: {language}");
+        _inner.SetLanguage(language);
+    }
 }

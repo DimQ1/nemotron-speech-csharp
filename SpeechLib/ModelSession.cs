@@ -83,6 +83,18 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
     public NamedTensors? Flush() => _processor.Flush();
     public void SetInputs(NamedTensors inputs) => _generator.SetInputs(inputs);
 
+    /// <summary>
+    /// Change the recognition language at runtime without reloading the model.
+    /// Only works for multilingual models (IsSingleLanguage = false).
+    /// </summary>
+    /// <param name="langId">Numeric language ID (see LanguageMapper).</param>
+    public void SetLanguage(string langId)
+    {
+        if (IsSingleLanguage) return;
+        try { _generator.SetRuntimeOption("lang_id", langId); }
+        catch (Exception e) { Console.WriteLine($"  Warning: lang_id not set ({e.Message})"); }
+    }
+
     /// <inheritdoc />
     string? IStreamingSpeechRecognizer.ProcessAudio(float[] chunk)
     {
@@ -142,12 +154,6 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         _processor.Dispose();
         _model.Dispose();
         _config.Dispose();
-    }
-
-    private void SetLanguage(string langId)
-    {
-        try { _generator.SetRuntimeOption("lang_id", langId); }
-        catch (Exception e) { Console.WriteLine($"  Warning: lang_id not set ({e.Message})"); }
     }
 
     private void TrySetVad()

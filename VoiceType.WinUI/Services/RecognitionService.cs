@@ -317,6 +317,34 @@ public sealed class RecognitionService : IRecognitionService
         return _audioRecorder.StopAndSave(path);
     }
 
+    /// <summary>
+    /// Change the recognition language at runtime without reloading the model.
+    /// Only works for multilingual models.
+    /// </summary>
+    public void SetLanguage(string language)
+    {
+        if (_recognizer is null) return;
+
+        var langId = LanguageMapper.Resolve(language);
+        if (langId is null) return;
+
+        if (_recognizer is ModelSession modelSession)
+        {
+            modelSession.SetLanguage(langId);
+            _telemetry?.LogInfo("Recognition", $"Language set to {language} (lang_id={langId})");
+        }
+        else if (_recognizer is MetricsRecognizerDecorator metricsDecorator)
+        {
+            // Unwrap decorator to reach ModelSession
+            var inner = metricsDecorator.GetInner();
+            if (inner is ModelSession innerModel)
+            {
+                innerModel.SetLanguage(langId);
+                _telemetry?.LogInfo("Recognition", $"Language set to {language} (lang_id={langId})");
+            }
+        }
+    }
+
     public void Dispose()
     {
         _isRunning = false;

@@ -46,4 +46,11 @@ public interface IRecognitionService : IDisposable
 
     void SetMuted(bool muted);
     string? SaveAudio(string fileNameBase);
+
+    /// <summary>
+    /// Change the recognition language at runtime without reloading the model.
+    /// Only works for multilingual models.
+    /// </summary>
+    /// <param name="language">BCP-47 language code (e.g. "en", "ru") or "auto".</param>
+    void SetLanguage(string language);
 }
