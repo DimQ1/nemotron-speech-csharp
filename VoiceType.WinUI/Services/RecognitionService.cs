@@ -2,7 +2,9 @@ using System.IO;
 using System.Text;
 using SpeechLib;
 using SpeechLib.Audio;
+using SpeechLib.Decorators;
 using SpeechLib.Models;
+using SpeechLib.Recognition;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
 
@@ -108,7 +110,10 @@ public sealed class RecognitionService : IRecognitionService
                     repetition_penalty = settings.RepetitionPenalty
                 };
 
-                var newRecognizer = new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
+                IStreamingSpeechRecognizer newRecognizer = new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
+
+                // Wrap with metrics decorator for latency/token tracking
+                newRecognizer = new MetricsRecognizerDecorator(newRecognizer, "ModelSession");
 
                 // Atomically swap recognizers
                 var old = Interlocked.Exchange(ref _recognizer, newRecognizer);

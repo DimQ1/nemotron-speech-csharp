@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using OpenTelemetry;
+using SpeechLib.Recognition;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Services;
 using VoiceType.WinUI.Services.Recognition;

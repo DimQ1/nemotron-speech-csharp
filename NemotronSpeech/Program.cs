@@ -4,6 +4,7 @@
 using Microsoft.ML.OnnxRuntime;
 using NemotronSpeech;
 using SpeechLib;
+using SpeechLib.Decorators;
 using SpeechLib.Models;
 
 try
@@ -24,6 +25,11 @@ try
         Console.WriteLine("  Model: single-language (no lang_id needed)");
     Console.WriteLine("  Use VAD: " + session.VadStatus);
 
+    // Wrap with decorators for metrics and logging
+    IStreamingSpeechRecognizer recognizer = session;
+    recognizer = new MetricsRecognizerDecorator(recognizer, "ModelSession");
+    recognizer = new LoggingRecognizerDecorator(recognizer);
+
     if (opts.IsLive)
     {
         if (opts.WordTimestamps)
@@ -39,11 +45,11 @@ try
             _ => ""
         };
 
-        Transcriber.RunLive(source, label, session);
+        Transcriber.RunLive(source, label, recognizer);
     }
     else
     {
-        Transcriber.RunFile(opts.AudioFile!, session, opts.WordTimestamps, out _);
+        Transcriber.RunFile(opts.AudioFile!, recognizer, opts.WordTimestamps, out _);
     }
 }
 catch (Exception ex) when (ex is ArgumentException or DirectoryNotFoundException)

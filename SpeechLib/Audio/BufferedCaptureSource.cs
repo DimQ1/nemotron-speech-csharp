@@ -18,6 +18,9 @@ public sealed class BufferedCaptureSource : IAudioSource
     private readonly int _targetRate;
     private const int DrainIntervalMs = 100; // drain every 100 ms, matching demo pattern
 
+    /// <summary>Shared audio level meter for all capture sources.</summary>
+    public static AudioLevelMeter AudioLevelMeter { get; } = new();
+
     public BufferedCaptureSource(CaptureMode mode, int targetRate)
     {
         _mode = mode;
@@ -110,6 +113,7 @@ public sealed class BufferedCaptureSource : IAudioSource
 
                 buffer.Enqueue(batch);
                 signal.Set();
+                AudioLevelMeter.Publish(batch);
             }
             catch
             {

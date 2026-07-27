@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.RegularExpressions;
+using SpeechLib.PostProcessing;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
 
@@ -38,12 +39,17 @@ public sealed partial class PostProcessingPipeline : IPostProcessingPipeline
         if (rules.Count == 0 || string.IsNullOrEmpty(raw))
             return raw;
 
-        var result = raw;
-        foreach (var rule in rules)
-            result = rule.Regex.Replace(result, rule.Replacement);
+        // Use Chain of Responsibility for post-processing
+        var speechLibRules = rules
+            .Select(r => new SpeechLib.PostProcessing.CompiledRule(r.Regex, r.Replacement))
+            .ToList();
 
-        result = WhitespaceRegex().Replace(result, " ");
-        return result;
+        var chain = new PostProcessingChain()
+            .Add(new LanguageTagStripper())
+            .Add(new RegexRuleProcessor(speechLibRules))
+            .Add(new WhitespaceNormalizer());
+
+        return chain.Execute(raw);
     }
 
     public string Process(string raw, List<PostProcessingRule> rules, bool enabled)

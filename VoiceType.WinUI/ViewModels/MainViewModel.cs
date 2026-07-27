@@ -2,11 +2,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Dispatching;
+using SpeechLib.Recognition;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Messages;
 using VoiceType.WinUI.Models;
 using VoiceType.WinUI.Services;
-using VoiceType.WinUI.Services.Recognition;
 
 namespace VoiceType.WinUI.ViewModels;
 
