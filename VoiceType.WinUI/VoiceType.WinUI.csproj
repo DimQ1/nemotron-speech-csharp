@@ -177,6 +177,19 @@
     <Copy SourceFiles="@(_VcRuntime)"
           DestinationFolder="$(OutputPath)AppX"
           SkipUnchangedFiles="false" />
+    <!-- netstandard.dll facade (required by .NET Standard 2.0 libraries like NAudio.Lame).
+         Copy from the .NET runtime shared framework. -->
+    <ItemGroup>
+      <_NetStandardDll Include="$(DotNetRoot)shared\Microsoft.NETCore.App\$(BundledNETCoreAppTargetFrameworkVersion)\netstandard.dll"
+                       Condition="'$(DotNetRoot)' != ''" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_NetStandardDll)"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="false"
+          Condition="'@(_NetStandardDll)' != ''" />
+    <Copy SourceFiles="@(_NetStandardDll)"
+          DestinationFolder="$(OutputPath)AppX"
+          SkipUnchangedFiles="false" />
     <!-- Strip PDBs from AppX — Store submission requirement (no debug symbols in package) -->
     <ItemGroup>
       <_AppxPdbs Include="$(OutputPath)AppX\*.pdb" />

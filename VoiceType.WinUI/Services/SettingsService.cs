@@ -26,18 +26,36 @@ public sealed class SettingsService : ISettingsService
             if (File.Exists(_filePath))
             {
                 var json = File.ReadAllText(_filePath);
-                return JsonSerializer.Deserialize(json, VoiceTypeJsonContext.Default.AppSettings) ?? new AppSettings();
+                var settings = JsonSerializer.Deserialize(json, VoiceTypeJsonContext.Default.AppSettings);
+                if (settings is not null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Settings] Loaded OK: ModelPath={settings.ModelPath}");
+                    return settings;
+                }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Settings] Load FAILED: {ex.Message}");
+            try { File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [ERROR] [Settings] Load failed: {ex}\n"); } catch { }
+        }
         return new AppSettings();
     }
 
     public void Save(AppSettings settings)
     {
-        var dir = Path.GetDirectoryName(_filePath)!;
-        Directory.CreateDirectory(dir);
-        var json = JsonSerializer.Serialize(settings, VoiceTypeJsonContext.Default.AppSettings);
-        File.WriteAllText(_filePath, json);
+        try
+        {
+            var dir = Path.GetDirectoryName(_filePath)!;
+            Directory.CreateDirectory(dir);
+            var json = JsonSerializer.Serialize(settings, VoiceTypeJsonContext.Default.AppSettings);
+            File.WriteAllText(_filePath, json);
+            System.Diagnostics.Debug.WriteLine($"[Settings] Saved OK: {json.Length} bytes");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Settings] Save FAILED: {ex.Message}");
+            try { File.AppendAllText(AppPaths.ErrorLogFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [ERROR] [Settings] Save failed: {ex}\n"); } catch { }
+        }
     }
 }
