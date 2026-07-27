@@ -15,7 +15,6 @@ namespace VoiceType.WinUI.Serialization;
 [JsonSerializable(typeof(List<RecognitionSession>))]
 [JsonSourceGenerationOptions(
     WriteIndented = true,
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 public partial class VoiceTypeJsonContext : JsonSerializerContext
 {
