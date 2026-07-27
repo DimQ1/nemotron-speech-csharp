@@ -62,6 +62,12 @@ public sealed class AppSettings
     public string DownloaderModelsRootPath { get; set; } = "";
     public string DownloaderSelectedFoldersRepoId { get; set; } = "";
     public List<string> DownloaderSelectedFolders { get; set; } = new();
+
+    // ── Audio Mixer ─────────────────────────────────
+    /// <summary>Mic volume (0.0 - 1.0). Applied in real-time during capture.</summary>
+    public float MicVolume { get; set; } = 1.0f;
+    /// <summary>Loopback volume (0.0 - 1.0). Applied in real-time during capture.</summary>
+    public float LoopbackVolume { get; set; } = 1.0f;
 }
 
 public enum InjectionMethod { InputSimulator, SendInput, Clipboard }

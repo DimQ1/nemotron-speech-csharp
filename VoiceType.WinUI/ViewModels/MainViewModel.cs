@@ -2,7 +2,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Dispatching;
-using SpeechLib.Audio;
 using SpeechLib.Recognition;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Messages;
@@ -88,19 +87,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _isActivelyInjecting;
 
     [ObservableProperty]
-    private float _audioLevel;
-
-    [ObservableProperty]
-    private float _micVolume = 1.0f;
-
-    [ObservableProperty]
-    private float _loopbackVolume = 1.0f;
-
-    [ObservableProperty]
     private string _selectedLanguage = "auto";
-
-    [ObservableProperty]
-    private bool _isMultilingualModel;
 
     public nint MainWindowHandle { get; set; }
 
@@ -182,19 +169,6 @@ public sealed partial class MainViewModel : ObservableObject
 
         // Preload model at startup (background, non-blocking)
         _ = LoadModelInBackgroundAsync();
-
-        // Subscribe to audio level updates
-        BufferedCaptureSource.AudioLevelMeter.Subscribe(new AudioLevelObserver(this));
-    }
-
-    private sealed class AudioLevelObserver : IAudioLevelObserver
-    {
-        private readonly MainViewModel _vm;
-        public AudioLevelObserver(MainViewModel vm) => _vm = vm;
-        public void OnAudioLevel(float level)
-        {
-            _vm._dispatcher.TryEnqueue(() => _vm.AudioLevel = level);
-        }
     }
 
     // ---- Property change hooks ----
@@ -268,16 +242,6 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _recognition.SetLanguage(value);
         }
-    }
-
-    partial void OnMicVolumeChanged(float value)
-    {
-        // TODO: Apply mic volume to audio capture pipeline
-    }
-
-    partial void OnLoopbackVolumeChanged(float value)
-    {
-        // TODO: Apply loopback volume to audio capture pipeline
     }
 
     // ---- Commands ----
@@ -357,6 +321,15 @@ public sealed partial class MainViewModel : ObservableObject
             }
         };
         window.Activate();
+    }
+
+    [RelayCommand]
+    private void OpenAudioMixer()
+    {
+        var mixerViewModel = new AudioMixerViewModel(_settingsService, _dispatcher);
+        var mixerWindow = new Views.AudioMixerWindow(mixerViewModel);
+        App.MainWindow?.TrackChildWindow(mixerWindow);
+        mixerWindow.Activate();
     }
 
     // ---- Hotkey ----

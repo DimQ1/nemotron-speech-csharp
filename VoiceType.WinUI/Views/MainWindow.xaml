@@ -27,6 +27,10 @@
                         ToolTipService.ToolTip="Download Models"
                         AutomationProperties.Name="Open model downloader"
                         Command="{x:Bind ViewModel.OpenModelDownloaderCommand}"/>
+                <Button Content="&#xE767;" Style="{StaticResource IconButton}"
+                        ToolTipService.ToolTip="Audio Mixer"
+                        AutomationProperties.Name="Open audio mixer"
+                        Command="{x:Bind ViewModel.OpenAudioMixerCommand}"/>
                 <Button Content="&#xE713;" Style="{StaticResource IconButton}"
                         ToolTipService.ToolTip="Settings"
                         AutomationProperties.Name="Open settings"
@@ -179,46 +183,8 @@
                               Style="{StaticResource DarkCheckBox}"
                               VerticalAlignment="Center"/>
 
-                    <!-- Audio Level Meter -->
-                    <Grid Grid.Row="4" Margin="0,12,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <FontIcon Grid.Column="0" Glyph="&#xE720;" FontSize="12"
-                                  Foreground="{StaticResource AccentBrush}"
-                                  VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <ProgressBar Grid.Column="1" Height="4"
-                                     Minimum="0" Maximum="1"
-                                     Value="{x:Bind ViewModel.AudioLevel, Mode=OneWay}"
-                                     Foreground="{StaticResource AccentBrush}"
-                                     Background="{StaticResource BgTertiaryBrush}"/>
-                    </Grid>
-
-                    <!-- Volume Controls -->
-                    <Grid Grid.Row="5" Margin="0,8,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Mic" FontSize="11"
-                                   Foreground="{StaticResource FgSecondaryBrush}"
-                                   VerticalAlignment="Center" Margin="0,0,4,0"/>
-                        <Slider Grid.Column="1" Minimum="0" Maximum="1" StepFrequency="0.1"
-                                Value="{x:Bind ViewModel.MicVolume, Mode=TwoWay}"
-                                VerticalAlignment="Center" Margin="0,0,12,0"/>
-                        <TextBlock Grid.Column="2" Text="Loopback" FontSize="11"
-                                   Foreground="{StaticResource FgSecondaryBrush}"
-                                   VerticalAlignment="Center" Margin="0,0,4,0"/>
-                        <Slider Grid.Column="3" Minimum="0" Maximum="1" StepFrequency="0.1"
-                                Value="{x:Bind ViewModel.LoopbackVolume, Mode=TwoWay}"
-                                VerticalAlignment="Center"/>
-                    </Grid>
-
                     <!-- Language Switcher -->
-                    <Grid Grid.Row="6" Margin="0,8,0,0">
+                    <Grid Grid.Row="4" Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>

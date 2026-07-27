@@ -21,6 +21,23 @@ public sealed class BufferedCaptureSource : IAudioSource
     /// <summary>Shared audio level meter for all capture sources.</summary>
     public static AudioLevelMeter AudioLevelMeter { get; } = new();
 
+    private static float _micVolume = 1.0f;
+    private static float _loopbackVolume = 1.0f;
+
+    /// <summary>Mic volume (0.0 - 1.0). Applied in real-time during mixing.</summary>
+    public static float MicVolume
+    {
+        get => _micVolume;
+        set => _micVolume = Math.Clamp(value, 0f, 1f);
+    }
+
+    /// <summary>Loopback volume (0.0 - 1.0). Applied in real-time during mixing.</summary>
+    public static float LoopbackVolume
+    {
+        get => _loopbackVolume;
+        set => _loopbackVolume = Math.Clamp(value, 0f, 1f);
+    }
+
     public BufferedCaptureSource(CaptureMode mode, int targetRate)
     {
         _mode = mode;
@@ -106,8 +123,8 @@ public sealed class BufferedCaptureSource : IAudioSource
                 for (int i = 0; i < count; i++)
                 {
                     float s = 0f;
-                    if (i < loopSamples.Count) s += loopSamples[i];
-                    if (i < micSamples.Count) s += micSamples[i];
+                    if (i < loopSamples.Count) s += loopSamples[i] * _loopbackVolume;
+                    if (i < micSamples.Count) s += micSamples[i] * _micVolume;
                     batch[i] = s;
                 }
 
@@ -134,8 +151,8 @@ public sealed class BufferedCaptureSource : IAudioSource
                 for (int i = 0; i < count; i++)
                 {
                     float s = 0f;
-                    if (i < loopSamples.Count) s += loopSamples[i];
-                    if (i < micSamples.Count) s += micSamples[i];
+                    if (i < loopSamples.Count) s += loopSamples[i] * _loopbackVolume;
+                    if (i < micSamples.Count) s += micSamples[i] * _micVolume;
                     batch[i] = s;
                 }
                 buffer.Enqueue(batch);
