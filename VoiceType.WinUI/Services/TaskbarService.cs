@@ -145,7 +145,7 @@ public sealed class TaskbarService : IDisposable
                 var dy = y - size / 2 + 0.5;
                 var dist = Math.Sqrt(dx * dx + dy * dy);
 
-                if (dist < size / 2 - 1)
+                if (dist < size / 2)
                 {
                     // Green: B=0, G=175, R=76, A=255
                     pixelData[idx + 0] = 0;      // B
@@ -170,7 +170,7 @@ public sealed class TaskbarService : IDisposable
         // Circle in mask = 0 (opaque)
         var whiteBrush = GetStockObject(WHITE_BRUSH);
         SelectObject(hdcMask, whiteBrush);
-        Ellipse(hdcMask, 1, 1, size - 1, size - 1);
+        Ellipse(hdcMask, 0, 0, size, size);
 
         SelectObject(hdcMask, hbmMaskOld);
 
