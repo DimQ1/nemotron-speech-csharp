@@ -134,6 +134,7 @@ public partial class App : Application
         services.AddSingleton<IPostProcessingPipeline, PostProcessingPipeline>();
         services.AddSingleton<IGlobalHotkeyService, GlobalHotkeyService>();
         services.AddSingleton<ITextInjector, TextInjector>();
+        services.AddSingleton<TaskbarService>();
 
         // Recognition (decorated with logging)
         services.AddSingleton<RecognitionService>(sp =>

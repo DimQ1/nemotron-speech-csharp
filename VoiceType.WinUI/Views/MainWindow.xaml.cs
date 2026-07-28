@@ -15,6 +15,7 @@ namespace VoiceType.WinUI.Views;
 public sealed partial class MainWindow : Window
 {
     private readonly MainViewModel _vm;
+    private readonly TaskbarService _taskbarService;
     private const int WM_HOTKEY = 0x0312;
     private nint _hwnd;
     private SubclassProc? _subclassProc;
@@ -37,6 +38,7 @@ public sealed partial class MainWindow : Window
     {
         // ViewModel must be set BEFORE InitializeComponent for x:Bind to work
         _vm = viewModel;
+        _taskbarService = App.Services.GetRequiredService<TaskbarService>();
 
         InitializeComponent();
 
@@ -61,6 +63,9 @@ public sealed partial class MainWindow : Window
         _vm.RegisterHotkey(_hwnd);
         _vm.TryAutoStart();
         SubclassWindow();
+
+        // Initialize taskbar indicator after HWND is known
+        _taskbarService.Initialize(_hwnd);
     }
 
     public void ConfigureWindow()
@@ -96,12 +101,26 @@ public sealed partial class MainWindow : Window
                 ? (Brush)Application.Current.Resources["RedBrush"]
                 : (Brush)Application.Current.Resources["FgSecondaryBrush"];
         }
+
+        if (e.PropertyName == nameof(MainViewModel.IsActivelyInjecting))
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_vm.IsActivelyInjecting)
+                    _taskbarService.StartTypingIndicator();
+                else
+                    _taskbarService.StopTypingIndicator();
+            });
+        }
     }
 
     private void OnActivated(object sender, WindowActivatedEventArgs args) { }
 
     private void OnClosed(object sender, WindowEventArgs args)
     {
+        _taskbarService.StopTypingIndicator();
+        _taskbarService.Dispose();
+
         var hotkeyService = App.Services.GetRequiredService<IGlobalHotkeyService>();
         hotkeyService.UnregisterAll();
         UnsubclassWindow();
