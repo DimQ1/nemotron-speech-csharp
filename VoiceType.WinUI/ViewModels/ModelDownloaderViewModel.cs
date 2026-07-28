@@ -61,8 +61,8 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
     private ModelOption? _selectedModel;
 
     public bool IsIdle => !IsDownloading;
-    public string FileProgressDisplay => $"{FileProgress:F0}%";
-    public string DownloadProgressDisplay => $"{DownloadProgress:F0}%";
+    public string FileProgressDisplay => FileProgress > 0 ? $"{FileProgress:F0}%" : "";
+    public string DownloadProgressDisplay => DownloadProgress > 0 ? $"{DownloadProgress:F0}%" : "";
 
     public string? ResultPath { get; private set; }
     public string? ResultModelPath { get; private set; }
@@ -181,12 +181,12 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
             TotalFiles = p.TotalFiles;
 
             if (p.FileProgress > 0)
-                FileRemaining = $"{100 - p.FileProgress:F0}% left";
+                FileRemaining = $"({100 - p.FileProgress:F0}% left)";
             else
                 FileRemaining = "";
 
             if (p.OverallProgress > 0)
-                FolderRemaining = $"{100 - p.OverallProgress:F0}% remaining";
+                FolderRemaining = $"({100 - p.OverallProgress:F0}% remaining)";
             else
                 FolderRemaining = "";
         });
