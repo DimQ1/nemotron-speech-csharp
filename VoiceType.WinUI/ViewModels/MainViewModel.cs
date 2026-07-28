@@ -27,6 +27,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private AppSettings _settings;
     private int _lastInjectedLength;
+    private string _lastInjectedTextTail = ""; // last ~20 chars injected, for punctuation-aware delta
     private int _toggleHotkeyId;
     private int _muteHotkeyId;
     private int _injectTextHotkeyId;
@@ -687,7 +688,10 @@ public sealed partial class MainViewModel : ObservableObject
             if (IsTextInjectionEnabled && text.Length > _lastInjectedLength && CanInjectToTargetWindow())
             {
                 var delta = text[_lastInjectedLength..];
-                _textInjector.Inject(delta, _settings.TextInjectionMethod);
+                var cleanedDelta = StripLeadingPunctuation(delta, _lastInjectedTextTail);
+                if (!string.IsNullOrEmpty(cleanedDelta))
+                    _textInjector.Inject(cleanedDelta, _settings.TextInjectionMethod);
+                _lastInjectedTextTail = GetTextTail(text, 20);
             }
             _lastInjectedLength = 0;
 
@@ -763,10 +767,48 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         var delta = text[_lastInjectedLength..];
-        _textInjector.Inject(delta, _settings.TextInjectionMethod);
+        var cleanedDelta = StripLeadingPunctuation(delta, _lastInjectedTextTail);
+        if (!string.IsNullOrEmpty(cleanedDelta))
+            _textInjector.Inject(cleanedDelta, _settings.TextInjectionMethod);
+        _lastInjectedTextTail = GetTextTail(text, 20);
         _lastInjectedLength = text.Length;
         _injectionExplicitlyEnabled = false;
     }
+
+    /// <summary>
+    /// Strips leading punctuation (. ! ? , ; :) from the delta when it appears
+    /// at the start of a new injection chunk. This prevents the "dot at start"
+    /// artifact where the ASR model emits sentence-final punctuation at the
+    /// beginning of a streaming chunk.
+    /// </summary>
+    private static string StripLeadingPunctuation(string delta, string previousTail)
+    {
+        if (string.IsNullOrEmpty(delta))
+            return delta;
+
+        // Only strip if previous text ended with whitespace or sentence-final punctuation
+        // (meaning a new sentence/word should start, not continue with punctuation)
+        var shouldStrip = string.IsNullOrEmpty(previousTail)
+            || previousTail.EndsWith(' ')
+            || previousTail.EndsWith('.')
+            || previousTail.EndsWith('!')
+            || previousTail.EndsWith('?')
+            || previousTail.EndsWith('\n');
+
+        if (!shouldStrip)
+            return delta;
+
+        // Strip leading punctuation and whitespace: ". Hello" → "Hello"
+        var i = 0;
+        while (i < delta.Length && (char.IsPunctuation(delta[i]) || char.IsWhiteSpace(delta[i])))
+            i++;
+
+        return i > 0 ? delta[i..] : delta;
+    }
+
+    /// <summary>Returns the last N characters of text for tail comparison.</summary>
+    private static string GetTextTail(string text, int maxLength)
+        => text.Length <= maxLength ? text : text[^maxLength..];
 
     private void PersistSession(RecognitionSession session, bool saveAudio)
     {
