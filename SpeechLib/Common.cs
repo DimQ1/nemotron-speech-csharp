@@ -83,6 +83,16 @@ namespace SpeechLib
                 if (!string.IsNullOrWhiteSpace(cpuOverlay))
                 {
                     config.Overlay(cpuOverlay);
+                    Console.WriteLine($"CPU config: applied overlay with intra_op={ComputeOptimalIntraThreads(Environment.ProcessorCount)}");
+                }
+                else
+                {
+                    // Fallback: set thread options directly via provider options
+                    int threads = ComputeOptimalIntraThreads(Environment.ProcessorCount);
+                    Console.WriteLine($"CPU config: overlay failed, using provider options intra_op={threads}");
+                    config.SetProviderOption("cpu", "intra_op_num_threads", threads.ToString());
+                    config.SetProviderOption("cpu", "inter_op_num_threads", "1");
+                    config.SetProviderOption("cpu", "session.force_spinning_stop", "1");
                 }
             }
 
@@ -198,6 +208,7 @@ namespace SpeechLib
                     // force_spinning_stop prevents busy-waiting after work is done.
                     sessionOptions["intra_op_num_threads"] = optimalIntraThreads;
                     sessionOptions["inter_op_num_threads"] = 1;
+                    sessionOptions["session.force_spinning_stop"] = "1";
                 }
 
                 string overlay = rootNode.ToJsonString();

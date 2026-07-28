@@ -5,7 +5,7 @@
   ║  Identity Name & Publisher: reserved in Partner Center.    ║
   ╚══════════════════════════════════════════════════════════════╝
   -->
-  <Identity Name="DimQ1.VoiceType" Publisher="CN=E8EB25DC-46D4-4743-B0EC-969656FCE053" Version="1.0.3.0" ProcessorArchitecture="x64" />
+  <Identity Name="DimQ1.VoiceType" Publisher="CN=E8EB25DC-46D4-4743-B0EC-969656FCE053" Version="1.0.4.0" ProcessorArchitecture="x64" />
   <mp:PhoneIdentity PhoneProductId="07DA3E91-7A09-4120-BDC4-6D0F177AA408" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>VoiceType</DisplayName>

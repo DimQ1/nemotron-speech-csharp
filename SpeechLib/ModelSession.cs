@@ -63,7 +63,6 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         _model = new Model(_config);
         _processor = new StreamingProcessor(_model);
 
-        _processor.SetOption("use_vad", "false");
         if (useVad)
             TrySetVad();
 

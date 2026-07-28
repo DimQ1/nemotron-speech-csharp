@@ -146,7 +146,7 @@ public sealed partial class MainViewModel : ObservableObject
         _recognition.ModelStateChanged += OnModelStateChanged;
 
         _partialResultTimer = _dispatcher.CreateTimer();
-        _partialResultTimer.Interval = TimeSpan.FromMilliseconds(50);
+        _partialResultTimer.Interval = TimeSpan.FromMilliseconds(200);
         _partialResultTimer.Tick += (_, _) => FlushPendingPartialResult();
 
         // Listen for ModelDownloaded messages
