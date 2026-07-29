@@ -274,13 +274,17 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenSettings()
     {
-        if (_settingsWindow is not null)
+        // Guard against duplicate windows: the static OpenInstance reference stays alive
+        // while the window is open (unlike this VM field, which the GC could collect
+        // after Close() but before the Closed handler runs).
+        if (Views.SettingsWindow.OpenInstance is { } existing)
         {
-            _settingsWindow.Activate();
+            existing.Activate();
             return;
         }
 
         var settingsWindow = new Views.SettingsWindow(_settings);
+        _settingsWindow = settingsWindow;
         App.MainWindow?.TrackChildWindow(settingsWindow);
         settingsWindow.Closed += (_, _) =>
         {
@@ -296,7 +300,6 @@ public sealed partial class MainViewModel : ObservableObject
             }
             _settingsWindow = null;
         };
-        _settingsWindow = settingsWindow;
         settingsWindow.Activate();
     }
 
@@ -327,6 +330,12 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenAudioMixer()
     {
+        if (Views.AudioMixerWindow.OpenInstance is { } existing)
+        {
+            existing.Activate();
+            return;
+        }
+
         var mixerViewModel = new AudioMixerViewModel(_settingsService, _dispatcher);
         var mixerWindow = new Views.AudioMixerWindow(mixerViewModel);
         App.MainWindow?.TrackChildWindow(mixerWindow);

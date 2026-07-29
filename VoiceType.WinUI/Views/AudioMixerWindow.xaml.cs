@@ -7,6 +7,11 @@ namespace VoiceType.WinUI.Views;
 
 public sealed partial class AudioMixerWindow : Window
 {
+    private static AudioMixerWindow? _openInstance;
+
+    /// <summary>Currently open audio mixer window, or null when closed. Prevents duplicate windows.</summary>
+    public static AudioMixerWindow? OpenInstance => _openInstance;
+
     public AudioMixerViewModel ViewModel { get; }
 
     public AudioMixerWindow(AudioMixerViewModel viewModel)
@@ -18,6 +23,13 @@ public sealed partial class AudioMixerWindow : Window
         SetTitleBar(AppTitleBar);
 
         ApplyWindowSize();
+
+        _openInstance = this;
+        this.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_openInstance, this))
+                _openInstance = null;
+        };
     }
 
     public void ApplyWindowSize()

@@ -44,7 +44,6 @@ public sealed partial class MainWindow : Window
 
         _vm.PropertyChanged += OnViewModelPropertyChanged;
 
-        this.Activated += OnActivated;
         this.Closed += OnClosed;
 
         // Get HWND for hotkey registration
@@ -113,8 +112,6 @@ public sealed partial class MainWindow : Window
             });
         }
     }
-
-    private void OnActivated(object sender, WindowActivatedEventArgs args) { }
 
     private void OnClosed(object sender, WindowEventArgs args)
     {
@@ -204,9 +201,15 @@ public sealed partial class MainWindow : Window
             presenter.IsAlwaysOnTop = true;
         }
 
-        // Position after the window is fully rendered (Activated fires too early).
+        // Position once after the window is fully rendered (Activated fires too early).
+        // The handler unsubscribes itself after the first activation so that later
+        // activations (e.g. clicking the main window) don't snap the child window
+        // back if the user moved it.
+        var positioned = false;
         child.Activated += (_, _) =>
         {
+            if (positioned) return;
+            positioned = true;
             child.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
             {
                 PositionChildBeside(child);
