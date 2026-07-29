@@ -27,6 +27,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private AppSettings _settings;
     private int _lastInjectedLength;
+    private string _lastInjectedTextTail = ""; // last ~20 chars injected, for punctuation-aware delta
     private int _toggleHotkeyId;
     private int _muteHotkeyId;
     private int _injectTextHotkeyId;
@@ -146,7 +147,7 @@ public sealed partial class MainViewModel : ObservableObject
         _recognition.ModelStateChanged += OnModelStateChanged;
 
         _partialResultTimer = _dispatcher.CreateTimer();
-        _partialResultTimer.Interval = TimeSpan.FromMilliseconds(50);
+        _partialResultTimer.Interval = TimeSpan.FromMilliseconds(200);
         _partialResultTimer.Tick += (_, _) => FlushPendingPartialResult();
 
         // Listen for ModelDownloaded messages
@@ -273,13 +274,17 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenSettings()
     {
-        if (_settingsWindow is not null)
+        // Guard against duplicate windows: the static OpenInstance reference stays alive
+        // while the window is open (unlike this VM field, which the GC could collect
+        // after Close() but before the Closed handler runs).
+        if (Views.SettingsWindow.OpenInstance is { } existing)
         {
-            _settingsWindow.Activate();
+            existing.Activate();
             return;
         }
 
         var settingsWindow = new Views.SettingsWindow(_settings);
+        _settingsWindow = settingsWindow;
         App.MainWindow?.TrackChildWindow(settingsWindow);
         settingsWindow.Closed += (_, _) =>
         {
@@ -295,7 +300,6 @@ public sealed partial class MainViewModel : ObservableObject
             }
             _settingsWindow = null;
         };
-        _settingsWindow = settingsWindow;
         settingsWindow.Activate();
     }
 
@@ -326,6 +330,12 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenAudioMixer()
     {
+        if (Views.AudioMixerWindow.OpenInstance is { } existing)
+        {
+            existing.Activate();
+            return;
+        }
+
         var mixerViewModel = new AudioMixerViewModel(_settingsService, _dispatcher);
         var mixerWindow = new Views.AudioMixerWindow(mixerViewModel);
         App.MainWindow?.TrackChildWindow(mixerWindow);
@@ -687,7 +697,10 @@ public sealed partial class MainViewModel : ObservableObject
             if (IsTextInjectionEnabled && text.Length > _lastInjectedLength && CanInjectToTargetWindow())
             {
                 var delta = text[_lastInjectedLength..];
-                _textInjector.Inject(delta, _settings.TextInjectionMethod);
+                var cleanedDelta = StripLeadingPunctuation(delta, _lastInjectedTextTail);
+                if (!string.IsNullOrEmpty(cleanedDelta))
+                    _textInjector.Inject(cleanedDelta, _settings.TextInjectionMethod);
+                _lastInjectedTextTail = GetTextTail(text, 20);
             }
             _lastInjectedLength = 0;
 
@@ -763,10 +776,48 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         var delta = text[_lastInjectedLength..];
-        _textInjector.Inject(delta, _settings.TextInjectionMethod);
+        var cleanedDelta = StripLeadingPunctuation(delta, _lastInjectedTextTail);
+        if (!string.IsNullOrEmpty(cleanedDelta))
+            _textInjector.Inject(cleanedDelta, _settings.TextInjectionMethod);
+        _lastInjectedTextTail = GetTextTail(text, 20);
         _lastInjectedLength = text.Length;
         _injectionExplicitlyEnabled = false;
     }
+
+    /// <summary>
+    /// Strips leading punctuation (. ! ? , ; :) from the delta when it appears
+    /// at the start of a new injection chunk. This prevents the "dot at start"
+    /// artifact where the ASR model emits sentence-final punctuation at the
+    /// beginning of a streaming chunk.
+    /// </summary>
+    private static string StripLeadingPunctuation(string delta, string previousTail)
+    {
+        if (string.IsNullOrEmpty(delta))
+            return delta;
+
+        // Only strip if previous text ended with whitespace or sentence-final punctuation
+        // (meaning a new sentence/word should start, not continue with punctuation)
+        var shouldStrip = string.IsNullOrEmpty(previousTail)
+            || previousTail.EndsWith(' ')
+            || previousTail.EndsWith('.')
+            || previousTail.EndsWith('!')
+            || previousTail.EndsWith('?')
+            || previousTail.EndsWith('\n');
+
+        if (!shouldStrip)
+            return delta;
+
+        // Strip leading punctuation and whitespace: ". Hello" → "Hello"
+        var i = 0;
+        while (i < delta.Length && (char.IsPunctuation(delta[i]) || char.IsWhiteSpace(delta[i])))
+            i++;
+
+        return i > 0 ? delta[i..] : delta;
+    }
+
+    /// <summary>Returns the last N characters of text for tail comparison.</summary>
+    private static string GetTextTail(string text, int maxLength)
+        => text.Length <= maxLength ? text : text[^maxLength..];
 
     private void PersistSession(RecognitionSession session, bool saveAudio)
     {

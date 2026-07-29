@@ -94,6 +94,26 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _postProcessingEnabled = true;
 
+    // ---- About info (read-only) ----
+
+    /// <summary>Application version from package identity or assembly.</summary>
+    public string AppVersion => GetAppVersion();
+
+    /// <summary>Application display name.</summary>
+    public string AppDisplayName => "VoiceType";
+
+    /// <summary>Package full name (for Store/MSIX) or "Unpackaged" for dev.</summary>
+    public string PackageFullName => GetPackageFullName();
+
+    /// <summary>.NET runtime version.</summary>
+    public string DotNetVersion => Environment.Version.ToString();
+
+    /// <summary>OS version.</summary>
+    public string OsVersion => Environment.OSVersion.ToString();
+
+    /// <summary>Number of logical CPU cores.</summary>
+    public int CpuCores => Environment.ProcessorCount;
+
     public string ModelPath => (!string.IsNullOrEmpty(ModelsRootPath) && !string.IsNullOrEmpty(SelectedModel))
         ? Path.Combine(ModelsRootPath, SelectedModel)
         : "";
@@ -208,6 +228,37 @@ public sealed partial class SettingsViewModel : ObservableObject
         var path = await FolderBrowser.ShowAsync("Select root folder with model subfolders", initialPath, OwnerWindowHandle);
         if (path is not null)
             ModelsRootPath = path;
+    }
+
+    // ---- About helpers ----
+
+    private static string GetAppVersion()
+    {
+        try
+        {
+            // Try MSIX package version first (Store / installed)
+            var package = Windows.ApplicationModel.Package.Current;
+            var v = package.Id.Version;
+            return $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
+        }
+        catch
+        {
+            // Fallback to assembly version (dev / unpackaged)
+            var asm = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            return asm is not null ? $"{asm.Major}.{asm.Minor}.{asm.Build}.{asm.Revision}" : "Unknown";
+        }
+    }
+
+    private static string GetPackageFullName()
+    {
+        try
+        {
+            return Windows.ApplicationModel.Package.Current.Id.FullName;
+        }
+        catch
+        {
+            return "Unpackaged (dev mode)";
+        }
     }
 
     // ---- Scan models ----

@@ -24,6 +24,12 @@
     <SelfContained Condition="'$(SelfContained)' == ''">false</SelfContained>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- Path to the installed .NET 10 shared runtime. Update when .NET 10 updates.
+         Current: 10.0.9 (the only .NET 10 runtime installed on this machine). -->
+    <_Net10RuntimeDir>C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.9</_Net10RuntimeDir>
+  </PropertyGroup>
+
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
     <Content Include="Assets\SplashScreen.png" />
@@ -41,16 +47,11 @@
     <Content Include="Assets\Wide310x150Logo.png" />
   </ItemGroup>
 
-  <!-- Force netstandard.dll and VC++ runtime into MSIX package.
-       The MSIX packaging targets filter out files not declared as Content,
-       so we must explicitly include these runtime dependencies. -->
+  <!-- Force VC++ runtime DLLs into MSIX package (not included by default).
+       netstandard.dll is NOT explicitly included: self-contained publish already
+       bundles it via Microsoft.NETCore.App.Runtime, and explicit inclusion causes
+       APPX1101 duplicate payload error. -->
   <ItemGroup>
-    <Content Include="C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.10\netstandard.dll">
-      <Link>netstandard.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <Visible>false</Visible>
-    </Content>
     <Content Include="$(SystemRoot)\System32\vcruntime140.dll">
       <Link>vcruntime140.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -219,10 +220,7 @@
           DestinationFolder="$(OutputPath)AppX"
           SkipUnchangedFiles="false" />
     <!-- netstandard.dll facade (required by .NET Standard 2.0 libraries like NAudio.Lame).
-         Copy from the .NET runtime shared framework using a resolved path. -->
-    <PropertyGroup>
-      <_Net10RuntimeDir>C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.10</_Net10RuntimeDir>
-    </PropertyGroup>
+         _Net10RuntimeDir is resolved globally in the root PropertyGroup. -->
     <ItemGroup>
       <_NetStandardDll Include="$(_Net10RuntimeDir)\netstandard.dll"
                        Condition="Exists('$(_Net10RuntimeDir)\netstandard.dll')" />
@@ -249,9 +247,6 @@
        The AfterTargets="Build" target above only copies to OutputPath; publish uses
        a different intermediate directory, so we need a separate publish target. -->
   <Target Name="CopyNetstandardAndVcRuntimeToPublish" AfterTargets="Publish">
-    <PropertyGroup>
-      <_Net10RuntimeDir>C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.10</_Net10RuntimeDir>
-    </PropertyGroup>
     <ItemGroup>
       <_PubNetStandardDll Include="$(_Net10RuntimeDir)\netstandard.dll"
                           Condition="Exists('$(_Net10RuntimeDir)\netstandard.dll')" />

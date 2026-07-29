@@ -52,7 +52,7 @@ Write-Host '[2/3] Publishing MSIX package...' -ForegroundColor Yellow
 $publishArgs = @(
     'publish', $csprojPath,
     '-c', 'Release',
-    '-p:Platform=' + $Arch,
+    "-p:Platform=$Arch",
     '-p:GpuArch=CPU'
 )
 

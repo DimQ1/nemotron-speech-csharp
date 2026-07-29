@@ -256,6 +256,45 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ── About ── -->
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="8" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="About" Foreground="{StaticResource FgBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Application:" Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" Margin="0,0,8,4"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.AppDisplayName}" Foreground="{StaticResource FgBrush}" FontSize="11" Margin="0,0,0,4"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Version:" Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" Margin="0,0,8,4"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.AppVersion}" Foreground="{StaticResource FgBrush}" FontSize="11" Margin="0,0,0,4"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Package:" Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" Margin="0,0,8,4"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.PackageFullName}" Foreground="{StaticResource FgBrush}" FontSize="11" Margin="0,0,0,4" TextWrapping="Wrap"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text=".NET Runtime:" Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" Margin="0,0,8,4"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{x:Bind ViewModel.DotNetVersion}" Foreground="{StaticResource FgBrush}" FontSize="11" Margin="0,0,0,4"/>
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="OS:" Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" Margin="0,0,8,4"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{x:Bind ViewModel.OsVersion}" Foreground="{StaticResource FgBrush}" FontSize="11" Margin="0,0,0,4" TextWrapping="Wrap"/>
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="CPU Cores:" Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" Margin="0,0,8,0"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{x:Bind ViewModel.CpuCores}" Foreground="{StaticResource FgBrush}" FontSize="11"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
             </StackPanel>
         </ScrollViewer>
 

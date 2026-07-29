@@ -13,6 +13,10 @@ namespace VoiceType.WinUI.Views;
 public sealed partial class SettingsWindow : Window
 {
     private readonly SettingsViewModel _vm;
+    private static SettingsWindow? _openInstance;
+
+    /// <summary>Currently open settings window, or null when closed. Prevents duplicate windows.</summary>
+    public static SettingsWindow? OpenInstance => _openInstance;
 
     public SettingsViewModel ViewModel => _vm;
     public AppSettings ResultSettings { get; private set; } = null!;
@@ -31,6 +35,13 @@ public sealed partial class SettingsWindow : Window
         SetTitleBar(AppTitleBar);
 
         ApplyWindowSize();
+
+        _openInstance = this;
+        this.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_openInstance, this))
+                _openInstance = null;
+        };
 
         _vm.RequestClose += () =>
         {
