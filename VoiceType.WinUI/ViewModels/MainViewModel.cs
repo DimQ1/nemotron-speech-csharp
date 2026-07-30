@@ -283,6 +283,11 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
+        // Cross-process guard: block a second settings window even from another
+        // app instance (e.g. installed MSIX package running alongside a debug build).
+        if (!Views.SettingsWindow.TryAcquireGlobalGuard())
+            return;
+
         var settingsWindow = new Views.SettingsWindow(_settings);
         _settingsWindow = settingsWindow;
         App.MainWindow?.TrackChildWindow(settingsWindow);
@@ -312,6 +317,9 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
+        if (!Views.ModelDownloaderWindow.TryAcquireGlobalGuard())
+            return;
+
         var window = new Views.ModelDownloaderWindow();
         App.MainWindow?.TrackChildWindow(window);
         window.Closed += (_, _) =>
@@ -335,6 +343,10 @@ public sealed partial class MainViewModel : ObservableObject
             existing.Activate();
             return;
         }
+
+        // Cross-process guard: block a second mixer window even from another app instance.
+        if (!Views.AudioMixerWindow.TryAcquireGlobalGuard())
+            return;
 
         var mixerViewModel = new AudioMixerViewModel(_settingsService, _dispatcher);
         var mixerWindow = new Views.AudioMixerWindow(mixerViewModel);

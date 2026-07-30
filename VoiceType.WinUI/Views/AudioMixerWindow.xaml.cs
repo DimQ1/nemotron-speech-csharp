@@ -1,5 +1,6 @@
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using VoiceType.WinUI.Services;
 using VoiceType.WinUI.ViewModels;
 using WinRT.Interop;
 
@@ -7,10 +8,14 @@ namespace VoiceType.WinUI.Views;
 
 public sealed partial class AudioMixerWindow : Window
 {
+    private const string WindowKey = "AudioMixer";
     private static AudioMixerWindow? _openInstance;
 
     /// <summary>Currently open audio mixer window, or null when closed. Prevents duplicate windows.</summary>
     public static AudioMixerWindow? OpenInstance => _openInstance;
+
+    /// <summary>Acquire the cross-process guard for this window type (call before constructing).</summary>
+    public static bool TryAcquireGlobalGuard() => ChildWindowGuard.TryAcquire(WindowKey);
 
     public AudioMixerViewModel ViewModel { get; }
 
@@ -29,6 +34,7 @@ public sealed partial class AudioMixerWindow : Window
         {
             if (ReferenceEquals(_openInstance, this))
                 _openInstance = null;
+            ChildWindowGuard.Release(WindowKey);
         };
     }
 

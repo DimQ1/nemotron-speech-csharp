@@ -3,6 +3,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using System.Runtime.InteropServices;
 using VoiceType.WinUI.Interfaces;
+using VoiceType.WinUI.Services;
 using VoiceType.WinUI.ViewModels;
 using WinRT.Interop;
 
@@ -10,10 +11,14 @@ namespace VoiceType.WinUI.Views;
 
 public sealed partial class ModelDownloaderWindow : Window
 {
+    private const string WindowKey = "ModelDownloader";
     private readonly ModelDownloaderViewModel _vm;
     private static ModelDownloaderWindow? _openInstance;
 
     public static ModelDownloaderWindow? OpenInstance => _openInstance;
+
+    /// <summary>Acquire the cross-process guard for this window type (call before constructing).</summary>
+    public static bool TryAcquireGlobalGuard() => ChildWindowGuard.TryAcquire(WindowKey);
 
     public ModelDownloaderViewModel ViewModel => _vm;
     public string? ResultPath => _vm.ResultPath;
@@ -44,6 +49,7 @@ public sealed partial class ModelDownloaderWindow : Window
         {
             _openInstance = null;
             _vm.Dispose();
+            ChildWindowGuard.Release(WindowKey);
         };
     }
 

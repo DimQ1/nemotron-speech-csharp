@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 using System.Runtime.InteropServices;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
+using VoiceType.WinUI.Services;
 using VoiceType.WinUI.ViewModels;
 using WinRT.Interop;
 
@@ -12,11 +13,15 @@ namespace VoiceType.WinUI.Views;
 
 public sealed partial class SettingsWindow : Window
 {
+    private const string WindowKey = "Settings";
     private readonly SettingsViewModel _vm;
     private static SettingsWindow? _openInstance;
 
     /// <summary>Currently open settings window, or null when closed. Prevents duplicate windows.</summary>
     public static SettingsWindow? OpenInstance => _openInstance;
+
+    /// <summary>Acquire the cross-process guard for this window type (call before constructing).</summary>
+    public static bool TryAcquireGlobalGuard() => ChildWindowGuard.TryAcquire(WindowKey);
 
     public SettingsViewModel ViewModel => _vm;
     public AppSettings ResultSettings { get; private set; } = null!;
@@ -41,6 +46,7 @@ public sealed partial class SettingsWindow : Window
         {
             if (ReferenceEquals(_openInstance, this))
                 _openInstance = null;
+            ChildWindowGuard.Release(WindowKey);
         };
 
         _vm.RequestClose += () =>
