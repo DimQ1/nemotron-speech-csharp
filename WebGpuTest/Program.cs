@@ -202,52 +202,35 @@ try
         Console.WriteLine($"  ✗ Model not found at: {encoderPath}");
     }
 
-    // ---- Step 6: GenAI Streaming ASR with WebGPU (real audio) ----
-    string modelPath = @"E:\Work\Dimq1\Audio\Models\nemotron-3.5-asr-streaming-0.6b-onnx-fp32-cpu";
+    // ---- Step 6: GenAI Streaming ASR with WebGPU (real audio, multiple models) ----
     string audioPath = @"E:\Work\Dimq1\Audio\nemotron-speech-csharp\Test-Audio\sample-0.mp3";
+    string[] modelDirs = {
+        @"modules\asr\cpu-int4",
+        @"modules\asr\cpu-int8",
+        @"modules\asr\cpu-opset24-int4-c056"
+    };
+    string baseDir = @"E:\Work\Dimq1\Audio\nemotron-speech-csharp";
 
-    if (!Directory.Exists(modelPath))
+    foreach (var modelRel in modelDirs)
     {
-        Console.WriteLine($"--- GenAI ASR with WebGPU ---");
-        Console.WriteLine($"  ✗ Model path not found: {modelPath}");
-    }
-    else if (!File.Exists(audioPath))
-    {
-        Console.WriteLine($"--- GenAI ASR with WebGPU ---");
-        Console.WriteLine($"  ✗ Audio not found: {audioPath}");
-    }
-    else
-    {
-        Console.WriteLine("--- GenAI Streaming ASR (Real Audio) ---");
+        string modelPath = Path.Combine(baseDir, modelRel);
+        if (!Directory.Exists(modelPath) || !File.Exists(Path.Combine(modelPath, "genai_config.json")))
+        {
+            Console.WriteLine($"--- {modelRel} --- SKIP (not found)");
+            continue;
+        }
+
+        Console.WriteLine($"\n{'='*60}");
+        Console.WriteLine($"--- {modelRel} ---");
         Console.WriteLine($"  Model: {modelPath}");
-        Console.WriteLine($"  Audio: {audioPath}");
 
         try
         {
-            // Read config
             using var cfgJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(modelPath, "genai_config.json")));
             int sampleRate = cfgJson.RootElement.GetProperty("model").GetProperty("sample_rate").GetInt32();
             int chunkSize = cfgJson.RootElement.GetProperty("model").GetProperty("chunk_samples").GetInt32();
-            Console.WriteLine($"  Sample rate: {sampleRate} Hz, Chunk: {chunkSize} samples");
 
-            // Load audio
-            using var reader = new NAudio.Wave.AudioFileReader(audioPath);
-            var source = (NAudio.Wave.ISampleProvider)reader;
-            if (reader.WaveFormat.Channels > 1)
-                source = new NAudio.Wave.SampleProviders.StereoToMonoSampleProvider(source);
-            if (reader.WaveFormat.SampleRate != sampleRate)
-                source = new NAudio.Wave.SampleProviders.WdlResamplingSampleProvider(source, sampleRate);
-
-            var audioList = new List<float>();
-            float[] buf = new float[4096];
-            int read;
-            while ((read = source.Read(buf, 0, buf.Length)) > 0)
-                audioList.AddRange(buf.Take(read));
-            float[] audio = audioList.ToArray();
-            double duration = audio.Length / (double)sampleRate;
-            Console.WriteLine($"  Audio: {duration:F1}s ({audio.Length} samples)");
-
-            // GenAI config with WebGPU
+            // GPU provider: use WebGPU if available, otherwise report error
             var config = new Config(modelPath);
             config.ClearProviders();
             config.AppendProvider("webgpu");
@@ -264,27 +247,34 @@ try
             using var genParams = new GeneratorParams(model);
             using var generator = new Generator(model, genParams);
 
-            Console.WriteLine(new string('-', 60));
+            // Load audio
+            using var reader = new AudioFileReader(audioPath);
+            var source = (ISampleProvider)reader;
+            if (reader.WaveFormat.Channels > 1)
+                source = new StereoToMonoSampleProvider(source);
+            if (reader.WaveFormat.SampleRate != sampleRate)
+                source = new WdlResamplingSampleProvider(source, sampleRate);
+            var audioList = new List<float>();
+            float[] buf = new float[4096];
+            int read;
+            while ((read = source.Read(buf, 0, buf.Length)) > 0)
+                audioList.AddRange(buf.Take(read));
+            float[] audio = audioList.ToArray();
+            double duration = audio.Length / (double)sampleRate;
 
-            // Stream audio in chunks — accumulate mel, run all at once
             sw.Restart();
             int chunks = 0;
-
             for (int i = 0; i < audio.Length; i += chunkSize)
             {
-                int remaining = Math.Min(chunkSize, audio.Length - i);
-                var chunk = audio[i..(i + remaining)];
+                int rem = Math.Min(chunkSize, audio.Length - i);
+                var chunk = audio[i..(i + rem)];
                 chunks++;
-
                 using var inputs = processor.Process(chunk);
                 if (inputs is null) continue;
-
                 generator.SetInputs(inputs);
                 while (!generator.IsDone())
                     generator.GenerateNextToken();
             }
-
-            // Flush remaining
             using var flushInputs = processor.Flush();
             if (flushInputs is not null)
             {
@@ -292,23 +282,17 @@ try
                 while (!generator.IsDone())
                     generator.GenerateNextToken();
             }
-
             sw.Stop();
 
-            // Decode ALL tokens at once from the full sequence
             var seq = generator.GetSequence(0);
             string transcript = "";
             foreach (var token in seq)
                 transcript += tokenizerStream.Decode(token);
             double rtf = duration / sw.Elapsed.TotalSeconds;
 
-            Console.WriteLine();
-            Console.WriteLine(new string('=', 60));
-            Console.WriteLine($"  {transcript.Trim()}");
-            Console.WriteLine(new string('=', 60));
-            Console.WriteLine($"  Audio: {duration:F2}s | Wall: {sw.Elapsed.TotalSeconds:F2}s | RTF: {rtf:F2}x");
-            Console.WriteLine($"  Chunks: {chunks}, Tokens: {seq.Length}");
-            Console.WriteLine("  ✓ GenAI Nemotron streaming ASR works on WebGPU EP");
+            Console.WriteLine($"  Transcript: {transcript.Trim()[..Math.Min(80, transcript.Trim().Length)]}...");
+            Console.WriteLine($"  Audio: {duration:F2}s | Wall: {sw.Elapsed.TotalSeconds:F2}s | RTF: {rtf:F2}x | Chunks: {chunks} | Tokens: {seq.Length}");
+            Console.WriteLine("  ✓ OK");
         }
         catch (Exception ex)
         {
