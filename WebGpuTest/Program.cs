@@ -1,6 +1,7 @@
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.EP.WebGpu;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using Microsoft.ML.OnnxRuntimeGenAI;
 using System.Linq;
 
 Console.WriteLine("=== WebGPU EP Plugin Test ===");
@@ -196,6 +197,94 @@ try
     {
         Console.WriteLine($"--- Real Encoder Test ---");
         Console.WriteLine($"  ✗ Model not found at: {encoderPath}");
+    }
+
+    // ---- Step 6: GenAI Model with WebGPU ----
+    string modelPath = @"E:\Work\Dimq1\Audio\Models\nemotron-3.5-asr-streaming-0.6b-onnx-fp32-cpu";
+    if (Directory.Exists(modelPath) && File.Exists(Path.Combine(modelPath, "genai_config.json")))
+    {
+        Console.WriteLine("--- GenAI Model with WebGPU ---");
+        Console.WriteLine($"  Model path: {modelPath}");
+
+        try
+        {
+            // Try approach 1: GenAI Config with "webgpu" provider name
+            var config = new Config(modelPath);
+            config.ClearProviders();
+            config.AppendProvider("webgpu");
+            Console.WriteLine("  Config: providers cleared, 'webgpu' appended");
+
+            Console.Write("  Creating model... ");
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            using var model = new Model(config);
+            sw.Stop();
+            Console.WriteLine($"OK ({sw.Elapsed.TotalSeconds:F1}s)");
+
+            // Try creating streaming processor
+            using var processor = new StreamingProcessor(model);
+            Console.WriteLine($"  StreamingProcessor: OK");
+
+            using var tokenizer = new Tokenizer(model);
+            using var tokenizerStream = tokenizer.CreateStream();
+            using var genParams = new GeneratorParams(model);
+            using var generator = new Generator(model, genParams);
+            Console.WriteLine($"  Generator: OK");
+
+            // Try a dummy audio chunk
+            var sampleRate = 16000;
+            var chunkSize = 8960; // 560ms @ 16kHz
+            var dummyAudio = new float[chunkSize];
+            for (int j = 0; j < dummyAudio.Length; j++)
+                dummyAudio[j] = (float)(Math.Sin(2 * Math.PI * 440 * j / sampleRate) * 0.5);
+
+            Console.Write($"  Processing {chunkSize} samples... ");
+            sw.Restart();
+            var inputs = processor.Process(dummyAudio);
+            sw.Stop();
+            Console.WriteLine($"({sw.Elapsed.TotalMilliseconds:F0}ms) -> {(inputs != null ? "NamedTensors ready" : "buffering")}");
+
+            if (inputs != null)
+            {
+                Console.Write("  Generator.SetInputs + GenerateNextToken... ");
+                sw.Restart();
+                generator.SetInputs(inputs);
+                while (!generator.IsDone())
+                    generator.GenerateNextToken();
+                sw.Stop();
+                var newTokens = generator.GetNextTokens();
+                Console.WriteLine($"({sw.Elapsed.TotalMilliseconds:F0}ms)");
+                Console.WriteLine($"    New tokens: {newTokens.Length}");
+            }
+
+            // Flush
+            Console.Write("  Flush... ");
+            sw.Restart();
+            using var flushInputs = processor.Flush();
+            if (flushInputs != null)
+            {
+                generator.SetInputs(flushInputs);
+                while (!generator.IsDone())
+                    generator.GenerateNextToken();
+                var newTokens2 = generator.GetNextTokens();
+                Console.WriteLine($"({sw.Elapsed.TotalMilliseconds:F0}ms) -> {newTokens2.Length} tokens");
+            }
+            else
+                Console.WriteLine("no pending audio");
+
+            Console.WriteLine("  ✓ GenAI model runs on WebGPU EP");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  ✗ FAILED: {ex.GetType().Name}: {ex.Message}");
+            string msg = ex.InnerException?.Message ?? ex.Message;
+            if (msg.Length > 300) msg = msg[..300] + "...";
+            Console.WriteLine($"    Detail: {msg}");
+        }
+    }
+    else
+    {
+        Console.WriteLine("--- GenAI Model with WebGPU ---");
+        Console.WriteLine($"  ✗ Model not found at: {modelPath}");
     }
 }
 finally
