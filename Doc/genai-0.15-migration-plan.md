@@ -196,7 +196,30 @@
 4. После выхода **stable** GenAI 0.15 — повторная миграция nightly → stable (отдельная маленькая задача).
 5. После публикации `Microsoft.ML.OnnxRuntime.EP.Cuda` — унификация Standard/Blackwell через plugin EP (ожидается ~ORT 1.29).
 
-## 6. Результаты исследования (2026-07-29)
+### 0.3. WebGPU EP — практический тест (2026-07-31)
+
+Проведён тест WebGPU EP 0.2.1 на рабочей машине (NVIDIA RTX, 0x10DE) с моделью `nemotron-3.5-asr-streaming-0.6b-onnx-fp32-cpu` (opset 21, FP32). Тестовый проект: `WebGpuTest/`.
+
+**Результаты:**
+
+| Этап | Результат | Детали |
+|---|---|---|
+| Регистрация EP | ✅ | `OrtEnv.RegisterExecutionProviderLibrary` успешно |
+| Компаньон-DLL | ✅ | `dxil.dll` (1.4 MB), `dxcompiler.dll` (17.6 MB), `onnxruntime_providers_webgpu.dll` (8.8 MB) — все на месте |
+| Поиск устройства | ✅ | `WebGpuExecutionProvider`, Vendor=Microsoft, HW=GPU, VendorId=0x10DE |
+| Simple Add (Add) | ✅ | 3.0+5.0=8.0, правильно |
+| Загрузка encoder.onnx | ✅ | 5.0s (JIT WGSL-компиляция, первый запуск) |
+| Forward-pass энкодера | ✅ | 2936ms (холостой прогон с random audio), выходы в разумном диапазоне |
+| Назначение узлов | ⚠️ | Warning: «Some nodes not assigned to the preferred EP» — вероятно, shape-операции на CPU (стандартное поведение ORT, не регрессия) |
+
+**Метрики энкодера:**
+- Входы: `audio_signal` (1,65,128), `length`, `cache_last_channel` (1,24,70,1024), `cache_last_time` (1,24,1024,8), `cache_last_channel_len`, `lang_id`
+- Выходы: `outputs` (1,7,1024), `encoded_lengths`, `cache_last_channel_next`, `cache_last_time_next`, `cache_last_channel_len_next`
+- Размер модели: 3.0 MB
+
+**Вывод:** WebGPU EP полностью работоспособен для Nemotron-энкодера (FP32, opset 21). 5s первый запуск (JIT) приемлемо для десктопа, forward-pass 2.9s — нужен бенчмарк RTF на реальном аудио для сравнения с CPU/CUDA. Для WinUI 3 — жизнеспособная замена DML.
+
+## 6. Результаты исследования (2026-07-29, обновлено 2026-07-31)
 
 - GenAI 0.15: доступен только nightly `0.15.0-dev202607231321155` (CPU + CUDA); stable — 0.14.1; DirectML 0.15 отсутствует.
 - ORT stable: 1.28.0; nightly: 1.29.0-dev.
