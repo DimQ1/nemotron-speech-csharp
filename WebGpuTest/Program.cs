@@ -2,7 +2,10 @@ using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.EP.WebGpu;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Microsoft.ML.OnnxRuntimeGenAI;
+using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using System.Linq;
+using System.Text.Json;
 
 Console.WriteLine("=== WebGPU EP Plugin Test ===");
 Console.WriteLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
@@ -199,20 +202,55 @@ try
         Console.WriteLine($"  ✗ Model not found at: {encoderPath}");
     }
 
-    // ---- Step 6: GenAI Model with WebGPU ----
+    // ---- Step 6: GenAI Streaming ASR with WebGPU (real audio) ----
     string modelPath = @"E:\Work\Dimq1\Audio\Models\nemotron-3.5-asr-streaming-0.6b-onnx-fp32-cpu";
-    if (Directory.Exists(modelPath) && File.Exists(Path.Combine(modelPath, "genai_config.json")))
+    string audioPath = @"E:\Work\Dimq1\Audio\nemotron-speech-csharp\Test-Audio\sample-0.mp3";
+
+    if (!Directory.Exists(modelPath))
     {
-        Console.WriteLine("--- GenAI Model with WebGPU ---");
-        Console.WriteLine($"  Model path: {modelPath}");
+        Console.WriteLine($"--- GenAI ASR with WebGPU ---");
+        Console.WriteLine($"  ✗ Model path not found: {modelPath}");
+    }
+    else if (!File.Exists(audioPath))
+    {
+        Console.WriteLine($"--- GenAI ASR with WebGPU ---");
+        Console.WriteLine($"  ✗ Audio not found: {audioPath}");
+    }
+    else
+    {
+        Console.WriteLine("--- GenAI Streaming ASR (Real Audio) ---");
+        Console.WriteLine($"  Model: {modelPath}");
+        Console.WriteLine($"  Audio: {audioPath}");
 
         try
         {
-            // Try approach 1: GenAI Config with "webgpu" provider name
+            // Read config
+            using var cfgJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(modelPath, "genai_config.json")));
+            int sampleRate = cfgJson.RootElement.GetProperty("model").GetProperty("sample_rate").GetInt32();
+            int chunkSize = cfgJson.RootElement.GetProperty("model").GetProperty("chunk_samples").GetInt32();
+            Console.WriteLine($"  Sample rate: {sampleRate} Hz, Chunk: {chunkSize} samples");
+
+            // Load audio
+            using var reader = new NAudio.Wave.AudioFileReader(audioPath);
+            var source = (NAudio.Wave.ISampleProvider)reader;
+            if (reader.WaveFormat.Channels > 1)
+                source = new NAudio.Wave.SampleProviders.StereoToMonoSampleProvider(source);
+            if (reader.WaveFormat.SampleRate != sampleRate)
+                source = new NAudio.Wave.SampleProviders.WdlResamplingSampleProvider(source, sampleRate);
+
+            var audioList = new List<float>();
+            float[] buf = new float[4096];
+            int read;
+            while ((read = source.Read(buf, 0, buf.Length)) > 0)
+                audioList.AddRange(buf.Take(read));
+            float[] audio = audioList.ToArray();
+            double duration = audio.Length / (double)sampleRate;
+            Console.WriteLine($"  Audio: {duration:F1}s ({audio.Length} samples)");
+
+            // GenAI config with WebGPU
             var config = new Config(modelPath);
             config.ClearProviders();
             config.AppendProvider("webgpu");
-            Console.WriteLine("  Config: providers cleared, 'webgpu' appended");
 
             Console.Write("  Creating model... ");
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -220,71 +258,64 @@ try
             sw.Stop();
             Console.WriteLine($"OK ({sw.Elapsed.TotalSeconds:F1}s)");
 
-            // Try creating streaming processor
             using var processor = new StreamingProcessor(model);
-            Console.WriteLine($"  StreamingProcessor: OK");
-
             using var tokenizer = new Tokenizer(model);
             using var tokenizerStream = tokenizer.CreateStream();
             using var genParams = new GeneratorParams(model);
             using var generator = new Generator(model, genParams);
-            Console.WriteLine($"  Generator: OK");
 
-            // Try a dummy audio chunk
-            var sampleRate = 16000;
-            var chunkSize = 8960; // 560ms @ 16kHz
-            var dummyAudio = new float[chunkSize];
-            for (int j = 0; j < dummyAudio.Length; j++)
-                dummyAudio[j] = (float)(Math.Sin(2 * Math.PI * 440 * j / sampleRate) * 0.5);
+            Console.WriteLine(new string('-', 60));
 
-            Console.Write($"  Processing {chunkSize} samples... ");
+            // Stream audio in chunks — accumulate mel, run all at once
             sw.Restart();
-            var inputs = processor.Process(dummyAudio);
-            sw.Stop();
-            Console.WriteLine($"({sw.Elapsed.TotalMilliseconds:F0}ms) -> {(inputs != null ? "NamedTensors ready" : "buffering")}");
+            int chunks = 0;
 
-            if (inputs != null)
+            for (int i = 0; i < audio.Length; i += chunkSize)
             {
-                Console.Write("  Generator.SetInputs + GenerateNextToken... ");
-                sw.Restart();
+                int remaining = Math.Min(chunkSize, audio.Length - i);
+                var chunk = audio[i..(i + remaining)];
+                chunks++;
+
+                using var inputs = processor.Process(chunk);
+                if (inputs is null) continue;
+
                 generator.SetInputs(inputs);
                 while (!generator.IsDone())
                     generator.GenerateNextToken();
-                sw.Stop();
-                var newTokens = generator.GetNextTokens();
-                Console.WriteLine($"({sw.Elapsed.TotalMilliseconds:F0}ms)");
-                Console.WriteLine($"    New tokens: {newTokens.Length}");
             }
 
-            // Flush
-            Console.Write("  Flush... ");
-            sw.Restart();
+            // Flush remaining
             using var flushInputs = processor.Flush();
-            if (flushInputs != null)
+            if (flushInputs is not null)
             {
                 generator.SetInputs(flushInputs);
                 while (!generator.IsDone())
                     generator.GenerateNextToken();
-                var newTokens2 = generator.GetNextTokens();
-                Console.WriteLine($"({sw.Elapsed.TotalMilliseconds:F0}ms) -> {newTokens2.Length} tokens");
             }
-            else
-                Console.WriteLine("no pending audio");
 
-            Console.WriteLine("  ✓ GenAI model runs on WebGPU EP");
+            sw.Stop();
+
+            // Decode ALL tokens at once from the full sequence
+            var seq = generator.GetSequence(0);
+            string transcript = "";
+            foreach (var token in seq)
+                transcript += tokenizerStream.Decode(token);
+            double rtf = duration / sw.Elapsed.TotalSeconds;
+
+            Console.WriteLine();
+            Console.WriteLine(new string('=', 60));
+            Console.WriteLine($"  {transcript.Trim()}");
+            Console.WriteLine(new string('=', 60));
+            Console.WriteLine($"  Audio: {duration:F2}s | Wall: {sw.Elapsed.TotalSeconds:F2}s | RTF: {rtf:F2}x");
+            Console.WriteLine($"  Chunks: {chunks}, Tokens: {seq.Length}");
+            Console.WriteLine("  ✓ GenAI Nemotron streaming ASR works on WebGPU EP");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"  ✗ FAILED: {ex.GetType().Name}: {ex.Message}");
-            string msg = ex.InnerException?.Message ?? ex.Message;
-            if (msg.Length > 300) msg = msg[..300] + "...";
-            Console.WriteLine($"    Detail: {msg}");
+            if (ex.InnerException is not null)
+                Console.WriteLine($"    Inner: {ex.InnerException.Message}");
         }
-    }
-    else
-    {
-        Console.WriteLine("--- GenAI Model with WebGPU ---");
-        Console.WriteLine($"  ✗ Model not found at: {modelPath}");
     }
 }
 finally
