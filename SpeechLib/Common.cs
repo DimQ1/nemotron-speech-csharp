@@ -114,6 +114,11 @@ namespace SpeechLib
                     WebGpuEp.EnsureRegistered();
                     Console.WriteLine($"Setting model to {ep} (keeping default CPU fallback)");
                     config.AppendProvider(ep);
+
+                    // High performance mode for Dawn/D3D12 adapter
+                    config.SetProviderOption(ep, "powerPreference", "high-performance");
+                    // Note: graph capture (enableGraphCapture=1) tested but showed no improvement
+                    // through GenAI Config API — likely GenAI doesn't forward it to ORT sessions.
                 }
                 else if (ep == "tensorrt" || ep == "NvTensorRtRtx")
                 {
