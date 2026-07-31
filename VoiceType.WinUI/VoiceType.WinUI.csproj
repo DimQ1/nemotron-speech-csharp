@@ -13,6 +13,8 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <!-- MSIX packaged desktop app (required for Microsoft Store) -->
     <WindowsPackageType>MSIX</WindowsPackageType>
+    <!-- Bundle Windows App Runtime for unpackaged dev testing -->
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);NU1902</NoWarn>
