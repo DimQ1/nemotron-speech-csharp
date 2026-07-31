@@ -58,6 +58,10 @@ namespace SpeechLib
             {
                 ortEnv.RegisterExecutionProviderLibrary("DmlExecutionProvider", ep_path);
             }
+            else if (string.Equals(ep, "webgpu", StringComparison.OrdinalIgnoreCase))
+            {
+                WebGpuEp.EnsureRegistered();
+            }
 
             Console.WriteLine($"Registered {ep} successfully!");
         }
@@ -101,6 +105,13 @@ namespace SpeechLib
                 // DML: don't clear default providers (keep CPU fallback), just append DML
                 if (ep == "dml")
                 {
+                    Console.WriteLine($"Setting model to {ep} (keeping default CPU fallback)");
+                    config.AppendProvider(ep);
+                }
+                else if (ep == "webgpu")
+                {
+                    // WebGPU: register plugin EP, then append with CPU fallback
+                    WebGpuEp.EnsureRegistered();
                     Console.WriteLine($"Setting model to {ep} (keeping default CPU fallback)");
                     config.AppendProvider(ep);
                 }

@@ -38,7 +38,7 @@ public sealed record AppOptions
                     opts = opts with { WordTimestamps = true }; break;
                 default:
                     // Recognise known EP names first, then fall back to audio file
-                    if (args[i] is "cpu" or "cuda" or "dml" or "tensorrt" or "NvTensorRtRtx" or "follow_config")
+                    if (args[i] is "cpu" or "cuda" or "dml" or "webgpu" or "tensorrt" or "NvTensorRtRtx" or "follow_config")
                         opts = opts with { ExecutionProvider = args[i] };
                     else if (!args[i].StartsWith("--") && audioFile == null && args[i] != opts.ModelPath)
                         audioFile = args[i];

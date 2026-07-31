@@ -15,12 +15,14 @@
        Blackwell:           RTX 50        — nightly ORT GenAI, CUDA 13.x
        CPU:                 no GPU        — CPU-only ORT GenAI (smaller, no CUDA DLLs)
        DML:                 any GPU       — DirectML ORT GenAI (Windows GPU via DirectX)
+       WebGPU:              any GPU       — WebGPU/Dawn plugin EP (Windows GPU via D3D12/Vulkan)
 
        Usage:
          dotnet build -c Release                          (Standard)
          dotnet build -c Release -p:GpuArch=Blackwell     (RTX 50)
          dotnet build -c Release -p:GpuArch=CPU           (CPU only)
          dotnet build -c Release -p:GpuArch=DML           (DirectML)
+         dotnet build -c Release -p:GpuArch=WebGPU        (WebGPU plugin EP)
   -->
   <PropertyGroup>
     <GpuArch Condition="'$(GpuArch)' == ''">Standard</GpuArch>
@@ -78,6 +80,21 @@
       </PropertyGroup>
       <ItemGroup>
         <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.DirectML" Version="0.14.1" />
+      </ItemGroup>
+    </When>
+
+    <!-- WebGPU — any GPU via Dawn/D3D12 plugin EP (Windows only) -->
+    <When Condition="'$(GpuArch)' == 'WebGPU'">
+      <PropertyGroup>
+        <DefineConstants>$(DefineConstants);GPU_WEBGPU</DefineConstants>
+      </PropertyGroup>
+      <ItemGroup>
+        <!-- GenAI CPU package — WebGPU EP is registered at ORT level, not GenAI level -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.14.1" />
+        <!-- Plugin EP: WebGPU execution provider (Dawn + DXIL/DXC on Windows) -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime.EP.WebGpu" Version="0.2.1" />
+        <!-- Override transitive ORT 1.23.0 -> 1.28.0: plugin EP requires >= 1.24.4 -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" GeneratePathProperty="true" />
       </ItemGroup>
     </When>
 

@@ -126,8 +126,9 @@
     <PackageReference Include="NAudio.Lame" Version="2.1.0" />
     <!-- Exclude native ORT from Windows AI (managed via SpeechLib, which owns ORT GenAI dependencies) -->
     <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
-    <!-- Force managed ORT 1.25.1 assembly (transitive 1.23 from GenAI is overridden) -->
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.25.1" ExcludeAssets="native" />
+    <!-- Force managed ORT 1.28.0 assembly (transitive 1.23 from GenAI is overridden).
+         1.28.0 is required for plugin EP API (WebGPU EP needs >= 1.24.4). -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" ExcludeAssets="native" />
   </ItemGroup>
 
   <ItemGroup>
@@ -168,31 +169,31 @@
     <TrimmerRootDescriptor Include="TrimmerRoots.xml" Condition="Exists('TrimmerRoots.xml')" />
   </ItemGroup>
 
-  <!-- Copy nemotron_swish_cpu.dll and ORT 1.25.1 native DLL into AppX.
-       ORT 1.25.1 is required by opset-24 ONNX models. The stale 1.23 DLL
-       from the GenAI transitive dependency is overwritten.
+  <!-- Copy ORT 1.28.0 native DLL and Swish custom op into AppX.
+       ORT 1.28.0 is required by plugin EP API (WebGPU) and opset-24 ONNX models.
+       The stale 1.23 DLL from the GenAI transitive dependency is overwritten.
        Also strips PDBs from AppX (Store submission requirement).
 
        NOTE: SpeechLib owns ORT GenAI dependencies with GpuArch selection.
-       Use -p:GpuArch=CPU for Store/CPU builds. -->
-  <Target Name="CopyOrt1251AndSwishOpToAppX" AfterTargets="Build">
-    <!-- ORT 1.25.1 from NuGet cache (CPU-only, no CUDA providers) -->
+       Use -p:GpuArch=CPU for Store/CPU builds, -p:GpuArch=WebGPU for WebGPU builds. -->
+  <Target Name="CopyOrt128AndSwishOpToAppX" AfterTargets="Build">
+    <!-- ORT 1.28.0 from NuGet cache (CPU-only, no CUDA providers) -->
     <PropertyGroup>
-      <_Ort1251Cache>$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime\1.25.1\runtimes\win-x64\native\</_Ort1251Cache>
+      <_Ort128Cache>$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime\1.28.0\runtimes\win-x64\native\</_Ort128Cache>
     </PropertyGroup>
     <ItemGroup>
-      <_Ort1251Native Include="$(_Ort1251Cache)*.dll"
-                      Condition="Exists('$(_Ort1251Cache)')" />
+      <_Ort128Native Include="$(_Ort128Cache)*.dll"
+                      Condition="Exists('$(_Ort128Cache)')" />
     </ItemGroup>
-    <Copy SourceFiles="@(_Ort1251Native)"
+    <Copy SourceFiles="@(_Ort128Native)"
           DestinationFolder="$(OutputPath)"
           SkipUnchangedFiles="false"
-          Condition="'@(_Ort1251Native)' != ''" />
-    <Copy SourceFiles="@(_Ort1251Native)"
+          Condition="'@(_Ort128Native)' != ''" />
+    <Copy SourceFiles="@(_Ort128Native)"
           DestinationFolder="$(OutputPath)AppX"
           SkipUnchangedFiles="false"
-          Condition="'@(_Ort1251Native)' != ''" />
-    <!-- Remove stale CUDA provider DLLs (incompatible with ORT 1.25.1 and unused on CPU) -->
+          Condition="'@(_Ort128Native)' != ''" />
+    <!-- Purge CUDA DLLs (incompatible with CPU/WebGPU builds) -->
     <Delete Files="$(OutputPath)AppX\onnxruntime_providers_cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_cuda.dll')" />
     <Delete Files="$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll')" />
     <Delete Files="$(OutputPath)AppX\onnxruntime-genai-cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime-genai-cuda.dll')" />
