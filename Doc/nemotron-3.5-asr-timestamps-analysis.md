@@ -268,3 +268,130 @@ Nemotron3_5AsrGenerationMixin
 ## Вывод
 
 Модель **nvidia/nemotron-3.5-asr-streaming-0.6b** полностью поддерживает возврат временных меток через API 🤗 Transformers. Метки посимвольные, с разрешением ~80ms на токен. Для получения пословных меток требуется дополнительная группировка на пост-обработке. В потоковом режиме метки также доступны.
+
+---
+
+## Исследование для текущего .NET/ONNX Runtime GenAI-пайплайна
+
+**Дата обновления:** 2026-08-01
+**Статус:** исследование завершено, реализация отложена по решению пользователя
+**Область:** `SpeechLib`, `NemotronSpeech`, `VoiceType.WinUI`, ONNX Runtime GenAI `0.15.0`
+
+Этот раздел является рабочей заметкой для будущих агентов. Он уточняет, что выводы выше относятся к Transformers/NeMo API и не означают, что текущий C# runtime уже умеет возвращать timestamps.
+
+### Решение и текущий статус
+
+- Timestamp-функциональность пока **не реализуется**.
+- ONNX-модели не регенерируются и не конвертируются заново.
+- Пакеты GenAI не обновляются в рамках этой задачи.
+- Не менять существующую эвристику `AddWordTimings()` без отдельного задания: она распределяет текст по временным окнам чанков и не является акустическим выравниванием.
+- При возобновлении работы сначала реализовать frame/token-level метаданные в runtime, затем обернуть их в C# API и только после этого менять WinUI или text injection.
+
+### Что подтверждено в текущем репозитории
+
+Текущий путь распознавания теряет информацию о временной позиции токена:
+
+1. `SpeechLib/ModelSession.cs` выполняет RNNT decode и возвращает `DecodeResult(Text, TokenCount)`.
+2. `SpeechLib/Interfaces/IStreamingSpeechRecognizer.cs` предоставляет строки результата и `LastTokenCount`, но не frame offsets или durations.
+3. `SpeechLib/Transcriber.cs` содержит `AddWordTimings()`, который использует эвристику по чанкам, символам и оценке количества токенов.
+4. `SpeechLib/Models/WordTiming.cs` уже задаёт модель `Word`, `StartSeconds`, `EndSeconds`, но источник акустических границ в неё не передаётся.
+5. `VoiceType.WinUI/Services/RecognitionService.cs`, `IRecognitionService` и `MainViewModel` работают со строковыми partial/final результатами. UI timestamps не отображает.
+
+Следствие: `TokenCount` нельзя трактовать как количество аудио-кадров. В RNNT на одном кадре может быть несколько emitted tokens, а на других кадрах токены могут не испускаться.
+
+### Проверенные runtime и package выводы
+
+Для существующих CPU FP32/INT8/INT4 и CUDA ONNX-графов были проверены сигнатуры входов/выходов. Они соответствуют текущему `genai_config.json`; переход с GenAI `0.14.1` на обычный runtime `0.15.0` сам по себе не требует регенерации моделей.
+
+| Backend | Текущее состояние | GenAI `0.15.0` | Следствие |
+|---|---|---|---|
+| CPU | используется `0.14.1` | стабильный пакет есть, требует ORT `1.28.0` | upgrade возможен без обязательной конвертации модели |
+| CUDA | используется `0.14.1` | стабильный пакет есть, требует ORT GPU `1.28.0` | upgrade возможен без обязательной конвертации модели |
+| Blackwell CUDA | dev-пакет `0.15.0-dev-*` | зависит от nightly feed | проверять отдельно при обновлении |
+| DirectML | используется `0.14.1` | стабильного `0.15.0` не найдено | оставить `0.14.1` до появления совместимого пакета |
+
+Явный override ORT в исследованной конфигурации был `1.25.1`; для стабильных GenAI `0.15.0` потребуется согласовать его с требуемой версией `1.28.0`. Это отдельная задача совместимости пакетов, а не задача timestamps.
+
+### Что именно нужно получить от runtime
+
+Публичный C# API текущей интеграции возвращает только текст/счётчик токенов. Для timestamps нужен низкоуровневый результат RNNT decode, сохраняющий как минимум:
+
+```text
+(token_id, encoder_time_step)
+```
+
+Эквивалентный вариант через `duration` также подходит, если duration на каждом decode step соответствует продвижению по кадрам энкодера. Важно сохранить эту информацию до того, как decode loop преобразует токены в строку.
+
+### Рекомендуемый вариант: frame/token-level timestamps
+
+Первый вариант реализации без изменения ONNX-графов:
+
+1. Расширить native GenAI bridge или native decode loop так, чтобы он возвращал `token_id` вместе с `time_step`/`duration`.
+2. Добавить C ABI для получения структурированного результата и корректно освободить native memory.
+3. Обернуть ABI в `SpeechLib` и не ломать существующие string-only интерфейсы.
+4. Преобразовать `time_step` в секунды по формуле:
+
+    ```text
+    seconds = global_encoder_frame * 160 * 8 / 16000
+    seconds = global_encoder_frame * 0.080
+    ```
+
+5. Сопоставить tokenizer pieces с исходным текстом и сгруппировать pieces в `WordTiming` по пробелам, языковым правилам и punctuation.
+6. Отдельно обработать streaming chunk offset, pre-encode cache, left/right context, lookahead, padding и flush.
+
+Ожидаемое базовое разрешение для текущей модели -- около 80 ms на encoder frame. Это frame/token-level timing, а не гарантия точной акустической границы слова.
+
+### Альтернатива: отдельный forced aligner
+
+Если требуются более точные акустические границы начала и конца слова, нужен отдельный forced-alignment этап. Он принимает аудио и уже распознанный текст, поэтому потенциально точнее, но добавляет:
+
+- второй inference path и дополнительные модели;
+- задержку, особенно для live mode;
+- сложность упаковки CPU/CUDA/DirectML;
+- необходимость синхронизации исправлений streaming текста с уже выданными timestamps;
+- отдельную валидацию для языков, punctuation, чисел и code-switching.
+
+Forced aligner не следует добавлять в первый этап, пока не доказано, что frame-level timestamps недостаточны.
+
+### Оценка объёма
+
+Оценка дана для текущей архитектуры и не включает исследование нового aligner или конвертацию моделей:
+
+| Вариант | Оценка | Состав работ |
+|---|---:|---|
+| Frame/token-level timestamps | 3--7 рабочих дней | native metadata, C ABI, C# wrapper, chunk offset, grouping в слова, unit/E2E tests |
+| Forced aligner | 5--12 рабочих дней | выбор модели, новый inference path, упаковка, latency, языки, regression tests |
+
+Оценка может вырасти, если текущая используемая native библиотека не предоставляет доступ к decode loop и потребуется поддерживать несколько несовместимых backend bridge.
+
+### Риски и edge cases
+
+- локальный `time_step` нужно преобразовать в глобальное время между streaming chunks;
+- cache и lookahead могут сдвигать момент, когда токен становится доступен;
+- несколько RNNT tokens могут иметь один frame;
+- blank tokens и frames без emissions должны быть отфильтрованы корректно;
+- language tags, special tokens, punctuation и tokenizer pieces не должны становиться отдельными словами;
+- текст streaming может быть пересмотрен последующим chunk, поэтому timestamps должны поддерживать cumulative text/delta semantics;
+- flush и trailing silence требуют отдельного определения конечной границы слова;
+- native DLL должны корректно поставляться для CPU, CUDA, Blackwell и DirectML вариантов;
+- text injection должен продолжить получать cumulative text или delta в текущем формате;
+- существующая baseline-проверка word timings проверяет математическую регрессию, но не акустическую точность.
+
+### План возобновления работы
+
+1. Зафиксировать точную версию native GenAI API и найти место decode loop, где доступны `token_id` и frame progression.
+2. Добавить минимальный native probe, возвращающий token/frame pairs для одного offline sample.
+3. Проверить, что frame offsets монотонны и корректно продолжаются через streaming chunk boundary.
+4. Добавить `TokenTiming`/расширенный decode result в `SpeechLib`, сохранив обратную совместимость старых интерфейсов.
+5. Реализовать tokenizer-piece-to-word grouping и unit tests для whitespace, punctuation, language tags и нескольких tokens на одном frame.
+6. Добавить E2E regression с аудио и ожидаемыми допусками, а также benchmark latency/memory.
+7. Только после стабилизации backend решить, нужен ли timestamp display в `VoiceType.WinUI`.
+8. Отдельным решением оценить package upgrade на GenAI `0.15.0`; DirectML нельзя считать покрытым, пока для него нет стабильного пакета.
+
+### Не делать без отдельного решения
+
+- Не считать текущий `LastTokenCount` временной информацией.
+- Не считать существующие `WordTiming` акустически точными.
+- Не менять ONNX graph/opset только ради timestamps: runtime upgrade или opset change сами по себе не создают alignment metadata.
+- Не добавлять VAD как решение задачи выравнивания: VAD сокращает inference на тишине, но не возвращает token/frame alignment.
+- Не начинать forced alignment, пока не измерена точность и полезность frame-level варианта.
