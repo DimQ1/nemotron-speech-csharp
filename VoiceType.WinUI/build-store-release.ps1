@@ -76,12 +76,25 @@ if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
 
 # 3. Find the generated MSIX
 $appPackagesDir = Join-Path $PSScriptRoot "bin\Release\net10.0-windows10.0.26100.0\win-$Arch\AppPackages"
+$manifestPath = Join-Path $PSScriptRoot 'Package.appxmanifest'
+[xml]$manifest = Get-Content -Path $manifestPath -Raw
+$packageVersion = [string]$manifest.Package.Identity.Version
+if ([string]::IsNullOrWhiteSpace($packageVersion)) {
+    throw "Could not read package version from $manifestPath"
+}
+
 $msixFile = Get-ChildItem -Path $appPackagesDir -Filter '*.msix' -Recurse -ErrorAction SilentlyContinue `
-    | Where-Object { $_.Name -like 'VoiceType.WinUI*' } `
+    | Where-Object { $_.Name -like "VoiceType.WinUI_${packageVersion}_*.msix" } `
+    | Sort-Object LastWriteTime -Descending `
     | Select-Object -First 1
 $msixUpload = Get-ChildItem -Path $appPackagesDir -Filter '*.msixupload' -Recurse -ErrorAction SilentlyContinue `
-    | Where-Object { $_.Name -like 'VoiceType.WinUI*' } `
+    | Where-Object { $_.Name -like "VoiceType.WinUI_${packageVersion}_*.msixupload" } `
+    | Sort-Object LastWriteTime -Descending `
     | Select-Object -First 1
+
+if (-not $msixFile) {
+    throw "Could not find a VoiceType MSIX for package version $packageVersion under $appPackagesDir"
+}
 
 Write-Host ''
 Write-Host '═══════════════════════════════════════════' -ForegroundColor Green

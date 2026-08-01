@@ -155,14 +155,22 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _settings.ModelsRootPath = m.Value.ModelsRootPath;
             _settings.ModelPath = m.Value.ModelPath;
+            ModelPathResolver.ApplyExistingModelPath(_settings);
             _settingsService.Save(_settings);
             // Reload model with new path
             _ = ReloadModelOnSettingsChangeAsync(_settings);
         });
 
-        // Listen for SettingsSaved messages — reload model if path/EP changed
+        // Listen for SettingsSaved messages — apply the fresh snapshot, re-check model
+        // availability, and reload the model if path/EP changed. This also covers the
+        // first-run wizard, which writes settings AFTER this ViewModel was constructed.
         WeakReferenceMessenger.Default.Register<SettingsSavedMessage>(this, (r, m) =>
         {
+            _dispatcher.TryEnqueue(() =>
+            {
+                ApplySettingsSnapshot(m.Value);
+                CheckModelAvailability();
+            });
             _ = ReloadModelOnSettingsChangeAsync(m.Value);
         });
 
@@ -354,6 +362,14 @@ public sealed partial class MainViewModel : ObservableObject
         mixerWindow.Activate();
     }
 
+    [RelayCommand]
+    private void OpenHelp()
+    {
+        var help = Views.HelpWindow.OpenInstance ?? new Views.HelpWindow();
+        App.MainWindow?.TrackChildWindow(help);
+        help.Activate();
+    }
+
     // ---- Hotkey ----
 
     public void TryAutoStart()
@@ -426,16 +442,26 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task LoadModelInBackgroundAsync()
     {
         var settings = _settingsService.Load();
-        if (string.IsNullOrEmpty(settings.ModelPath) && !string.IsNullOrEmpty(settings.ModelsRootPath))
-        {
-            settings.ModelPath = Path.Combine(settings.ModelsRootPath, settings.SelectedModel);
-            _settings.ModelPath = settings.ModelPath;
-            _settingsService.Save(settings);
-        }
-
-        if (string.IsNullOrEmpty(settings.ModelPath))
+        var modelPath = ModelPathResolver.FindExistingModelPath(settings);
+        if (modelPath is null)
         {
             _dispatcher.TryEnqueue(() => ModelStatusText = "No model configured — download or select in Settings");
+            return;
+        }
+
+        if (ModelPathResolver.ApplyExistingModelPath(settings))
+            _settingsService.Save(settings);
+        _settings = settings;
+
+        // The first-run wizard already loaded the model before revealing the main
+        // window — skip a redundant reload (it would just waste startup time).
+        if (_recognition.ModelState == ModelState.Loaded)
+        {
+            _dispatcher.TryEnqueue(() =>
+            {
+                IsModelReady = true;
+                ModelStatusText = "Model ready";
+            });
             return;
         }
 
@@ -507,19 +533,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void CheckModelAvailability()
     {
-        var modelPath = _settings.ModelPath;
-        if (string.IsNullOrEmpty(modelPath) && !string.IsNullOrEmpty(_settings.ModelsRootPath))
-            modelPath = Path.Combine(_settings.ModelsRootPath, _settings.SelectedModel);
-
-        if (!string.IsNullOrEmpty(modelPath) && Directory.Exists(modelPath))
-        {
-            var configPath = Path.Combine(modelPath, "genai_config.json");
-            IsModelAvailable = File.Exists(configPath);
-        }
-        else
-        {
-            IsModelAvailable = false;
-        }
+        IsModelAvailable = ModelPathResolver.FindExistingModelPath(_settings) is not null;
 
         if (!IsModelAvailable)
             ModelStatusText = "No model found. Download recommended:";
@@ -572,11 +586,12 @@ public sealed partial class MainViewModel : ObservableObject
 
             try
             {
-                if (string.IsNullOrEmpty(_settings.ModelPath) && !string.IsNullOrEmpty(_settings.ModelsRootPath))
-                {
-                    _settings.ModelPath = Path.Combine(_settings.ModelsRootPath, _settings.SelectedModel);
-                    _settingsService.Save(_settings);
-                }
+                var modelPath = ModelPathResolver.FindExistingModelPath(_settings);
+                if (modelPath is null)
+                    throw new DirectoryNotFoundException("No downloaded model was found. Select or download a model in Settings.");
+
+                _settings.ModelPath = modelPath;
+                _settingsService.Save(_settings);
 
                 await _recognition.LoadModelAsync(_settings);
             }

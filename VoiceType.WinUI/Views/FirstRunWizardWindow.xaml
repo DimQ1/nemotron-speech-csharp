@@ -1,0 +1,164 @@
+<Window
+    x:Class="VoiceType.WinUI.Views.FirstRunWizardWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Welcome to VoiceType">
+
+    <Window.SystemBackdrop>
+        <DesktopAcrylicBackdrop/>
+    </Window.SystemBackdrop>
+
+    <Grid Background="{StaticResource BgBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title bar -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Background="{StaticResource BgSecondaryBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
+                <FontIcon Glyph="&#xE720;" FontSize="16" Foreground="{StaticResource AccentBrush}"/>
+                <TextBlock Text="Welcome to VoiceType" Foreground="{StaticResource FgBrush}"
+                           Style="{ThemeResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,20" Spacing="14">
+
+                <!-- STEP 1: intro + consent -->
+                <StackPanel x:Name="StepConsent" Spacing="14">
+                    <FontIcon Glyph="&#xE8F2;" FontSize="40" Foreground="{StaticResource AccentBrush}"
+                              HorizontalAlignment="Left"/>
+                    <TextBlock Text="VoiceType turns your speech into text — entirely on your PC."
+                               FontSize="18" FontWeight="SemiBold"
+                               Foreground="{StaticResource FgBrush}" TextWrapping="Wrap"/>
+                    <TextBlock Foreground="{StaticResource FgSecondaryBrush}" FontSize="13" TextWrapping="Wrap"
+                               LineHeight="20"
+                               Text="To work, VoiceType needs a one-time download of the speech-recognition AI model (NVIDIA Nemotron ASR, ~750 MB). The model runs 100% locally — your voice never leaves your computer. Without it the app cannot recognize speech, so this step is required before you can start."/>
+                    <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="6" Padding="12">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Recommended model" FontSize="11"
+                                       Foreground="{StaticResource FgSecondaryBrush}"/>
+                            <TextBlock FontSize="12" Foreground="{StaticResource FgBrush}" TextWrapping="Wrap"
+                                       Text="CPU (INT4, opset24, 0.56s) — fast, low latency, ~749 MB"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- STEP 2: download progress -->
+                <StackPanel x:Name="StepProgress" Spacing="12" Visibility="Collapsed">
+                    <FontIcon Glyph="&#xE896;" FontSize="40" Foreground="{StaticResource AccentBrush}"
+                              HorizontalAlignment="Left"/>
+                    <TextBlock Text="Downloading the speech model…"
+                               FontSize="18" FontWeight="SemiBold"
+                               Foreground="{StaticResource FgBrush}"/>
+                    <TextBlock Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" TextWrapping="Wrap"
+                               Text="This happens once. Please keep the app open — the model is being fetched from Hugging Face."/>
+                    <ProgressBar Height="8" Minimum="0" Maximum="100"
+                                 Value="{x:Bind DownloadProgress, Mode=OneWay}"
+                                 Foreground="{StaticResource AccentBrush}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ProgressRing Width="16" Height="16" IsActive="True"
+                                      Foreground="{StaticResource AccentBrush}"/>
+                        <TextBlock Text="{x:Bind StatusText, Mode=OneWay}"
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="12"
+                                   VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <TextBlock Text="{x:Bind ProgressDetail, Mode=OneWay}"
+                               Foreground="{StaticResource FgSecondaryBrush}" FontSize="11"/>
+                </StackPanel>
+
+                <!-- STEP 3: finish / Mix explanation -->
+                <StackPanel x:Name="StepDone" Spacing="14" Visibility="Collapsed">
+                    <FontIcon Glyph="&#xE930;" FontSize="40" Foreground="#4CAF50"
+                              HorizontalAlignment="Left"/>
+                    <TextBlock Text="All set!"
+                               FontSize="18" FontWeight="SemiBold"
+                               Foreground="{StaticResource FgBrush}"/>
+                    <TextBlock Foreground="{StaticResource FgBrush}" FontSize="13" TextWrapping="Wrap" LineHeight="20"
+                               Text="The model was installed and loaded successfully."/>
+                    <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="6" Padding="12">
+                        <StackPanel Spacing="6">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE767;" FontSize="14" Foreground="{StaticResource AccentBrush}"/>
+                                <TextBlock Text="Audio mode: Mix (set by default)" FontSize="12"
+                                           FontWeight="SemiBold" Foreground="{StaticResource FgBrush}"/>
+                            </StackPanel>
+                            <TextBlock Foreground="{StaticResource FgSecondaryBrush}" FontSize="12"
+                                       TextWrapping="Wrap" LineHeight="18"
+                                       Text="Mix captures both your microphone and your PC's audio output. That means VoiceType can transcribe what you say AND what you hear (calls, meetings, videos) at the same time. You can change this anytime in Settings → Audio Source (Mic / Loopback / Mix), and adjust each volume in the Audio Mixer."/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ERROR state -->
+                <StackPanel x:Name="StepError" Spacing="12" Visibility="Collapsed">
+                    <FontIcon Glyph="&#xEA39;" FontSize="40" Foreground="{StaticResource RedBrush}"
+                              HorizontalAlignment="Left"/>
+                    <TextBlock Text="Something went wrong"
+                               FontSize="18" FontWeight="SemiBold"
+                               Foreground="{StaticResource FgBrush}"/>
+                    <TextBlock Text="{x:Bind ErrorText, Mode=OneWay}"
+                               Foreground="{StaticResource FgSecondaryBrush}" FontSize="12"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Bottom action bar -->
+        <Border Grid.Row="2" Background="{StaticResource BgSecondaryBrush}" Padding="20,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Consent step buttons -->
+                <StackPanel x:Name="ConsentButtons" Grid.Column="0" Grid.ColumnSpan="3"
+                            Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                    <Button x:Name="DownloadButton"
+                            Content="Download &amp; Install (~749 MB)"
+                            Style="{StaticResource PrimaryButton}"
+                            Padding="18,8" FontSize="13"
+                            Click="Download_Click"/>
+                    <Button x:Name="QuitButton" Content="Quit"
+                            Background="Transparent"
+                            Foreground="{StaticResource FgSecondaryBrush}"
+                            BorderThickness="0" Padding="14,8" FontSize="13"
+                            Click="Quit_Click"/>
+                </StackPanel>
+
+                <!-- Progress step: cancel -->
+                <Button x:Name="CancelButton" Grid.Column="2" Content="Cancel"
+                        Background="Transparent"
+                        Foreground="{StaticResource FgSecondaryBrush}"
+                        BorderThickness="0" Padding="14,8" FontSize="13"
+                        Visibility="Collapsed"
+                        Click="Cancel_Click"/>
+
+                <!-- Done step: start using -->
+                <Button x:Name="StartUsingButton" Grid.Column="2"
+                        Content="Start using VoiceType →"
+                        Style="{StaticResource PrimaryButton}"
+                        Padding="18,8" FontSize="13"
+                        Visibility="Collapsed"
+                        Click="StartUsing_Click"/>
+
+                <!-- Error step: retry -->
+                <StackPanel x:Name="ErrorButtons" Grid.Column="0" Grid.ColumnSpan="3"
+                            Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10"
+                            Visibility="Collapsed">
+                    <Button Content="Retry" Style="{StaticResource PrimaryButton}"
+                            Padding="18,8" FontSize="13" Click="Download_Click"/>
+                    <Button Content="Quit" Background="Transparent"
+                            Foreground="{StaticResource FgSecondaryBrush}"
+                            BorderThickness="0" Padding="14,8" FontSize="13"
+                            Click="Quit_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -25,9 +25,16 @@ public sealed class AppSettings
     // ── Capture ─────────────────────────────────────
     public string AudioSource { get; set; } = "Mic"; // Mic, Loopback, Mix
 
+    // ── First-run onboarding ────────────────────────
+    /// <summary>Set to true after the first-run wizard (model download + defaults) completes.
+    /// When false, the app shows the onboarding wizard before the main window.</summary>
+    public bool FirstRunCompleted { get; set; } = false;
+
     // ── Injection ───────────────────────────────────
     public InjectionMethod TextInjectionMethod { get; set; } = InjectionMethod.InputSimulator;
-    public bool StopOnAnyInput { get; set; } = true;
+    /// <summary>Stop recognition on any keyboard/mouse input. Off by default so users can
+    /// keep working (and keep dictating) without the recording cutting out on every keystroke.</summary>
+    public bool StopOnAnyInput { get; set; } = false;
     public bool IsTextInjectionEnabled { get; set; } = true;
     /// <summary>When true, pauses text injection if the user switches to a different window during recording.</summary>
     public bool DisableInjectionOnFocusChange { get; set; } = true;
@@ -40,7 +47,9 @@ public sealed class AppSettings
     public bool AlwaysOnTop { get; set; } = true;
 
     // ── Sessions ────────────────────────────────────
-    public bool SaveSessions { get; set; } = true;
+    /// <summary>Whether to persist recognition sessions to disk. Off by default for privacy
+    /// and to avoid unbounded disk growth; the user can opt in via Settings.</summary>
+    public bool SaveSessions { get; set; } = false;
     public string SessionsPath { get; set; } = AppPaths.SessionsDir;
     public bool SaveAudioMp3 { get; set; } = false;
 

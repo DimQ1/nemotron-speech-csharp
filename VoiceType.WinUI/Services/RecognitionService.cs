@@ -246,8 +246,6 @@ public sealed class RecognitionService : IRecognitionService
 
     private async Task ProcessLoop()
     {
-        var lastAudio = DateTime.UtcNow;
-
         // Cache post-processing settings once � avoid disk I/O on every audio chunk
         var procSettings = (_settingsService ?? new SettingsService()).Load();
         var procRules = procSettings.PostProcessingRules;
@@ -255,7 +253,13 @@ public sealed class RecognitionService : IRecognitionService
         var postProc = _postProcessing ?? new PostProcessingPipeline();
         var compiledProcRules = postProc.CompileRules(procRules, procEnabled);
 
-        while ((_captureState?.IsRunning == true) || (_buffer?.IsEmpty == false))
+        // Run while the user session is active, then drain whatever audio remains.
+        // We key off _isRunning (the explicit user/session flag) rather than a silence
+        // timeout: on FIRST launch the WASAPI loopback device can take a couple of seconds
+        // to spin up (and the system may simply be silent), so the old 1.5s-silence break
+        // aborted ProcessLoop before any audio arrived and fired Stopped — recognition never
+        // started until the app was restarted. Now silence just keeps the loop waiting.
+        while (_isRunning || (_buffer?.IsEmpty == false))
         {
             bool gotData = false;
             while (_buffer?.TryDequeue(out var batch) == true)
@@ -283,17 +287,11 @@ public sealed class RecognitionService : IRecognitionService
                 gotData = true;
             }
 
-            if (gotData)
-                lastAudio = DateTime.UtcNow;
-            else
+            if (!gotData)
             {
                 _signal?.Wait(50);
                 _signal?.Reset();
             }
-
-            if ((_captureState?.IsRunning != true) && (_buffer?.IsEmpty == true) &&
-                (DateTime.UtcNow - lastAudio).TotalSeconds > 1.5)
-                break;
         }
 
         // Flush
@@ -396,43 +394,10 @@ public sealed class RecognitionService : IRecognitionService
         catch { /* best-effort */ }
     }
 
-    /// <summary>Resolve the model path from settings, falling back to default if empty.</summary>
+    /// <summary>Resolve an existing model path from settings and the default model directory.</summary>
     private static string ResolveModelPath(AppSettings settings)
     {
-        string modelPath;
-
-        if (!string.IsNullOrEmpty(settings.ModelPath))
-        {
-            modelPath = settings.ModelPath;
-        }
-        else
-        {
-            // Packaged MSIX: AppContext.BaseDirectory is immutable WindowsApps path.
-            // Look in user-writable Models dir first, then fall back to dev relative path.
-            var packagedModelsDir = AppPaths.ModelsDir;
-            var devModelDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "modules", "asr", ModelSubfolder(settings.ExecutionProvider));
-
-            // Check if running in a packaged environment (WindowsApps install)
-            bool isPackaged = AppContext.BaseDirectory.Contains("WindowsApps", StringComparison.OrdinalIgnoreCase);
-
-            modelPath = isPackaged
-                ? (Directory.Exists(packagedModelsDir) && Directory.GetDirectories(packagedModelsDir).Length > 0
-                    ? packagedModelsDir
-                    : packagedModelsDir) // still return ModelsDir for downloader to handle
-                : devModelDir;
-        }
-
-        if (!Path.IsPathRooted(modelPath))
-            modelPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, modelPath));
-
-        return modelPath;
+        return ModelPathResolver.FindExistingModelPath(settings)
+            ?? throw new DirectoryNotFoundException("No model directory containing genai_config.json was found.");
     }
-
-    /// <summary>Map execution provider to the matching model subfolder.</summary>
-    private static string ModelSubfolder(string executionProvider) => executionProvider.ToLowerInvariant() switch
-    {
-        "cuda" => "gpu-cuda",
-        "dml" => "gpu-cuda",
-        _ => "cpu"
-    };
 }

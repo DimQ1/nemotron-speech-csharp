@@ -62,7 +62,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    private bool _stopOnAnyInput = true;
+    private bool _stopOnAnyInput = false;
 
     [ObservableProperty]
     private bool _disableInjectionOnFocusChange = true;
@@ -216,6 +216,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             if (window.ViewModel.WasDownloaded && window.ViewModel.ResultPath is not null)
                 ModelsRootPath = window.ViewModel.ResultPath;
         };
+        App.MainWindow?.TrackChildWindow(window);
         window.Activate();
     }
 
@@ -300,6 +301,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         NumBeams = Math.Max(1, NumBeams),
         RepetitionPenalty = RepetitionPenalty,
         AudioSource = AudioSource,
+        FirstRunCompleted = _original.FirstRunCompleted,
         TextInjectionMethod = TextInjectionMethod,
         StopOnAnyInput = StopOnAnyInput,
         IsTextInjectionEnabled = _original.IsTextInjectionEnabled,
@@ -319,5 +321,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         DownloaderModelsRootPath = _original.DownloaderModelsRootPath,
         DownloaderSelectedFoldersRepoId = _original.DownloaderSelectedFoldersRepoId,
         DownloaderSelectedFolders = _original.DownloaderSelectedFolders.ToList(),
+        MicVolume = _original.MicVolume,
+        LoopbackVolume = _original.LoopbackVolume,
     };
 }

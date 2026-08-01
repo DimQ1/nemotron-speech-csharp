@@ -113,9 +113,53 @@ public partial class App : Application
 
         Telemetry.LogInfo("App", "VoiceType.WinUI started");
 
-        MainWindow = Services.GetRequiredService<Views.MainWindow>();
-        MainWindow.ConfigureWindow();
-        MainWindow.Activate();
+        // First-run onboarding: if the model was never installed, run the wizard
+        // (explain → download recommended model → set Mix audio mode → load model)
+        // BEFORE showing the main window, so the app is never usable without a model.
+        var settingsService = Services.GetRequiredService<ISettingsService>();
+        var settings = settingsService.Load();
+        var existingModelPath = ModelPathResolver.FindExistingModelPath(settings);
+        if (existingModelPath is not null)
+        {
+            var settingsChanged = ModelPathResolver.ApplyExistingModelPath(settings);
+            if (!settings.FirstRunCompleted)
+            {
+                settings.FirstRunCompleted = true;
+                settingsChanged = true;
+            }
+
+            if (settingsChanged)
+                settingsService.Save(settings);
+        }
+
+        if (!settings.FirstRunCompleted)
+        {
+            Telemetry.LogInfo("App", "First run detected — showing onboarding wizard");
+            MainWindow = Services.GetRequiredService<Views.MainWindow>();
+            MainWindow.ConfigureWindow();
+
+            var wizard = new Views.FirstRunWizardWindow();
+            MainWindow.TrackChildWindow(wizard);
+            wizard.Closed += (_, _) =>
+            {
+                // Only reveal the main window once onboarding actually completed
+                // (Quit closes the app via Application.Exit, so this won't fire on decline).
+                if (!settingsService.Load().FirstRunCompleted || MainWindow is not { } mainWindow)
+                    return;
+
+                mainWindow.Activate();
+                mainWindow.DispatcherQueue.TryEnqueue(
+                    DispatcherQueuePriority.Low,
+                    () => Views.HelpWindow.Show());
+            };
+            wizard.Activate();
+        }
+        else
+        {
+            MainWindow = Services.GetRequiredService<Views.MainWindow>();
+            MainWindow.ConfigureWindow();
+            MainWindow.Activate();
+        }
     }
 
     private static void ConfigureServices(IServiceCollection services)
@@ -130,7 +174,8 @@ public partial class App : Application
 
         // ---- Services ----
         services.AddSingleton<ISettingsService, SettingsService>();
-        services.AddSingleton<ISessionManager, SessionManager>();
+        services.AddSingleton<ISessionManager>(sp =>
+            new SessionManager(sp.GetRequiredService<ISettingsService>()));
         services.AddSingleton<IPostProcessingPipeline, PostProcessingPipeline>();
         services.AddSingleton<IGlobalHotkeyService, GlobalHotkeyService>();
         services.AddSingleton<ITextInjector, TextInjector>();

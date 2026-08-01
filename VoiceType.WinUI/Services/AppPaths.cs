@@ -3,18 +3,50 @@ using System.IO;
 namespace VoiceType.WinUI.Services;
 
 /// <summary>
-/// Centralized data paths. All app data lives under <c>%LOCALAPPDATA%\VoiceType</c>.
+/// Centralized data paths. All app data lives under a per-user VoiceType folder.
+/// When running packaged (MSIX), <c>%LOCALAPPDATA%</c> is virtualized by Windows to the
+/// package's private <c>LocalCache\Local</c>, so we return the REAL on-disk path
+/// (<c>...Packages\&lt;family&gt;\LocalCache\Local\VoiceType</c>) that the user can actually
+/// open in Explorer. When unpackaged (dotnet run), it is simply <c>%LOCALAPPDATA%\VoiceType</c>.
 /// </summary>
 public static class AppPaths
 {
     private static string? _dataRoot;
 
-    /// <summary>Root data folder: <c>%LOCALAPPDATA%\VoiceType</c>.</summary>
+    /// <summary>True when the app runs as an installed MSIX package.</summary>
+    public static bool IsPackaged
+    {
+        get
+        {
+            try
+            {
+                return Windows.ApplicationModel.Package.Current is not null;
+            }
+            catch
+            {
+                return false; // unpackaged — Package.Current throws
+            }
+        }
+    }
+
+    /// <summary>Root data folder — the REAL path on disk (Explorer-visible).</summary>
     public static string DataRoot
     {
         get
         {
             if (_dataRoot is not null) return _dataRoot;
+
+            if (IsPackaged)
+            {
+                // For packaged apps, GetFolderPath(LocalApplicationData) returns the VIRTUAL
+                // path (%LOCALAPPDATA%), but Windows actually redirects writes to the package's
+                // private %LOCALAPPDATA%\Packages\<family>\LocalCache\Local. Return the real,
+                // Explorer-visible location so paths shown in Settings are browsable.
+                var familyName = Windows.ApplicationModel.Package.Current.Id.FamilyName;
+                var baseLocal = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                _dataRoot = Path.Combine(baseLocal, "Packages", familyName, "LocalCache", "Local", "VoiceType");
+                return _dataRoot;
+            }
 
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             _dataRoot = Path.Combine(localAppData, "VoiceType");

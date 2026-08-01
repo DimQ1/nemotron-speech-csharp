@@ -8,7 +8,31 @@ namespace VoiceType.WinUI.Services;
 
 public sealed class SessionManager : ISessionManager
 {
-    private static string SessionsDir => AppPaths.SessionsDir;
+    private readonly ISettingsService? _settingsService;
+
+    public SessionManager(ISettingsService? settingsService = null)
+    {
+        _settingsService = settingsService;
+    }
+
+    private string SessionsDir
+    {
+        get
+        {
+            var configuredPath = _settingsService?.Load().SessionsPath;
+            if (string.IsNullOrWhiteSpace(configuredPath))
+                return AppPaths.SessionsDir;
+
+            try
+            {
+                return Path.GetFullPath(configuredPath);
+            }
+            catch (ArgumentException)
+            {
+                return AppPaths.SessionsDir;
+            }
+        }
+    }
 
     public string EnsureDirectory()
     {

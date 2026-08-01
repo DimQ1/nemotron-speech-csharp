@@ -10,8 +10,6 @@ public sealed class SettingsService : ISettingsService
 {
     private readonly string _filePath;
     private readonly object _saveLock = new();
-    private DateTime _lastSave = DateTime.MinValue;
-    private const int MinSaveIntervalMs = 300;
 
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
@@ -49,10 +47,6 @@ public sealed class SettingsService : ISettingsService
     {
         lock (_saveLock)
         {
-            var now = DateTime.UtcNow;
-            if ((now - _lastSave).TotalMilliseconds < MinSaveIntervalMs)
-                return;
-
             try
             {
                 var dir = Path.GetDirectoryName(_filePath)!;
@@ -63,7 +57,6 @@ public sealed class SettingsService : ISettingsService
                 File.WriteAllText(tempPath, json);
                 File.Move(tempPath, _filePath, overwrite: true);
 
-                _lastSave = now;
                 System.Diagnostics.Debug.WriteLine($"[Settings] Saved OK: {json.Length} bytes");
             }
             catch (Exception ex)

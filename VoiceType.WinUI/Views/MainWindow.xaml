@@ -18,7 +18,8 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Background="{StaticResource BgSecondaryBrush}">
+          <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Padding="0,0,144,0"
+              Background="{StaticResource BgSecondaryBrush}">
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
                 <FontIcon Glyph="&#xE720;" FontSize="16" Foreground="{StaticResource AccentBrush}"/>
                 <TextBlock Text="VoiceType" Foreground="{StaticResource FgBrush}"
@@ -35,6 +36,10 @@
                         ToolTipService.ToolTip="Settings"
                         AutomationProperties.Name="Open settings"
                         Command="{x:Bind ViewModel.OpenSettingsCommand}"/>
+                <Button Content="&#xE897;" Style="{StaticResource IconButton}"
+                        ToolTipService.ToolTip="How to use"
+                        AutomationProperties.Name="Open help"
+                        Command="{x:Bind ViewModel.OpenHelpCommand}"/>
             </StackPanel>
         </Grid>
 

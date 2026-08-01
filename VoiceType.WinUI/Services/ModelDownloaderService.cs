@@ -342,16 +342,52 @@ public sealed class ModelDownloaderService : IModelDownloaderService
             : knownSize;
 
         await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
-        await using var fileStream = new FileStream(dest, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
 
-        var buffer = new byte[81920];
-        long totalRead = 0;
-        int bytesRead;
-        while ((bytesRead = await contentStream.ReadAsync(buffer, ct)) > 0)
+        // Write to a temp file first, then atomically move into place. This avoids
+        // truncating a file that another process may hold open (memory-mapped ONNX),
+        // and lets us retry when the destination is briefly locked.
+        var tempDest = dest + ".download";
+        await using (var fileStream = new FileStream(tempDest, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
         {
-            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
-            totalRead += bytesRead;
-            onProgress?.Invoke(bytesRead, totalRead, actualSize);
+            var buffer = new byte[81920];
+            long totalRead = 0;
+            int bytesRead;
+            while ((bytesRead = await contentStream.ReadAsync(buffer, ct)) > 0)
+            {
+                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
+                totalRead += bytesRead;
+                onProgress?.Invoke(bytesRead, totalRead, actualSize);
+            }
+        }
+
+        MoveWithRetry(tempDest, dest, ct);
+    }
+
+    /// <summary>Move a fully-downloaded temp file over the destination, retrying while the
+    /// destination is locked by another process (e.g. a running VoiceType instance that has
+    /// the model memory-mapped). Gives up after a bounded number of attempts.</summary>
+    private static void MoveWithRetry(string tempDest, string dest, CancellationToken ct)
+    {
+        const int maxAttempts = 12;
+        const int delayMs = 250;
+
+        for (int attempt = 1; ; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                // File.Move(overwrite:true) replaces the destination atomically on the same volume.
+                File.Move(tempDest, dest, overwrite: true);
+                return;
+            }
+            catch (IOException) when (attempt < maxAttempts)
+            {
+                Thread.Sleep(delayMs);
+            }
+            catch (UnauthorizedAccessException) when (attempt < maxAttempts)
+            {
+                Thread.Sleep(delayMs);
+            }
         }
     }
 
