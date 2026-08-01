@@ -126,8 +126,8 @@
     <PackageReference Include="NAudio.Lame" Version="2.1.0" />
     <!-- Exclude native ORT from Windows AI (managed via SpeechLib, which owns ORT GenAI dependencies) -->
     <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
-    <!-- Force managed ORT 1.25.1 assembly (transitive 1.23 from GenAI is overridden) -->
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.25.1" ExcludeAssets="native" />
+    <!-- GenAI 0.15.0 requires managed ORT 1.28.0. Native assets are copied below. -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" ExcludeAssets="native" />
   </ItemGroup>
 
   <ItemGroup>
@@ -168,43 +168,34 @@
     <TrimmerRootDescriptor Include="TrimmerRoots.xml" Condition="Exists('TrimmerRoots.xml')" />
   </ItemGroup>
 
-  <!-- Copy nemotron_swish_cpu.dll and ORT 1.25.1 native DLL into AppX.
-       ORT 1.25.1 is required by opset-24 ONNX models. The stale 1.23 DLL
-       from the GenAI transitive dependency is overwritten.
+  <!-- Copy ORT 1.28.0 native DLL into AppX.
+       ORT 1.28.0 is required by GenAI 0.15.0. The stale transitive DLL
+       from the GenAI dependency is overwritten.
        Also strips PDBs from AppX (Store submission requirement).
 
        NOTE: SpeechLib owns ORT GenAI dependencies with GpuArch selection.
        Use -p:GpuArch=CPU for Store/CPU builds. -->
-  <Target Name="CopyOrt1251AndSwishOpToAppX" AfterTargets="Build">
-    <!-- ORT 1.25.1 from NuGet cache (CPU-only, no CUDA providers) -->
+  <Target Name="CopyOrt1280NativeAssetsToAppX" AfterTargets="Build">
+    <!-- ORT 1.28.0 from NuGet cache (CPU-only, no CUDA providers) -->
     <PropertyGroup>
-      <_Ort1251Cache>$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime\1.25.1\runtimes\win-x64\native\</_Ort1251Cache>
+      <_Ort1280Cache>$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime\1.28.0\runtimes\win-x64\native\</_Ort1280Cache>
     </PropertyGroup>
     <ItemGroup>
-      <_Ort1251Native Include="$(_Ort1251Cache)*.dll"
-                      Condition="Exists('$(_Ort1251Cache)')" />
+      <_Ort1280Native Include="$(_Ort1280Cache)*.dll"
+                      Condition="Exists('$(_Ort1280Cache)')" />
     </ItemGroup>
-    <Copy SourceFiles="@(_Ort1251Native)"
+    <Copy SourceFiles="@(_Ort1280Native)"
           DestinationFolder="$(OutputPath)"
           SkipUnchangedFiles="false"
-          Condition="'@(_Ort1251Native)' != ''" />
-    <Copy SourceFiles="@(_Ort1251Native)"
+          Condition="'@(_Ort1280Native)' != ''" />
+    <Copy SourceFiles="@(_Ort1280Native)"
           DestinationFolder="$(OutputPath)AppX"
           SkipUnchangedFiles="false"
-          Condition="'@(_Ort1251Native)' != ''" />
-    <!-- Remove stale CUDA provider DLLs (incompatible with ORT 1.25.1 and unused on CPU) -->
+          Condition="'@(_Ort1280Native)' != ''" />
+    <!-- Remove stale CUDA provider DLLs (incompatible with ORT 1.28.0 and unused on CPU) -->
     <Delete Files="$(OutputPath)AppX\onnxruntime_providers_cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_cuda.dll')" />
     <Delete Files="$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll')" />
     <Delete Files="$(OutputPath)AppX\onnxruntime-genai-cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime-genai-cuda.dll')" />
-    <!-- Swish-24 custom op DLL -->
-    <ItemGroup>
-      <_SwishDll Include="$(OutputPath)nemotron_swish_cpu.dll"
-                 Condition="Exists('$(OutputPath)nemotron_swish_cpu.dll')" />
-    </ItemGroup>
-    <Copy SourceFiles="@(_SwishDll)"
-          DestinationFolder="$(OutputPath)AppX"
-          SkipUnchangedFiles="false"
-          Condition="'@(_SwishDll)' != ''" />
     <!-- VC++ Runtime (required by ONNX Runtime native DLLs) -->
     <ItemGroup>
       <_VcRuntime Include="$(SystemRoot)\System32\vcruntime140.dll" />

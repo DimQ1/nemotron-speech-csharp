@@ -276,8 +276,7 @@ dotnet publish VoiceType.WinUI\VoiceType.WinUI.csproj `
 - ✅ `PublishReadyToRun=true` — AOT-компиляция для быстрого запуска
 - ✅ `PublishTrimmed=true` — удаление неиспользуемого IL-кода
 - ✅ `SelfContained=true` — .NET Runtime включён в пакет
-- ✅ ORT 1.25.1 native DLL копируются в AppX
-- ✅ `nemotron_swish_cpu.dll` custom op копируется в AppX
+- ✅ ORT 1.28.0 native DLL копируются в AppX
 
 ### Проверка пакета перед загрузкой:
 

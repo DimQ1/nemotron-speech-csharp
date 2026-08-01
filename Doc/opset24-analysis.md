@@ -72,9 +72,8 @@ bias** (не GQA, не RoPE), активация — **Swish** (`Mul` + `Sigmoid
 > `OperatorKernels.md`, где Swish-24 отсутствовал. Эксперимент с моделью
 > `Swish` opset 24 на `Microsoft.ML.OnnxRuntime` 1.25.1 показал, что CPU-kernel
 > Swish-24 **уже присутствует** в релизной сборке — сессия создаётся и
-> вычисляет корректно без всяких custom ops. Тем не менее custom-op DLL
-> (`NemotronSpeech/Native/`) сохранена как запасной путь для старых ORT
-> (≤1.23, например транзитивный ORT из `OnnxRuntimeGenAI.Cuda` 0.14.1).
+> вычисляет корректно без всяких custom ops. Поэтому проект не регистрирует
+> отдельную custom-op DLL и не требует локального C++ toolchain для сборки.
 
 **Текущая установка**: ORT 1.23.0 → `ai.onnx` max **opset 23**.
 Opset 24 полностью (включая Swish) поддерживается только начиная с ORT 1.25.
@@ -127,9 +126,9 @@ opset 23+; opset 24 поддерживается dynamo-экспортёром �
    opset. INT8/INT4-квантование останется на `MatMulNBits` независимо от
    `target_opset`. Размеры и скорость квантованных моделей от opset 24
    **не изменятся**.
-3. **Swish-24 без CPU kernels**: замена `Sigmoid+Mul` на `Swish` приведёт к
-   неподдерживаемому узлу на CPU EP (по состоянию на ORT 1.25) — риск ошибки
-   загрузки или падения производительности (fallback разбивает граф).
+3. **Swish-24**: в используемом ORT 1.28 CPU-kernel встроен, поэтому замена
+  `Sigmoid+Mul` на `Swish` не требует отдельной custom-op DLL. Для CUDA/DML
+  поддержку конкретного графа всё равно нужно проверять отдельно.
 4. **Совместимость со стеком**: проект использует `Microsoft.ML.OnnxRuntimeGenAI`
    0.14.1 / `OnnxRuntimeGenAI.Cuda` 0.15.0-dev — они тащат ORT ~1.22–1.23.
    Для opset 24 потребуется обновление GenAI до сборки на ORT ≥1.25, иначе
@@ -182,4 +181,5 @@ opset 23+; opset 24 поддерживается dynamo-экспортёром �
 - ONNX Changelog (main): новые опы opset 21–24 — перечислены выше.
 - ORT `docs/OperatorKernels.md`: Attention 23+/24+ CPU fp32/fp16; RMSNorm 23+; RotaryEmbedding 23+; TensorScatter 24+; **Swish — отсутствует**.
 - ORT v1.25.0 release notes: «Attention opset 24 on CUDA», «TensorScatter-24 CPU+CUDA», «Nemotron speech conformer encoder MHA fusion #27764», MatMulNBits DP4A/2-bit-zp.
-- Локально: ORT 1.23.0 → max ai.onnx opset 23; onnx 1.17.0 → max opset 22.
+- Локально: ORT 1.28.0 содержит CPU-kernel для Swish-24; onnx 1.17.0 → max
+  opset 22.

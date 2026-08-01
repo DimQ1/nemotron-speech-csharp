@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <!-- GPU architecture selection.
-       Standard (default):  RTX 20/30/40 — stable ORT GenAI 0.14.1, CUDA 12.x
+      Standard (default):  RTX 20/30/40 — stable ORT GenAI 0.15.0, CUDA 12.x
        Blackwell:           RTX 50        — nightly ORT GenAI, CUDA 13.x
        CPU:                 no GPU        — CPU-only ORT GenAI (smaller, no CUDA DLLs)
        DML:                 any GPU       — DirectML ORT GenAI (Windows GPU via DirectX)
@@ -25,25 +25,6 @@
   <PropertyGroup>
     <GpuArch Condition="'$(GpuArch)' == ''">Standard</GpuArch>
   </PropertyGroup>
-
-  <!-- Native Swish-24 custom-op library (see Native/swish_cpu.cpp).
-       Built before the managed project and deployed next to the binaries.
-       Only relevant for the CPU build that overrides ORT to 1.25.1;
-       the build script is a no-op when cmake is unavailable. -->
-  <Target Name="BuildSwishCustomOp" BeforeTargets="BeforeBuild"
-          Condition="'$(GpuArch)' == 'CPU'">
-    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Native\build.ps1&quot;"
-          ContinueOnError="WarnAndContinue" />
-  </Target>
-
-  <ItemGroup Condition="'$(GpuArch)' == 'CPU'">
-    <None Include="Native\build\nemotron_swish_cpu.dll"
-          Condition="Exists('Native\build\nemotron_swish_cpu.dll')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <!-- Flatten: the DLL must sit next to the binary, not under Native\build -->
-      <TargetPath>nemotron_swish_cpu.dll</TargetPath>
-    </None>
-  </ItemGroup>
 
   <Choose>
     <!-- Blackwell (RTX 50) — nightly ORT -->
@@ -62,12 +43,12 @@
         <DefineConstants>$(DefineConstants);GPU_NONE</DefineConstants>
       </PropertyGroup>
       <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.14.1" />
-        <!-- Override transitive ORT 1.23.0 -> 1.25.1: Nemotron conformer MHA fusion,
+        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.15.0" />
+        <!-- Pin ORT 1.28.0, required by GenAI 0.15.0 and used for Nemotron conformer MHA fusion,
              MatMulNBits DP4A tiling / K-parallelism improvements.
              GeneratePathProperty exposes $(PkgMicrosoft_ML_OnnxRuntime) for the
              native-asset copy target below. -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.25.1" GeneratePathProperty="true" />
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" GeneratePathProperty="true" />
       </ItemGroup>
     </When>
 
@@ -87,26 +68,23 @@
         <DefineConstants>$(DefineConstants);GPU_STANDARD</DefineConstants>
       </PropertyGroup>
       <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.14.1" />
+        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.15.0" />
       </ItemGroup>
     </Otherwise>
   </Choose>
 
-  <!-- NuGet only copies native runtime assets from the package that ORIGINALLY
-       provided the dependency (GenAI -> ORT 1.23.0). A direct PackageReference
-       override bumps the managed assembly but leaves the stale 1.23 native DLL
-       in the output, which then rejects opset-24 models. Copy the real 1.25.1
-       native assets over the output after build (CPU branch only). -->
-  <Target Name="CopyOrt1251NativeAssets" AfterTargets="Build"
+  <!-- Keep native ORT assets aligned with the explicitly pinned CPU runtime.
+       This also replaces stale assets left by an incremental build. -->
+    <Target Name="CopyOrt1280NativeAssets" AfterTargets="Build"
           Condition="'$(GpuArch)' == 'CPU' and Exists('$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\onnxruntime.dll')">
     <ItemGroup>
-      <_Ort1251Native Include="$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\*.dll" />
+      <_Ort1280Native Include="$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\*.dll" />
     </ItemGroup>
-    <Copy SourceFiles="@(_Ort1251Native)"
+    <Copy SourceFiles="@(_Ort1280Native)"
           DestinationFolder="$(OutputPath)runtimes\win-x64\native"
           SkipUnchangedFiles="false" />
     <Message Importance="High"
-             Text="Copied ORT 1.25.1 native assets to $(OutputPath)runtimes\win-x64\native" />
+             Text="Copied ORT 1.28.0 native assets to $(OutputPath)runtimes\win-x64\native" />
   </Target>
 
   <ItemGroup>
