@@ -202,7 +202,7 @@ public sealed partial class MainViewModel : ObservableObject
                 _ = StartAsync();
         }
 
-        IsActivelyInjecting = IsTextInjectionEnabled && IsRecording;
+        IsActivelyInjecting = value && IsRecording;
     }
 
     partial void OnIsAutoScrollEnabledChanged(bool value)

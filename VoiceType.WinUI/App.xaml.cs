@@ -180,6 +180,7 @@ public partial class App : Application
         services.AddSingleton<IGlobalHotkeyService, GlobalHotkeyService>();
         services.AddSingleton<ITextInjector, TextInjector>();
         services.AddSingleton<TaskbarService>();
+        services.AddSingleton<WindowIconService>();
 
         // Recognition (decorated with logging)
         services.AddSingleton<RecognitionService>(sp =>

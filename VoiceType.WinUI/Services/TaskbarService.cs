@@ -4,8 +4,8 @@ using VoiceType.WinUI.Interfaces;
 namespace VoiceType.WinUI.Services;
 
 /// <summary>
-/// Controls Windows taskbar button state: overlay icon and progress bar.
-/// Used to show "typing in progress" indicator when text injection is active.
+/// Controls Windows taskbar button state: injection dot, overlay icon, and progress bar.
+/// Used to show the microphone state while recognition is active.
 /// </summary>
 public sealed class TaskbarService : IDisposable
 {
@@ -39,32 +39,47 @@ public sealed class TaskbarService : IDisposable
         }
     }
 
-    /// <summary>Show "typing" indicator: overlay icon + indeterminate progress.</summary>
-    public void StartTypingIndicator()
+    /// <summary>Show the microphone indicator for the current recognition state.</summary>
+    public void StartRecordingIndicator(bool isMuted, bool isActivelyInjecting)
     {
-        if (_taskbarList is null || _hwnd == nint.Zero || _isIndicating) return;
+        if (_taskbarList is null || _hwnd == nint.Zero) return;
+        if (_isIndicating)
+        {
+            UpdateRecordingIndicator(isMuted, isActivelyInjecting);
+            return;
+        }
+
         _isIndicating = true;
 
         try
         {
-            // Create a small overlay icon (16x16) with a pencil/typing glyph
-            _overlayIcon = CreateTypingOverlayIcon();
-            if (_overlayIcon != nint.Zero)
-            {
-                _taskbarList.SetOverlayIcon(_hwnd, _overlayIcon, "Typing...");
-            }
-
-            // Indeterminate progress bar (marquee) — shows activity without known progress
-            _taskbarList.SetProgressState(_hwnd, TBPF_INDETERMINATE);
+            SetRecordingOverlay(isMuted, isActivelyInjecting);
+            SetRecognitionProgress();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"TaskbarService StartTypingIndicator failed: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"TaskbarService StartRecordingIndicator failed: {ex.Message}");
         }
     }
 
-    /// <summary>Hide typing indicator.</summary>
-    public void StopTypingIndicator()
+    /// <summary>Update the microphone overlay for the current recognition state.</summary>
+    public void UpdateRecordingIndicator(bool isMuted, bool isActivelyInjecting)
+    {
+        if (_taskbarList is null || _hwnd == nint.Zero || !_isIndicating) return;
+
+        try
+        {
+            SetRecordingOverlay(isMuted, isActivelyInjecting);
+            SetRecognitionProgress();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"TaskbarService UpdateRecordingIndicator failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Hide the microphone indicator.</summary>
+    public void StopRecordingIndicator()
     {
         if (_taskbarList is null || _hwnd == nint.Zero || !_isIndicating) return;
         _isIndicating = false;
@@ -82,7 +97,7 @@ public sealed class TaskbarService : IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"TaskbarService StopTypingIndicator failed: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"TaskbarService StopRecordingIndicator failed: {ex.Message}");
         }
     }
 
@@ -90,7 +105,7 @@ public sealed class TaskbarService : IDisposable
     public void Dispose()
     {
         if (_disposed) return;
-        StopTypingIndicator();
+        StopRecordingIndicator();
         if (_overlayIcon != nint.Zero)
         {
             DestroyIcon(_overlayIcon);
@@ -104,17 +119,139 @@ public sealed class TaskbarService : IDisposable
         _disposed = true;
     }
 
-    // ---- Icon creation (16x16, green dot) using raw Win32 ----
+    private void SetRecordingOverlay(bool isMuted, bool isActivelyInjecting)
+    {
+        var newIcon = isActivelyInjecting
+            ? CreateRedDotOverlayIcon()
+            : CreateMicrophoneOverlayIcon(isMuted, isActivelyInjecting);
+        if (newIcon == nint.Zero)
+            return;
 
-    private static nint CreateTypingOverlayIcon()
+        try
+        {
+            _taskbarList!.SetOverlayIcon(
+                _hwnd,
+                newIcon,
+                isActivelyInjecting
+                    ? "Transcribing and typing..."
+                    : isMuted ? "Microphone muted" : "Listening...");
+
+            var previousIcon = _overlayIcon;
+            _overlayIcon = newIcon;
+            if (previousIcon != nint.Zero)
+                DestroyIcon(previousIcon);
+        }
+        catch
+        {
+            DestroyIcon(newIcon);
+            throw;
+        }
+    }
+
+    private void SetRecognitionProgress()
+    {
+        _taskbarList!.SetProgressState(
+            _hwnd,
+            TBPF_INDETERMINATE);
+    }
+
+    private static nint CreateRedDotOverlayIcon()
+    {
+        const int size = 16;
+        var hdcScreen = GetDC(nint.Zero);
+        var hdcMem = CreateCompatibleDC(hdcScreen);
+        nint hbmColor = nint.Zero;
+        nint hbmMask = nint.Zero;
+
+        try
+        {
+            if (hdcScreen == nint.Zero || hdcMem == nint.Zero)
+                return nint.Zero;
+
+            var bmi = new BITMAPINFO
+            {
+                bmiHeader = new BITMAPINFOHEADER
+                {
+                    biSize = Marshal.SizeOf<BITMAPINFOHEADER>(),
+                    biWidth = size,
+                    biHeight = -size,
+                    biPlanes = 1,
+                    biBitCount = 32,
+                    biCompression = 0,
+                    biSizeImage = size * size * 4
+                }
+            };
+
+            hbmColor = CreateDIBSection(hdcMem, ref bmi, 0, out var bits, nint.Zero, 0);
+            if (hbmColor == nint.Zero || bits == nint.Zero)
+                return nint.Zero;
+
+            var maskStride = ((size + 31) / 32) * 4;
+            var maskData = new byte[maskStride * size];
+            var maskHandle = GCHandle.Alloc(maskData, GCHandleType.Pinned);
+            try
+            {
+                hbmMask = CreateBitmap(size, size, 1, 1, maskHandle.AddrOfPinnedObject());
+            }
+            finally
+            {
+                maskHandle.Free();
+            }
+
+            if (hbmMask == nint.Zero)
+                return nint.Zero;
+
+            var pixelData = new byte[size * size * 4];
+            for (var pixelY = 0; pixelY < size; pixelY++)
+            {
+                for (var pixelX = 0; pixelX < size; pixelX++)
+                {
+                    var distanceX = pixelX - 7.5;
+                    var distanceY = pixelY - 7.5;
+                    if (distanceX * distanceX + distanceY * distanceY > 30.25)
+                        continue;
+
+                    var index = (pixelY * size + pixelX) * 4;
+                    pixelData[index + 0] = 53;
+                    pixelData[index + 1] = 57;
+                    pixelData[index + 2] = 229;
+                    pixelData[index + 3] = 255;
+                }
+            }
+
+            Marshal.Copy(pixelData, 0, bits, pixelData.Length);
+            var iconInfo = new ICONINFO
+            {
+                fIcon = true,
+                hbmColor = hbmColor,
+                hbmMask = hbmMask
+            };
+
+            return CreateIconIndirect(ref iconInfo);
+        }
+        finally
+        {
+            if (hbmColor != nint.Zero)
+                DeleteObject(hbmColor);
+            if (hbmMask != nint.Zero)
+                DeleteObject(hbmMask);
+            if (hdcMem != nint.Zero)
+                DeleteDC(hdcMem);
+            if (hdcScreen != nint.Zero)
+                ReleaseDC(nint.Zero, hdcScreen);
+        }
+    }
+
+    // ---- Icon creation (16x16 microphone) using raw Win32 ----
+
+    private static nint CreateMicrophoneOverlayIcon(bool isMuted, bool isActivelyInjecting)
     {
         // Create a simple 16x16 icon using raw Win32 GDI — no System.Drawing dependency.
-        // The icon is a green circle on transparent background.
+        // Keep the overlay as a microphone silhouette; the color communicates its state.
 
         const int size = 16;
         var hdcScreen = GetDC(nint.Zero);
         var hdcMem = CreateCompatibleDC(hdcScreen);
-        var hdcMask = CreateCompatibleDC(hdcScreen);
 
         // Color bitmap (32bpp with alpha)
         var bmi = new BITMAPINFO
@@ -132,47 +269,44 @@ public sealed class TaskbarService : IDisposable
         };
 
         var hbmColor = CreateDIBSection(hdcMem, ref bmi, 0, out var bits, nint.Zero, 0);
-        var hbmMask = CreateBitmap(size, size, 1, 1, nint.Zero);
-
-        // Fill color bitmap: green circle (RGBA, premultiplied not needed for overlay)
-        var pixelData = new byte[size * size * 4];
-        for (var y = 0; y < size; y++)
+        var maskStride = ((size + 31) / 32) * 4;
+        var maskData = new byte[maskStride * size];
+        var maskHandle = GCHandle.Alloc(maskData, GCHandleType.Pinned);
+        nint hbmMask;
+        try
         {
-            for (var x = 0; x < size; x++)
-            {
-                var idx = (y * size + x) * 4;
-                var dx = x - size / 2 + 0.5;
-                var dy = y - size / 2 + 0.5;
-                var dist = Math.Sqrt(dx * dx + dy * dy);
+            hbmMask = CreateBitmap(size, size, 1, 1, maskHandle.AddrOfPinnedObject());
+        }
+        finally
+        {
+            maskHandle.Free();
+        }
 
-                if (dist < size / 2)
+        var red = isActivelyInjecting ? (byte)229 : isMuted ? (byte)245 : (byte)0;
+        var green = isActivelyInjecting ? (byte)57 : isMuted ? (byte)158 : (byte)120;
+        var blue = isActivelyInjecting ? (byte)53 : isMuted ? (byte)11 : (byte)212;
+
+        // Fill color bitmap: microphone silhouette (BGRA, premultiplied not needed for overlay)
+        var pixelData = new byte[size * size * 4];
+        for (var pixelY = 0; pixelY < size; pixelY++)
+        {
+            for (var pixelX = 0; pixelX < size; pixelX++)
+            {
+                var idx = (pixelY * size + pixelX) * 4;
+
+                if (IsMicrophonePixel(pixelX, pixelY))
                 {
-                    // Green: B=0, G=175, R=76, A=255
-                    pixelData[idx + 0] = 0;      // B
-                    pixelData[idx + 1] = 175;    // G
-                    pixelData[idx + 2] = 76;     // R
-                    pixelData[idx + 3] = 255;    // A
-                }
-                else
-                {
-                    pixelData[idx + 3] = 0;      // A = transparent
+                    pixelData[idx + 0] = blue;
+                    pixelData[idx + 1] = green;
+                    pixelData[idx + 2] = red;
+                    pixelData[idx + 3] = 255;
                 }
             }
         }
         Marshal.Copy(pixelData, 0, bits, pixelData.Length);
 
-        // Mask: 0 = opaque, 1 = transparent
-        var hbmMaskOld = SelectObject(hdcMask, hbmMask);
-        var brush = GetStockObject(BLACK_BRUSH);
-        SelectObject(hdcMask, brush);
-        Rectangle(hdcMask, 0, 0, size, size);
-
-        // Circle in mask = 0 (opaque)
-        var whiteBrush = GetStockObject(WHITE_BRUSH);
-        SelectObject(hdcMask, whiteBrush);
-        Ellipse(hdcMask, 0, 0, size, size);
-
-        SelectObject(hdcMask, hbmMaskOld);
+        // Keep the monochrome mask fully opaque and let the 32bpp alpha channel provide
+        // transparency around the microphone. Do not add a circular badge.
 
         var ii = new ICONINFO
         {
@@ -187,10 +321,42 @@ public sealed class TaskbarService : IDisposable
         DeleteObject(hbmColor);
         DeleteObject(hbmMask);
         DeleteDC(hdcMem);
-        DeleteDC(hdcMask);
         ReleaseDC(nint.Zero, hdcScreen);
 
         return hIcon;
+    }
+
+    private static bool IsMicrophonePixel(int pixelX, int pixelY)
+    {
+        var capsule = IsRoundedRectangle(pixelX, pixelY, 5, 2, 10, 10, 3);
+        var stem = pixelX is >= 7 and <= 8 && pixelY is >= 10 and <= 13;
+        var baseLine = IsRoundedRectangle(pixelX, pixelY, 4, 13, 11, 15, 1);
+
+        var distanceX = pixelX - 8;
+        var distanceY = pixelY - 8;
+        var distanceSquared = distanceX * distanceX + distanceY * distanceY;
+        var outerArc = pixelY >= 5 && distanceSquared is >= 25 and <= 36;
+
+        return capsule || stem || baseLine || outerArc;
+    }
+
+    private static bool IsRoundedRectangle(
+        int pixelX,
+        int pixelY,
+        int left,
+        int top,
+        int right,
+        int bottom,
+        int radius)
+    {
+        if (pixelX < left || pixelX > right || pixelY < top || pixelY > bottom)
+            return false;
+
+        var nearestX = Math.Clamp(pixelX, left + radius, right - radius);
+        var nearestY = Math.Clamp(pixelY, top + radius, bottom - radius);
+        var distanceX = pixelX - nearestX;
+        var distanceY = pixelY - nearestY;
+        return distanceX * distanceX + distanceY * distanceY <= radius * radius;
     }
 
     // ---- Win32 / COM interop ----
@@ -198,11 +364,6 @@ public sealed class TaskbarService : IDisposable
     private const uint CLSCTX_ALL = 0x17;
     private const int TBPF_NOPROGRESS = 0x0;
     private const int TBPF_INDETERMINATE = 0x1;
-    private const int TBPF_NORMAL = 0x2;
-    private const int TBPF_ERROR = 0x4;
-    private const int TBPF_PAUSED = 0x8;
-    private const int BLACK_BRUSH = 4;
-    private const int WHITE_BRUSH = 0;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct BITMAPINFOHEADER
@@ -264,15 +425,6 @@ public sealed class TaskbarService : IDisposable
 
     [DllImport("gdi32.dll")]
     private static extern bool DeleteObject(nint ho);
-
-    [DllImport("gdi32.dll")]
-    private static extern nint GetStockObject(int i);
-
-    [DllImport("gdi32.dll")]
-    private static extern bool Rectangle(nint hdc, int left, int top, int right, int bottom);
-
-    [DllImport("gdi32.dll")]
-    private static extern bool Ellipse(nint hdc, int left, int top, int right, int bottom);
 
     [DllImport("user32.dll")]
     private static extern nint CreateIconIndirect(ref ICONINFO ii);

@@ -17,6 +17,7 @@ public sealed partial class MainWindow : Window
 {
     private readonly MainViewModel _vm;
     private readonly TaskbarService _taskbarService;
+    private readonly WindowIconService _windowIconService;
     private const int WM_HOTKEY = 0x0312;
     private nint _hwnd;
     private SubclassProc? _subclassProc;
@@ -56,6 +57,7 @@ public sealed partial class MainWindow : Window
         // ViewModel must be set BEFORE InitializeComponent for x:Bind to work
         _vm = viewModel;
         _taskbarService = App.Services.GetRequiredService<TaskbarService>();
+        _windowIconService = App.Services.GetRequiredService<WindowIconService>();
 
         InitializeComponent();
 
@@ -66,6 +68,7 @@ public sealed partial class MainWindow : Window
         // Get HWND for hotkey registration
         _hwnd = WindowNative.GetWindowHandle(this);
         _vm.MainWindowHandle = _hwnd;
+        UpdateMicrophoneIcon();
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -82,6 +85,10 @@ public sealed partial class MainWindow : Window
 
         // Initialize taskbar indicator after HWND is known
         _taskbarService.Initialize(_hwnd);
+        if (_vm.IsRecording)
+            _taskbarService.StartRecordingIndicator(
+                _vm.IsCaptureMuted,
+                _vm.IsActivelyInjecting);
     }
 
     public void ConfigureWindow()
@@ -118,21 +125,53 @@ public sealed partial class MainWindow : Window
                 : (Brush)Application.Current.Resources["FgSecondaryBrush"];
         }
 
-        if (e.PropertyName == nameof(MainViewModel.IsActivelyInjecting))
+        if (e.PropertyName is nameof(MainViewModel.IsRecording)
+            or nameof(MainViewModel.IsActivelyInjecting)
+            or nameof(MainViewModel.IsTextInjectionEnabled))
         {
+            UpdateMicrophoneIcon();
+        }
+
+        if (e.PropertyName is nameof(MainViewModel.IsRecording)
+            or nameof(MainViewModel.IsActivelyInjecting)
+            or nameof(MainViewModel.IsTextInjectionEnabled))
+        {
+            var isRecording = _vm.IsRecording;
+            var isActivelyInjecting = _vm.IsActivelyInjecting;
+            var isCaptureMuted = _vm.IsCaptureMuted;
+
             DispatcherQueue.TryEnqueue(() =>
             {
-                if (_vm.IsActivelyInjecting)
-                    _taskbarService.StartTypingIndicator();
+                if (isRecording)
+                    _taskbarService.StartRecordingIndicator(isCaptureMuted, isActivelyInjecting);
                 else
-                    _taskbarService.StopTypingIndicator();
+                    _taskbarService.StopRecordingIndicator();
+            });
+        }
+
+        if (e.PropertyName == nameof(MainViewModel.IsCaptureMuted))
+        {
+            var isCaptureMuted = _vm.IsCaptureMuted;
+            var isActivelyInjecting = _vm.IsActivelyInjecting;
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                _taskbarService.UpdateRecordingIndicator(isCaptureMuted, isActivelyInjecting);
             });
         }
     }
 
+    private void UpdateMicrophoneIcon()
+    {
+        var isTextInjectionActive = _vm.IsRecording && _vm.IsTextInjectionEnabled;
+        MicrophoneIcon.Foreground = isTextInjectionActive
+            ? (Brush)Application.Current.Resources["RedBrush"]
+            : (Brush)Application.Current.Resources["AccentBrush"];
+        _windowIconService.SetWindowIcon(_hwnd, AppWindow, isTextInjectionActive);
+    }
+
     private void OnClosed(object sender, WindowEventArgs args)
     {
-        _taskbarService.StopTypingIndicator();
+        _taskbarService.StopRecordingIndicator();
         _taskbarService.Dispose();
         _childPlacementTimer?.Stop();
 
@@ -147,6 +186,7 @@ public sealed partial class MainWindow : Window
         }
         _childWindows.Clear();
         _initiallyPlacedChildWindows.Clear();
+        _windowIconService.Dispose();
     }
 
     private void SubclassWindow()
@@ -210,6 +250,7 @@ public sealed partial class MainWindow : Window
 
         var childHwnd = WindowNative.GetWindowHandle(child);
         var state = new ChildWindowState();
+        _windowIconService.SetWindowIcon(childHwnd, child.AppWindow, isTextInjectionActive: false);
 
         // Subclass the child window to veto moves that are NOT initiated by the user
         // (Windows Snap Assist / DWM re-arrangement on activation change), while
