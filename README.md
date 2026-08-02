@@ -17,7 +17,10 @@ Real-time multilingual speech recognition using [NVIDIA Nemotron 3.5 ASR](https:
 ```
 nemotron-speech-csharp/
 ├── NemotronSpeech.slnx           # .NET 10 solution file
-├── SpeechLib/                    # 📚 Speech recognition abstraction library
+├── SpeechLib/                    # 📚 Provider-neutral speech contracts
+├── SpeechLib.Nemotron/           # 🧠 Nemotron ONNX Runtime provider
+├── SpeechLib.Audio.NAudio2/      # 🎙️ Stable NAudio 2 audio provider
+├── SpeechLib.Audio.NAudio3/      # 🎙️ NAudio 3 preview audio provider
 ├── NemotronSpeech/               # 🎙️ Nemotron ONNX GenAI recognizer (CLI + engine)
 ├── VoiceType/                    # 🖥️ WPF desktop app (streaming dictation)
 ├── converter/                    # 🐍 Python model converter (NeMo → ONNX)
@@ -33,7 +36,10 @@ nemotron-speech-csharp/
 
 | Project | Type | Description |
 |---------|------|-------------|
-| [**SpeechLib**](SpeechLib/README.md) | .NET 10 Library | Interfaces (`IStreamingSpeechRecognizer`, `IAudioSource`), audio utilities, live capture sources, language mapper, transcriber orchestrator |
+| [**SpeechLib**](SpeechLib/README.md) | .NET 10 Library | Provider-neutral interfaces, bounded audio queues, capture lifecycle, and `LiveTranscriber` |
+| **SpeechLib.Nemotron** | .NET 10 Library | NVIDIA Nemotron ONNX Runtime GenAI recognizer provider |
+| **SpeechLib.Audio.NAudio2** | .NET 10 Library | Stable NAudio 2.3.0 microphone, loopback, mix, and file provider |
+| **SpeechLib.Audio.NAudio3** | .NET 10 Windows Library | NAudio 3.0.0-preview.19 microphone, loopback, and mix provider |
 | [**NemotronSpeech**](NemotronSpeech/README.md) | .NET 10 Console App | ONNX Runtime GenAI implementation of `IStreamingSpeechRecognizer` for NVIDIA Nemotron 3.5 ASR. Supports CUDA / CPU / DirectML. |
 | [**VoiceType**](VoiceType/README.md) | .NET 10 WPF App | Desktop speech-to-text with global hotkeys, text injection into any app, session recording, post-processing pipeline, MP3 audio saving |
 
@@ -66,22 +72,32 @@ dotnet run --project VoiceType -c Release
 
 | Command | Target GPU | ORT GenAI | CUDA |
 |---------|------------|-----------|------|
-| `dotnet build -c Release` | RTX 20/30/40, GTX 16 | 0.14.1 stable | 12.x |
+| `dotnet build -c Release` | RTX 20/30/40, GTX 16 | 0.15.0 stable | 12.x |
 | `dotnet build -c Release -p:GpuArch=Blackwell` | RTX 50 (Blackwell) | nightly | 13.x |
-| `dotnet build -c Release -p:GpuArch=CPU` | No GPU | 0.14.1 CPU | — |
+| `dotnet build -c Release -p:GpuArch=CPU` | No GPU | 0.15.0 CPU | — |
 | `dotnet build -c Release -p:GpuArch=DML` | Any GPU (DirectX) | 0.14.1 DML | — |
 
 ## Dependencies Graph
 
 ```mermaid
 graph TD
-    SL[SpeechLib] --> |NAudio| NA[NAudio 2.2.1]
-    NS[NemotronSpeech] --> |ONNX GenAI| ORT[Microsoft.ML.OnnxRuntimeGenAI]
-    NS --> SL
-    VT[VoiceType WPF] --> SL
-    VT --> NS
+  SL[SpeechLib core] --> |contracts| APP[Applications]
+  NA2[SpeechLib.Audio.NAudio2] --> |NAudio 2.3.0| SL
+  NA3[SpeechLib.Audio.NAudio3] --> |NAudio 3 preview| SL
+  NM[SpeechLib.Nemotron] --> |ONNX GenAI| ORT[Microsoft.ML.OnnxRuntimeGenAI]
+  NM --> SL
+  CLI[NemotronSpeech] --> NM
+  CLI --> NA2
+  VT[VoiceType WPF] --> NM
+  VT --> NA2
     VT --> |MP3| LAME[NAudio.Lame]
 ```
+
+The core assembly does not reference NAudio or ONNX Runtime. Audio providers are Windows-specific; the core contracts can be used on other platforms with an application-supplied `IAudioSource`.
+
+### NAudio 3 preview
+
+The preview provider is opt-in and is not the default for CLI, WPF, or WinUI applications. To evaluate it, reference `SpeechLib.Audio.NAudio3`, create an `NAudio3AudioSourceFactory`, and pass its source to `LiveTranscriber.Run`. See [SpeechLib.Audio.NAudio3 README](SpeechLib.Audio.NAudio3/README.md).
 
 ## CLI Usage (NemotronSpeech)
 
@@ -149,6 +165,21 @@ See [converter/README.md](converter/README.md) for Python model conversion (NeMo
 
 ## Performance
 
+### CPU INT4/INT8 benchmark
+
+`BenchmarkSuite1` compares the shipped `models-onnx/cpu-fp32`,
+`cpu-int8`, and `cpu-int4` artifacts on `Test-Audio/sample-0.mp3`.
+The benchmark reports steady-state real-time factor (RTF) and memory
+diagnostics; transcripts are written to the ignored `build/benchmark-results/`
+directory for manual WER comparison against a trusted reference.
+
+```powershell
+dotnet run --project BenchmarkSuite1 -c Release --no-restore -- --filter "*TranscribeSampleRtf*"
+```
+
+Model construction is intentionally outside the timed method, so these results
+measure inference throughput rather than startup time.
+
 Measured on Ryzen 9 + RTX 5070 Ti Laptop (Blackwell, 20 cores):
 
 | Mode | CPU idle | CPU speech | GPU | VRAM | Tokens |
@@ -165,7 +196,7 @@ Measured on Ryzen 9 + RTX 5070 Ti Laptop (Blackwell, 20 cores):
 ## Architecture
 
 ```
-Mic/Loopback ──→ NAudio WASAPI ──→ ConcurrentQueue<float[]> (lock-free, batched)
+Mic/Loopback ──→ selected NAudio provider ──→ bounded ConcurrentQueue<float[]> (batched)
                                           │
                                           ▼
                                    StreamingProcessor
@@ -188,9 +219,9 @@ Mic/Loopback ──→ NAudio WASAPI ──→ ConcurrentQueue<float[]> (lock-fr
 | `LanguageMapper.cs` | BCP-47 → lang_id |
 | `ModelSession.cs` | ORT model lifecycle |
 | `WordTiming.cs` | Word + start/end time record |
-| `AudioSource.cs` | `IAudioSource` + Mic/Loopback/Mix |
-| `AudioUtils.cs` | Convert, Resample, LoadFile |
-| `Transcriber.cs` | RunFile, RunLive orchestration, word timing |
+| `IAudioSourceFactory` | Provider-neutral source construction contract |
+| `LiveTranscriber.cs` | Provider-neutral live capture orchestration |
+| `Transcriber.cs` | File orchestration and compatibility API |
 
 ---
 

@@ -1,4 +1,4 @@
-# Nemotron 3.5 ASR Streaming Multilingual 0.6B (INT4, CPU/CUDA)
+# Nemotron 3.5 ASR Streaming Multilingual 0.6B (INT4/INT8/FP16)
 
 This recipe exports **nvidia/NVIDIA-Nemotron-3.5-ASR-Streaming-Multilingual-0.6b**
 (100+ languages) to ONNX, optimizes the encoder, and produces deployment-ready
@@ -6,12 +6,19 @@ artifacts for `onnxruntime-genai`.
 
 All model components are handled through Olive's declarative pass system:
 - **Encoder**: OnnxConversion → OnnxKQuantQuantization (INT4 default, or INT8 dynamic)
-- **Decoder**: OnnxConversion (FP32)
-- **Joint**: OnnxConversion (FP32)
+- **Decoder**: OnnxConversion (FP32), or OnnxConversion → OnnxFloatToFloat16
+- **Joint**: OnnxConversion (FP32), or OnnxConversion → OnnxFloatToFloat16
+
+The FP16 path converts encoder, decoder, and joint I/O together. This is required
+for the homogeneous floating-point I/O expected by GenAI 0.15 Nemotron support
+and is intended for TensorRT RTX (`NvTensorRtRtx`).
 
 ## Files
 - `src/nemotron_encoder_int4_cpu.json` – Olive encoder config (convert → INT4 k-quant)
 - `src/nemotron_encoder_int8_cpu.json` – Olive encoder config (convert → INT8 dynamic, optional)
+- `src/nemotron_encoder_fp16_cuda.json` – Olive encoder config (convert → FP16 I/O)
+- `src/nemotron_decoder_fp16_cuda.json` – Olive decoder config (convert → FP16 I/O)
+- `src/nemotron_joint_fp16_cuda.json` – Olive joint config (convert → FP16 I/O)
 - `src/nemotron_decoder_fp32_cpu.json` – Olive decoder config (convert only)
 - `src/nemotron_joint_fp32_cpu.json` – Olive joint config (convert only)
 - `src/nemotron_model_load.py` – model loaders + dummy inputs for all components
@@ -40,14 +47,17 @@ python src/optimize.py
 # Or INT8 encoder
 python src/optimize.py --encoder-precision int8
 
+# CUDA FP16 artifact for TensorRT RTX
+python src/optimize.py --encoder-precision fp16 --execution-provider cuda
+
 # Custom output directory
 python src/optimize.py --output-dir build/multilingual_onnx_int4
 ```
 
 This runs the full pipeline:
-1. **Encoder** — Olive: OnnxConversion → INT4/INT8 quantization
-2. **Decoder** — Olive: OnnxConversion (FP32)
-3. **Joint** — Olive: OnnxConversion (FP32)
+1. **Encoder** — Olive: OnnxConversion → INT4/INT8 quantization, or FP16 conversion
+2. **Decoder** — Olive: OnnxConversion (FP32), or FP16 conversion
+3. **Joint** — Olive: OnnxConversion (FP32), or FP16 conversion
 4. **Tokenizer** — exports vocab + tokenizer.json
 5. **Configs** — generates genai_config.json + audio_processor_config.json
 6. **VAD** — downloads Silero VAD ONNX model
@@ -75,6 +85,10 @@ Expected optimized artifacts in `src/build/onnx_models_int4/` (default output di
 - `vocab.txt`
 
 Total size: ~760 MB (INT4 encoder).
+
+For the FP16 command, the default output directory is
+`src/build/onnx_models_fp16_cuda/`. The script validates that every floating
+input and output of `encoder.onnx`, `decoder.onnx`, and `joint.onnx` is `FLOAT16`.
 
 ## Inference
 

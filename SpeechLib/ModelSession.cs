@@ -9,7 +9,7 @@ namespace SpeechLib;
 /// Wraps model lifecycle: config, model, processor, tokenizer, generator.
 /// Implements <see cref="IStreamingSpeechRecognizer"/> for pluggable recognition pipelines.
 /// </summary>
-public sealed class ModelSession : IStreamingSpeechRecognizer
+public sealed class ModelSession : IStreamingSpeechRecognizer, ILanguageConfigurable
 {
     private readonly Config _config;
     private readonly Model _model;
@@ -58,8 +58,7 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         _model = new Model(_config);
         _processor = new StreamingProcessor(_model);
 
-        if (useVad)
-            TrySetVad();
+        TrySetVad(useVad);
 
         VadStatus = _processor.GetOption("use_vad");
 
@@ -83,10 +82,22 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
     /// </summary>
     /// <param name="langId">Numeric language ID (see LanguageMapper).</param>
     public void SetLanguage(string langId)
+        => TrySetLanguage(langId);
+
+    /// <inheritdoc />
+    public bool TrySetLanguage(string language)
     {
-        if (IsSingleLanguage) return;
-        try { _generator.SetRuntimeOption("lang_id", langId); }
-        catch (Exception e) { Console.WriteLine($"  Warning: lang_id not set ({e.Message})"); }
+        if (IsSingleLanguage) return false;
+        try
+        {
+            _generator.SetRuntimeOption("lang_id", language);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"  Warning: lang_id not set ({e.Message})");
+            return false;
+        }
     }
 
     /// <inheritdoc />
@@ -150,10 +161,10 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         _config.Dispose();
     }
 
-    private void TrySetVad()
+    private void TrySetVad(bool enabled)
     {
-        try { _processor.SetOption("use_vad", "true"); }
-        catch (Exception e) { Console.WriteLine($"  VAD: disabled ({e.Message})"); }
+        try { _processor.SetOption("use_vad", enabled ? "true" : "false"); }
+        catch (Exception e) { Console.WriteLine($"  VAD: {(enabled ? "disabled" : "could not be configured")} ({e.Message})"); }
     }
 
     private static string ResolvePath(string path) =>

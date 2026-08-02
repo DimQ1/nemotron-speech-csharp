@@ -4,8 +4,8 @@ All model components (encoder, decoder, joint) are exported and optimized
 using Olive's declarative pass system:
 
   - Encoder: OnnxConversion → OnnxKQuantQuantization
-  - Decoder: OnnxConversion (FP32)
-  - Joint:   OnnxConversion (FP32)
+    - Decoder: OnnxConversion (FP32), or OnnxConversion → OnnxFloatToFloat16
+    - Joint:   OnnxConversion (FP32), or OnnxConversion → OnnxFloatToFloat16
 
 After the Olive pipelines, tokenizer and config files are generated and
 Silero VAD is downloaded.
@@ -18,10 +18,14 @@ Usage:
     python -m olive run --config src/nemotron_encoder_int4_cpu.json
     python -m olive run --config src/nemotron_decoder_fp32_cpu.json
     python -m olive run --config src/nemotron_joint_fp32_cpu.json
+
+    # TensorRT RTX FP16 I/O artifact
+    python src/optimize.py --encoder-precision fp16 --execution-provider cuda
 """
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -60,6 +64,7 @@ if str(_RECIPE_ROOT) not in sys.path:
 _TOKENIZER_SCRIPT = _RECIPE_ROOT / "scripts" / "export_tokenizer.py"
 
 DEFAULT_OUTPUT_DIR = "build/onnx_models_int4"
+DEFAULT_FP16_OUTPUT_DIR = "build/onnx_models_fp16_cuda"
 
 
 def _resolve(path: str) -> Path:
@@ -69,14 +74,14 @@ def _resolve(path: str) -> Path:
 
 
 def _to_new_run_format(config: dict) -> dict:
-    """Convert a legacy (engine-style) Olive config to the Olive >= 0.7 RunConfig schema.
+    """Convert a legacy Olive config to the installed RunConfig schema.
 
     Legacy configs in this recipe use the pre-0.7 layout:
       input_model / systems / passes{NAME:{type, ...}} / target / output_dir / no_artifacts
 
-    Olive >= 0.7 expects:
-      input_model / systems / passes{NAME:{type, config:{...}}} / pass_flows /
-      engine{target, output_dir, ...}
+        Current Olive expects:
+            input_model / systems / passes{NAME:[{type, config:{...}}]} /
+            engine{target, output_dir, no_artifacts, ...}
 
     Pass-specific top-level keys (everything except 'type') move under 'config'.
     """
@@ -93,6 +98,8 @@ def _to_new_run_format(config: dict) -> dict:
         engine["target"] = config["target"]
     if "output_dir" in config:
         engine["output_dir"] = config["output_dir"]
+    if "no_artifacts" in config:
+        engine["no_artifacts"] = config["no_artifacts"]
     new["engine"] = engine
 
     # passes: split 'type' from the rest of the pass params
@@ -105,17 +112,11 @@ def _to_new_run_format(config: dict) -> dict:
         entry: dict = {"type": ptype, "config": p}
         if host is not None:
             entry["host"] = host
-        new_passes[name] = entry
+        new_passes[name] = [entry]
     new["passes"] = new_passes
 
-    # pass_flows: run all passes in declaration order as a single flow
-    if "pass_flows" in config:
-        new["pass_flows"] = config["pass_flows"]
-    else:
-        new["pass_flows"] = [list(legacy_passes.keys())]
-
-    # Unique workflow id keyed by chunk size + opset so that Olive does NOT
-    # reuse a cached export produced for a different streaming window.
+    # Unique workflow id keyed by chunk size, opset, and pass flow so that Olive
+    # does not reuse cached artifacts across different export pipelines.
     if "workflow_id" not in new:
         try:
             from src import nemotron_model_load as _nml
@@ -127,7 +128,11 @@ def _to_new_run_format(config: dict) -> dict:
             if p.get("type") == "OnnxConversion":
                 _op = f"_ops{p.get('target_opset', '')}"
                 break
-        new["workflow_id"] = f"nemotron_{_cs}{_op}"
+        _flow = "-".join(
+            str(p.get("type", "unknown")).lower()
+            for p in legacy_passes.values()
+        )
+        new["workflow_id"] = f"nemotron_{_cs}{_op}_{_flow}"
 
     return new
 
@@ -143,6 +148,17 @@ def _run_olive_pipeline(config_name: str, output_dir: str, output_subdir: str, m
     config_path = _SCRIPT_DIR / config_name
     with open(config_path) as f:
         config = json.load(f)
+
+    model_script = config.get("input_model", {}).get("model_script")
+    if model_script:
+        model_script_path = Path(model_script)
+        if not model_script_path.is_absolute():
+            candidates = (_RECIPE_ROOT / model_script_path, _SCRIPT_DIR / model_script_path)
+            model_script_path = next(
+                (candidate for candidate in candidates if candidate.is_file()),
+                model_script_path,
+            )
+        config["input_model"]["model_script"] = str(model_script_path.resolve())
 
     output_dir_abs = str(_resolve(output_dir) / output_subdir)
     if model_path is not None:
@@ -180,19 +196,25 @@ def _run_olive_pipeline(config_name: str, output_dir: str, output_subdir: str, m
 
 
 def run_olive_pipelines(output_dir: str, model_path: str = None, encoder_precision: str = "int4", execution_provider: str = "cpu", target_opset: int = None):
-    """Run all Olive pipelines: encoder (FP32, INT4, or INT8), decoder (FP32), joint (FP32).
+    """Run all Olive pipelines for the selected encoder precision.
 
     Args:
         output_dir: Output directory for optimized models.
         model_path: Path to the .nemo model file or HF repo name.
-        encoder_precision: "fp32", "int4", or "int8".
-        execution_provider: "cpu" (default) or "dml".
+        encoder_precision: "fp32", "int4", "int8", or "fp16". FP16 is CUDA-only.
+        execution_provider: "cpu", "dml", or "cuda".
         target_opset: ONNX target opset (e.g. 21 or 24). None keeps the config default.
     """
+    if encoder_precision == "fp16" and execution_provider != "cuda":
+        raise ValueError("FP16 conversion is only supported with --execution-provider cuda.")
+
     ep_suffix = {"cpu": "_cpu", "dml": "_dml", "cuda": "_cuda"}.get(execution_provider, "_cpu")
     ep_label = {"cpu": "CPU", "dml": "DML", "cuda": "CUDA"}.get(execution_provider, "CPU")
 
-    if encoder_precision == "int8":
+    if encoder_precision == "fp16":
+        encoder_config = "nemotron_encoder_fp16_cuda.json"
+        print(f"=== Stage 1: Olive Encoder ({ep_label}, OnnxConversion -> FP16 I/O) ===")
+    elif encoder_precision == "int8":
         encoder_config = f"nemotron_encoder_int8{ep_suffix}.json"
         print(f"=== Stage 1: Olive Encoder ({ep_label}, OnnxConversion -> INT8 k-quant) ===")
     elif encoder_precision == "fp32":
@@ -204,13 +226,63 @@ def run_olive_pipelines(output_dir: str, model_path: str = None, encoder_precisi
     _run_olive_pipeline(encoder_config, output_dir, "encoder.onnx", model_path, target_opset)
     print()
 
-    print(f"=== Stage 2: Olive Decoder ({ep_label}, OnnxConversion, FP32) ===")
-    _run_olive_pipeline(f"nemotron_decoder_fp32{ep_suffix}.json", output_dir, "decoder.onnx", model_path, target_opset)
+    if encoder_precision == "fp16":
+        decoder_config = "nemotron_decoder_fp16_cuda.json"
+        decoder_label = "FP16 I/O"
+    else:
+        decoder_config = f"nemotron_decoder_fp32{ep_suffix}.json"
+        decoder_label = "FP32"
+    print(f"=== Stage 2: Olive Decoder ({ep_label}, OnnxConversion -> {decoder_label}) ===")
+    _run_olive_pipeline(decoder_config, output_dir, "decoder.onnx", model_path, target_opset)
     print()
 
-    print(f"=== Stage 3: Olive Joint ({ep_label}, OnnxConversion, FP32) ===")
-    _run_olive_pipeline(f"nemotron_joint_fp32{ep_suffix}.json", output_dir, "joint.onnx", model_path, target_opset)
+    if encoder_precision == "fp16":
+        joint_config = "nemotron_joint_fp16_cuda.json"
+        joint_label = "FP16 I/O"
+    else:
+        joint_config = f"nemotron_joint_fp32{ep_suffix}.json"
+        joint_label = "FP32"
+    print(f"=== Stage 3: Olive Joint ({ep_label}, OnnxConversion -> {joint_label}) ===")
+    _run_olive_pipeline(joint_config, output_dir, "joint.onnx", model_path, target_opset)
     print()
+
+    from src.flatten_output import flatten
+
+    flatten(_resolve(output_dir))
+
+
+def validate_fp16_io(output_dir: str):
+    """Require every floating-point model input/output to use FLOAT16."""
+    import onnx
+    from onnx import TensorProto
+
+    floating_types = {
+        TensorProto.FLOAT,
+        TensorProto.FLOAT16,
+        TensorProto.DOUBLE,
+        TensorProto.BFLOAT16,
+    }
+    model_dir = _resolve(output_dir)
+    for component in ("encoder", "decoder", "joint"):
+        model_path = model_dir / f"{component}.onnx"
+        if not model_path.is_file():
+            raise FileNotFoundError(f"FP16 artifact is missing: {model_path}")
+
+        model = onnx.load(str(model_path), load_external_data=False)
+        floating_io = []
+        for value_info in (*model.graph.input, *model.graph.output):
+            tensor_type = value_info.type.tensor_type
+            if tensor_type.elem_type in floating_types:
+                floating_io.append((value_info.name, tensor_type.elem_type))
+
+        mismatches = [name for name, elem_type in floating_io if elem_type != TensorProto.FLOAT16]
+        if not floating_io:
+            raise RuntimeError(f"{component}.onnx has no floating-point I/O to validate")
+        if mismatches:
+            names = ", ".join(mismatches)
+            raise RuntimeError(f"{component}.onnx has non-FP16 floating I/O: {names}")
+
+        print(f"  [OK] {component}.onnx floating I/O is FLOAT16")
 
 
 def run_tokenizer_export(model_name: str, output_dir: str):
@@ -416,15 +488,12 @@ def download_silero_vad(output_dir: str):
     print()
 
 
-import os
-
-
 def main():
     from src.nemotron_model_load import MODEL_NAME
     from src import nemotron_model_load
 
     parser = argparse.ArgumentParser(
-        description="Optimize Nemotron Speech Streaming for CPU or DML inference"
+        description="Optimize Nemotron Speech Streaming for CPU, CUDA, or DirectML inference"
     )
     parser.add_argument(
         "--model-name",
@@ -433,14 +502,14 @@ def main():
     )
     parser.add_argument(
         "--output-dir",
-        default=DEFAULT_OUTPUT_DIR,
-        help=f"Output directory for optimized models (default: {DEFAULT_OUTPUT_DIR})",
+        default=None,
+        help="Output directory for optimized models (default: precision-specific build directory)",
     )
     parser.add_argument(
         "--encoder-precision",
-        choices=["int4", "int8", "fp32"],
+        choices=["int4", "int8", "fp32", "fp16"],
         default="int4",
-        help="Encoder precision: fp32, int4 (k-quant), or int8 (k-quant). Default: int4.",
+        help="Encoder precision: fp32, int4/int8 k-quant, or fp16 homogeneous I/O. Default: int4.",
     )
     parser.add_argument(
         "--execution-provider",
@@ -481,9 +550,13 @@ def main():
             f"Got: '{args.model_name}'"
         )
 
+    output_dir = args.output_dir
+    if output_dir is None:
+        output_dir = DEFAULT_FP16_OUTPUT_DIR if args.encoder_precision == "fp16" else DEFAULT_OUTPUT_DIR
+
     # Stages 1-3: Run Olive pipelines for encoder, decoder, joint
     run_olive_pipelines(
-        output_dir=args.output_dir,
+        output_dir=output_dir,
         model_path=args.model_name,
         encoder_precision=args.encoder_precision,
         execution_provider=args.execution_provider,
@@ -491,21 +564,24 @@ def main():
     )
 
     # Stage 4: Export tokenizer
-    run_tokenizer_export(model_name=args.model_name, output_dir=args.output_dir)
+    run_tokenizer_export(model_name=args.model_name, output_dir=output_dir)
 
     # Stage 5: Generate config files (chunk_size matches the export shapes).
     # Read the effective value lazily so that --chunk-size / NEMOTRON_CHUNK_SIZE
     # (applied before model load) is honored.
     generate_configs(
         model_name=args.model_name,
-        output_dir=args.output_dir,
+        output_dir=output_dir,
         chunk_size=nemotron_model_load._chunk_size(),
     )
 
     # Stage 6: Download Silero VAD
-    vad_dest = _resolve(args.output_dir) / "silero_vad.onnx"
+    if args.encoder_precision == "fp16":
+        validate_fp16_io(output_dir)
+
+    vad_dest = _resolve(output_dir) / "silero_vad.onnx"
     try:
-        download_silero_vad(output_dir=args.output_dir)
+        download_silero_vad(output_dir=output_dir)
     except Exception as exc:
         print(
             f"  Warning: Silero VAD download failed ({exc}).\n"
@@ -514,14 +590,19 @@ def main():
         )
 
     # Summary
-    output_path = _resolve(args.output_dir)
+    output_path = _resolve(output_dir)
     if output_path.exists():
         files = sorted(f for f in output_path.iterdir() if f.is_file())
         total_mb = sum(f.stat().st_size for f in files) / (1024 * 1024)
         print(f"=== Done! Optimized models -> {output_path} ===")
         print(f"    Total size: {total_mb:.1f} MB")
-        enc_label = {"fp32": "", "int4": "INT4 k-quant (Olive)", "int8": "INT8 k-quant (Olive)"}.get(args.encoder_precision, "")
-        ep_label = "DML" if args.execution_provider == "dml" else "CPU"
+        enc_label = {
+            "fp32": "",
+            "fp16": "FP16 homogeneous I/O (Olive)",
+            "int4": "INT4 k-quant (Olive)",
+            "int8": "INT8 k-quant (Olive)",
+        }.get(args.encoder_precision, "")
+        ep_label = {"cpu": "CPU", "dml": "DML", "cuda": "CUDA"}.get(args.execution_provider, "CPU")
         for f in files:
             tag = f" ← {enc_label}" if f.name.startswith("encoder") and enc_label else ""
             print(f"    {f.name} ({f.stat().st_size / (1024 * 1024):.1f} MB){tag}")

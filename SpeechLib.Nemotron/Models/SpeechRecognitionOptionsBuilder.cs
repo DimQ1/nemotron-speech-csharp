@@ -1,11 +1,6 @@
-using System.IO;
+namespace SpeechLib.Nemotron.Models;
 
-namespace SpeechLib.Models;
-
-/// <summary>
-/// Builder for creating validated SpeechRecognitionOptions.
-/// Provides fluent API with validation at Build() time.
-/// </summary>
+/// <summary>Builds validated options for a Nemotron recognition session.</summary>
 public sealed class SpeechRecognitionOptionsBuilder
 {
     private string _modelPath = "";
@@ -37,11 +32,8 @@ public sealed class SpeechRecognitionOptionsBuilder
         return this;
     }
 
-    /// <summary>
-    /// Build and validate the options.
-    /// </summary>
-    /// <exception cref="ArgumentException">Thrown when model path is empty or does not exist.</exception>
-    /// <exception cref="ArgumentException">Thrown when execution provider is invalid.</exception>
+    /// <summary>Builds and validates the Nemotron options.</summary>
+    /// <exception cref="ArgumentException">Thrown when a required option is empty or missing.</exception>
     public SpeechRecognitionOptions Build()
     {
         if (string.IsNullOrWhiteSpace(_modelPath))
@@ -50,11 +42,8 @@ public sealed class SpeechRecognitionOptionsBuilder
         if (!Directory.Exists(_modelPath))
             throw new ArgumentException($"Model path does not exist: {_modelPath}", nameof(_modelPath));
 
-        var validProviders = new[] { "cpu", "cuda", "dml", "follow_config", "tensorrt", "NvTensorRtRtx" };
-        if (!validProviders.Contains(_executionProvider, StringComparer.OrdinalIgnoreCase))
-            throw new ArgumentException(
-                $"Invalid execution provider: {_executionProvider}. Valid: {string.Join(", ", validProviders)}",
-                nameof(_executionProvider));
+        if (string.IsNullOrWhiteSpace(_executionProvider))
+            throw new ArgumentException("Execution provider cannot be empty.", nameof(_executionProvider));
 
         return new SpeechRecognitionOptions
         {

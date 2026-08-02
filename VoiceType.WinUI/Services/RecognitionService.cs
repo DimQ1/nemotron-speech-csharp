@@ -259,7 +259,9 @@ public sealed class RecognitionService : IRecognitionService
         // to spin up (and the system may simply be silent), so the old 1.5s-silence break
         // aborted ProcessLoop before any audio arrived and fired Stopped — recognition never
         // started until the app was restarted. Now silence just keeps the loop waiting.
-        while (_isRunning || (_buffer?.IsEmpty == false))
+         while ((_isRunning && _captureState?.IsRunning == true) ||
+             (_captureThread?.IsAlive == true) ||
+             (_buffer?.IsEmpty == false))
         {
             bool gotData = false;
             while (_buffer?.TryDequeue(out var batch) == true)
@@ -303,7 +305,7 @@ public sealed class RecognitionService : IRecognitionService
         FinalResult?.Invoke(finalProcessed);
         Stopped?.Invoke();
 
-        _audioSource?.Dispose();
+        _captureThread?.Join(TimeSpan.FromSeconds(1));
     }
 
     public string? SaveAudio(string fileNameBase)
@@ -326,20 +328,10 @@ public sealed class RecognitionService : IRecognitionService
         var langId = LanguageMapper.Resolve(language);
         if (langId is null) return;
 
-        if (_recognizer is ModelSession modelSession)
+        if (_recognizer is ILanguageConfigurable languageConfigurable &&
+            languageConfigurable.TrySetLanguage(langId))
         {
-            modelSession.SetLanguage(langId);
             _telemetry?.LogInfo("Recognition", $"Language set to {language} (lang_id={langId})");
-        }
-        else if (_recognizer is MetricsRecognizerDecorator metricsDecorator)
-        {
-            // Unwrap decorator to reach ModelSession
-            var inner = metricsDecorator.GetInner();
-            if (inner is ModelSession innerModel)
-            {
-                innerModel.SetLanguage(langId);
-                _telemetry?.LogInfo("Recognition", $"Language set to {language} (lang_id={langId})");
-            }
         }
     }
 
@@ -360,7 +352,7 @@ public sealed class RecognitionService : IRecognitionService
     private void CleanupPreviousSession()
     {
         if (_captureState is not null)
-            _captureState.IsRunning = false;
+            _captureState.Stop();
         _signal?.Set();
 
         // Wait for the previous ProcessLoop task to fully complete
@@ -370,6 +362,9 @@ public sealed class RecognitionService : IRecognitionService
             try { _processTask.GetAwaiter().GetResult(); } catch { }
             _processTask = null;
         }
+
+        _captureThread?.Join(TimeSpan.FromSeconds(1));
+        _captureThread = null;
 
         _audioRecorder?.Dispose();
         _audioRecorder = null;
@@ -381,6 +376,7 @@ public sealed class RecognitionService : IRecognitionService
         _signal = null;
 
         _buffer = null;
+        _captureState?.Dispose();
         _captureState = null;
     }
 

@@ -1,16 +1,17 @@
 using BenchmarkDotNet.Attributes;
+using Microsoft.VSDiagnostics;
 using SpeechLib;
 using SpeechLib.Audio;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
-using Microsoft.VSDiagnostics;
 
 namespace NemotronSpeech;
+
 [CPUUsageDiagnoser]
 [MemoryDiagnoser]
-public class ModelSessionCpuBenchmark
+public class ModelSessionFp16Benchmark
 {
     private ModelSession? _session;
     private float[][] _chunks = [];
@@ -18,9 +19,6 @@ public class ModelSessionCpuBenchmark
     private double _lastElapsedSeconds;
     private double _lastRtf;
     private string _lastTranscript = string.Empty;
-
-    [Params("cpu", "cpu-int8", "cpu-int4")]
-    public string ModelVariant { get; set; } = "cpu";
 
     [Params(1, 2)]
     public int NumBeams { get; set; }
@@ -37,10 +35,7 @@ public class ModelSessionCpuBenchmark
     }
 
     [IterationSetup]
-    public void IterationSetup()
-    {
-        _session = CreateSession();
-    }
+    public void IterationSetup() => _session = CreateSession();
 
     [IterationCleanup]
     public void IterationCleanup()
@@ -54,10 +49,11 @@ public class ModelSessionCpuBenchmark
     {
         var resultsDirectory = Path.Combine(FindRepoRoot(), "build", "benchmark-results");
         Directory.CreateDirectory(resultsDirectory);
-        var resultPath = Path.Combine(resultsDirectory, $"{ModelVariant}-beams{NumBeams}.txt");
+        var resultPath = Path.Combine(resultsDirectory, $"fp16-cuda-beams{NumBeams}.txt");
         File.WriteAllText(
             resultPath,
-            $"model_variant={ModelVariant}{Environment.NewLine}" +
+            $"model_variant=fp16{Environment.NewLine}" +
+            $"execution_provider=cuda{Environment.NewLine}" +
             $"num_beams={NumBeams}{Environment.NewLine}" +
             $"audio_duration_seconds={_audioDurationSeconds:F6}{Environment.NewLine}" +
             $"elapsed_seconds={_lastElapsedSeconds:F6}{Environment.NewLine}" +
@@ -73,14 +69,15 @@ public class ModelSessionCpuBenchmark
         var text = new StringBuilder();
         foreach (var chunk in _chunks)
         {
-            var part = ((SpeechLib.IStreamingSpeechRecognizer)_session).ProcessAudio(chunk);
+            var part = ((IStreamingSpeechRecognizer)_session).ProcessAudio(chunk);
             if (!string.IsNullOrEmpty(part))
                 text.Append(part);
         }
 
-        var final = ((SpeechLib.IStreamingSpeechRecognizer)_session).Flush();
+        var final = ((IStreamingSpeechRecognizer)_session).Flush();
         if (!string.IsNullOrEmpty(final))
             text.Append(final);
+
         stopwatch.Stop();
         _lastElapsedSeconds = stopwatch.Elapsed.TotalSeconds;
         _lastRtf = _lastElapsedSeconds / _audioDurationSeconds;
@@ -90,31 +87,24 @@ public class ModelSessionCpuBenchmark
 
     private ModelSession CreateSession()
     {
-        var repoRoot = FindRepoRoot();
-        var modelVariantDirectory = ModelVariant switch
-        {
-            "cpu" => "cpu-fp32",
-            "cpu-int8" => "cpu-int8",
-            "cpu-int4" => "cpu-int4",
-            _ => throw new ArgumentOutOfRangeException(nameof(ModelVariant), ModelVariant, "Unknown model variant.")
-        };
-        var modelPath = Path.Combine(repoRoot, "models-onnx", modelVariantDirectory);
+        var modelPath = Path.Combine(FindRepoRoot(), "converter", "src", "build", "onnx_models_fp16_cuda");
         var searchOptions = new GeneratorParamsArgs
         {
             num_beams = NumBeams,
             do_sample = false,
             repetition_penalty = 1.1
         };
-        return new ModelSession(modelPath, "cpu", null, useVad: false, searchOptions);
+        return new ModelSession(modelPath, "cuda", null, useVad: false, searchOptions);
     }
 
     private static float[][] SplitIntoChunks(float[] samples, int chunkSize)
     {
         if (samples.Length == 0)
-            return[new float[chunkSize]];
+            return [new float[chunkSize]];
+
         var chunkCount = (samples.Length + chunkSize - 1) / chunkSize;
         var chunks = new float[chunkCount][];
-        for (int i = 0; i < chunkCount; i++)
+        for (var i = 0; i < chunkCount; i++)
         {
             var chunk = new float[chunkSize];
             var offset = i * chunkSize;
@@ -128,12 +118,13 @@ public class ModelSessionCpuBenchmark
 
     private static string FindRepoRoot()
     {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null)
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
         {
-            if (Directory.Exists(Path.Combine(dir.FullName, "models-onnx")) && Directory.Exists(Path.Combine(dir.FullName, "Test-Audio")))
-                return dir.FullName;
-            dir = dir.Parent;
+            if (Directory.Exists(Path.Combine(directory.FullName, "models-onnx")) &&
+                Directory.Exists(Path.Combine(directory.FullName, "Test-Audio")))
+                return directory.FullName;
+            directory = directory.Parent;
         }
 
         throw new DirectoryNotFoundException("Repository root containing models-onnx/ and Test-Audio was not found.");

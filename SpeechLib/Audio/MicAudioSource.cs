@@ -16,7 +16,7 @@ public sealed class MicAudioSource : IAudioSource
         {
             DiscardOnBufferOverflow = true,
             ReadFully = false,
-            BufferDuration = TimeSpan.FromSeconds(30),
+            BufferDuration = TimeSpan.FromSeconds(5),
         };
 
         device.DataAvailable += (_, ev) =>
@@ -24,11 +24,16 @@ public sealed class MicAudioSource : IAudioSource
             if (!state.IsRunning) return;
             ring.AddSamples(ev.Buffer, 0, ev.BytesRecorded);
         };
+        device.RecordingStopped += (_, _) =>
+        {
+            state.Stop();
+            signal.Set();
+        };
         device.StartRecording();
 
         while (state.IsRunning)
         {
-            Thread.Sleep(DrainMs);
+            state.Wait(DrainMs);
             if (!state.IsRunning) break;
 
             try

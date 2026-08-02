@@ -1,94 +1,92 @@
-# SpeechLib 📚
+# SpeechLib
 
-Abstraction library for pluggable streaming speech recognition engines in .NET.
+SpeechLib is the provider-neutral contract layer for streaming speech recognition in .NET.
+It contains recognizer and audio-source interfaces, bounded batched queues, capture lifecycle state, decorators, and the live transcription orchestrator. Model runtimes and audio device libraries are separate providers.
 
-## Purpose
+## Projects
 
-SpeechLib provides interfaces and shared utilities so that **any** speech recognition engine can be plugged into the same pipeline. Audio capture, resampling, language mapping, and transcription orchestration are all generic — no model-specific code.
+| Project | Responsibility | Platform |
+| --- | --- | --- |
+| `SpeechLib` | Core contracts and allocation-conscious streaming infrastructure | `net10.0` |
+| `SpeechLib.Nemotron` | NVIDIA Nemotron ONNX Runtime GenAI recognizer | `net10.0` |
+| `SpeechLib.Audio.NAudio2` | Stable NAudio 2.3.0 capture and file utilities | `net10.0` |
+| `SpeechLib.Audio.NAudio3` | NAudio 3.0.0-preview.19 capture alternative | `net10.0-windows7.0` |
 
-## Architecture
+The core project has no NAudio or ONNX Runtime package reference. Applications choose the providers they need through project references.
 
-```
-SpeechLib/
-├── Interfaces/
-│   ├── IStreamingSpeechRecognizer.cs   # Core recognition engine abstraction
-│   └── IAudioSource.cs                 # Audio capture source abstraction
-├── Audio/
-│   ├── AudioUtils.cs                   # Byte→float32 conversion, resampling, file loader
-│   ├── ConcurrentQueueWrapper.cs       # Lock-free batch audio queue
-│   ├── MicAudioSource.cs               # Microphone capture (16kHz mono)
-│   ├── LoopbackAudioSource.cs          # System audio loopback (WasapiLoopbackCapture)
-│   └── MixAudioSource.cs               # Mic + loopback mixed
-├── Models/
-│   ├── SpeechRecognitionOptions.cs      # Engine configuration record
-│   └── CaptureMode.cs                  # File / Mic / Loopback / Mix enum
-├── LanguageMapper.cs                   # BCP-47 → numeric lang_id (100+ languages)
-├── Transcriber.cs                      # Orchestrator: RunFile() / RunLive() / CreateAudioSource()
-└── SpeechLib.csproj                    # .NET 10, NAudio 2.2.1
-```
-
-## Key Interface
+## Core contracts
 
 ```csharp
 public interface IStreamingSpeechRecognizer : IDisposable
 {
-    int SampleRate { get; }          // Expected sample rate (Hz)
-    int ChunkSamples { get; }        // Samples per processing chunk
-
-    string? ProcessAudio(float[] chunk);  // Feed audio → returns new text (or null)
-    string? Flush();                      // Finalise → returns remaining text
+    int SampleRate { get; }
+    int ChunkSamples { get; }
+    string? ProcessAudio(float[] chunk);
+    string? Flush();
 }
-```
 
-### Implementing a New Engine
-
-```csharp
-public class WhisperRecognizer : IStreamingSpeechRecognizer
+public interface IAudioSource : IDisposable
 {
-    public int SampleRate => 16000;
-    public int ChunkSamples => 2560;
+    int SourceSampleRate { get; }
+    void Start(
+        ConcurrentQueueWrapper buffer,
+        ManualResetEventSlim signal,
+        CaptureState state);
+}
 
-    public string? ProcessAudio(float[] chunk)
-    {
-        // Feed chunk to Whisper ONNX model
-        // Return decoded text when available
-    }
-
-    public string? Flush() { /* final flush */ }
-    public void Dispose() { /* cleanup */ }
+public interface IAudioSourceFactory
+{
+    IAudioSource Create(CaptureMode mode, int sampleRate);
 }
 ```
 
-Then use it with the existing `Transcriber`:
+`LiveTranscriber.Run` accepts any `IAudioSource` and `IStreamingSpeechRecognizer`. It waits for capture termination, drains final batches, flushes the recognizer, and disposes the source.
+
+## Selecting an audio provider
+
+The stable provider is the existing application default:
 
 ```csharp
-using var recognizer = new WhisperRecognizer();
-Transcriber.RunFile("audio.wav", recognizer);
-Transcriber.RunLive(new MicAudioSource(), "Microphone", recognizer);
+using SpeechLib;
+using SpeechLib.Audio;
+using SpeechLib.Models;
+
+IAudioSourceFactory factory = new NAudio2AudioSourceFactory();
+var source = factory.Create(CaptureMode.Mic, recognizer.SampleRate);
+LiveTranscriber.Run(source, "Microphone", recognizer);
 ```
 
-## Audio Sources
-
-| Source | Sample Rate | Description |
-|--------|-------------|-------------|
-| `MicAudioSource` | 16 kHz | Windows WaveIn (auto-resampled from device) |
-| `LoopbackAudioSource` | Configurable | System audio via WASAPI loopback |
-| `MixAudioSource` | Configurable | Mic + System audio mixed |
-
-## Language Mapper
-
-Supports 100+ languages via BCP-47 codes or numeric IDs:
+To try the NAudio 3 preview provider, reference `SpeechLib.Audio.NAudio3` instead and use its factory:
 
 ```csharp
-LanguageMapper.Resolve("ru")    → "11"
-LanguageMapper.Resolve("en-US") → "0"
-LanguageMapper.Resolve("ja")    → "10"
-LanguageMapper.Resolve("auto")  → "101"
+using SpeechLib;
+using SpeechLib.Audio;
+using SpeechLib.Models;
+
+IAudioSourceFactory factory = new NAudio3AudioSourceFactory();
+var source = factory.Create(CaptureMode.Loopback, recognizer.SampleRate);
+LiveTranscriber.Run(source, "System audio (loopback)", recognizer);
 ```
 
-## Dependencies
+Both providers preserve the same batched `float[]` contract. NAudio 3 is a preview API and, like the current device-capture implementation, is Windows-only. The core contracts remain usable from other platforms when an application supplies its own `IAudioSource`.
 
-| Package | Version |
-|---------|---------|
-| NAudio | 2.2.1 |
-| .NET | 10.0 |
+## Resource and throughput design
+
+- Audio is enqueued in batches rather than one sample at a time.
+- `ConcurrentQueueWrapper` retains at most 64 batches by default and drops the oldest batch when the consumer falls behind.
+- Provider ring buffers are bounded to five seconds in the stable provider and two seconds in the NAudio 3 provider.
+- Capture waits are interruptible through `CaptureState`; shutdown does not depend on a polling sleep.
+- The live runner waits for the capture thread, drains final batches, and only then flushes the recognizer.
+- NAudio 3 copies callback data once into its bounded provider buffer and uses `ArrayPool<float>` for temporary drain arrays.
+
+## File mode
+
+`SpeechLib.Audio.NAudio2` contains the NAudio-backed file loader and the legacy `Transcriber.RunFile` orchestration. A different provider can implement file decoding separately while reusing `IStreamingSpeechRecognizer`.
+
+## Build
+
+```powershell
+dotnet build SpeechLib\SpeechLib.csproj
+dotnet build SpeechLib.Audio.NAudio2\SpeechLib.Audio.NAudio2.csproj
+dotnet build SpeechLib.Audio.NAudio3\SpeechLib.Audio.NAudio3.csproj
+```

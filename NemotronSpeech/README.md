@@ -4,7 +4,7 @@ ONNX Runtime GenAI implementation of `IStreamingSpeechRecognizer` for [NVIDIA Ne
 
 ## Overview
 
-This project provides both a **CLI tool** and a **library-class recognizer** (`ModelSession`) that wraps the ONNX Runtime GenAI pipeline:
+This project provides the CLI entry point for the `SpeechLib.Nemotron` provider. The provider exposes the library-class recognizer (`ModelSession`) that wraps the ONNX Runtime GenAI pipeline:
 
 ```
 ModelSession
@@ -20,12 +20,15 @@ ModelSession
 
 ```
 NemotronSpeech/
-├── ModelSession.cs           # IStreamingSpeechRecognizer implementation (ONNX GenAI)
 ├── AppOptions.cs             # CLI argument parser
 ├── Program.cs                # Entry point (console app)
-├── Common/
-│   └── Common.cs             # ORT GenAI config/setup helpers
-└── NemotronSpeech.csproj     # Multi-GPU build (Cpu/Cuda/Dml/Blackwell)
+└── NemotronSpeech.csproj     # CLI referencing SpeechLib.Nemotron
+
+SpeechLib.Nemotron/
+├── ModelSession.cs           # IStreamingSpeechRecognizer implementation (ONNX GenAI)
+├── Common.cs                 # ORT GenAI config/setup helpers
+├── LanguageMapper.cs         # Nemotron language mapping
+└── Models/                   # Nemotron-specific session options
 ```
 
 ## GPU Architecture Selection
@@ -108,8 +111,8 @@ var text = ((IStreamingSpeechRecognizer)session).ProcessAudio(chunk);
 
 | Package | Version |
 |---------|---------|
-| Microsoft.ML.OnnxRuntimeGenAI | 0.14.1 (Standard/CPU/DML) |
-| Microsoft.ML.OnnxRuntimeGenAI.Cuda | 0.14.1 (Standard) |
+| Microsoft.ML.OnnxRuntimeGenAI | 0.15.0 (CPU) |
+| Microsoft.ML.OnnxRuntimeGenAI.Cuda | 0.15.0 (Standard) |
 | Microsoft.ML.OnnxRuntimeGenAI.Cuda | 0.15.0-dev (Blackwell) |
 | Microsoft.ML.OnnxRuntimeGenAI.DirectML | 0.14.1 (DML) |
 | SpeechLib | Project reference |
