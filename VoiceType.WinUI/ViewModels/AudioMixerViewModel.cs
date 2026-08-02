@@ -35,24 +35,24 @@ public sealed partial class AudioMixerViewModel : ObservableObject
         LoopbackVolume = settings.LoopbackVolume;
 
         // Apply to audio pipeline
-        BufferedCaptureSource.MicVolume = MicVolume;
-        BufferedCaptureSource.LoopbackVolume = LoopbackVolume;
+        NAudio3AudioSource.MicVolume = MicVolume;
+        NAudio3AudioSource.LoopbackVolume = LoopbackVolume;
 
         // Subscribe to audio level updates
-        _audioLevelSubscription = BufferedCaptureSource.AudioLevelMeter.Subscribe(
+        _audioLevelSubscription = NAudio3AudioSource.AudioLevelMeter.Subscribe(
             new AudioLevelObserver(this));
     }
 
     partial void OnMicVolumeChanged(float value)
     {
-        BufferedCaptureSource.MicVolume = value;
+        NAudio3AudioSource.MicVolume = value;
         OnPropertyChanged(nameof(MicVolumePercent));
         SaveVolumes();
     }
 
     partial void OnLoopbackVolumeChanged(float value)
     {
-        BufferedCaptureSource.LoopbackVolume = value;
+        NAudio3AudioSource.LoopbackVolume = value;
         OnPropertyChanged(nameof(LoopbackVolumePercent));
         SaveVolumes();
     }

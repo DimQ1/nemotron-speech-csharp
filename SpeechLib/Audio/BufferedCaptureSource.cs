@@ -68,7 +68,7 @@ public sealed class BufferedCaptureSource : IAudioSource
             };
             loopbackCapture.RecordingStopped += (_, _) =>
             {
-                state.IsRunning = false;
+                state.Stop();
                 signal.Set();
             };
             loopbackCapture.StartRecording();
@@ -85,7 +85,7 @@ public sealed class BufferedCaptureSource : IAudioSource
             };
             micCapture.RecordingStopped += (_, _) =>
             {
-                state.IsRunning = false;
+                state.Stop();
                 signal.Set();
             };
             micCapture.StartRecording();
@@ -108,7 +108,7 @@ public sealed class BufferedCaptureSource : IAudioSource
         var chunkBuf = new float[4096];
         while (state.IsRunning)
         {
-            Thread.Sleep(DrainIntervalMs);
+            state.Wait(DrainIntervalMs);
             if (!state.IsRunning) break;
 
             try
@@ -210,7 +210,7 @@ public sealed class BufferedCaptureSource : IAudioSource
     {
         DiscardOnBufferOverflow = true,
         ReadFully = false,
-        BufferDuration = TimeSpan.FromSeconds(60),
+        BufferDuration = TimeSpan.FromSeconds(5),
     };
 
     public void Dispose() { }

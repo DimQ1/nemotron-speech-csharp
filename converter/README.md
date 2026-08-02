@@ -13,7 +13,20 @@ complete.
 ## Recipes
 
 - [`src/`](./src) — ONNX export + INT4 / INT8 quantization for CPU and CUDA
-  execution providers.
+  execution providers, plus homogeneous FP16 conversion for TensorRT RTX.
+
+### TensorRT RTX FP16
+
+GenAI 0.15 supports homogeneous FP16 I/O for Nemotron. Generate a separate
+CUDA artifact with:
+
+```powershell
+python converter/src/optimize.py --encoder-precision fp16 --execution-provider cuda
+```
+
+The output is `converter/src/build/onnx_models_fp16_cuda/`. The pipeline
+converts all three Nemotron components and validates their floating-point I/O;
+it does not alter the existing INT4/INT8 artifacts.
 
 See the README inside each subfolder for setup and run instructions.
 

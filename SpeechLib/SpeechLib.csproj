@@ -10,86 +10,22 @@
     <AssemblyName>SpeechLib</AssemblyName>
   </PropertyGroup>
 
-  <!-- GPU architecture selection.
-      Standard (default):  RTX 20/30/40 — stable ORT GenAI 0.15.0, CUDA 12.x
-       Blackwell:           RTX 50        — nightly ORT GenAI, CUDA 13.x
-       CPU:                 no GPU        — CPU-only ORT GenAI (smaller, no CUDA DLLs)
-       DML:                 any GPU       — DirectML ORT GenAI (Windows GPU via DirectX)
-
-       Usage:
-         dotnet build -c Release                          (Standard)
-         dotnet build -c Release -p:GpuArch=Blackwell     (RTX 50)
-         dotnet build -c Release -p:GpuArch=CPU           (CPU only)
-         dotnet build -c Release -p:GpuArch=DML           (DirectML)
+  <!--
+    SpeechLib is the portable contract layer. Runtime/model/audio providers are
+    separate projects so applications pay only for the provider they select.
   -->
-  <PropertyGroup>
-    <GpuArch Condition="'$(GpuArch)' == ''">Standard</GpuArch>
-  </PropertyGroup>
-
-  <Choose>
-    <!-- Blackwell (RTX 50) — nightly ORT -->
-    <When Condition="'$(GpuArch)' == 'Blackwell'">
-      <PropertyGroup>
-        <DefineConstants>$(DefineConstants);GPU_BLACKWELL</DefineConstants>
-      </PropertyGroup>
-      <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.15.0-dev-*" />
-      </ItemGroup>
-    </When>
-
-    <!-- CPU only — no CUDA package -->
-    <When Condition="'$(GpuArch)' == 'CPU'">
-      <PropertyGroup>
-        <DefineConstants>$(DefineConstants);GPU_NONE</DefineConstants>
-      </PropertyGroup>
-      <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.15.0" />
-        <!-- Pin ORT 1.28.0, required by GenAI 0.15.0 and used for Nemotron conformer MHA fusion,
-             MatMulNBits DP4A tiling / K-parallelism improvements.
-             GeneratePathProperty exposes $(PkgMicrosoft_ML_OnnxRuntime) for the
-             native-asset copy target below. -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" GeneratePathProperty="true" />
-      </ItemGroup>
-    </When>
-
-    <!-- DirectML — any GPU via DirectX (Windows only) -->
-    <When Condition="'$(GpuArch)' == 'DML'">
-      <PropertyGroup>
-        <DefineConstants>$(DefineConstants);GPU_DML</DefineConstants>
-      </PropertyGroup>
-      <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.DirectML" Version="0.14.1" />
-      </ItemGroup>
-    </When>
-
-    <!-- Standard (RTX 20/30/40, GTX 16) — stable ORT -->
-    <Otherwise>
-      <PropertyGroup>
-        <DefineConstants>$(DefineConstants);GPU_STANDARD</DefineConstants>
-      </PropertyGroup>
-      <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.15.0" />
-      </ItemGroup>
-    </Otherwise>
-  </Choose>
-
-  <!-- Keep native ORT assets aligned with the explicitly pinned CPU runtime.
-       This also replaces stale assets left by an incremental build. -->
-    <Target Name="CopyOrt1280NativeAssets" AfterTargets="Build"
-          Condition="'$(GpuArch)' == 'CPU' and Exists('$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\onnxruntime.dll')">
-    <ItemGroup>
-      <_Ort1280Native Include="$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\*.dll" />
-    </ItemGroup>
-    <Copy SourceFiles="@(_Ort1280Native)"
-          DestinationFolder="$(OutputPath)runtimes\win-x64\native"
-          SkipUnchangedFiles="false" />
-    <Message Importance="High"
-             Text="Copied ORT 1.28.0 native assets to $(OutputPath)runtimes\win-x64\native" />
-  </Target>
-
   <ItemGroup>
-    <PackageReference Include="NAudio" Version="2.3.0" />
-    <PackageReference Include="System.CommandLine" Version="2.0.1" />
+    <Compile Remove="Audio\AudioUtils.cs" />
+    <Compile Remove="Audio\BufferedCaptureSource.cs" />
+    <Compile Remove="Audio\LoopbackAudioSource.cs" />
+    <Compile Remove="Audio\MicAudioSource.cs" />
+    <Compile Remove="Audio\MixAudioSource.cs" />
+    <Compile Remove="Common.cs" />
+    <Compile Remove="LanguageMapper.cs" />
+    <Compile Remove="ModelSession.cs" />
+    <Compile Remove="Models\SpeechRecognitionOptions.cs" />
+    <Compile Remove="Models\SpeechRecognitionOptionsBuilder.cs" />
+    <Compile Remove="Transcriber.cs" />
   </ItemGroup>
 
 </Project>

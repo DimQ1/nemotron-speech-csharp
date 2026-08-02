@@ -6,7 +6,6 @@ namespace SpeechLib.Audio;
 /// <summary>Mixed microphone + loopback capture.</summary>
 public sealed class MixAudioSource : IAudioSource
 {
-    private readonly MicAudioSource _mic = new();
     private LoopbackAudioSource? _loopback;
     private readonly int _targetRate;
     private const int DrainMs = 100;
@@ -17,9 +16,9 @@ public sealed class MixAudioSource : IAudioSource
     public void Start(ConcurrentQueueWrapper buffer, ManualResetEventSlim signal, CaptureState state)
     {
         // Loopback on a dedicated thread — same parallel pattern as before
-        var loopbackState = new CaptureState();
+        using var loopbackState = new CaptureState();
         var loopbackBuf = new ConcurrentQueueWrapper();
-        var loopbackSig = new ManualResetEventSlim(false);
+        using var loopbackSig = new ManualResetEventSlim(false);
         var loopThread = new Thread(() => _loopback!.Start(loopbackBuf, loopbackSig, loopbackState))
             { IsBackground = true, Name = "Mix-loopback" };
         loopThread.Start();
@@ -30,7 +29,7 @@ public sealed class MixAudioSource : IAudioSource
         {
             DiscardOnBufferOverflow = true,
             ReadFully = false,
-            BufferDuration = TimeSpan.FromSeconds(60),
+            BufferDuration = TimeSpan.FromSeconds(5),
         };
         micDevice.DataAvailable += (_, ev) =>
         {
@@ -43,7 +42,7 @@ public sealed class MixAudioSource : IAudioSource
         // Drain loop: collect from both sources every 100ms, mix, push once
         while (state.IsRunning)
         {
-            Thread.Sleep(DrainMs);
+            state.Wait(DrainMs);
             if (!state.IsRunning) break;
 
             try
@@ -67,11 +66,11 @@ public sealed class MixAudioSource : IAudioSource
             catch { /* best-effort */ }
         }
 
-        loopbackState.IsRunning = false;
+        loopbackState.Stop();
         loopbackSig.Set();
         micDevice.StopRecording();
         micDevice.Dispose();
-        loopThread.Join(1000);
+        loopThread.Join();
     }
 
     /// <summary>Mix two arrays, optionally gain‑adjusted, and resample to target rate.</summary>

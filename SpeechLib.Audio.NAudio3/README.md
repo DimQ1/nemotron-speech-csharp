@@ -1,0 +1,30 @@
+# SpeechLib.Audio.NAudio3
+
+Windows-only audio capture provider built against `NAudio 3.0.0-preview.19`.
+
+## Usage
+
+VoiceType WPF and WinUI reference this provider directly. Other applications can reference both `SpeechLib` and `SpeechLib.Audio.NAudio3`, then select the preview factory explicitly:
+
+```csharp
+using SpeechLib;
+using SpeechLib.Audio;
+using SpeechLib.Models;
+
+IAudioSourceFactory factory = new NAudio3AudioSourceFactory();
+var source = factory.Create(CaptureMode.Mic, recognizer.SampleRate);
+LiveTranscriber.Run(source, "Microphone", recognizer);
+```
+
+The provider supports microphone, WASAPI loopback, and mixed capture. It targets `net10.0-windows7.0` because NAudio 3 preview packages use Windows-specific APIs.
+
+It also supplies the NAudio-backed `Transcriber.RunFile` compatibility path. The live source exposes shared volume controls and an `AudioLevelMeter` for mixer UIs.
+
+## Resource behavior
+
+- Callback input is copied once into a two-second bounded `BufferedWaveProvider`.
+- Capture output is published as `float[]` batches, matching the stable provider contract.
+- Temporary drain arrays use `ArrayPool<float>`.
+- `Dispose()` requests capture shutdown through `CaptureState`.
+
+The NAudio 3 package is prerelease. VoiceType selects it intentionally; hardware capture should still be validated on the target Windows devices.

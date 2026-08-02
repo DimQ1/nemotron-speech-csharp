@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using OpenTelemetry;
+using SpeechLib;
+using SpeechLib.Audio;
 using SpeechLib.Recognition;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Services;
@@ -181,6 +183,7 @@ public partial class App : Application
         services.AddSingleton<ITextInjector, TextInjector>();
         services.AddSingleton<TaskbarService>();
         services.AddSingleton<WindowIconService>();
+        services.AddSingleton<IAudioSourceFactory, NAudio3AudioSourceFactory>();
 
         // Recognition (decorated with logging)
         services.AddSingleton<RecognitionService>(sp =>
@@ -188,6 +191,7 @@ public partial class App : Application
                 sp.GetRequiredService<ISettingsService>(),
                 sp.GetRequiredService<IPostProcessingPipeline>(),
                 sp.GetRequiredService<ISessionManager>(),
+                sp.GetRequiredService<IAudioSourceFactory>(),
                 sp.GetService<ISystemTelemetry>()));
         services.AddSingleton<IRecognitionService>(sp =>
             new LoggingRecognitionService(

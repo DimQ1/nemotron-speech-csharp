@@ -12,7 +12,7 @@ Windows desktop application for streaming speech-to-text dictation. Speaks into 
 | 🛑 **Auto-stop** | Any keyboard or mouse press stops recognition |
 | 🪟 **Floating window** | Always-on-top window showing live transcription |
 | 💾 **Session recording** | Save recognition sessions as JSON metadata |
-| 🎵 **MP3 audio save** | Record microphone audio as MP3 (NAudio + LAME) |
+| 🎵 **MP3 audio save** | Record microphone audio as MP3 (NAudio 3 capture + LAME) |
 | 🔧 **Post-processing** | Regex pipeline to clean artifacts (configurable) |
 | 🌍 **100+ languages** | BCP-47 language selection via settings |
 | ⚙️ **Full settings UI** | Model path, EP, VAD, capture mode, all configurable |
@@ -51,7 +51,7 @@ sequenceDiagram
     participant User
     participant VT as VoiceType Window
     participant Hook as GlobalHotkey
-    participant Mic as MicAudioSource
+    participant Mic as NAudio3AudioSource
     participant ASR as Nemotron ONNX
     participant PP as PostProcessing
     participant Inj as TextInjector
@@ -122,7 +122,7 @@ Sessions are stored at `%LocalAppData%\VoiceType\Sessions\` (configurable).
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| NAudio | 2.2.1 | Audio capture |
+| NAudio | 3.0.0-preview.19 | Audio capture |
 | NAudio.Lame | 2.1.0 | MP3 encoding |
 | SpeechLib | Project ref | Recognition abstractions |
 | NemotronSpeech | Project ref | ONNX GenAI engine |

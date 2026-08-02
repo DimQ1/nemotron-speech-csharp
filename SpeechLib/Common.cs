@@ -72,27 +72,39 @@ namespace SpeechLib
         /// <returns>
         /// ORT GenAI config object with all options set
         /// </returns>
-        public static Config GetConfig(string path, string ep, Dictionary<string, string>? ep_options, GeneratorParamsArgs search_options)
+        public static Config GetConfig(
+            string path,
+            string ep,
+            Dictionary<string, string>? ep_options,
+            GeneratorParamsArgs search_options,
+            int? cpuThreads = null,
+            bool? sequentialExecution = true)
         {
-           
             var config = new Config(path);
 
             if (ep == "cpu")
             {
-                string? cpuOverlay = modifyConfigForCpu(path);
+                int threads = ResolveCpuThreads(cpuThreads);
+                string? cpuOverlay = modifyConfigForCpu(path, threads, sequentialExecution);
                 if (!string.IsNullOrWhiteSpace(cpuOverlay))
                 {
                     config.Overlay(cpuOverlay);
-                    Console.WriteLine($"CPU config: applied overlay with intra_op={ComputeOptimalIntraThreads(Environment.ProcessorCount)}");
+                    Console.WriteLine($"CPU config: applied overlay with intra_op={threads}");
                 }
                 else
                 {
                     // Fallback: set thread options directly via provider options
-                    int threads = ComputeOptimalIntraThreads(Environment.ProcessorCount);
                     Console.WriteLine($"CPU config: overlay failed, using provider options intra_op={threads}");
                     config.SetProviderOption("cpu", "intra_op_num_threads", threads.ToString());
                     config.SetProviderOption("cpu", "inter_op_num_threads", "1");
                     config.SetProviderOption("cpu", "session.force_spinning_stop", "1");
+                    if (sequentialExecution.HasValue)
+                    {
+                        config.SetProviderOption(
+                            "cpu",
+                            "session.execution_mode",
+                            sequentialExecution.Value ? "ORT_SEQUENTIAL" : "ORT_PARALLEL");
+                    }
                 }
             }
 
@@ -163,11 +175,8 @@ namespace SpeechLib
         /// </summary>
         /// <param name="path">Path to the model folder containing genai_config.json</param>
         /// <returns>JSON overlay string with CPU thread settings, or null on failure</returns>
-        private static string? modifyConfigForCpu(string path)
+        private static string? modifyConfigForCpu(string path, int optimalIntraThreads, bool? sequentialExecution)
         {
-            int logicalCores = Environment.ProcessorCount;
-            int optimalIntraThreads = ComputeOptimalIntraThreads(logicalCores);
-
             string configPath = Path.Combine(path, "genai_config.json");
 
             try
@@ -209,11 +218,24 @@ namespace SpeechLib
                     sessionOptions["intra_op_num_threads"] = optimalIntraThreads;
                     sessionOptions["inter_op_num_threads"] = 1;
                     sessionOptions["session.force_spinning_stop"] = "1";
+                    if (sequentialExecution.HasValue)
+                    {
+                        sessionOptions["execution_mode"] = sequentialExecution.Value
+                            ? "ORT_SEQUENTIAL"
+                            : "ORT_PARALLEL";
+                    }
                 }
 
                 string overlay = rootNode.ToJsonString();
+                string executionMode = sequentialExecution switch
+                {
+                    true => "ORT_SEQUENTIAL",
+                    false => "ORT_PARALLEL",
+                    _ => "default"
+                };
                 Console.WriteLine($"CPU config: intra_op_num_threads={optimalIntraThreads} " +
-                                  $"(logical cores={logicalCores}).");
+                                  $"execution_mode={executionMode} " +
+                                  $"(logical cores={Environment.ProcessorCount}).");
                 return overlay;
             }
             catch (Exception ex)
@@ -221,6 +243,14 @@ namespace SpeechLib
                 Console.WriteLine($"CPU config preparation failed: {ex.Message}");
                 return null;
             }
+        }
+
+        private static int ResolveCpuThreads(int? cpuThreads)
+        {
+            if (cpuThreads is <= 0)
+                throw new ArgumentOutOfRangeException(nameof(cpuThreads), cpuThreads, "CPU thread count must be positive.");
+
+            return cpuThreads ?? ComputeOptimalIntraThreads(Environment.ProcessorCount);
         }
 
         /// <summary>

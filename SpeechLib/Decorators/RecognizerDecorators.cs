@@ -6,7 +6,7 @@ namespace SpeechLib.Decorators;
 /// Decorator that adds latency and token-count metrics to any IStreamingSpeechRecognizer.
 /// Logs per-chunk processing time and cumulative statistics.
 /// </summary>
-public sealed class MetricsRecognizerDecorator : IStreamingSpeechRecognizer
+public sealed class MetricsRecognizerDecorator : IStreamingSpeechRecognizer, ILanguageConfigurable
 {
     private readonly IStreamingSpeechRecognizer _inner;
     private readonly string _label;
@@ -22,6 +22,9 @@ public sealed class MetricsRecognizerDecorator : IStreamingSpeechRecognizer
     public int SampleRate => _inner.SampleRate;
     public int ChunkSamples => _inner.ChunkSamples;
     public int LastTokenCount => _inner.LastTokenCount;
+
+    public bool TrySetLanguage(string language) =>
+        (_inner as ILanguageConfigurable)?.TrySetLanguage(language) == true;
 
     /// <summary>Get the inner recognizer (for unwrapping decorators).</summary>
     public IStreamingSpeechRecognizer GetInner() => _inner;
@@ -65,7 +68,7 @@ public sealed class MetricsRecognizerDecorator : IStreamingSpeechRecognizer
 /// Decorator that adds structured logging to any IStreamingSpeechRecognizer.
 /// Logs each ProcessAudio call with text length and timing.
 /// </summary>
-public sealed class LoggingRecognizerDecorator : IStreamingSpeechRecognizer
+public sealed class LoggingRecognizerDecorator : IStreamingSpeechRecognizer, ILanguageConfigurable
 {
     private readonly IStreamingSpeechRecognizer _inner;
     private readonly Action<string> _log;
@@ -80,6 +83,9 @@ public sealed class LoggingRecognizerDecorator : IStreamingSpeechRecognizer
     public int SampleRate => _inner.SampleRate;
     public int ChunkSamples => _inner.ChunkSamples;
     public int LastTokenCount => _inner.LastTokenCount;
+
+    public bool TrySetLanguage(string language) =>
+        (_inner as ILanguageConfigurable)?.TrySetLanguage(language) == true;
 
     public string? ProcessAudio(float[] chunk)
     {

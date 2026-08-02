@@ -25,6 +25,12 @@ public sealed class RecognitionService : IDisposable
     private Task? _processTask;
     private readonly StringBuilder _accumulatedText = new();
     private readonly StringBuilder _partialProcessedText = new();
+    private readonly IAudioSourceFactory _audioSourceFactory;
+
+    public RecognitionService(IAudioSourceFactory? audioSourceFactory = null)
+    {
+        _audioSourceFactory = audioSourceFactory ?? new NAudio3AudioSourceFactory();
+    }
 
     public event Action<string>? PartialResult;
     public event Action<string>? FinalResult;
@@ -71,7 +77,7 @@ public sealed class RecognitionService : IDisposable
         _audioRecorder = new AudioRecorderService(_recognizer.SampleRate);
         _audioRecorder.Start();
 
-        _audioSource = Transcriber.CreateAudioSource(
+        _audioSource = _audioSourceFactory.Create(
             Enum.Parse<CaptureMode>(settings.AudioSource),
             _recognizer.SampleRate);
 
@@ -117,7 +123,9 @@ public sealed class RecognitionService : IDisposable
         var procEnabled = procSettings.PostProcessingEnabled;
         var compiledProcRules = PostProcessingPipeline.CompileRules(procRules, procEnabled);
 
-        while ((_captureState?.IsRunning == true) || (_buffer?.IsEmpty == false))
+         while ((_isRunning && _captureState?.IsRunning == true) ||
+             (_captureThread?.IsAlive == true) ||
+             (_buffer?.IsEmpty == false))
         {
             bool gotData = false;
             while (_buffer?.TryDequeue(out var batch) == true)
@@ -167,7 +175,7 @@ public sealed class RecognitionService : IDisposable
         FinalResult?.Invoke(finalProcessed);
         Stopped?.Invoke();
 
-        _audioSource?.Dispose();
+        _captureThread?.Join(TimeSpan.FromSeconds(1));
     }
 
     public string? SaveAudio(string fileNameBase)
@@ -192,7 +200,7 @@ public sealed class RecognitionService : IDisposable
     private void CleanupPreviousSession()
     {
         if (_captureState is not null)
-            _captureState.IsRunning = false;
+            _captureState.Stop();
         _signal?.Set();
 
         // Wait for the previous ProcessLoop task to fully complete
@@ -202,6 +210,9 @@ public sealed class RecognitionService : IDisposable
             try { _processTask.GetAwaiter().GetResult(); } catch { }
             _processTask = null;
         }
+
+        _captureThread?.Join(TimeSpan.FromSeconds(1));
+        _captureThread = null;
 
         _audioRecorder?.Dispose();
         _audioRecorder = null;
@@ -213,6 +224,7 @@ public sealed class RecognitionService : IDisposable
         _signal = null;
 
         _buffer = null;
+        _captureState?.Dispose();
         _captureState = null;
     }
 
