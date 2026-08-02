@@ -32,8 +32,13 @@ public sealed record AppOptions
                 case "--mix":  opts = opts with { Mode = CaptureMode.Mix }; break;
                 case "--language" or "-l" when i + 1 < args.Length:
                     opts = opts with { LanguageArg = args[++i] }; break;
-                case "--use_vad" when i + 1 < args.Length && args[i + 1] == "true":
-                    opts = opts with { UseVad = true }; i++; break;
+                case "--use_vad":
+                    if (i + 1 >= args.Length || !bool.TryParse(args[i + 1], out var useVad))
+                        throw new ArgumentException("--use_vad expects true or false.");
+
+                    opts = opts with { UseVad = useVad };
+                    i++;
+                    break;
                 case "--word-timestamps":
                     opts = opts with { WordTimestamps = true }; break;
                 default:

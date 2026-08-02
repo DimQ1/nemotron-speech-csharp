@@ -9,10 +9,12 @@ namespace SpeechLib;
 /// Orchestrates transcription for file mode and live capture mode.
 /// Works with any <see cref="IStreamingSpeechRecognizer"/> implementation.
 /// </summary>
-public static class Transcriber
+public static partial class Transcriber
 {
     private static readonly IAudioSourceFactory DefaultAudioSourceFactory =
-        new Audio.NAudio2AudioSourceFactory();
+        CreateDefaultAudioSourceFactory();
+
+    private static partial IAudioSourceFactory CreateDefaultAudioSourceFactory();
 
     /// <summary>Regex to match language tags like &lt;en-US&gt;, &lt;bg-BG&gt;, &lt;de-DE&gt;.</summary>
     private static readonly Regex LanguageTagPattern = new(

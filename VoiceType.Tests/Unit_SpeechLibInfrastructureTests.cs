@@ -39,21 +39,21 @@ public sealed class Unit_SpeechLibInfrastructureTests
     }
 
     [Fact]
-    public void NAudio2AudioSourceFactory_CreatesStableLiveSource()
+    public void NAudio3AudioSourceFactory_CreatesPreviewLiveSource()
     {
-        var factory = new NAudio2AudioSourceFactory();
+        var factory = new NAudio3AudioSourceFactory();
 
         using var source = factory.Create(CaptureMode.Mic, 16000);
 
-        Assert.IsType<BufferedCaptureSource>(source);
+        Assert.IsType<NAudio3AudioSource>(source);
     }
 
     [Fact]
     public void AudioSourceFactories_RejectFileMode()
     {
-        var stableFactory = new NAudio2AudioSourceFactory();
+        var factory = new NAudio3AudioSourceFactory();
 
-        Assert.Throws<InvalidOperationException>(() => stableFactory.Create(CaptureMode.File, 16000));
+        Assert.Throws<InvalidOperationException>(() => factory.Create(CaptureMode.File, 16000));
     }
 
     [Fact]

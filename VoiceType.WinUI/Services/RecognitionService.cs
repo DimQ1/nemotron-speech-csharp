@@ -25,6 +25,7 @@ public sealed class RecognitionService : IRecognitionService
     private readonly IPostProcessingPipeline? _postProcessing;
     private readonly ISessionManager? _sessionManager;
     private readonly ISystemTelemetry? _telemetry;
+    private readonly IAudioSourceFactory _audioSourceFactory;
 
     private IStreamingSpeechRecognizer? _recognizer;
     private AudioRecorderService? _audioRecorder;
@@ -47,11 +48,13 @@ public sealed class RecognitionService : IRecognitionService
         ISettingsService settingsService,
         IPostProcessingPipeline postProcessing,
         ISessionManager sessionManager,
+        IAudioSourceFactory audioSourceFactory,
         ISystemTelemetry? telemetry = null)
     {
         _settingsService = settingsService;
         _postProcessing = postProcessing;
         _sessionManager = sessionManager;
+        _audioSourceFactory = audioSourceFactory;
         _telemetry = telemetry ?? App.Telemetry;
     }
 
@@ -183,10 +186,13 @@ public sealed class RecognitionService : IRecognitionService
         _partialProcessedText.Clear();
         _isRunning = true;
 
-        _audioRecorder = new AudioRecorderService(_recognizer.SampleRate);
-        _audioRecorder.Start();
+        if (settings.SaveAudioMp3)
+        {
+            _audioRecorder = new AudioRecorderService(_recognizer.SampleRate);
+            _audioRecorder.Start();
+        }
 
-        _audioSource = Transcriber.CreateAudioSource(
+        _audioSource = _audioSourceFactory.Create(
             Enum.Parse<CaptureMode>(settings.AudioSource),
             _recognizer.SampleRate);
 

@@ -47,6 +47,30 @@ dotnet build -c Release -p:GpuArch=Blackwell
 dotnet build -c Release -p:GpuArch=DML
 ```
 
+## CPU Execution Tuning
+
+For `cpu`, `SpeechLib.Common` applies a CPU-oriented configuration to the encoder
+and decoder sessions:
+
+- `intra_op_num_threads` uses a logical-core heuristic unless `ModelSession` is
+    given an explicit thread count.
+- `inter_op_num_threads=1` limits graph-level contention.
+- `session.force_spinning_stop=1` avoids keeping worker threads busy after work ends.
+- `execution_mode=ORT_SEQUENTIAL` is the default for CPU sessions.
+
+This improves predictability for real-time CPU inference, but it does not make model
+inference free. VAD is input processing: it can affect which audio reaches the model,
+but it does not stop capture or guarantee that every inference pass is skipped.
+
+Compare thread counts, VAD, and sequential versus parallel execution with:
+
+```powershell
+dotnet run --project BenchmarkSuite1 -c Release -- --filter "*ModelSessionCpuThreadBenchmark*"
+```
+
+The benchmark requires `models-onnx/cpu-int4` and `Test-Audio/sample-0.mp3` and writes
+per-case diagnostics to the ignored `build/benchmark-results/` directory.
+
 ## CLI Arguments
 
 ```

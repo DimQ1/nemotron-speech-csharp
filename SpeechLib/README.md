@@ -44,7 +44,7 @@ public interface IAudioSourceFactory
 
 ## Selecting an audio provider
 
-The stable provider is the existing application default:
+The stable provider remains the CLI compatibility provider:
 
 ```csharp
 using SpeechLib;
@@ -56,7 +56,7 @@ var source = factory.Create(CaptureMode.Mic, recognizer.SampleRate);
 LiveTranscriber.Run(source, "Microphone", recognizer);
 ```
 
-To try the NAudio 3 preview provider, reference `SpeechLib.Audio.NAudio3` instead and use its factory:
+VoiceType WPF and WinUI use the NAudio 3 preview provider. Other applications can reference `SpeechLib.Audio.NAudio3` and use its factory:
 
 ```csharp
 using SpeechLib;
@@ -81,7 +81,7 @@ Both providers preserve the same batched `float[]` contract. NAudio 3 is a previ
 
 ## File mode
 
-`SpeechLib.Audio.NAudio2` contains the NAudio-backed file loader and the legacy `Transcriber.RunFile` orchestration. A different provider can implement file decoding separately while reusing `IStreamingSpeechRecognizer`.
+Both NAudio provider projects contain the NAudio-backed file loader and the `Transcriber.RunFile` orchestration. The core remains independent of file and device codecs.
 
 ## Build
 

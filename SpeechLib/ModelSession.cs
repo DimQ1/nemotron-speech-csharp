@@ -25,10 +25,10 @@ public sealed class ModelSession : IStreamingSpeechRecognizer, ILanguageConfigur
     public bool IsSingleLanguage { get; }
 
     public ModelSession(string modelPath, string executionProvider, string? langId, bool useVad)
-        : this(modelPath, executionProvider, langId, useVad, null) { }
+        : this(modelPath, executionProvider, langId, useVad, null, null) { }
 
     public ModelSession(string modelPath, string executionProvider, string? langId, bool useVad,
-        GeneratorParamsArgs? searchOptions)
+        GeneratorParamsArgs? searchOptions, int? cpuThreads = null, bool? sequentialExecution = true)
     {
         modelPath = ResolvePath(modelPath);
         if (!Directory.Exists(modelPath))
@@ -53,7 +53,7 @@ public sealed class ModelSession : IStreamingSpeechRecognizer, ILanguageConfigur
             repetition_penalty = 1.1
         };
 
-        _config = Common.GetConfig(modelPath, executionProvider, null, searchOptions);
+        _config = Common.GetConfig(modelPath, executionProvider, null, searchOptions, cpuThreads, sequentialExecution);
 
         _model = new Model(_config);
         _processor = new StreamingProcessor(_model);

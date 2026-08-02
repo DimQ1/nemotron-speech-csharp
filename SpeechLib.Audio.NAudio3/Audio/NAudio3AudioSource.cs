@@ -17,6 +17,23 @@ public sealed class NAudio3AudioSource : IAudioSource
     private readonly int _targetRate;
     private CaptureState? _activeState;
 
+    public static AudioLevelMeter AudioLevelMeter { get; } = new();
+
+    private static float _micVolume = 1.0f;
+    private static float _loopbackVolume = 1.0f;
+
+    public static float MicVolume
+    {
+        get => _micVolume;
+        set => _micVolume = Math.Clamp(value, 0f, 1f);
+    }
+
+    public static float LoopbackVolume
+    {
+        get => _loopbackVolume;
+        set => _loopbackVolume = Math.Clamp(value, 0f, 1f);
+    }
+
     public NAudio3AudioSource(CaptureMode mode, int targetRate)
     {
         if (mode is CaptureMode.File)
@@ -126,12 +143,13 @@ public sealed class NAudio3AudioSource : IAudioSource
             for (var index = 0; index < count; index++)
             {
                 if (index < loopbackCount)
-                    batch[index] += loopbackSamples![index] * 0.5f;
+                    batch[index] += loopbackSamples![index] * 0.5f * LoopbackVolume;
                 if (index < microphoneCount)
-                    batch[index] += microphoneSamples![index] * 0.6f;
+                    batch[index] += microphoneSamples![index] * 0.6f * MicVolume;
             }
 
             buffer.Enqueue(batch);
+            AudioLevelMeter.Publish(batch);
             signal.Set();
         }
         finally

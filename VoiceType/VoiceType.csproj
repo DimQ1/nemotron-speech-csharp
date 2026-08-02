@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NAudio" Version="2.3.0" />
+    <PackageReference Include="NAudio" Version="3.0.0-preview.19" />
     <PackageReference Include="NAudio.Lame" Version="2.1.0" />
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
   </ItemGroup>
@@ -20,7 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
     <ProjectReference Include="..\SpeechLib.Nemotron\SpeechLib.Nemotron.csproj" />
-    <ProjectReference Include="..\SpeechLib.Audio.NAudio2\SpeechLib.Audio.NAudio2.csproj" />
+    <ProjectReference Include="..\SpeechLib.Audio.NAudio3\SpeechLib.Audio.NAudio3.csproj" />
   </ItemGroup>
 
 </Project>

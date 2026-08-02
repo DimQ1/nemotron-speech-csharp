@@ -25,6 +25,12 @@ public sealed class RecognitionService : IDisposable
     private Task? _processTask;
     private readonly StringBuilder _accumulatedText = new();
     private readonly StringBuilder _partialProcessedText = new();
+    private readonly IAudioSourceFactory _audioSourceFactory;
+
+    public RecognitionService(IAudioSourceFactory? audioSourceFactory = null)
+    {
+        _audioSourceFactory = audioSourceFactory ?? new NAudio3AudioSourceFactory();
+    }
 
     public event Action<string>? PartialResult;
     public event Action<string>? FinalResult;
@@ -71,7 +77,7 @@ public sealed class RecognitionService : IDisposable
         _audioRecorder = new AudioRecorderService(_recognizer.SampleRate);
         _audioRecorder.Start();
 
-        _audioSource = Transcriber.CreateAudioSource(
+        _audioSource = _audioSourceFactory.Create(
             Enum.Parse<CaptureMode>(settings.AudioSource),
             _recognizer.SampleRate);
 

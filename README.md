@@ -6,7 +6,7 @@ Real-time multilingual speech recognition using [NVIDIA Nemotron 3.5 ASR](https:
 |---------|---------|
 | **Languages** | 100+ (auto-detect or BCP-47 code) |
 | **Modes** | File, microphone, system loopback, mic+loopback mix |
-| **VAD** | Silero VAD — cuts CPU from 58% → 7% in silence |
+| **VAD** | Optional Silero input processing; capture and model lifecycle remain independent |
 | **Providers** | CUDA, CPU, DirectML — switchable at runtime |
 | **Architecture** | KISS + SOLID, lock-free audio pipeline |
 
@@ -19,10 +19,12 @@ nemotron-speech-csharp/
 ├── NemotronSpeech.slnx           # .NET 10 solution file
 ├── SpeechLib/                    # 📚 Provider-neutral speech contracts
 ├── SpeechLib.Nemotron/           # 🧠 Nemotron ONNX Runtime provider
-├── SpeechLib.Audio.NAudio2/      # 🎙️ Stable NAudio 2 audio provider
-├── SpeechLib.Audio.NAudio3/      # 🎙️ NAudio 3 preview audio provider
+├── SpeechLib.Audio.NAudio2/      # 🎙️ Stable NAudio 2 provider for the CLI
+├── SpeechLib.Audio.NAudio3/      # 🎙️ NAudio 3 provider for VoiceType
 ├── NemotronSpeech/               # 🎙️ Nemotron ONNX GenAI recognizer (CLI + engine)
 ├── VoiceType/                    # 🖥️ WPF desktop app (streaming dictation)
+├── VoiceType.WinUI/              # 🪟 WinUI 3 packaged desktop app
+├── BenchmarkSuite1/              # 📊 CPU/GPU inference benchmarks
 ├── converter/                    # 🐍 Python model converter (NeMo → ONNX)
 ├── modules/                      # 🧠 Ready models by module (git-ignored)
 │   ├── asr/                      #    ASR models (cpu, cpu-ru-en, qnn, ...)
@@ -38,10 +40,12 @@ nemotron-speech-csharp/
 |---------|------|-------------|
 | [**SpeechLib**](SpeechLib/README.md) | .NET 10 Library | Provider-neutral interfaces, bounded audio queues, capture lifecycle, and `LiveTranscriber` |
 | **SpeechLib.Nemotron** | .NET 10 Library | NVIDIA Nemotron ONNX Runtime GenAI recognizer provider |
-| **SpeechLib.Audio.NAudio2** | .NET 10 Library | Stable NAudio 2.3.0 microphone, loopback, mix, and file provider |
-| **SpeechLib.Audio.NAudio3** | .NET 10 Windows Library | NAudio 3.0.0-preview.19 microphone, loopback, and mix provider |
+| **SpeechLib.Audio.NAudio2** | .NET 10 Library | Stable NAudio 2.3.0 provider used by the CLI compatibility path |
+| **SpeechLib.Audio.NAudio3** | .NET 10 Windows Library | NAudio 3.0.0-preview.19 provider used by VoiceType |
 | [**NemotronSpeech**](NemotronSpeech/README.md) | .NET 10 Console App | ONNX Runtime GenAI implementation of `IStreamingSpeechRecognizer` for NVIDIA Nemotron 3.5 ASR. Supports CUDA / CPU / DirectML. |
 | [**VoiceType**](VoiceType/README.md) | .NET 10 WPF App | Desktop speech-to-text with global hotkeys, text injection into any app, session recording, post-processing pipeline, MP3 audio saving |
+| [**VoiceType.WinUI**](VoiceType.WinUI/README.md) | .NET 10 WinUI 3 MSIX App | Packaged dictation app using NAudio 3, model setup, text injection, session persistence, and local MSIX installation |
+| **BenchmarkSuite1** | .NET 10 Console App | BenchmarkDotNet suite for CPU threads, VAD, execution mode, RTF, and process CPU measurements |
 
 ## Quick Start
 
@@ -89,7 +93,9 @@ graph TD
   CLI[NemotronSpeech] --> NM
   CLI --> NA2
   VT[VoiceType WPF] --> NM
-  VT --> NA2
+  VT --> NA3
+  VU[VoiceType WinUI] --> NM
+  VU --> NA3
     VT --> |MP3| LAME[NAudio.Lame]
 ```
 
@@ -97,7 +103,15 @@ The core assembly does not reference NAudio or ONNX Runtime. Audio providers are
 
 ### NAudio 3 preview
 
-The preview provider is opt-in and is not the default for CLI, WPF, or WinUI applications. To evaluate it, reference `SpeechLib.Audio.NAudio3`, create an `NAudio3AudioSourceFactory`, and pass its source to `LiveTranscriber.Run`. See [SpeechLib.Audio.NAudio3 README](SpeechLib.Audio.NAudio3/README.md).
+VoiceType WPF and WinUI use the preview provider through `NAudio3AudioSourceFactory`. The CLI keeps the stable NAudio 2 provider for its existing compatibility path. To use NAudio 3 in another application, reference `SpeechLib.Audio.NAudio3`, create an `NAudio3AudioSourceFactory`, and pass its source to `LiveTranscriber.Run`. See [SpeechLib.Audio.NAudio3 README](SpeechLib.Audio.NAudio3/README.md).
+
+### CPU execution mode
+
+CPU model sessions use a thread-count heuristic, `inter_op_num_threads=1`,
+`session.force_spinning_stop=1`, and explicit `ORT_SEQUENTIAL` execution by default.
+These settings control ONNX scheduling; they do not eliminate the cost of streaming
+inference. VAD is not a replacement for muting capture when the goal is to stop model
+work entirely.
 
 ## CLI Usage (NemotronSpeech)
 
@@ -157,6 +171,7 @@ See [converter/README.md](converter/README.md) for Python model conversion (NeMo
 - [SpeechLib README](SpeechLib/README.md) — library architecture & extensibility
 - [NemotronSpeech README](NemotronSpeech/README.md) — model setup, GPU configs, CLI args
 - [VoiceType README](VoiceType/README.md) — desktop app features & settings
+- [VoiceType.WinUI README](VoiceType.WinUI/README.md) — WinUI build, MSIX packaging, and local installation
 
 ### Language Codes (common)
 `en` `ru` `zh` `de` `fr` `es` `ja` `ko` `hi` `ar` `pt` `it` `nl` `pl` `tr` `uk` `sv` `da` `fi` `no` `cs` `hu` `ro` `el` `th` `vi` `he` `auto`
@@ -178,18 +193,21 @@ dotnet run --project BenchmarkSuite1 -c Release --no-restore -- --filter "*Trans
 ```
 
 Model construction is intentionally outside the timed method, so these results
-measure inference throughput rather than startup time.
+measure inference throughput rather than startup time. The benchmark also reports
+process CPU time and can compare `ORT_SEQUENTIAL` with `ORT_PARALLEL`.
 
-Measured on Ryzen 9 + RTX 5070 Ti Laptop (Blackwell, 20 cores):
+One local CPU INT4 run over 10.1 seconds of audio produced these illustrative values:
 
-| Mode | CPU idle | CPU speech | GPU | VRAM | Tokens |
-|------|----------|------------|-----|------|--------|
-| CUDA | 64% | 64% | 15% | 668 MB | ~1.1s |
-| CUDA + VAD | 64% | 70% | 15% | 668 MB | ~1.1s |
-| CPU | 58% | 58% | — | — | ~1.1s |
-| **CPU + VAD** ✅ | **7%** | 25% | — | — | ~1.1s |
+| Threads | VAD | Execution | RTF | Process CPU |
+|---------|-----|-----------|-----|-------------|
+| 6 | off | sequential | 0.209 | 31.95% |
+| 6 | off | parallel | 0.214 | 31.86% |
+| 8 | off | sequential | 0.205 | 44.69% |
+| 8 | on | sequential | 0.201 | 42.78% |
 
-> ORT spawns one spin-wait thread per CPU core (~20 threads). The 60%+ "CPU usage" is idle spin, not real work. VAD skips inference on silence → average CPU drops to 7%.
+Results vary by processor, model build, and audio. VAD may reduce work for suitable
+silence segments, but it does not stop capture or guarantee that all inference is
+skipped.
 
 ---
 
