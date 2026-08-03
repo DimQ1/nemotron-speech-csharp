@@ -66,6 +66,20 @@ installation. Application data is preserved under the paths managed by `AppPaths
 
 ## Related files
 
+## Folder structure
+
+- `Assets/` - app icons, package visual assets, generated Store images.
+- `Interfaces/` - service and abstraction contracts used by DI and MVVM.
+- `Messages/` - lightweight message/event payloads exchanged in UI flow.
+- `Models/` - settings/data models and DTOs for persistence/runtime state.
+- `Serialization/` - JSON and state serialization helpers.
+- `Services/` - recognition orchestration, hotkeys, injection, app paths, window/taskbar integration.
+- `ViewModels/` - MVVM state, commands, and feature-level UI logic.
+- `Views/` - WinUI windows and XAML views.
+- `Properties/` - publish profiles and packaging metadata.
+- `build-dev.ps1` / `install-dev.ps1` / `build-store-release.ps1` - local and Store packaging scripts.
+- `Package.appxmanifest` - package identity/version/capabilities for MSIX.
+
 - `Services/RecognitionService.cs` - model and audio provider composition.
 - `ViewModels/MainViewModel.cs` - recording and recognition state.
 - `Services/AppPaths.cs` - application data locations.

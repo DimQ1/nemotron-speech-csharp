@@ -132,6 +132,6 @@ Cannot be reassigned after construction. Use `Clear()` + `AddRange()` instead.
 
 - [README.md](README.md) — project overview, models, demo
 - [converter/README.md](converter/README.md) — NeMo → ONNX conversion (Python)
-- [Doc/nemotron-3.5-asr-timestamps-analysis.md](Doc/nemotron-3.5-asr-timestamps-analysis.md) — model timestamp capabilities (RNN-T durations, frame rate, token-level alignment)
+- [Doc/research/asr/nemotron-3.5-asr-timestamps-analysis.md](Doc/research/asr/nemotron-3.5-asr-timestamps-analysis.md) — model timestamp capabilities (RNN-T durations, frame rate, token-level alignment)
 - `.claude/skills/nemotron-backend/SKILL.md` — Claude-specific backend patterns
 - `.claude/skills/nemotron-ui/SKILL.md` — Claude-specific UI patterns
