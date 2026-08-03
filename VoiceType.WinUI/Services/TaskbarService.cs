@@ -9,6 +9,12 @@ namespace VoiceType.WinUI.Services;
 /// </summary>
 public sealed class TaskbarService : IDisposable
 {
+    public enum RecordingOverlayMode
+    {
+        CaptureDot,
+        InjectionText
+    }
+
     private nint _hwnd;
     private ITaskbarList3? _taskbarList;
     private nint _overlayIcon;
@@ -40,12 +46,12 @@ public sealed class TaskbarService : IDisposable
     }
 
     /// <summary>Show the microphone indicator for the current recognition state.</summary>
-    public void StartRecordingIndicator(bool isMuted, bool isActivelyInjecting)
+    public void StartRecordingIndicator(bool isMuted, RecordingOverlayMode overlayMode)
     {
         if (_taskbarList is null || _hwnd == nint.Zero) return;
         if (_isIndicating)
         {
-            UpdateRecordingIndicator(isMuted, isActivelyInjecting);
+            UpdateRecordingIndicator(isMuted, overlayMode);
             return;
         }
 
@@ -53,7 +59,7 @@ public sealed class TaskbarService : IDisposable
 
         try
         {
-            SetRecordingOverlay(isMuted, isActivelyInjecting);
+            SetRecordingOverlay(isMuted, overlayMode);
             SetRecognitionProgress();
         }
         catch (Exception ex)
@@ -63,13 +69,13 @@ public sealed class TaskbarService : IDisposable
     }
 
     /// <summary>Update the microphone overlay for the current recognition state.</summary>
-    public void UpdateRecordingIndicator(bool isMuted, bool isActivelyInjecting)
+    public void UpdateRecordingIndicator(bool isMuted, RecordingOverlayMode overlayMode)
     {
         if (_taskbarList is null || _hwnd == nint.Zero || !_isIndicating) return;
 
         try
         {
-            SetRecordingOverlay(isMuted, isActivelyInjecting);
+            SetRecordingOverlay(isMuted, overlayMode);
             SetRecognitionProgress();
         }
         catch (Exception ex)
@@ -119,11 +125,11 @@ public sealed class TaskbarService : IDisposable
         _disposed = true;
     }
 
-    private void SetRecordingOverlay(bool isMuted, bool isActivelyInjecting)
+    private void SetRecordingOverlay(bool isMuted, RecordingOverlayMode overlayMode)
     {
-        var newIcon = isActivelyInjecting
-            ? CreateRedDotOverlayIcon()
-            : CreateMicrophoneOverlayIcon(isMuted, isActivelyInjecting);
+        var newIcon = overlayMode == RecordingOverlayMode.InjectionText
+            ? CreateTextOverlayIcon()
+            : CreateRedDotOverlayIcon();
         if (newIcon == nint.Zero)
             return;
 
@@ -132,7 +138,7 @@ public sealed class TaskbarService : IDisposable
             _taskbarList!.SetOverlayIcon(
                 _hwnd,
                 newIcon,
-                isActivelyInjecting
+                overlayMode == RecordingOverlayMode.InjectionText
                     ? "Transcribing and typing..."
                     : isMuted ? "Microphone muted" : "Listening...");
 
@@ -242,7 +248,94 @@ public sealed class TaskbarService : IDisposable
         }
     }
 
-    // ---- Icon creation (16x16 microphone) using raw Win32 ----
+    private static nint CreateTextOverlayIcon()
+    {
+        const int size = 16;
+        var hdcScreen = GetDC(nint.Zero);
+        var hdcMem = CreateCompatibleDC(hdcScreen);
+        nint hbmColor = nint.Zero;
+        nint hbmMask = nint.Zero;
+
+        try
+        {
+            if (hdcScreen == nint.Zero || hdcMem == nint.Zero)
+                return nint.Zero;
+
+            var bmi = new BITMAPINFO
+            {
+                bmiHeader = new BITMAPINFOHEADER
+                {
+                    biSize = Marshal.SizeOf<BITMAPINFOHEADER>(),
+                    biWidth = size,
+                    biHeight = -size,
+                    biPlanes = 1,
+                    biBitCount = 32,
+                    biCompression = 0,
+                    biSizeImage = size * size * 4
+                }
+            };
+
+            hbmColor = CreateDIBSection(hdcMem, ref bmi, 0, out var bits, nint.Zero, 0);
+            if (hbmColor == nint.Zero || bits == nint.Zero)
+                return nint.Zero;
+
+            var maskStride = ((size + 31) / 32) * 4;
+            var maskData = new byte[maskStride * size];
+            var maskHandle = GCHandle.Alloc(maskData, GCHandleType.Pinned);
+            try
+            {
+                hbmMask = CreateBitmap(size, size, 1, 1, maskHandle.AddrOfPinnedObject());
+            }
+            finally
+            {
+                maskHandle.Free();
+            }
+
+            if (hbmMask == nint.Zero)
+                return nint.Zero;
+
+            var pixelData = new byte[size * size * 4];
+            for (var pixelY = 0; pixelY < size; pixelY++)
+            {
+                for (var pixelX = 0; pixelX < size; pixelX++)
+                {
+                    var isHorizontal = pixelY is >= 2 and <= 4 && pixelX is >= 2 and <= 13;
+                    var isVertical = pixelX is >= 7 and <= 9 && pixelY is >= 4 and <= 13;
+                    if (!isHorizontal && !isVertical)
+                        continue;
+
+                    var index = (pixelY * size + pixelX) * 4;
+                    pixelData[index + 0] = 53;
+                    pixelData[index + 1] = 57;
+                    pixelData[index + 2] = 229;
+                    pixelData[index + 3] = 255;
+                }
+            }
+
+            Marshal.Copy(pixelData, 0, bits, pixelData.Length);
+            var iconInfo = new ICONINFO
+            {
+                fIcon = true,
+                hbmColor = hbmColor,
+                hbmMask = hbmMask
+            };
+
+            return CreateIconIndirect(ref iconInfo);
+        }
+        finally
+        {
+            if (hbmColor != nint.Zero)
+                DeleteObject(hbmColor);
+            if (hbmMask != nint.Zero)
+                DeleteObject(hbmMask);
+            if (hdcMem != nint.Zero)
+                DeleteDC(hdcMem);
+            if (hdcScreen != nint.Zero)
+                ReleaseDC(nint.Zero, hdcScreen);
+        }
+    }
+
+    // ---- Icon creation (legacy microphone helper kept for compatibility) using raw Win32 ----
 
     private static nint CreateMicrophoneOverlayIcon(bool isMuted, bool isActivelyInjecting)
     {

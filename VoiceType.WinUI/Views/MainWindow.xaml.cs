@@ -69,6 +69,7 @@ public sealed partial class MainWindow : Window
         _hwnd = WindowNative.GetWindowHandle(this);
         _vm.MainWindowHandle = _hwnd;
         UpdateMicrophoneIcon();
+        UpdateStatusBadge();
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -88,7 +89,7 @@ public sealed partial class MainWindow : Window
         if (_vm.IsRecording)
             _taskbarService.StartRecordingIndicator(
                 _vm.IsCaptureMuted,
-                _vm.IsActivelyInjecting);
+                ResolveTaskbarOverlayMode());
     }
 
     public void ConfigureWindow()
@@ -118,46 +119,17 @@ public sealed partial class MainWindow : Window
             DispatcherQueue.TryEnqueue(() => TextScroller.ChangeView(null, double.MaxValue, null));
         }
 
-        if (e.PropertyName == nameof(MainViewModel.IsRecording))
-        {
-            StatusDot.Fill = _vm.IsRecording
-                ? (Brush)Application.Current.Resources["RedBrush"]
-                : (Brush)Application.Current.Resources["FgSecondaryBrush"];
-        }
-
         if (e.PropertyName is nameof(MainViewModel.IsRecording)
             or nameof(MainViewModel.IsActivelyInjecting)
             or nameof(MainViewModel.IsTextInjectionEnabled))
         {
             UpdateMicrophoneIcon();
-        }
-
-        if (e.PropertyName is nameof(MainViewModel.IsRecording)
-            or nameof(MainViewModel.IsActivelyInjecting)
-            or nameof(MainViewModel.IsTextInjectionEnabled))
-        {
-            var isRecording = _vm.IsRecording;
-            var isActivelyInjecting = _vm.IsActivelyInjecting;
-            var isCaptureMuted = _vm.IsCaptureMuted;
-
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                if (isRecording)
-                    _taskbarService.StartRecordingIndicator(isCaptureMuted, isActivelyInjecting);
-                else
-                    _taskbarService.StopRecordingIndicator();
-            });
+            UpdateStatusBadge();
+            UpdateTaskbarIndicator();
         }
 
         if (e.PropertyName == nameof(MainViewModel.IsCaptureMuted))
-        {
-            var isCaptureMuted = _vm.IsCaptureMuted;
-            var isActivelyInjecting = _vm.IsActivelyInjecting;
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                _taskbarService.UpdateRecordingIndicator(isCaptureMuted, isActivelyInjecting);
-            });
-        }
+            UpdateTaskbarIndicator();
     }
 
     private void UpdateMicrophoneIcon()
@@ -167,6 +139,40 @@ public sealed partial class MainWindow : Window
             ? (Brush)Application.Current.Resources["RedBrush"]
             : (Brush)Application.Current.Resources["AccentBrush"];
         _windowIconService.SetWindowIcon(_hwnd, AppWindow, isTextInjectionActive);
+    }
+
+    private void UpdateStatusBadge()
+    {
+        if (!_vm.IsRecording)
+        {
+            StatusDot.Visibility = Visibility.Collapsed;
+            StatusInjectionBadge.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var showInjectionBadge = _vm.IsActivelyInjecting;
+        StatusInjectionBadge.Visibility = showInjectionBadge ? Visibility.Visible : Visibility.Collapsed;
+        StatusDot.Visibility = showInjectionBadge ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private TaskbarService.RecordingOverlayMode ResolveTaskbarOverlayMode()
+        => _vm.IsActivelyInjecting
+            ? TaskbarService.RecordingOverlayMode.InjectionText
+            : TaskbarService.RecordingOverlayMode.CaptureDot;
+
+    private void UpdateTaskbarIndicator()
+    {
+        var isRecording = _vm.IsRecording;
+        var isCaptureMuted = _vm.IsCaptureMuted;
+        var overlayMode = ResolveTaskbarOverlayMode();
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (isRecording)
+                _taskbarService.StartRecordingIndicator(isCaptureMuted, overlayMode);
+            else
+                _taskbarService.StopRecordingIndicator();
+        });
     }
 
     private void OnClosed(object sender, WindowEventArgs args)

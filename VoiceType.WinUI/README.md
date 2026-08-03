@@ -31,19 +31,25 @@ dotnet build VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU
 The project supports the same `GpuArch` values as the solution: `CPU`, `DML`,
 `Standard`, and `Blackwell`.
 
-## Local MSIX package
+## Local MSIX package (dev)
 
-Create a signed development package with the repository script:
-
-```powershell
-.\VoiceType.WinUI/build-store-release.ps1 -Sign -CertThumbprint <thumbprint>
-```
-
-Install the resulting package with:
+For local testing, always use the dev signing flow:
 
 ```powershell
-.\VoiceType.WinUI/install-dev.ps1
+Set-Location VoiceType.WinUI
+.\build-dev.ps1
+.\install-dev.ps1
 ```
+
+Notes:
+
+- `build-dev.ps1` reuses or creates a dev code-signing certificate in `CurrentUser\\My`
+  with the same Publisher as `Package.appxmanifest`, then publishes a signed MSIX.
+- `install-dev.ps1` trusts the generated `.cer` in `CurrentUser\\TrustedPeople` and installs
+  the package with dependency MSIX files.
+- If package contents changed, bump `Package.appxmanifest` version before install.
+
+`build-store-release.ps1` remains for Store/release packaging scenarios.
 
 The package identity and version are taken from `Package.appxmanifest`. Bump the
 manifest version when installing a package with changed contents over an existing

@@ -83,8 +83,21 @@
 
                 <!-- Left: Recording status -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <Ellipse x:Name="StatusDot" Width="8" Height="8" Margin="0,0,8,0"
-                             Fill="{StaticResource FgSecondaryBrush}"/>
+                    <Grid Width="10" Height="10" Margin="0,0,8,0">
+                        <Ellipse x:Name="StatusDot" Width="8" Height="8"
+                                 Fill="{StaticResource RedBrush}"
+                                 Visibility="Collapsed"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StatusInjectionBadge"
+                                   Text="T"
+                                   FontSize="10"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource RedBrush}"
+                                   Visibility="Collapsed"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
                     <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" Foreground="{StaticResource FgSecondaryBrush}"
                                FontSize="12" VerticalAlignment="Center"/>
                 </StackPanel>
