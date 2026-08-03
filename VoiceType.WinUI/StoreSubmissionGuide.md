@@ -125,6 +125,16 @@ We will update this policy if data practices change. Continued use of the app co
 
 ### 3.5. Store Listing Content (скопировать в Partner Center)
 
+#### Short Description (English, up to 200 chars)
+```
+Fast offline AI dictation for Windows. VoiceType turns speech into text in real time in any app, with global hotkeys, 17 languages, and fully local on-device processing.
+```
+
+#### Short Description (Русский, до 200 символов)
+```
+Быстрый офлайн AI-диктовщик для Windows. VoiceType превращает речь в текст в любом приложении в реальном времени: глобальные хоткеи, 17 языков и полностью локальная обработка.
+```
+
 #### Description (English)
 ```
 VoiceType is a lightning-fast AI dictation app that types what you say — in any application.
