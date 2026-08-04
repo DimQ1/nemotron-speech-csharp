@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Dispatching;
+using SpeechLib.Audio;
 using SpeechLib.Recognition;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Messages;
@@ -20,6 +21,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IGlobalHotkeyService _hotkeyService;
     private readonly IPostProcessingPipeline _postProcessing;
     private readonly IWindowInterop _windowInterop;
+    private readonly IAudioMixer _audioMixer;
     private readonly DispatcherQueue _dispatcher;
     private readonly RecognitionStateMachine _stateMachine = new();
     private readonly DispatcherQueueTimer _partialResultTimer;
@@ -133,6 +135,7 @@ public sealed partial class MainViewModel : ObservableObject
         IGlobalHotkeyService hotkeyService,
         IPostProcessingPipeline postProcessing,
         IWindowInterop windowInterop,
+        IAudioMixer audioMixer,
         DispatcherQueue dispatcher)
     {
         _recognition = recognition;
@@ -143,6 +146,7 @@ public sealed partial class MainViewModel : ObservableObject
         _hotkeyService = hotkeyService;
         _postProcessing = postProcessing;
         _windowInterop = windowInterop;
+        _audioMixer = audioMixer;
         _dispatcher = dispatcher;
         _settings = settingsService.Load();
         _selectedLanguage = _settings.Language;
@@ -443,7 +447,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (!Views.AudioMixerWindow.TryAcquireGlobalGuard())
             return;
 
-        var mixerViewModel = new AudioMixerViewModel(_settingsService, _dispatcher);
+        var mixerViewModel = new AudioMixerViewModel(_settingsService, _dispatcher, _audioMixer);
         var mixerWindow = new Views.AudioMixerWindow(mixerViewModel);
         App.MainWindow?.TrackChildWindow(mixerWindow);
         mixerWindow.Activate();

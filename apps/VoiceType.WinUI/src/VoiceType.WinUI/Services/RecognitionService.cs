@@ -26,9 +26,11 @@ public sealed class RecognitionService : IRecognitionService
     private readonly ISessionManager? _sessionManager;
     private readonly ISystemTelemetry? _telemetry;
     private readonly IAudioSourceFactory _audioSourceFactory;
+    private readonly IAudioRecorderFactory _audioRecorderFactory;
+    private readonly IAppPaths _appPaths;
 
     private IStreamingSpeechRecognizer? _recognizer;
-    private AudioRecorderService? _audioRecorder;
+    private IAudioRecorder? _audioRecorder;
     private IAudioSource? _audioSource;
     private Thread? _captureThread;
     private ConcurrentQueueWrapper? _buffer;
@@ -52,12 +54,16 @@ public sealed class RecognitionService : IRecognitionService
         IPostProcessingPipeline postProcessing,
         ISessionManager sessionManager,
         IAudioSourceFactory audioSourceFactory,
-        ISystemTelemetry? telemetry = null)
+        ISystemTelemetry? telemetry = null,
+        IAudioRecorderFactory? audioRecorderFactory = null,
+        IAppPaths? appPaths = null)
     {
         _settingsService = settingsService;
         _postProcessing = postProcessing;
         _sessionManager = sessionManager;
         _audioSourceFactory = audioSourceFactory;
+        _audioRecorderFactory = audioRecorderFactory ?? new NAudio3AudioRecorderFactory();
+        _appPaths = appPaths ?? new AppPathsAdapter();
         _telemetry = telemetry ?? App.Telemetry;
     }
 
@@ -201,8 +207,8 @@ public sealed class RecognitionService : IRecognitionService
 
         if (settings.SaveAudioMp3)
         {
-            _audioRecorder = new AudioRecorderService(_recognizer.SampleRate);
-            _audioRecorder.Start();
+            _audioRecorder = _audioRecorderFactory.Create(_recognizer.SampleRate);
+            _audioRecorder.Start(_appPaths.EnsureTempDir());
         }
 
         _audioSource = _audioSourceFactory.Create(

@@ -10,6 +10,7 @@ public sealed partial class AudioMixerViewModel : ObservableObject
 {
     private readonly ISettingsService _settingsService;
     private readonly DispatcherQueue _dispatcher;
+    private readonly IAudioMixer _mixer;
     private readonly IDisposable? _audioLevelSubscription;
     private int _saveVersion;
 
@@ -25,10 +26,11 @@ public sealed partial class AudioMixerViewModel : ObservableObject
     public string MicVolumePercent => $"{MicVolume * 100:F0}%";
     public string LoopbackVolumePercent => $"{LoopbackVolume * 100:F0}%";
 
-    public AudioMixerViewModel(ISettingsService settingsService, DispatcherQueue dispatcher)
+    public AudioMixerViewModel(ISettingsService settingsService, DispatcherQueue dispatcher, IAudioMixer mixer)
     {
         _settingsService = settingsService;
         _dispatcher = dispatcher;
+        _mixer = mixer;
 
         // Load saved volumes
         var settings = _settingsService.Load();
@@ -36,24 +38,24 @@ public sealed partial class AudioMixerViewModel : ObservableObject
         LoopbackVolume = settings.LoopbackVolume;
 
         // Apply to audio pipeline
-        NAudio3AudioSource.MicVolume = MicVolume;
-        NAudio3AudioSource.LoopbackVolume = LoopbackVolume;
+        _mixer.MicVolume = MicVolume;
+        _mixer.LoopbackVolume = LoopbackVolume;
 
         // Subscribe to audio level updates
-        _audioLevelSubscription = NAudio3AudioSource.AudioLevelMeter.Subscribe(
+        _audioLevelSubscription = _mixer.LevelMeter.Subscribe(
             new AudioLevelObserver(this));
     }
 
     partial void OnMicVolumeChanged(float value)
     {
-        NAudio3AudioSource.MicVolume = value;
+        _mixer.MicVolume = value;
         OnPropertyChanged(nameof(MicVolumePercent));
         SaveVolumes();
     }
 
     partial void OnLoopbackVolumeChanged(float value)
     {
-        NAudio3AudioSource.LoopbackVolume = value;
+        _mixer.LoopbackVolume = value;
         OnPropertyChanged(nameof(LoopbackVolumePercent));
         SaveVolumes();
     }

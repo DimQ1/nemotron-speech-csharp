@@ -121,9 +121,7 @@
     <PackageReference Include="OpenTelemetry" Version="1.17.0" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.17.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
-    <!-- Audio -->
-    <PackageReference Include="NAudio" Version="3.0.0-preview.19" />
-    <PackageReference Include="NAudio.Lame" Version="2.1.0" />
+    <!-- Audio: NAudio comes transitively via SpeechLib.Audio.NAudio3 provider -->
     <!-- Exclude native ORT from Windows AI (managed via SpeechLib, which owns ORT GenAI dependencies) -->
     <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
     <!-- GenAI 0.15.0 requires managed ORT 1.28.0. Native assets are copied below. -->

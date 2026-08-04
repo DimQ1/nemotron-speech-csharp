@@ -184,6 +184,9 @@ public partial class App : Application
         services.AddSingleton<TaskbarService>();
         services.AddSingleton<WindowIconService>();
         services.AddSingleton<IAudioSourceFactory, NAudio3AudioSourceFactory>();
+        services.AddSingleton<IAudioRecorderFactory, NAudio3AudioRecorderFactory>();
+        services.AddSingleton<IAudioMixer>(sp =>
+            AudioMixerRegistry.For(sp.GetRequiredService<IAudioSourceFactory>()));
 
         // Recognition (decorated with logging)
         services.AddSingleton<RecognitionService>(sp =>
@@ -192,7 +195,9 @@ public partial class App : Application
                 sp.GetRequiredService<IPostProcessingPipeline>(),
                 sp.GetRequiredService<ISessionManager>(),
                 sp.GetRequiredService<IAudioSourceFactory>(),
-                sp.GetService<ISystemTelemetry>()));
+                sp.GetService<ISystemTelemetry>(),
+                sp.GetRequiredService<IAudioRecorderFactory>(),
+                sp.GetRequiredService<IAppPaths>()));
         services.AddSingleton<IRecognitionService>(sp =>
             new LoggingRecognitionService(
                 sp.GetRequiredService<RecognitionService>(),

@@ -15,6 +15,7 @@
     separate projects so applications pay only for the provider they select.
   -->
   <ItemGroup>
+    <Compile Remove="Audio\AudioMixerRegistry.cs" />
     <Compile Remove="Audio\AudioUtils.cs" />
     <Compile Remove="Audio\BufferedAudioRecorder.cs" />
     <Compile Remove="Audio\BufferedCaptureSource.cs" />
