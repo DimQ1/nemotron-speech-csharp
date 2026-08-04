@@ -73,8 +73,8 @@ public sealed class NAudio3AudioSource : IAudioSource
             loopback?.StartRecording();
             microphone?.StartRecording();
 
-            var loopbackSource = loopback is null ? null : CreateNormalizedProvider(loopback.Buffer);
-            var microphoneSource = microphone is null ? null : CreateNormalizedProvider(microphone.Buffer);
+            var loopbackSource = loopback?.Buffer;
+            var microphoneSource = microphone?.Buffer;
             var readBuffer = new float[4096];
 
             try
@@ -85,10 +85,12 @@ public sealed class NAudio3AudioSource : IAudioSource
                     if (!state.IsRunning)
                         break;
 
-                    DrainAndPublish(loopbackSource, microphoneSource, readBuffer, buffer, signal);
+                    DrainAndPublish(loopbackSource, microphoneSource, readBuffer, buffer, signal,
+                        loopback?.Buffer, microphone?.Buffer);
                 }
 
-                DrainAndPublish(loopbackSource, microphoneSource, readBuffer, buffer, signal);
+                DrainAndPublish(loopbackSource, microphoneSource, readBuffer, buffer, signal,
+                    loopback?.Buffer, microphone?.Buffer);
             }
             finally
             {
@@ -118,22 +120,14 @@ public sealed class NAudio3AudioSource : IAudioSource
             ? CaptureHandle.CreateMicrophone(state, signal)
             : null;
 
-    private ISampleProvider CreateNormalizedProvider(BufferedWaveProvider provider)
-    {
-        ISampleProvider source = provider.ToSampleProvider();
-        if (provider.WaveFormat.Channels > 1)
-            source = source.ToMono();
-        if (provider.WaveFormat.SampleRate != _targetRate)
-            source = new WdlResamplingSampleProvider(source, _targetRate);
-        return source;
-    }
-
     private static void DrainAndPublish(
-        ISampleProvider? loopback,
-        ISampleProvider? microphone,
+        BufferedWaveProvider? loopback,
+        BufferedWaveProvider? microphone,
         float[] readBuffer,
         ConcurrentQueueWrapper buffer,
-        ManualResetEventSlim signal)
+        ManualResetEventSlim signal,
+        BufferedWaveProvider? loopbackBuf = null,
+        BufferedWaveProvider? micBuf = null)
     {
         float[]? loopbackSamples = null;
         float[]? microphoneSamples = null;
@@ -171,21 +165,64 @@ public sealed class NAudio3AudioSource : IAudioSource
         }
     }
 
-    private static int Drain(ISampleProvider? source, float[] readBuffer, ref float[]? samples)
+    /// <summary>
+    /// Drain a <see cref="BufferedWaveProvider"/> directly to mono float samples at the
+    /// target rate. Replaces the WdlResamplingSampleProvider pipeline, which stalled on the
+    /// loopback stream (48 kHz float stereo) and returned almost no samples.
+    /// Steps: raw bytes → PCM/float decode → stereo average to mono → linear downsample.
+    /// </summary>
+    private static int Drain(BufferedWaveProvider? source, float[] readBuffer, ref float[]? samples)
     {
         if (source is null)
             return 0;
 
-        var count = 0;
-        int read;
-        while ((read = source.Read(readBuffer.AsSpan())) > 0)
+        var fmt = source.WaveFormat;
+        var bytes = source.BufferedBytes;
+        var bytesPerFrame = fmt.BlockAlign;
+        var frames = bytes / bytesPerFrame;
+        if (frames <= 0)
+            return 0;
+
+        var raw = new byte[frames * bytesPerFrame];
+        var read = source.Read(raw.AsSpan(0, raw.Length));
+        frames = read / bytesPerFrame;
+        if (frames <= 0)
+            return 0;
+
+        var outCount = (int)((long)frames * 16000 / fmt.SampleRate);
+        if (outCount <= 0)
+            return 0;
+
+        EnsureCapacity(ref samples, outCount, 0);
+        var dst = samples!;
+        var channels = fmt.Channels;
+        var step = (double)fmt.SampleRate / 16000.0;
+
+        for (var o = 0; o < outCount; o++)
         {
-            EnsureCapacity(ref samples, count + read, count);
-            readBuffer.AsSpan(0, read).CopyTo(samples!.AsSpan(count));
-            count += read;
+            var srcFrame = (int)(o * step);
+            if (srcFrame >= frames)
+                srcFrame = frames - 1;
+
+            var offset = srcFrame * bytesPerFrame;
+            float sum = 0f;
+            for (var c = 0; c < channels; c++)
+                sum += ReadSample(raw, offset + c * (fmt.BitsPerSample / 8), fmt);
+
+            dst[o] = sum / channels;
         }
 
-        return count;
+        return outCount;
+    }
+
+    /// <summary>Decode a single PCM16 or IEEE-float32 sample.</summary>
+    private static float ReadSample(byte[] raw, int offset, WaveFormat fmt)
+    {
+        if (fmt.Encoding == WaveFormatEncoding.IeeeFloat)
+            return BitConverter.ToSingle(raw, offset);
+
+        // 16-bit PCM (both mic WaveIn and typical capture formats)
+        return BitConverter.ToInt16(raw, offset) / 32768f;
     }
 
     private static void EnsureCapacity(ref float[]? samples, int required, int count)
@@ -213,7 +250,7 @@ public sealed class NAudio3AudioSource : IAudioSource
     private sealed class CaptureHandle : IDisposable
     {
         private readonly WaveIn? _microphone;
-        private readonly WasapiRecorder? _loopback;
+        private readonly WasapiLoopbackCapture? _loopback;
 
         private CaptureHandle(WaveIn microphone)
         {
@@ -221,7 +258,7 @@ public sealed class NAudio3AudioSource : IAudioSource
             Buffer = CreateBuffer(microphone.WaveFormat);
         }
 
-        private CaptureHandle(WasapiRecorder loopback)
+        private CaptureHandle(WasapiLoopbackCapture loopback)
         {
             _loopback = loopback;
             Buffer = CreateBuffer(loopback.WaveFormat);
@@ -254,16 +291,15 @@ public sealed class NAudio3AudioSource : IAudioSource
 
         public static CaptureHandle CreateLoopback(CaptureState state, ManualResetEventSlim signal)
         {
-            var recorder = new WasapiRecorderBuilder()
-                .WithLoopbackCapture()
-                .WithSharedMode()
-                .WithPollingSync()
-                .Build();
-            var handle = new CaptureHandle(recorder);
-            handle._loopback!.DataAvailable += (audio, _, _, _) =>
+            // WasapiLoopbackCapture is the proven loopback path (same as the NAudio2 provider):
+            // the WasapiRecorder builder API in the NAudio 3 preview never raised DataAvailable
+            // in this scenario, so loopback stayed silent (see capture-diag.log investigation).
+            var capture = new WasapiLoopbackCapture();
+            var handle = new CaptureHandle(capture);
+            handle._loopback!.DataAvailable += (_, args) =>
             {
                 if (state.IsRunning)
-                    handle.Buffer.AddSamples(audio);
+                    handle.Buffer.AddSamples(args.Buffer, 0, args.BytesRecorded);
             };
             handle._loopback.RecordingStopped += (_, _) =>
             {
