@@ -42,6 +42,23 @@ public sealed partial class AudioMixerViewModel : ObservableObject
     public string MicVolumePercent => $"{MicVolume * 100:F0}%";
     public string LoopbackVolumePercent => $"{LoopbackVolume * 100:F0}%";
 
+    // ── Display-mapped levels ──
+    // Raw RMS for normal speech sits at 0.03–0.15, which is invisible on a 0–1 bar.
+    // Sqrt mapping expands the low range so speech occupies the middle of the bar
+    // while clipping still reaches the right edge.
+    private static float MapLevel(float rms) => Math.Clamp(MathF.Sqrt(rms), 0f, 1f);
+
+    public float MicLevelDisplay => MapLevel(MicLevel);
+    public float LoopbackLevelDisplay => MapLevel(LoopbackLevel);
+    public float MasterLevelDisplay => MapLevel(MasterLevel);
+
+    public string MicLevelDb => FormatDb(MicLevel);
+    public string LoopbackLevelDb => FormatDb(LoopbackLevel);
+    public string MasterLevelDb => FormatDb(MasterLevel);
+
+    private static string FormatDb(float rms) =>
+        rms < 0.0001f ? "-∞ dB" : $"{20f * MathF.Log10(rms):F0} dB";
+
     public AudioMixerViewModel(ISettingsService settingsService, DispatcherQueue dispatcher, IAudioMixer mixer)
     {
         _settingsService = settingsService;
@@ -59,9 +76,24 @@ public sealed partial class AudioMixerViewModel : ObservableObject
         _mixer.LoopbackVolume = LoopbackVolume;
 
         // Subscribe to per-channel + combined level updates
-        _masterLevelSubscription = _mixer.LevelMeter.Subscribe(new LevelObserver(this, l => MasterLevel = l));
-        _micLevelSubscription = _mixer.MicLevelMeter.Subscribe(new LevelObserver(this, l => MicLevel = l));
-        _loopbackLevelSubscription = _mixer.LoopbackLevelMeter.Subscribe(new LevelObserver(this, l => LoopbackLevel = l));
+        _masterLevelSubscription = _mixer.LevelMeter.Subscribe(new LevelObserver(this, l =>
+        {
+            MasterLevel = l;
+            OnPropertyChanged(nameof(MasterLevelDisplay));
+            OnPropertyChanged(nameof(MasterLevelDb));
+        }));
+        _micLevelSubscription = _mixer.MicLevelMeter.Subscribe(new LevelObserver(this, l =>
+        {
+            MicLevel = l;
+            OnPropertyChanged(nameof(MicLevelDisplay));
+            OnPropertyChanged(nameof(MicLevelDb));
+        }));
+        _loopbackLevelSubscription = _mixer.LoopbackLevelMeter.Subscribe(new LevelObserver(this, l =>
+        {
+            LoopbackLevel = l;
+            OnPropertyChanged(nameof(LoopbackLevelDisplay));
+            OnPropertyChanged(nameof(LoopbackLevelDb));
+        }));
     }
 
     partial void OnMicVolumeChanged(float value)

@@ -42,8 +42,8 @@ public sealed partial class AudioMixerWindow : Window
     {
         var hwnd = WindowNative.GetWindowHandle(this);
         var dpi = GetWindowDpi(hwnd);
-        var w = (int)(420f * dpi / 96f);
-        var h = (int)(480f * dpi / 96f);
+        var w = (int)(560f * dpi / 96f);
+        var h = (int)(720f * dpi / 96f);
 
         if (hwnd != nint.Zero)
             SetWindowPos(hwnd, 0, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
