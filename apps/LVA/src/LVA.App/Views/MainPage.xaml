@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:LVA.App.ViewModels"
+             xmlns:companion="clr-namespace:LVA.App.Companion"
+             x:Class="LVA.App.Views.MainPage"
+             BackgroundColor="{StaticResource BgColor}"
+             Title="LVA Assistant">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- ═══ Header (prototype: logo + privacy + mode buttons) ═══ -->
+        <Border Grid.Row="0" BackgroundColor="{StaticResource PanelColor}" Padding="12,10">
+            <HorizontalStackLayout Spacing="10">
+                <Ellipse WidthRequest="10" HeightRequest="10" VerticalOptions="Center"
+                         Fill="{Binding IsPluginOnline, Converter={StaticResource PrivacyDotConverter}}"/>
+                <Label Text="LVA" TextColor="{StaticResource TextColor}" FontSize="{StaticResource FontH2}"
+                       FontAttributes="Bold" VerticalOptions="Center"/>
+                <Label Text="{Binding StatusText}" TextColor="{StaticResource Text2Color}"
+                       FontSize="11" VerticalOptions="Center"/>
+
+                <BoxView HorizontalOptions="FillAndExpand"/>
+
+                <Button Text="Чат" Clicked="OnOpenChatClicked" Style="{StaticResource ModeButton}"/>
+                <Button Text="Питомец (окно)" Clicked="OnToggleCompanionClicked" Style="{StaticResource ModeButton}"/>
+                <Button Text="Настройки" Clicked="OnOpenSettingsClicked" Style="{StaticResource ModeButton}"/>
+            </HorizontalStackLayout>
+        </Border>
+
+        <!-- ═══ Main area: chat panel ═══ -->
+        <Grid Grid.Row="1" Padding="16">
+
+            <!-- Chat panel -->
+            <Border BackgroundColor="{StaticResource PanelColor}"
+                    StrokeShape="RoundRectangle 16" Padding="0">
+                <Grid RowDefinitions="Auto,*,Auto">
+
+                    <!-- Search row -->
+                    <Border Grid.Row="0" Padding="12,8">
+                        <Entry Placeholder="Поиск по истории…" Text="{Binding SearchQuery}"
+                               TextColor="{StaticResource TextColor}" PlaceholderColor="{StaticResource Text2Color}"
+                               BackgroundColor="{StaticResource Panel2Color}" FontSize="12"/>
+                    </Border>
+
+                    <!-- Message feed -->
+                    <ScrollView Grid.Row="1">
+                        <VerticalStackLayout Padding="14" Spacing="10"
+                                             BindableLayout.ItemsSource="{Binding Messages}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ChatMessageModel">
+                                    <Border Padding="10,8" StrokeShape="RoundRectangle 18"
+                                            HorizontalOptions="{Binding IsUser, Converter={StaticResource AlignConverter}}"
+                                            BackgroundColor="{Binding IsUser, Converter={StaticResource BubbleConverter}}"
+                                            Opacity="{Binding IsDraft, Converter={StaticResource DraftOpacityConverter}}">
+                                        <HorizontalStackLayout>
+                                            <Label Text="{Binding Channel}" FontSize="10"
+                                                   TextColor="{StaticResource Text2Color}"/>
+                                            <Label Text="{Binding Text}" TextColor="{StaticResource TextColor}"
+                                                   FontSize="{StaticResource FontBase}"/>
+                                        </HorizontalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </ScrollView>
+
+                    <!-- Task cards overlay area -->
+                    <VerticalStackLayout Grid.Row="1" VerticalOptions="End" Padding="14,0"
+                                         BindableLayout.ItemsSource="{Binding TaskCards}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TaskCardModel">
+                                <Border Padding="12,10" Margin="0,0,0,10"
+                                        BackgroundColor="{StaticResource Panel2Color}"
+                                        StrokeShape="RoundRectangle 16">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="16"/>
+                                    </Border.StrokeShape>
+                                    <VerticalStackLayout Spacing="4">
+                                        <HorizontalStackLayout Spacing="8">
+                                            <ActivityIndicator IsVisible="{Binding IsRunning}" IsRunning="{Binding IsRunning}"
+                                                               Color="{StaticResource WorkingColor}" HeightRequest="16" WidthRequest="16"/>
+                                            <Label Text="{Binding Title}" FontAttributes="Bold"
+                                                   TextColor="{StaticResource TextColor}"/>
+                                        </HorizontalStackLayout>
+                                        <Label Text="{Binding Status}" FontSize="12"
+                                               TextColor="{StaticResource Text2Color}"/>
+                                        <Label Text="{Binding Result}" FontSize="13" IsVisible="{Binding IsDone}"
+                                               TextColor="{StaticResource TextColor}"/>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+
+                    <!-- Input row -->
+                    <Border Grid.Row="2" Padding="12">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                            <Button Grid.Column="0" Text="{Binding IsMuted, Converter={StaticResource MicTextConverter}}"
+                                    Command="{Binding ToggleMuteCommand}"
+                                    BackgroundColor="{StaticResource Panel2Color}" TextColor="{StaticResource TextColor}"
+                                    CornerRadius="12" WidthRequest="52" HeightRequest="42" Padding="0"/>
+                            <Entry Grid.Column="1" Placeholder="Сообщение… (Enter — отправить, Esc — отмена)"
+                                   Text="{Binding InputText}"
+                                   TextColor="{StaticResource TextColor}" PlaceholderColor="{StaticResource Text2Color}"
+                                   BackgroundColor="{StaticResource Panel2Color}"
+                                   Completed="OnSendCompleted"/>
+                            <Button Grid.Column="2" Text="Отпр." Command="{Binding SendCommand}"
+                                    BackgroundColor="{StaticResource AccentColor}" TextColor="White"
+                                    CornerRadius="12" HeightRequest="42" Padding="14,0"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+        </Grid>
+
+        <!-- ═══ Footer ═══ -->
+        <Label Grid.Row="2" Text="LVA · всё локально, сеть — только через плагины · питомец — отдельное окно"
+               TextColor="{StaticResource Text2Color}" FontSize="11"
+               HorizontalTextAlignment="Center" Padding="0,0,0,10"/>
+    </Grid>
+</ContentPage>

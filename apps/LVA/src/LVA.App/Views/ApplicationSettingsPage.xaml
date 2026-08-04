@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LVA.App.Views.ApplicationSettingsPage"
+             Title="Настройки LVA"
+             BackgroundColor="{StaticResource BgColor}">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="18">
+            <Label Text="Настройки приложения" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextColor}" />
+            <Border BackgroundColor="{StaticResource PanelColor}" StrokeShape="RoundRectangle 12" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Поведение" FontAttributes="Bold" TextColor="{StaticResource TextColor}" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Звуковые сигналы питомца" TextColor="{StaticResource TextColor}" VerticalOptions="Center" />
+                        <Switch x:Name="SoundSwitch" Grid.Column="1" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Показывать подсказки питомца" TextColor="{StaticResource TextColor}" VerticalOptions="Center" />
+                        <Switch x:Name="HintsSwitch" Grid.Column="1" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="Плагины" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource TextColor}" />
+            <VerticalStackLayout x:Name="PluginList" Spacing="10" />
+            <Button Text="Сохранить" Clicked="OnSaveClicked" BackgroundColor="{StaticResource AccentColor}" TextColor="White" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -16,7 +16,7 @@ dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=Blackwell
 dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=DML
 ```
 
-**Debug build:** omit `-c Release`. **Always use `NemotronSpeech.slnx`** — it includes all 4 projects.
+**Debug build:** omit `-c Release`. **Always use `NemotronSpeech.slnx`** to build the complete solution graph.
 
 ## Test Commands
 
@@ -25,13 +25,13 @@ dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=DML
 dotnet test NemotronSpeech.slnx
 
 # Unit tests only (no network, fast)
-dotnet test VoiceType.Tests/VoiceType.Tests.csproj --filter "FullyQualifiedName~Unit_"
+dotnet test apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj --filter "FullyQualifiedName~Unit_"
 
 # E2E tests only (real HuggingFace API)
-dotnet test VoiceType.Tests/VoiceType.Tests.csproj --filter "FullyQualifiedName~E2E_"
+dotnet test apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj --filter "FullyQualifiedName~E2E_"
 
 # Word-timestamp tests (unit + E2E regression, needs model + sample-0.mp3 for E2E)
-dotnet test VoiceType.Tests/VoiceType.Tests.csproj -c Release --filter "FullyQualifiedName~WordTimings"
+dotnet test apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj -c Release --filter "FullyQualifiedName~WordTimings"
 ```
 
 - **Framework:** xUnit 2.9.0
@@ -116,22 +116,22 @@ Cannot be reassigned after construction. Use `Clear()` + `AddRange()` instead.
 
 | Area | Key Files |
 |---|---|
-| **Audio pipeline** | `SpeechLib/Audio/ConcurrentQueueWrapper.cs`, `SpeechLib/Transcriber.cs` |
-| **CLI entry** | `NemotronSpeech/Program.cs`, `NemotronSpeech/AppOptions.cs` |
-| **ONNX GenAI** | `NemotronSpeech/ModelSession.cs` |
-| **Word timestamps** | `SpeechLib/Models/WordTiming.cs`, `SpeechLib/Transcriber.cs` (AddWordTimings) |
-| **WPF main VM** | `VoiceType/ViewModels/MainViewModel.cs` |
-| **Downloader** | `VoiceType/Services/ModelDownloaderService.cs`, `VoiceType/ViewModels/ModelDownloaderViewModel.cs` |
-| **Text injection** | `VoiceType/Services/TextInjector.cs` |
-| **Commands** | `VoiceType/ViewModels/Commands.cs` |
-| **App startup** | `VoiceType/App.xaml.cs` |
-| **Tests** | `VoiceType.Tests/Unit_WordTimingsTests.cs`, `VoiceType.Tests/E2E_WordTimingsRegressionTests.cs` |
-| **Baseline** | `VoiceType.Tests/Data/sample-0-wordtimings-baseline.txt` |
+| **Audio pipeline** | `libraries/SpeechLib/src/SpeechLib/Audio/ConcurrentQueueWrapper.cs`, `libraries/SpeechLib/src/SpeechLib/Transcriber.cs` |
+| **CLI entry** | `apps/NemotronSpeech/src/NemotronSpeech/Program.cs`, `apps/NemotronSpeech/src/NemotronSpeech/AppOptions.cs` |
+| **ONNX GenAI** | `libraries/SpeechLib/src/SpeechLib/ModelSession.cs` |
+| **Word timestamps** | `libraries/SpeechLib/src/SpeechLib/Models/WordTiming.cs`, `libraries/SpeechLib/src/SpeechLib/Transcriber.cs` (AddWordTimings) |
+| **WPF main VM** | `apps/VoiceType/src/VoiceType/ViewModels/MainViewModel.cs` |
+| **Downloader** | `apps/VoiceType/src/VoiceType/Services/ModelDownloaderService.cs`, `apps/VoiceType/src/VoiceType/ViewModels/ModelDownloaderViewModel.cs` |
+| **Text injection** | `apps/VoiceType/src/VoiceType/Services/TextInjector.cs` |
+| **Commands** | `apps/VoiceType/src/VoiceType/ViewModels/Commands.cs` |
+| **App startup** | `apps/VoiceType/src/VoiceType/App.xaml.cs` |
+| **Tests** | `apps/VoiceType/tests/VoiceType.Tests/Unit_WordTimingsTests.cs`, `apps/VoiceType/tests/VoiceType.Tests/E2E_WordTimingsRegressionTests.cs` |
+| **Baseline** | `apps/VoiceType/tests/VoiceType.Tests/Data/sample-0-wordtimings-baseline.txt` |
 
 ## Related Docs
 
 - [README.md](README.md) — project overview, models, demo
-- [converter/README.md](converter/README.md) — NeMo → ONNX conversion (Python)
-- [Doc/research/asr/nemotron-3.5-asr-timestamps-analysis.md](Doc/research/asr/nemotron-3.5-asr-timestamps-analysis.md) — model timestamp capabilities (RNN-T durations, frame rate, token-level alignment)
+- [tools/converters/NemotronAsr/README.md](tools/converters/NemotronAsr/README.md) — NeMo → ONNX conversion (Python)
+- [docs/research/asr/nemotron-3.5-asr-timestamps-analysis.md](docs/research/asr/nemotron-3.5-asr-timestamps-analysis.md) — model timestamp capabilities (RNN-T durations, frame rate, token-level alignment)
 - `.claude/skills/nemotron-backend/SKILL.md` — Claude-specific backend patterns
 - `.claude/skills/nemotron-ui/SKILL.md` — Claude-specific UI patterns

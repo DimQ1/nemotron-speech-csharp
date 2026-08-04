@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:LVA.App.Converters"
+             x:Class="LVA.App.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/DesignTokens.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <converters:PrivacyDotConverter x:Key="PrivacyDotConverter"/>
+            <converters:ChatVisibleConverter x:Key="ChatVisibleConverter"/>
+            <converters:CompanionVisibleConverter x:Key="CompanionVisibleConverter"/>
+            <converters:AlignConverter x:Key="AlignConverter"/>
+            <converters:BubbleConverter x:Key="BubbleConverter"/>
+            <converters:DraftOpacityConverter x:Key="DraftOpacityConverter"/>
+            <converters:MicTextConverter x:Key="MicTextConverter"/>
+
+            <Style x:Key="ModeButton" TargetType="Button">
+                <Setter Property="BackgroundColor" Value="{StaticResource Panel2Color}"/>
+                <Setter Property="TextColor" Value="{StaticResource TextColor}"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Padding" Value="10,5"/>
+                <Setter Property="CornerRadius" Value="10"/>
+                <Setter Property="HeightRequest" Value="32"/>
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

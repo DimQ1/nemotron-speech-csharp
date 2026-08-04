@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LVA.App.Views.PluginSettingsPage"
+             BackgroundColor="{StaticResource BgColor}">
+    <Grid RowDefinitions="*,Auto" Padding="24">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="14">
+                <Label x:Name="TitleLabel" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextColor}" />
+                <Label Text="Секретные значения хранятся в защищенном хранилище Windows. Новые параметры применяются после перезапуска плагина или приложения."
+                       FontSize="12" TextColor="{StaticResource Text2Color}" />
+                <VerticalStackLayout x:Name="Fields" Spacing="12" />
+            </VerticalStackLayout>
+        </ScrollView>
+        <Button Grid.Row="1" Text="Сохранить" Clicked="OnSaveClicked"
+                BackgroundColor="{StaticResource AccentColor}" TextColor="White" />
+    </Grid>
+</ContentPage>

@@ -1,7 +1,7 @@
 ---
 name: "NemotronSpeech CLI Project Instructions"
 description: "Use when working on the NemotronSpeech CLI, ONNX Runtime GenAI configuration, model sessions, CLI parsing, or CPU/GPU execution providers."
-applyTo: "NemotronSpeech/**"
+applyTo: "apps/NemotronSpeech/**"
 ---
 
 # NemotronSpeech CLI Rules
@@ -33,7 +33,7 @@ applyTo: "NemotronSpeech/**"
 
 ```powershell
 dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=CPU
-dotnet test VoiceType.Tests/VoiceType.Tests.csproj --filter "FullyQualifiedName~Unit_"
+dotnet test apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj --filter "FullyQualifiedName~Unit_"
 ```
 
 Use `GpuArch=Blackwell` only with the ORT-Nightly feed and `GpuArch=DML` for DirectML builds. Do not commit `bin`, `obj`, benchmark artifacts, downloaded models, or generated transcripts.

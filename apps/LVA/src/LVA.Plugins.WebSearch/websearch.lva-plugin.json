@@ -1,0 +1,20 @@
+{
+  "id": "lva.websearch",
+  "version": "1.0.0",
+  "capabilities": ["web.search", "web.summarize", "web.analyze"],
+  "permissions": ["InternetAccess", "CloudModels"],
+  "assembly": "LVA.Plugins.WebSearch.dll",
+  "entryType": "LVA.Plugins.WebSearch.WebSearchPlugin",
+  "settings": {
+    "title": "Веб-поиск",
+    "fields": [
+      { "key": "SearchProvider", "label": "Провайдер поиска", "defaultValue": "Brave" },
+      { "key": "SearchApiKey", "label": "Ключ API поиска", "secret": true, "hint": "Brave Search API key" },
+      { "key": "MaxPages", "label": "Максимум страниц", "defaultValue": "5" },
+      { "key": "Llm.Provider", "label": "Провайдер LLM" },
+      { "key": "Llm.Endpoint", "label": "Endpoint LLM" },
+      { "key": "Llm.Model", "label": "Модель LLM", "defaultValue": "gpt-4o-mini" },
+      { "key": "Llm.ApiKey", "label": "Ключ API LLM", "secret": true }
+    ]
+  }
+}

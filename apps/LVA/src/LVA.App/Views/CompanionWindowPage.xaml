@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:companion="clr-namespace:LVA.App.Companion"
+             x:Class="LVA.App.Views.CompanionWindowPage"
+             BackgroundColor="#00FF00">
+
+    <Grid BackgroundColor="#00FF00">
+        <!-- Bubble above the pet -->
+        <Border x:Name="Bubble" BackgroundColor="{StaticResource Panel2Color}"
+                StrokeShape="RoundRectangle 14" Padding="10,6"
+                HorizontalOptions="Center" VerticalOptions="Start" Margin="0,4,0,0">
+            <Label x:Name="BubbleLabel" Text="Слушаю…" FontSize="12"
+                   TextColor="{StaticResource TextColor}"/>
+        </Border>
+
+        <!-- Pet -->
+        <companion:CompanionView x:Name="Companion" WidthRequest="128" HeightRequest="128"
+                                 HorizontalOptions="Center" VerticalOptions="Center"/>
+
+        <ContentView BackgroundColor="#00FF00"
+                     HorizontalOptions="Fill" VerticalOptions="Fill">
+            <ContentView.GestureRecognizers>
+                <PointerGestureRecognizer PointerPressed="OnPointerPressed"
+                                          PointerMoved="OnPointerMoved"
+                                          PointerReleased="OnPointerReleased"/>
+            </ContentView.GestureRecognizers>
+        </ContentView>
+    </Grid>
+</ContentPage>
