@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:systemai="http://schemas.microsoft.com/appx/manifest/systemai/windows10" xmlns:iot="http://schemas.microsoft.com/appx/manifest/iot/windows10" IgnorableNamespaces="uap rescap systemai iot desktop" xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10">
+  <!--
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  Identity Name & Publisher: reserved in Partner Center.    ║
+  ╚══════════════════════════════════════════════════════════════╝
+  -->
+    <Identity Name="DimQ1.VoiceType" Publisher="CN=E8EB25DC-46D4-4743-B0EC-969656FCE053" Version="1.1.30.2" ProcessorArchitecture="x64" />
+  <mp:PhoneIdentity PhoneProductId="07DA3E91-7A09-4120-BDC4-6D0F177AA408" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
+  <Properties>
+    <DisplayName>VoiceType</DisplayName>
+    <PublisherDisplayName>DimQ1</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26226.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26226.0" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="x-generate" />
+  </Resources>
+  <Applications>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+      <uap:VisualElements DisplayName="VoiceType" Description="Real-time AI voice dictation — type with your voice in any app. 17 languages, 100% offline, on-device Nemotron ASR." BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.scale-200.png" Square44x44Logo="Assets\Square44x44Logo.scale-200.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.scale-200.png" />
+        <uap:SplashScreen Image="Assets\SplashScreen.scale-200.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+  <!--
+  Capabilities justification for Store submission:
+
+  runFullTrust (restricted):
+    - Global hotkey registration (RegisterHotKey) — Ctrl+ shortcuts must work
+      even when VoiceType window is not focused
+    - Text injection via SendInput — core feature: type recognized text into
+      any third-party application (Notepad, browsers, Office, messengers)
+    - Low-level keyboard hook (SetWindowsHookEx) — detect push-to-talk key
+    - Win32 folder picker — selecting model download directory
+
+  internetClient:
+    - Download ASR models from HuggingFace (huggingface.co)
+    - OpenTelemetry diagnostics export (optional, dev-only)
+
+  systemAIModels:
+    - Windows AI Machine Learning API for on-device inference
+  -->
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <rescap:Capability Name="runFullTrust" />
+    <systemai:Capability Name="systemAIModels" />
+  </Capabilities>
+</Package>

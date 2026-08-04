@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/VoiceType.WinUI/VoiceType.WinUI.csproj",
+                "${workspaceFolder}/apps/VoiceType.WinUI/src/VoiceType.WinUI/VoiceType.WinUI.csproj",
                 "-c", "Debug",
                 "-p:GpuArch=CPU"
             ],

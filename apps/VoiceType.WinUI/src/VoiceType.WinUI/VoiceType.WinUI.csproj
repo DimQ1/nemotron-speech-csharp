@@ -1,0 +1,236 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <RootNamespace>VoiceType.WinUI</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
+    <PublishProfile Condition="Exists('Properties\PublishProfiles\win-$(Platform).pubxml')">win-$(Platform).pubxml</PublishProfile>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <!-- MSIX packaged desktop app (required for Microsoft Store) -->
+    <WindowsPackageType>MSIX</WindowsPackageType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NoWarn>$(NoWarn);NU1902</NoWarn>
+    <!--
+      SelfContained is ONLY for publish (MSIX package). During build,
+      keep framework-dependent for faster dev iteration.
+      The PublishProfile overrides this to true for the final Store package.
+    -->
+    <SelfContained Condition="'$(SelfContained)' == ''">false</SelfContained>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Path to the installed .NET 10 shared runtime. Update when .NET 10 updates.
+         Current: 10.0.9 (the only .NET 10 runtime installed on this machine). -->
+    <_Net10RuntimeDir>C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.9</_Net10RuntimeDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\SplashScreen.scale-200.png" />
+    <Content Include="Assets\SplashScreen.png" />
+    <Content Include="Assets\LockScreenLogo.scale-200.png" />
+    <Content Include="Assets\Square150x150Logo.scale-200.png" />
+    <Content Include="Assets\Square150x150Logo.png" />
+    <Content Include="Assets\Square44x44Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" />
+    <Content Include="Assets\StoreLogo.png" />
+    <Content Include="Assets\VoiceType.ico" />
+    <None Remove="Assets\AppIcon.ico" />
+    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="Assets\Wide310x150Logo.png" />
+  </ItemGroup>
+
+  <!-- Force VC++ runtime DLLs into MSIX package (not included by default).
+       netstandard.dll is NOT explicitly included: self-contained publish already
+       bundles it via Microsoft.NETCore.App.Runtime, and explicit inclusion causes
+       APPX1101 duplicate payload error. -->
+  <ItemGroup>
+    <Content Include="$(SystemRoot)\System32\vcruntime140.dll">
+      <Link>vcruntime140.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(SystemRoot)\System32\vcruntime140_1.dll">
+      <Link>vcruntime140_1.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(SystemRoot)\System32\msvcp140.dll">
+      <Link>msvcp140.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(SystemRoot)\System32\msvcp140_1.dll">
+      <Link>msvcp140_1.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(SystemRoot)\System32\msvcp140_2.dll">
+      <Link>msvcp140_2.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <!--
+    Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
+    Tools extension to be activated for this project even if the Windows App SDK Nuget
+    package has not yet been restored.
+  -->
+  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <ProjectCapability Include="Msix" />
+  </ItemGroup>
+
+  <!--
+    Microsoft.Windows.SDK.BuildTools.WinApp adds first-class support for
+    `dotnet run` on packaged WinUI apps: it hooks the .NET CLI Run target to
+    register a debug identity via the winapp CLI and launch the app with
+    package identity (AUMID).
+    Set <EnableWinAppRunSupport>false</EnableWinAppRunSupport> in a
+    <PropertyGroup> above to opt out.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.3.1" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="3.0.0" />
+    <!-- MVVM (source generators for INotifyPropertyChanged and ICommand) -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <!-- DI container & logging abstractions -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.10" />
+    <!-- Structured logging & telemetry -->
+    <PackageReference Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.1.0" />
+    <PackageReference Include="OpenTelemetry" Version="1.17.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.17.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
+    <!-- Audio -->
+    <PackageReference Include="NAudio" Version="3.0.0-preview.19" />
+    <PackageReference Include="NAudio.Lame" Version="2.1.0" />
+    <!-- Exclude native ORT from Windows AI (managed via SpeechLib, which owns ORT GenAI dependencies) -->
+    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
+    <!-- GenAI 0.15.0 requires managed ORT 1.28.0. Native assets are copied below. -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" ExcludeAssets="native" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib\SpeechLib.csproj" />
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Nemotron\SpeechLib.Nemotron.csproj" />
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Audio.NAudio3\SpeechLib.Audio.NAudio3.csproj" />
+  </ItemGroup>
+
+  <!--
+    Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
+    Explorer "Package and Publish" context menu entry to be enabled for this project even if
+    the Windows App SDK Nuget package has not yet been restored.
+  -->
+  <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
+  </PropertyGroup>
+
+  <!-- Publish Properties -->
+  <PropertyGroup>
+    <!-- AOT disabled: CsWinRT marshalling broken with trimming -->
+    <PublishReadyToRun>False</PublishReadyToRun>
+    <PublishTrimmed>False</PublishTrimmed>
+  </PropertyGroup>
+
+  <!--
+  Store Release Configuration:
+  - STORE_RELEASE: disables OpenTelemetry OTLP export, enforce production defaults
+  - No OTLP endpoint → telemetry is a no-op, no network calls
+  - DOTNET_ENVIRONMENT=Production → suppresses dev-only code paths
+  -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DefineConstants>$(DefineConstants);STORE_RELEASE</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+  Trimming suppressions for reflection-heavy libraries.
+  ONNX Runtime GenAI and NAudio use reflection — preserve their types.
+  -->
+  <ItemGroup>
+    <TrimmerRootDescriptor Include="TrimmerRoots.xml" Condition="Exists('TrimmerRoots.xml')" />
+  </ItemGroup>
+
+  <!-- Copy ORT 1.28.0 native DLL into AppX.
+       ORT 1.28.0 is required by GenAI 0.15.0. The stale transitive DLL
+       from the GenAI dependency is overwritten.
+       Also strips PDBs from AppX (Store submission requirement).
+
+       NOTE: SpeechLib owns ORT GenAI dependencies with GpuArch selection.
+       Use -p:GpuArch=CPU for Store/CPU builds. -->
+  <Target Name="CopyOrt1280NativeAssetsToAppX" AfterTargets="Build">
+    <!-- ORT 1.28.0 from NuGet cache (CPU-only, no CUDA providers) -->
+    <PropertyGroup>
+      <_Ort1280Cache>$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime\1.28.0\runtimes\win-x64\native\</_Ort1280Cache>
+    </PropertyGroup>
+    <ItemGroup>
+      <_Ort1280Native Include="$(_Ort1280Cache)*.dll" Condition="Exists('$(_Ort1280Cache)')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_Ort1280Native)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="false" Condition="'@(_Ort1280Native)' != ''" />
+    <Copy SourceFiles="@(_Ort1280Native)" DestinationFolder="$(OutputPath)AppX" SkipUnchangedFiles="false" Condition="'@(_Ort1280Native)' != ''" />
+    <!-- Remove stale CUDA provider DLLs (incompatible with ORT 1.28.0 and unused on CPU) -->
+    <Delete Files="$(OutputPath)AppX\onnxruntime_providers_cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_cuda.dll')" />
+    <Delete Files="$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll')" />
+    <Delete Files="$(OutputPath)AppX\onnxruntime-genai-cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime-genai-cuda.dll')" />
+    <!-- VC++ Runtime (required by ONNX Runtime native DLLs) -->
+    <ItemGroup>
+      <_VcRuntime Include="$(SystemRoot)\System32\vcruntime140.dll" />
+      <_VcRuntime Include="$(SystemRoot)\System32\vcruntime140_1.dll" />
+      <_VcRuntime Include="$(SystemRoot)\System32\msvcp140.dll" />
+      <_VcRuntime Include="$(SystemRoot)\System32\msvcp140_1.dll" />
+      <_VcRuntime Include="$(SystemRoot)\System32\msvcp140_2.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_VcRuntime)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(_VcRuntime)" DestinationFolder="$(OutputPath)AppX" SkipUnchangedFiles="false" />
+    <!-- netstandard.dll facade (required by .NET Standard 2.0 libraries like NAudio.Lame).
+         _Net10RuntimeDir is resolved globally in the root PropertyGroup. -->
+    <ItemGroup>
+      <_NetStandardDll Include="$(_Net10RuntimeDir)\netstandard.dll" Condition="Exists('$(_Net10RuntimeDir)\netstandard.dll')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_NetStandardDll)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="false" Condition="'@(_NetStandardDll)' != ''" />
+    <Copy SourceFiles="@(_NetStandardDll)" DestinationFolder="$(OutputPath)AppX" SkipUnchangedFiles="false" Condition="'@(_NetStandardDll)' != ''" />
+    <Warning Text="netstandard.dll not found at $(_Net10RuntimeDir)" Condition="'@(_NetStandardDll)' == ''" />
+    <!-- Strip PDBs from AppX — Store submission requirement (no debug symbols in package) -->
+    <ItemGroup>
+      <_AppxPdbs Include="$(OutputPath)AppX\*.pdb" />
+      <_AppxPdbs Include="$(OutputPath)AppX\*.lib" />
+      <_AppxPdbs Include="$(OutputPath)AppX\*.exp" />
+    </ItemGroup>
+    <Delete Files="@(_AppxPdbs)" Condition="'@(_AppxPdbs)' != ''" />
+  </Target>
+
+  <!-- Copy netstandard.dll and VC++ runtime into the publish output for MSIX packaging.
+       The AfterTargets="Build" target above only copies to OutputPath; publish uses
+       a different intermediate directory, so we need a separate publish target. -->
+  <Target Name="CopyNetstandardAndVcRuntimeToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_PubNetStandardDll Include="$(_Net10RuntimeDir)\netstandard.dll" Condition="Exists('$(_Net10RuntimeDir)\netstandard.dll')" />
+      <_PubVcRuntime Include="$(SystemRoot)\System32\vcruntime140.dll" />
+      <_PubVcRuntime Include="$(SystemRoot)\System32\vcruntime140_1.dll" />
+      <_PubVcRuntime Include="$(SystemRoot)\System32\msvcp140.dll" />
+      <_PubVcRuntime Include="$(SystemRoot)\System32\msvcp140_1.dll" />
+      <_PubVcRuntime Include="$(SystemRoot)\System32\msvcp140_2.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_PubNetStandardDll)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" Condition="'@(_PubNetStandardDll)' != ''" />
+    <Copy SourceFiles="@(_PubVcRuntime)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+  </Target>
+</Project>

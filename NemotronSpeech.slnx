@@ -1,11 +1,22 @@
 <Solution>
-  <Project Path="BenchmarkSuite1/BenchmarkSuite1.csproj" />
-  <Project Path="NemotronSpeech/NemotronSpeech.csproj" />
-  <Project Path="SpeechLib.Audio.NAudio2/SpeechLib.Audio.NAudio2.csproj" />
-  <Project Path="SpeechLib.Audio.NAudio3/SpeechLib.Audio.NAudio3.csproj" />
-  <Project Path="SpeechLib/SpeechLib.csproj" />
-  <Project Path="SpeechLib.Nemotron/SpeechLib.Nemotron.csproj" />
-  <Project Path="VoiceType.Tests/VoiceType.Tests.csproj" />
-  <Project Path="VoiceType.WinUI/VoiceType.WinUI.csproj" />
-  <Project Path="VoiceType/VoiceType.csproj" />
+  <Folder Name="/apps/NemotronSpeech/">
+    <Project Path="apps/NemotronSpeech/src/NemotronSpeech/NemotronSpeech.csproj" />
+  </Folder>
+  <Folder Name="/apps/VoiceType/">
+    <Project Path="apps/VoiceType/src/VoiceType/VoiceType.csproj" />
+    <Project Path="apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj" />
+  </Folder>
+  <Folder Name="/apps/VoiceType.WinUI/">
+    <Project Path="apps/VoiceType.WinUI/src/VoiceType.WinUI/VoiceType.WinUI.csproj" />
+  </Folder>
+  <Folder Name="/libraries/SpeechLib/">
+    <Project Path="libraries/SpeechLib/src/SpeechLib/SpeechLib.csproj" />
+    <Project Path="libraries/SpeechLib/src/SpeechLib.Audio.NAudio2/SpeechLib.Audio.NAudio2.csproj" />
+    <Project Path="libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/SpeechLib.Audio.NAudio3.csproj" />
+    <Project Path="libraries/SpeechLib/src/SpeechLib.Nemotron/SpeechLib.Nemotron.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/BenchmarkSuite1/BenchmarkSuite1.csproj" />
+    <Project Path="tools/TmpInspect/TmpInspect.csproj" />
+  </Folder>
 </Solution>

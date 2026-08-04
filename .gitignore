@@ -9,8 +9,8 @@ __pycache__/
 modules/
 # Temporary/intermediate conversion artifacts, caches, datasets
 work/
-models-onnx/
-models-original/
+models/*
+!models/README.md
 build/
 converter/build/
 

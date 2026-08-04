@@ -1,0 +1,203 @@
+using Microsoft.ML.OnnxRuntimeGenAI;
+using System.Text;
+using System.Text.Json;
+
+namespace SpeechLib;
+
+/// <summary>
+/// Nemotron ONNX Runtime GenAI speech recognizer.
+/// Wraps model lifecycle: config, model, processor, tokenizer, generator.
+/// Implements <see cref="IStreamingSpeechRecognizer"/> for pluggable recognition pipelines.
+/// </summary>
+public sealed class ModelSession : IStreamingSpeechRecognizer, ILanguageConfigurable, IRuntimeConfigurable
+{
+    private readonly Config _config;
+    private readonly Model _model;
+    private readonly StreamingProcessor _processor;
+    private readonly Tokenizer _tokenizer;
+    private readonly TokenizerStream _tokenizerStream;
+    private readonly GeneratorParams _genParams;
+    private readonly Generator _generator;
+
+    public int SampleRate { get; }
+    public int ChunkSamples { get; }
+    public string VadStatus { get; }
+    public bool IsSingleLanguage { get; }
+
+    public ModelSession(string modelPath, string executionProvider, string? langId, bool useVad)
+        : this(modelPath, executionProvider, langId, useVad, null, null) { }
+
+    public ModelSession(string modelPath, string executionProvider, string? langId, bool useVad,
+        GeneratorParamsArgs? searchOptions, int? cpuThreads = null, bool? sequentialExecution = true)
+    {
+        modelPath = ResolvePath(modelPath);
+        if (!Directory.Exists(modelPath))
+            throw new DirectoryNotFoundException($"Model path not found: {modelPath}");
+
+        using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(modelPath, "genai_config.json")));
+        var cfg = json.RootElement.GetProperty("model");
+        SampleRate = cfg.GetProperty("sample_rate").GetInt32();
+        ChunkSamples = cfg.GetProperty("chunk_samples").GetInt32();
+
+        // Detect single-language models: encoder has no lang_id input
+        var encInputs = cfg.GetProperty("encoder").GetProperty("inputs");
+        IsSingleLanguage = !encInputs.TryGetProperty("lang_id", out _);
+
+        // Use CPU-friendly defaults for local realtime ASR when no explicit options are provided:
+        //   num_beams=1 keeps CPU latency low; GPU/non-CPU defaults keep the higher quality beam search.
+        //   repetition_penalty=1.1 prevents the decoder from getting stuck in loops
+        searchOptions ??= new GeneratorParamsArgs
+        {
+            num_beams = string.Equals(executionProvider, "cpu", StringComparison.OrdinalIgnoreCase) ? 1 : 4,
+            do_sample = false,
+            repetition_penalty = 1.1
+        };
+
+        _config = Common.GetConfig(modelPath, executionProvider, null, searchOptions, cpuThreads, sequentialExecution);
+
+        _model = new Model(_config);
+        _processor = new StreamingProcessor(_model);
+
+        ConfigureVad(useVad);
+
+        VadStatus = _processor.GetOption("use_vad");
+
+        _tokenizer = new Tokenizer(_model);
+        _tokenizerStream = _tokenizer.CreateStream();
+        _genParams = new GeneratorParams(_model);
+        Common.SetSearchOptions(_genParams, searchOptions, verbose: false);
+        _generator = new Generator(_model, _genParams);
+
+        if (!IsSingleLanguage && langId is not null)
+            SetLanguage(langId);
+    }
+
+    public NamedTensors? ProcessAudio(float[] chunk) => _processor.Process(chunk);
+    public NamedTensors? Flush() => _processor.Flush();
+    public void SetInputs(NamedTensors inputs) => _generator.SetInputs(inputs);
+
+    /// <summary>
+    /// Change the recognition language at runtime without reloading the model.
+    /// Only works for multilingual models (IsSingleLanguage = false).
+    /// </summary>
+    /// <param name="langId">Numeric language ID (see LanguageMapper).</param>
+    public void SetLanguage(string langId)
+        => TrySetLanguage(langId);
+
+    /// <inheritdoc />
+    public bool TrySetLanguage(string language)
+    {
+        if (IsSingleLanguage) return false;
+        try
+        {
+            _generator.SetRuntimeOption("lang_id", language);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"  Warning: lang_id not set ({e.Message})");
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
+    public bool TrySetVad(bool enabled)
+    {
+        try
+        {
+            _processor.SetOption("use_vad", enabled ? "true" : "false");
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"  Warning: VAD not set ({e.Message})");
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
+    public bool TrySetSearchOptions(int numBeams, double repetitionPenalty)
+    {
+        try
+        {
+            _genParams.SetSearchOption("num_beams", Math.Max(1, numBeams));
+            _genParams.SetSearchOption("repetition_penalty", repetitionPenalty);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"  Warning: search options not set ({e.Message})");
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
+    string? IStreamingSpeechRecognizer.ProcessAudio(float[] chunk)
+    {
+        var inputs = _processor.Process(chunk);
+        if (inputs is null) return null;
+        _generator.SetInputs(inputs);
+        return DecodeTokens().Text;
+    }
+
+    /// <inheritdoc />
+    string? IStreamingSpeechRecognizer.Flush()
+    {
+        var inputs = _processor.Flush();
+        if (inputs is null) return null;
+        _generator.SetInputs(inputs);
+        return DecodeTokens().Text;
+    }
+
+    int IStreamingSpeechRecognizer.SampleRate => SampleRate;
+    int IStreamingSpeechRecognizer.ChunkSamples => ChunkSamples;
+
+    /// <summary>Number of tokens produced by the most recent <see cref="DecodeTokens"/> call.</summary>
+    public int LastTokenCount { get; private set; }
+
+    /// <summary>Result of a single decode pass: decoded text + token count.</summary>
+    public readonly record struct DecodeResult(string Text, int TokenCount);
+
+    public DecodeResult DecodeTokens()
+    {
+        var text = new StringBuilder();
+        int tokenCount = 0;
+        while (!_generator.IsDone())
+        {
+            _generator.GenerateNextToken();
+            var tokens = _generator.GetNextTokens();
+            if (tokens.Length > 0)
+            {
+                tokenCount++;
+                var t = _tokenizerStream.Decode(tokens[0]);
+                if (!string.IsNullOrEmpty(t))
+                {
+                    text.Append(t);
+                }
+            }
+        }
+        var result = new DecodeResult(text.ToString(), tokenCount);
+        LastTokenCount = tokenCount;
+        return result;
+    }
+
+    public void Dispose()
+    {
+        _generator.Dispose();
+        _genParams.Dispose();
+        _tokenizerStream.Dispose();
+        _tokenizer.Dispose();
+        _processor.Dispose();
+        _model.Dispose();
+        _config.Dispose();
+    }
+
+    private void ConfigureVad(bool enabled)
+    {
+        _ = TrySetVad(enabled);
+    }
+
+    private static string ResolvePath(string path) =>
+        Path.IsPathRooted(path) ? path
+            : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", path));
+}
