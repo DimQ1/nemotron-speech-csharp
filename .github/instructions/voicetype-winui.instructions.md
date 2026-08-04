@@ -1,7 +1,7 @@
 ---
 name: "VoiceType.WinUI Project Instructions"
 description: "Use when working on the VoiceType.WinUI WinUI 3 application, including C#, XAML, MVVM, Win32 interop, taskbar indicators, data paths, or MSIX packaging."
-applyTo: "VoiceType.WinUI/**"
+applyTo: "apps/VoiceType.WinUI/**"
 ---
 
 # VoiceType.WinUI Project Rules
@@ -45,10 +45,10 @@ applyTo: "VoiceType.WinUI/**"
 - For a fast local build, use:
 
   ```powershell
-  dotnet build VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU
+  dotnet build apps/VoiceType.WinUI/src/VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU
   ```
 
-- For a release MSIX, use `VoiceType.WinUI/build-store-release.ps1`. Pass `-Sign -CertThumbprint <thumbprint>` only when a suitable certificate is available; never hard-code private keys or passwords in the repository.
-- Install local signed packages with `VoiceType.WinUI/install-dev.ps1` from an elevated PowerShell when certificate trust requires machine-level stores.
+- For a release MSIX, use `apps/VoiceType.WinUI/src/VoiceType.WinUI/build-store-release.ps1`. Pass `-Sign -CertThumbprint <thumbprint>` only when a suitable certificate is available; never hard-code private keys or passwords in the repository.
+- Install local signed packages with `apps/VoiceType.WinUI/src/VoiceType.WinUI/install-dev.ps1` from an elevated PowerShell when certificate trust requires machine-level stores.
 - A package with the same identity and version but different contents cannot be installed as an update. Bump `Package.appxmanifest` version for a new package, or remove the existing package deliberately while preserving data where possible.
 - After changes, run the narrowest relevant build or test first, then inspect `git diff --check`. Do not commit or push unless explicitly requested.

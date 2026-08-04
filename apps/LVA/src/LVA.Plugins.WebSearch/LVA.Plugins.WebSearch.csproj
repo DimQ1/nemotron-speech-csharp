@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>LVA.Plugins.WebSearch</RootNamespace>
+    <AssemblyName>LVA.Plugins.WebSearch</AssemblyName>
+  </PropertyGroup>
+
+  <!-- MAF versions pinned per TZ §6.3.4 (young framework, update = separate task) -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.16.0" />
+    <PackageReference Include="Microsoft.Agents.AI.Workflows" Version="1.16.0" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.3" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LVA.Plugins.Abstractions\LVA.Plugins.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

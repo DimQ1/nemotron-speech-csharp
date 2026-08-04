@@ -1,14 +1,40 @@
 <Solution>
-  <Project Path="BenchmarkSuite1/BenchmarkSuite1.csproj" />
-  <Project Path="LocalVoiceAssistant.Maui/LocalVoiceAssistant.Maui.csproj" />
-  <Project Path="LocalVoiceAssistant.Core/LocalVoiceAssistant.Core.csproj" />
-  <Project Path="LocalVoiceAssistant.Tests/LocalVoiceAssistant.Tests.csproj" />
-  <Project Path="NemotronSpeech/NemotronSpeech.csproj" />
-  <Project Path="SpeechLib.Audio.NAudio2/SpeechLib.Audio.NAudio2.csproj" />
-  <Project Path="SpeechLib.Audio.NAudio3/SpeechLib.Audio.NAudio3.csproj" />
-  <Project Path="SpeechLib/SpeechLib.csproj" />
-  <Project Path="SpeechLib.Nemotron/SpeechLib.Nemotron.csproj" />
-  <Project Path="VoiceType.Tests/VoiceType.Tests.csproj" />
-  <Project Path="VoiceType.WinUI/VoiceType.WinUI.csproj" />
-  <Project Path="VoiceType/VoiceType.csproj" />
+  <Folder Name="/apps/LVA/">
+    <Project Path="apps/LVA/src/LVA.Core/LVA.Core.csproj" />
+    <Project Path="apps/LVA/src/LVA.Nlu/LVA.Nlu.csproj" />
+    <Project Path="apps/LVA/src/LVA.Orchestration/LVA.Orchestration.csproj" />
+    <Project Path="apps/LVA/src/LVA.Plugins.Abstractions/LVA.Plugins.Abstractions.csproj" />
+    <Project Path="apps/LVA/src/LVA.Plugins.Host/LVA.Plugins.Host.csproj" />
+    <Project Path="apps/LVA/src/LVA.Plugins.WebSearch/LVA.Plugins.WebSearch.csproj" />
+    <Project Path="apps/LVA/src/LVA.App/LVA.App.csproj" />
+    <Project Path="apps/LVA/tests/LVA.Tests.Core/LVA.Tests.Core.csproj" />
+    <Project Path="apps/LVA/tests/LVA.Tests.Nlu/LVA.Tests.Nlu.csproj" />
+    <Project Path="apps/LVA/tests/LVA.Tests.Orchestration/LVA.Tests.Orchestration.csproj" />
+    <Project Path="apps/LVA/tests/LVA.Tests.Plugins/LVA.Tests.Plugins.csproj" />
+  </Folder>
+  <Folder Name="/apps/NemotronSpeech/">
+    <Project Path="apps/NemotronSpeech/src/NemotronSpeech/NemotronSpeech.csproj" />
+  </Folder>
+  <Folder Name="/apps/VoiceType/">
+    <Project Path="apps/VoiceType/src/VoiceType/VoiceType.csproj" />
+    <Project Path="apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj" />
+  </Folder>
+  <Folder Name="/apps/VoiceType.WinUI/">
+    <Project Path="apps/VoiceType.WinUI/src/VoiceType.WinUI/VoiceType.WinUI.csproj" />
+  </Folder>
+  <Folder Name="/libraries/SpeechLib/">
+    <Project Path="libraries/SpeechLib/src/SpeechLib/SpeechLib.csproj" />
+    <Project Path="libraries/SpeechLib/src/SpeechLib.Audio.NAudio2/SpeechLib.Audio.NAudio2.csproj" />
+    <Project Path="libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/SpeechLib.Audio.NAudio3.csproj" />
+    <Project Path="libraries/SpeechLib/src/SpeechLib.Nemotron/SpeechLib.Nemotron.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/BenchmarkSuite1/BenchmarkSuite1.csproj" />
+    <Project Path="tools/TmpInspect/TmpInspect.csproj" />
+  </Folder>
+  <Folder Name="/LocalVoiceAssistant/">
+    <Project Path="LocalVoiceAssistant.Core/LocalVoiceAssistant.Core.csproj" />
+    <Project Path="LocalVoiceAssistant.Maui/LocalVoiceAssistant.Maui.csproj" />
+    <Project Path="LocalVoiceAssistant.Tests/LocalVoiceAssistant.Tests.csproj" />
+  </Folder>
 </Solution>
