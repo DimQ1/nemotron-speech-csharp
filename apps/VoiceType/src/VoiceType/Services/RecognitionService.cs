@@ -14,7 +14,7 @@ namespace VoiceType.Services;
 public sealed class RecognitionService : IDisposable
 {
     private IStreamingSpeechRecognizer? _recognizer;
-    private AudioRecorderService? _audioRecorder;
+    private IAudioRecorder? _audioRecorder;
     private IAudioSource? _audioSource;
     private Thread? _captureThread;
     private ConcurrentQueueWrapper? _buffer;
@@ -26,10 +26,12 @@ public sealed class RecognitionService : IDisposable
     private readonly StringBuilder _accumulatedText = new();
     private readonly StringBuilder _partialProcessedText = new();
     private readonly IAudioSourceFactory _audioSourceFactory;
+    private readonly IAudioRecorderFactory _audioRecorderFactory;
 
-    public RecognitionService(IAudioSourceFactory? audioSourceFactory = null)
+    public RecognitionService(IAudioSourceFactory? audioSourceFactory = null, IAudioRecorderFactory? audioRecorderFactory = null)
     {
         _audioSourceFactory = audioSourceFactory ?? new NAudio3AudioSourceFactory();
+        _audioRecorderFactory = audioRecorderFactory ?? new NAudio3AudioRecorderFactory();
     }
 
     public event Action<string>? PartialResult;
@@ -74,8 +76,8 @@ public sealed class RecognitionService : IDisposable
         _partialProcessedText.Clear();
         _isRunning = true;
 
-        _audioRecorder = new AudioRecorderService(_recognizer.SampleRate);
-        _audioRecorder.Start();
+        _audioRecorder = _audioRecorderFactory.Create(_recognizer.SampleRate);
+        _audioRecorder.Start(AppPaths.EnsureTempDir());
 
         _audioSource = _audioSourceFactory.Create(
             Enum.Parse<CaptureMode>(settings.AudioSource),

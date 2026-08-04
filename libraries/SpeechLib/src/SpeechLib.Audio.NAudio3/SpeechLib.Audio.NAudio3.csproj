@@ -11,8 +11,10 @@
   <ItemGroup>
     <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
     <PackageReference Include="NAudio" Version="3.0.0-preview.19" />
+    <PackageReference Include="NAudio.Lame" Version="2.1.0" />
     <PackageReference Include="NAudio.Wasapi" Version="3.0.0-preview.19" />
     <PackageReference Include="NAudio.WinMM" Version="3.0.0-preview.19" />
+    <Compile Include="..\SpeechLib\Audio\BufferedAudioRecorder.cs" Link="BufferedAudioRecorder.cs" />
     <Compile Include="..\SpeechLib\Transcriber.cs" Link="Transcriber.cs" />
   </ItemGroup>
 

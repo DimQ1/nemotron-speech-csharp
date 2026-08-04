@@ -16,6 +16,7 @@
   -->
   <ItemGroup>
     <Compile Remove="Audio\AudioUtils.cs" />
+    <Compile Remove="Audio\BufferedAudioRecorder.cs" />
     <Compile Remove="Audio\BufferedCaptureSource.cs" />
     <Compile Remove="Audio\LoopbackAudioSource.cs" />
     <Compile Remove="Audio\MicAudioSource.cs" />

@@ -213,21 +213,24 @@ public sealed class Unit_ModelDownloaderViewModelTests
     [Fact]
     public void AudioRecorderService_StopAndSave_WithoutSamples_ReturnsNull()
     {
-        using var recorder = new AudioRecorderService(16000);
-        recorder.Start();
+        using var recorder = new NAudio3AudioRecorderFactory().Create(16000);
+        var tempDir = Path.Combine(Path.GetTempPath(), $"VoiceType_temp_{Guid.NewGuid():N}");
+        recorder.Start(tempDir);
 
         var outputBasePath = Path.Combine(Path.GetTempPath(), $"VoiceType_empty_{Guid.NewGuid():N}");
         var result = recorder.StopAndSave(outputBasePath);
 
         Assert.Null(result);
         Assert.False(File.Exists(Path.ChangeExtension(outputBasePath, ".mp3")));
+        Directory.Delete(tempDir, recursive: true);
     }
 
     [Fact]
     public async Task AudioRecorderService_StopAndSave_WithSamples_WritesMp3()
     {
-        using var recorder = new AudioRecorderService(16000);
-        recorder.Start();
+        using var recorder = new NAudio3AudioRecorderFactory().Create(16000);
+        var tempDir = Path.Combine(Path.GetTempPath(), $"VoiceType_temp_{Guid.NewGuid():N}");
+        recorder.Start(tempDir);
 
         var samples = Enumerable.Range(0, 4000)
             .Select(i => (float)Math.Sin(2 * Math.PI * 440 * i / 16000))
