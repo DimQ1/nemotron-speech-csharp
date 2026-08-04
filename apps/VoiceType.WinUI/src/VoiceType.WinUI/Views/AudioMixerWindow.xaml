@@ -26,27 +26,84 @@
         </Grid>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="14,10">
-            <StackPanel Spacing="16">
+            <StackPanel Spacing="14">
 
-                <!-- Master Level -->
+                <!-- Capture source selection (applies live, persisted) -->
                 <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="12">
                     <StackPanel>
-                        <TextBlock Text="Master Level" Foreground="{StaticResource FgBrush}"
+                        <TextBlock Text="Capture Source" Foreground="{StaticResource FgBrush}"
                                    FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <Grid>
+                        <ComboBox ItemsSource="{x:Bind ViewModel.AudioSourceOptions}"
+                                  SelectedItem="{x:Bind ViewModel.AudioSource, Mode=TwoWay}"
+                                  Style="{StaticResource DarkComboBox}"/>
+                        <TextBlock Text="Applies immediately — the running recording restarts on the new source. Last selection is saved."
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="11"
+                                   TextWrapping="Wrap" Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Levels: per channel + master, with dB-style scale -->
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="12">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Input Levels" Foreground="{StaticResource FgBrush}"
+                                   FontSize="12" FontWeight="SemiBold"/>
+
+                        <!-- Mic level -->
+                        <Grid ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="90"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <FontIcon Grid.Column="0" Glyph="&#xE720;" FontSize="14"
-                                      Foreground="{StaticResource AccentBrush}"
-                                      VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <ProgressBar Grid.Column="1" Height="8"
-                                         Minimum="0" Maximum="1"
-                                         Value="{x:Bind ViewModel.AudioLevel, Mode=OneWay}"
+                            <TextBlock Grid.Column="0" Text="Microphone" Foreground="{StaticResource FgSecondaryBrush}"
+                                       FontSize="11" VerticalAlignment="Center"/>
+                            <ProgressBar Grid.Column="1" Height="18" Minimum="0" Maximum="1"
+                                         Value="{x:Bind ViewModel.MicLevel, Mode=OneWay}"
+                                         Foreground="#FF3FB950" Background="{StaticResource BgTertiaryBrush}"/>
+                        </Grid>
+
+                        <!-- Loopback level -->
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="90"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="System Audio" Foreground="{StaticResource FgSecondaryBrush}"
+                                       FontSize="11" VerticalAlignment="Center"/>
+                            <ProgressBar Grid.Column="1" Height="18" Minimum="0" Maximum="1"
+                                         Value="{x:Bind ViewModel.LoopbackLevel, Mode=OneWay}"
+                                         Foreground="#FF58A6FF" Background="{StaticResource BgTertiaryBrush}"/>
+                        </Grid>
+
+                        <!-- Master level -->
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="90"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Master" Foreground="{StaticResource FgBrush}"
+                                       FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <ProgressBar Grid.Column="1" Height="24" Minimum="0" Maximum="1"
+                                         Value="{x:Bind ViewModel.MasterLevel, Mode=OneWay}"
                                          Foreground="{StaticResource AccentBrush}"
                                          Background="{StaticResource BgTertiaryBrush}"/>
                         </Grid>
+
+                        <!-- Scale: approximate dB reference for speech level -->
+                        <Grid Margin="98,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="-40 dB" Foreground="{StaticResource FgSecondaryBrush}" FontSize="10"/>
+                            <TextBlock Grid.Column="1" Text="-24 dB" Foreground="{StaticResource FgSecondaryBrush}" FontSize="10" TextAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="-12 dB" Foreground="{StaticResource FgSecondaryBrush}" FontSize="10" TextAlignment="Center"/>
+                            <TextBlock Grid.Column="3" Text="0 dB" Foreground="{StaticResource FgSecondaryBrush}" FontSize="10" TextAlignment="Right"/>
+                        </Grid>
+                        <TextBlock Text="Aim for speech around -24…-12 dB (≈ 30–60%). If the bar stays near zero, raise the channel volume below."
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="11"
+                                   TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
@@ -58,7 +115,7 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Microphone" Foreground="{StaticResource FgBrush}"
+                            <TextBlock Grid.Column="0" Text="Microphone Volume" Foreground="{StaticResource FgBrush}"
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.MicVolumePercent, Mode=OneWay}"
                                        Foreground="{StaticResource AccentBrush}" FontSize="12"
@@ -78,7 +135,7 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="System Audio (Loopback)" Foreground="{StaticResource FgBrush}"
+                            <TextBlock Grid.Column="0" Text="System Audio Volume" Foreground="{StaticResource FgBrush}"
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.LoopbackVolumePercent, Mode=OneWay}"
                                        Foreground="{StaticResource AccentBrush}" FontSize="12"

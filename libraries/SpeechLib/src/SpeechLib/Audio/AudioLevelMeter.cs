@@ -48,6 +48,34 @@ public sealed class AudioLevelMeter
         }
     }
 
+    /// <summary>Compute RMS level from a span of samples (0.0 – 1.0) without notifying observers.</summary>
+    public static float ComputeRms(ReadOnlySpan<float> samples)
+    {
+        if (samples.Length == 0) return 0f;
+
+        float sumSquares = 0;
+        foreach (var s in samples)
+            sumSquares += s * s;
+
+        return Math.Clamp(MathF.Sqrt(sumSquares / samples.Length), 0f, 1f);
+    }
+
+    /// <summary>Compute RMS level for a batch and notify observers only when there is signal.</summary>
+    public void PublishIfActive(ReadOnlySpan<float> samples)
+    {
+        if (samples.Length == 0) return;
+        var level = ComputeRms(samples);
+
+        lock (_gate)
+        {
+            foreach (var observer in _observers)
+            {
+                try { observer.OnAudioLevel(level); }
+                catch { /* Don't let one observer break others */ }
+            }
+        }
+    }
+
     private sealed class Unsubscriber : IDisposable
     {
         private readonly List<IAudioLevelObserver> _observers;

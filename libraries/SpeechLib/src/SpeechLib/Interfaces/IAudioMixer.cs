@@ -14,4 +14,10 @@ public interface IAudioMixer
 
     /// <summary>Shared level meter publishing the current input level (RMS, 0–1).</summary>
     AudioLevelMeter LevelMeter { get; }
+
+    /// <summary>Level meter for the microphone channel alone (pre-mix gain).</summary>
+    AudioLevelMeter MicLevelMeter { get; }
+
+    /// <summary>Level meter for the loopback (system audio) channel alone (pre-mix gain).</summary>
+    AudioLevelMeter LoopbackLevelMeter { get; }
 }

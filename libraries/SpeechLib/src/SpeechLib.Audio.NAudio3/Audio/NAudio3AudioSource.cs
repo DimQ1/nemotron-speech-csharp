@@ -19,6 +19,12 @@ public sealed class NAudio3AudioSource : IAudioSource
 
     public static AudioLevelMeter AudioLevelMeter { get; } = new();
 
+    /// <summary>Level meter for the microphone channel (pre-mix gain).</summary>
+    public static AudioLevelMeter MicLevelMeter { get; } = new();
+
+    /// <summary>Level meter for the loopback channel (pre-mix gain).</summary>
+    public static AudioLevelMeter LoopbackLevelMeter { get; } = new();
+
     private static float _micVolume = 1.0f;
     private static float _loopbackVolume = 1.0f;
 
@@ -138,6 +144,12 @@ public sealed class NAudio3AudioSource : IAudioSource
             var count = Math.Max(loopbackCount, microphoneCount);
             if (count == 0)
                 return;
+
+            // Per-channel levels (pre-mix gain) so the mixer UI can show each source
+            if (microphoneCount > 0)
+                MicLevelMeter.PublishIfActive(microphoneSamples.AsSpan(0, microphoneCount));
+            if (loopbackCount > 0)
+                LoopbackLevelMeter.PublishIfActive(loopbackSamples.AsSpan(0, loopbackCount));
 
             var batch = new float[count];
             for (var index = 0; index < count; index++)

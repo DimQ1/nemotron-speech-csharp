@@ -21,4 +21,8 @@ public sealed class NAudio2AudioMixer : IAudioMixer
     }
 
     public AudioLevelMeter LevelMeter => BufferedCaptureSource.AudioLevelMeter;
+
+    public AudioLevelMeter MicLevelMeter => BufferedCaptureSource.MicLevelMeter;
+
+    public AudioLevelMeter LoopbackLevelMeter => BufferedCaptureSource.LoopbackLevelMeter;
 }

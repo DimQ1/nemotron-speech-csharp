@@ -21,4 +21,8 @@ public sealed class NAudio3AudioMixer : IAudioMixer
     }
 
     public AudioLevelMeter LevelMeter => NAudio3AudioSource.AudioLevelMeter;
+
+    public AudioLevelMeter MicLevelMeter => NAudio3AudioSource.MicLevelMeter;
+
+    public AudioLevelMeter LoopbackLevelMeter => NAudio3AudioSource.LoopbackLevelMeter;
 }

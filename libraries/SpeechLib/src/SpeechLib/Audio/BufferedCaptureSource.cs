@@ -21,6 +21,12 @@ public sealed class BufferedCaptureSource : IAudioSource
     /// <summary>Shared audio level meter for all capture sources.</summary>
     public static AudioLevelMeter AudioLevelMeter { get; } = new();
 
+    /// <summary>Level meter for the microphone channel (pre-mix gain).</summary>
+    public static AudioLevelMeter MicLevelMeter { get; } = new();
+
+    /// <summary>Level meter for the loopback channel (pre-mix gain).</summary>
+    public static AudioLevelMeter LoopbackLevelMeter { get; } = new();
+
     private static float _micVolume = 1.0f;
     private static float _loopbackVolume = 1.0f;
 
@@ -118,6 +124,12 @@ public sealed class BufferedCaptureSource : IAudioSource
 
                 int count = Math.Max(loopSamples.Count, micSamples.Count);
                 if (count == 0) continue;
+
+                // Per-channel levels (pre-mix gain) so the mixer UI can show each source
+                if (micSamples.Count > 0)
+                    MicLevelMeter.PublishIfActive(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(micSamples));
+                if (loopSamples.Count > 0)
+                    LoopbackLevelMeter.PublishIfActive(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(loopSamples));
 
                 var batch = new float[count];
                 for (int i = 0; i < count; i++)
