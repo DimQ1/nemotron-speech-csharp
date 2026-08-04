@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>LocalVoiceAssistant.Maui</RootNamespace>
+    <AssemblyName>LocalVoiceAssistant.Core</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\LocalVoiceAssistant.Maui\Core\**\*.cs" LinkBase="Core" />
+    <Compile Include="..\LocalVoiceAssistant.Maui\Models\AssistantAction.cs" Link="Models\AssistantAction.cs" />
+    <Compile Include="..\LocalVoiceAssistant.Maui\Plugins\IAssistantPlugin.cs" Link="Plugins\IAssistantPlugin.cs" />
+    <Compile Include="..\LocalVoiceAssistant.Maui\Plugins\SearchProviders.cs" Link="Plugins\SearchProviders.cs" />
+    <Compile Include="..\LocalVoiceAssistant.Maui\Plugins\WebSearchPlugin.cs" Link="Plugins\WebSearchPlugin.cs" />
+  </ItemGroup>
+</Project>

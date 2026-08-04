@@ -1,5 +1,8 @@
 <Solution>
   <Project Path="BenchmarkSuite1/BenchmarkSuite1.csproj" />
+  <Project Path="LocalVoiceAssistant.Maui/LocalVoiceAssistant.Maui.csproj" />
+  <Project Path="LocalVoiceAssistant.Core/LocalVoiceAssistant.Core.csproj" />
+  <Project Path="LocalVoiceAssistant.Tests/LocalVoiceAssistant.Tests.csproj" />
   <Project Path="NemotronSpeech/NemotronSpeech.csproj" />
   <Project Path="SpeechLib.Audio.NAudio2/SpeechLib.Audio.NAudio2.csproj" />
   <Project Path="SpeechLib.Audio.NAudio3/SpeechLib.Audio.NAudio3.csproj" />

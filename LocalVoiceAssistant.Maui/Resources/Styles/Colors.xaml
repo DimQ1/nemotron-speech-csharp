@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    <Color x:Key="AppBackground">#0F1115</Color>
+    <Color x:Key="PanelBackground">#171A21</Color>
+    <Color x:Key="SurfaceBackground">#1E222C</Color>
+    <Color x:Key="AccentColor">#7C6CFF</Color>
+    <Color x:Key="AccentMuted">#2A2750</Color>
+    <Color x:Key="SuccessColor">#3ECF8E</Color>
+    <Color x:Key="WorkingColor">#FFB454</Color>
+    <Color x:Key="ErrorColor">#FF6B6B</Color>
+    <Color x:Key="PrimaryText">#E8EAF0</Color>
+    <Color x:Key="SecondaryText">#9AA3B2</Color>
+    <Color x:Key="BorderColor">#303542</Color>
+    <Color x:Key="UserMessage">#29244B</Color>
+    <Color x:Key="AssistantMessage">#20252F</Color>
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackground}" />
+    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="{StaticResource PanelBackground}" />
+    <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="{StaticResource SurfaceBackground}" />
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+</ResourceDictionary>

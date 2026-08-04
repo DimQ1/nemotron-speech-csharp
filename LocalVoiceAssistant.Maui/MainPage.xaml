@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LocalVoiceAssistant.Maui.MainPage"
+             Title="LVA"
+             BackgroundColor="#0F1115"
+             Appearing="OnPageAppearing">
+    <WebView x:Name="AssistantWebView"
+             Navigating="OnWebViewNavigating"
+             Navigated="OnWebViewNavigated"
+             BackgroundColor="#0F1115"
+             HorizontalOptions="Fill"
+             VerticalOptions="Fill" />
+</ContentPage>
