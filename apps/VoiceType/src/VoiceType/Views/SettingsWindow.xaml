@@ -113,7 +113,12 @@
                         <CheckBox Content="Stop recognition on any keyboard/mouse input"
                                   IsChecked="{Binding StopOnAnyInput}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,6"/>
                         <CheckBox Content="Pause injection when focus changes to another window"
-                                  IsChecked="{Binding DisableInjectionOnFocusChange}" Style="{StaticResource DarkCheckBox}"/>
+                                  IsChecked="{Binding DisableInjectionOnFocusChange}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,8"/>
+                        <Button Content="Voice Commands…" HorizontalAlignment="Left" Padding="12,6"
+                                Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
+                                BorderThickness="0" Cursor="Hand" FontSize="12"
+                                Command="{Binding OpenVoiceCommandsCommand}"
+                                ToolTip="Optional voice-controlled dictation mode (start/stop typing, target memory)"/>
                     </StackPanel>
                 </GroupBox>
 

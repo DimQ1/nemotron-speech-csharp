@@ -61,6 +61,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         DeleteRuleCommand = new RelayCommand<PostProcessingRule>(DeleteRule);
         OpenModelDownloaderCommand = new RelayCommand(OpenModelDownloader);
         BrowseRootCommand = new RelayCommand(BrowseRoot);
+        OpenVoiceCommandsCommand = new RelayCommand(OpenVoiceCommands);
 
         // Initial scan
         ScanModels();
@@ -165,6 +166,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public ICommand DeleteRuleCommand { get; }
     public ICommand OpenModelDownloaderCommand { get; }
     public ICommand BrowseRootCommand { get; }
+    public ICommand OpenVoiceCommandsCommand { get; }
 
     public bool WasSaved { get; private set; }
 
@@ -197,6 +199,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         DownloaderModelsRootPath = _original.DownloaderModelsRootPath,
         DownloaderSelectedFoldersRepoId = _original.DownloaderSelectedFoldersRepoId,
         DownloaderSelectedFolders = _original.DownloaderSelectedFolders.ToList(),
+        // Voice Intent settings are edited in their own window; carry them through unchanged.
+        VoiceIntents = _original.VoiceIntents,
     };
 
     private void Save()
@@ -236,6 +240,27 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         {
             if (window.WasDownloaded && window.ResultPath is not null)
                 ModelsRootPath = window.ResultPath;  // This triggers ScanModels()
+        };
+        window.Show();
+    }
+
+    private void OpenVoiceCommands()
+    {
+        var owner = System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(window => window.IsActive)
+            ?? System.Windows.Application.Current.MainWindow;
+        // The mode is toggled inside its own window; edits write into _original.VoiceIntents.
+        var window = new Views.VoiceCommandsSettingsWindow(_original.VoiceIntents, history: null)
+        {
+            Owner = owner
+        };
+        window.Closed += (_, _) =>
+        {
+            if (window.WasSaved)
+            {
+                // Persist the whole settings object so voice-intent edits survive.
+                var settings = BuildSettings();
+                SettingsService.Save(settings);
+            }
         };
         window.Show();
     }

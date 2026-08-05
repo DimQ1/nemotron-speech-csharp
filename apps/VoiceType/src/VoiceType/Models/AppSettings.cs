@@ -60,9 +60,54 @@ public sealed class AppSettings
     public string DownloaderModelsRootPath { get; set; } = "";
     public string DownloaderSelectedFoldersRepoId { get; set; } = "";
     public List<string> DownloaderSelectedFolders { get; set; } = new();
+
+    // ── Voice Intent Mode ─────────────────────────────
+    /// <summary>Settings for the optional voice-command (intent) mode.</summary>
+    public VoiceIntentSettings VoiceIntents { get; set; } = new();
 }
 
 public enum InjectionMethod { InputSimulator, SendInput, Clipboard }
+
+/// <summary>
+/// Settings for the optional Voice Intent Mode. When <see cref="Enabled"/> is
+/// false (default) the router is never created and the dictation pipeline is
+/// unchanged. All fields have safe defaults so existing settings.json loads
+/// without migration.
+/// </summary>
+public sealed class VoiceIntentSettings
+{
+    /// <summary>Master toggle. False = mode fully off, no model loaded.</summary>
+    public bool Enabled { get; set; } = false;
+
+    /// <summary>Path to the MiniLM ONNX model folder; empty = L0 heuristics only.</summary>
+    public string IntentModelPath { get; set; } = "";
+
+    /// <summary>Cosine / heuristic confidence threshold to accept a command.</summary>
+    public float ConfidenceThreshold { get; set; } = 0.85f;
+
+    /// <summary>Hysteresis: M of last N scores must reach threshold to enter state.</summary>
+    public int HysteresisM { get; set; } = 2;
+    public int HysteresisN { get; set; } = 3;
+
+    /// <summary>Remember injection target windows / fields across sessions.</summary>
+    public bool RememberTargets { get; set; } = true;
+
+    /// <summary>Ask (dialog) which remembered field to type into when ambiguous.</summary>
+    public bool ConfirmTargetSwitch { get; set; } = true;
+
+    /// <summary>Max remembered targets kept per process (LRU).</summary>
+    public int HistoryPerProcess { get; set; } = 10;
+
+    /// <summary>Maps process name (lower, no .exe) to spoken aliases for retargeting.</summary>
+    public Dictionary<string, string[]> AppAliases { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["code"] = new[] { "vs code", "visual studio code", "визуал студио код", "код" },
+        ["notepad"] = new[] { "notepad", "блокнот" },
+    };
+
+    /// <summary>Optional user-supplied intents.json overriding the built-in taxonomy.</summary>
+    public string CustomIntentsFile { get; set; } = "";
+}
 
 /// <summary>
 /// A single post-processing rule: regex find-and-replace.

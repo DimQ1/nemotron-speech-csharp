@@ -11,6 +11,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using VoiceType.Models;
 using VoiceType.Services;
+using VoiceType.Services.Intents;
 
 namespace VoiceType.ViewModels;
 
@@ -47,6 +48,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isActivelyInjecting;
     private bool _injectionExplicitlyEnabled;
     private bool _isInitializing;
+
+    // ── Voice Intent Mode (optional) ────────────────
+    private VoiceIntentRouter? _intentRouter;
+    private InjectionController? _injectionController;
+    private WindowTargetHistory? _windowTargetHistory;
+    private Views.ClarifyTargetDialog? _clarifyDialog;
+    private bool _voiceIntentActive;
+
+    /// <summary>True while the optional voice-command mode is live (router constructed).</summary>
+    public bool IsVoiceIntentActive
+    {
+        get => _voiceIntentActive;
+        private set => SetProperty(ref _voiceIntentActive, value);
+    }
 
     public MainViewModel()
     {
@@ -476,11 +491,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
             RecognizedText = text;
             FloatingText = text;
 
-            // Inject any remaining delta not yet sent
-            if (IsTextInjectionEnabled && text.Length > _lastInjectedLength && CanInjectToTargetWindow())
+            // Voice Intent Mode: a final utterance may be a command (handled) or
+            // an answer to an open clarify dialog. When handled, skip injection.
+            if (!TryHandleVoiceCommand(text))
             {
-                var delta = text[_lastInjectedLength..];
-                TextInjector.Inject(delta, _settings.TextInjectionMethod);
+                // Inject any remaining delta not yet sent
+                if (IsTextInjectionEnabled && text.Length > _lastInjectedLength && CanInjectToTargetWindow())
+                {
+                    var delta = text[_lastInjectedLength..];
+                    InjectDelta(delta);
+                }
             }
             _lastInjectedLength = 0;
 
@@ -509,6 +529,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             _partialResultTimer.Stop();
             IsRecording = false;
+            _intentRouter?.Reset();
+            _clarifyDialog?.Close();
+            _clarifyDialog = null;
             if (StatusText == "Finalizing...")
                 StatusText = "Ready";
         });
@@ -549,9 +572,237 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         var delta = text[_lastInjectedLength..];
-        TextInjector.Inject(delta, _settings.TextInjectionMethod);
+        InjectDelta(delta);
         _lastInjectedLength = text.Length;
         _injectionExplicitlyEnabled = false;
+    }
+
+    /// <summary>
+    /// Injects a text delta. In Voice Intent Mode this routes through
+    /// <see cref="InjectionController"/> so the target window/field is recorded;
+    /// otherwise it calls <see cref="TextInjector"/> directly (unchanged path).
+    /// </summary>
+    private void InjectDelta(string delta)
+    {
+        if (_injectionController is not null)
+            _injectionController.Inject(delta, _settings.TextInjectionMethod, _settings.VoiceIntents.RememberTargets);
+        else
+            TextInjector.Inject(delta, _settings.TextInjectionMethod);
+    }
+
+    // ── Voice Intent Mode ───────────────────────────
+
+    /// <summary>
+    /// Constructs the intent router + injection controller when the mode is
+    /// enabled. When disabled, both stay null and the dictation pipeline is
+    /// bit-for-bit the legacy path (no model loaded, no extra work).
+    /// </summary>
+    private void EnsureVoiceIntentServices()
+    {
+        if (!_settings.VoiceIntents.Enabled)
+        {
+            TeardownVoiceIntentServices();
+            return;
+        }
+
+        if (_intentRouter is not null)
+            return; // already live
+
+        try
+        {
+            var historyPath = System.IO.Path.Combine(AppPaths.DataRoot, "window-targets.json");
+            _windowTargetHistory = new WindowTargetHistory(historyPath, _settings.VoiceIntents.HistoryPerProcess);
+
+            IIntentScorer? scorer = null;
+            var modelPath = _settings.VoiceIntents.IntentModelPath;
+            if (!string.IsNullOrWhiteSpace(modelPath))
+            {
+                try
+                {
+                    var taxonomy = VoiceIntentTaxonomy.Load(_settings.VoiceIntents.CustomIntentsFile);
+                    scorer = new MiniLmIntentScorer(modelPath, taxonomy);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[VoiceType] Intent model failed to load, L0-only: {ex.Message}");
+                    scorer = null;
+                }
+            }
+
+            _intentRouter = new VoiceIntentRouter(_settings.VoiceIntents, l1: scorer);
+            _injectionController = new InjectionController(_windowTargetHistory);
+            IsVoiceIntentActive = true;
+            Console.WriteLine($"[VoiceType] Voice Intent Mode active (semantic={(scorer is not null)})");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[VoiceType] Voice Intent Mode init failed: {ex}");
+            TeardownVoiceIntentServices();
+        }
+    }
+
+    private void TeardownVoiceIntentServices()
+    {
+        _intentRouter?.Dispose();
+        _intentRouter = null;
+        _injectionController = null;
+        _windowTargetHistory = null;
+        IsVoiceIntentActive = false;
+    }
+
+    /// <summary>
+    /// Routes a final utterance through the intent cascade. Returns true when the
+    /// utterance was consumed as a command or clarify answer (so it is not typed).
+    /// </summary>
+    private bool TryHandleVoiceCommand(string text)
+    {
+        if (_intentRouter is null || string.IsNullOrWhiteSpace(text))
+            return false;
+
+        // An open clarify dialog gets first claim on the utterance.
+        if (_clarifyDialog is not null)
+        {
+            if (_clarifyDialog.TryHandleVoice(text))
+            {
+                var chosen = _clarifyDialog.SelectedTarget;
+                _clarifyDialog = null;
+                if (chosen is not null)
+                    ApplyRetarget(chosen);
+                return true;
+            }
+            // Not a selection — let it fall through as normal dictation.
+            return false;
+        }
+
+        VoiceIntentResult result;
+        try
+        {
+            result = _intentRouter.RouteAsync(text).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[VoiceType] Intent route error: {ex.Message}");
+            return false;
+        }
+
+        if (!result.IsCommand)
+            return false;
+
+        switch (result.Intent)
+        {
+            case VoiceIntentIds.StartTyping:
+                IsTextInjectionEnabled = true;
+                StatusText = "🎙 Voice: typing enabled";
+                return true;
+
+            case VoiceIntentIds.StopTyping:
+                IsTextInjectionEnabled = false;
+                StatusText = "🎙 Voice: typing stopped";
+                return true;
+
+            case VoiceIntentIds.SwitchTarget:
+                return HandleSwitchTarget(text);
+
+            case VoiceIntentIds.Cancel:
+                if (_clarifyDialog is not null)
+                {
+                    _clarifyDialog.Close();
+                    _clarifyDialog = null;
+                }
+                StatusText = "🎙 Voice: cancelled";
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>Resolve "type into &lt;app&gt;" to a remembered target, clarifying when ambiguous.</summary>
+    private bool HandleSwitchTarget(string spokenText)
+    {
+        if (_windowTargetHistory is null)
+            return false;
+
+        var appName = ExtractSpokenAppName(spokenText);
+        var candidates = _windowTargetHistory.FindCandidates(appName, _settings.VoiceIntents.AppAliases);
+
+        if (candidates.Count == 0)
+        {
+            StatusText = $"🎙 No remembered target for \"{appName}\"";
+            return true; // consumed the command; nothing to switch to
+        }
+
+        if (candidates.Count == 1 || !_settings.VoiceIntents.ConfirmTargetSwitch)
+        {
+            ApplyRetarget(candidates[0]);
+            return true;
+        }
+
+        // Ambiguous → open the clarify dialog (voice or click to choose).
+        var dialog = new Views.ClarifyTargetDialog(appName, candidates)
+        {
+            Owner = Application.Current.MainWindow
+        };
+        _clarifyDialog = dialog;
+        dialog.Closed += (_, _) => { if (ReferenceEquals(_clarifyDialog, dialog)) _clarifyDialog = null; };
+        dialog.Show();
+        StatusText = $"🎙 Which field of \"{appName}\"?";
+        return true;
+    }
+
+    /// <summary>Focus a remembered window (and field) and make it the injection target.</summary>
+    private void ApplyRetarget(WindowTarget target)
+    {
+        var hwnd = InjectionController.FindWindowByProcess(target.ProcessName, target.WindowTitle);
+        if (hwnd == nint.Zero || !InjectionController.TryFocusWindow(hwnd, target))
+        {
+            StatusText = $"🎙 Switch to \"{target.ProcessName}\" manually";
+            return;
+        }
+
+        _injectionTargetWindow = hwnd;
+        IsTextInjectionEnabled = true;
+        StatusText = $"🎙 Typing into {target.DisplayLabel}";
+    }
+
+    /// <summary>Extract the app name after a switch-target trigger phrase.</summary>
+    private static string ExtractSpokenAppName(string text)
+    {
+        var lower = text.ToLowerInvariant();
+        string[] markers =
+        {
+            "набери в", "напечатай в", "переключись в", "печатай в", "введи в",
+            "type this in", "type into", "switch to", "write in", "print in",
+        };
+        foreach (var marker in markers)
+        {
+            var idx = lower.IndexOf(marker, StringComparison.Ordinal);
+            if (idx >= 0)
+            {
+                var rest = text[(idx + marker.Length)..].Trim().TrimEnd('.', '?', '!');
+                if (rest.Length > 0)
+                    return rest;
+            }
+        }
+        return text.Trim();
+    }
+
+    /// <summary>Open the separate Voice Commands settings window.</summary>
+    public void OpenVoiceCommandsSettings()
+    {
+        var window = new Views.VoiceCommandsSettingsWindow(_settings.VoiceIntents, _windowTargetHistory)
+        {
+            Owner = Application.Current.MainWindow
+        };
+        window.Closed += (_, _) =>
+        {
+            if (window.WasSaved)
+            {
+                SettingsService.Save(_settings);
+                ApplySettingsSnapshot(_settings); // re-evaluates Voice Intent services
+            }
+        };
+        window.Show();
     }
 
     private void PersistSession(RecognitionSession session, bool saveAudio)
@@ -576,6 +827,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _isTextInjectionEnabled = settings.IsTextInjectionEnabled;
         _isAutoScrollEnabled = settings.IsAutoScrollEnabled;
         _disableInjectionOnFocusChange = settings.DisableInjectionOnFocusChange;
+
+        // Re-evaluate the optional Voice Intent Mode against the new settings.
+        EnsureVoiceIntentServices();
 
         OnPropertyChanged(nameof(IsTextInjectionEnabled));
         OnPropertyChanged(nameof(IsAutoScrollEnabled));

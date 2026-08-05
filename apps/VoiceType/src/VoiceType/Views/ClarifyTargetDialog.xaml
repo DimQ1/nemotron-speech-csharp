@@ -1,0 +1,39 @@
+<Window x:Class="VoiceType.Views.ClarifyTargetDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Which field?"
+        Width="460" SizeToContent="Height"
+        MinHeight="220"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="ToolWindow"
+        Background="{StaticResource BgBrush}"
+        Topmost="True">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="{Binding Prompt, Mode=OneWay}"
+                   Foreground="{StaticResource FgBrush}" FontSize="14" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+        <ListBox Grid.Row="1" ItemsSource="{Binding Candidates}"
+                 SelectedIndex="{Binding SelectedIndex}"
+                 Background="{StaticResource BgSecondaryBrush}" BorderThickness="0"
+                 Foreground="{StaticResource FgBrush}" MinHeight="80">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Foreground="{StaticResource FgBrush}" FontSize="12" Padding="2">
+                        <Run Text="{Binding Index, Mode=OneWay, StringFormat={}{0}. }"/>
+                        <Run Text="{Binding Label, Mode=OneWay}"/>
+                    </TextBlock>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock Grid.Row="2" Text="Say the number, or click. Esc = cancel."
+                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" Margin="0,10,0,0"/>
+    </Grid>
+</Window>
