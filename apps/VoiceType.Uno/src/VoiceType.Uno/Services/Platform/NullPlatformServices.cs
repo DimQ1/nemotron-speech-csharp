@@ -7,7 +7,9 @@ namespace VoiceType.Uno.Services.Platform;
 /// </summary>
 public sealed class NullHotkeyService : IPlatformHotkeyService
 {
+#pragma warning disable CS0067 // Event is part of the contract; raised by real backends only
     public event Action<int>? HotkeyPressed;
+#pragma warning restore CS0067
     public int Register(string chord) => 0;
     public void UnregisterAll() { }
 }
