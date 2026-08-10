@@ -12,7 +12,9 @@
     Build it separately: dotnet build apps/VoiceType.Uno/src/VoiceType.Uno.sln -p:GpuArch=CPU
   -->
   <Folder Name="/apps/VoiceType.Uno/" />
-  <Folder Name="/libraries/" />
+  <Folder Name="/libraries/">
+    <Project Path="libraries/VoiceType.Hotkeys/VoiceType.Hotkeys.csproj" />
+  </Folder>
   <Folder Name="/libraries/SpeechLib/">
     <Project Path="libraries/SpeechLib/src/SpeechLib/SpeechLib.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.Audio.NAudio2/SpeechLib.Audio.NAudio2.csproj" />

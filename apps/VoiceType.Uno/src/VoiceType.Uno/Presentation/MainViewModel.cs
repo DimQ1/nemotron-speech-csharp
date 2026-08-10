@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
+using VoiceType.Hotkeys;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Platform;
 
@@ -15,16 +16,17 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly RecognitionService _recognition;
     private readonly SettingsService _settingsService;
-    private readonly IPlatformHotkeyService _hotkeys;
+    private readonly IGlobalHotkeyService _hotkeys;
     private readonly IPlatformTextInjector _textInjector;
     private readonly DispatcherQueue _dispatcher;
 
     private AppSettings _settings;
+    private int _toggleHotkeyId;
 
     public MainViewModel(
         RecognitionService recognition,
         SettingsService settingsService,
-        IPlatformHotkeyService hotkeys,
+        IGlobalHotkeyService hotkeys,
         IPlatformTextInjector textInjector)
     {
         _recognition = recognition;
@@ -64,6 +66,25 @@ public sealed partial class MainViewModel : ObservableObject
             };
             OnPropertyChanged(nameof(RecordButtonText));
         });
+
+        // Global hotkeys: portal grants bindings asynchronously (consent dialog
+        // on first run). Registration happens in the background; presses arrive
+        // via the HotkeyPressed event.
+        _hotkeys.HotkeyPressed += id =>
+        {
+            if (id == _toggleHotkeyId)
+                _dispatcher.TryEnqueue(() => _ = ToggleAsync());
+        };
+
+        if (_hotkeys.IsAvailable && !string.IsNullOrWhiteSpace(_settings.ToggleHotkey))
+            _ = RegisterToggleHotkeyAsync(_settings.ToggleHotkey);
+    }
+
+    private async Task RegisterToggleHotkeyAsync(string chord)
+    {
+        var id = await _hotkeys.RegisterAsync(chord);
+        if (id > 0)
+            _toggleHotkeyId = id;
     }
 
     [ObservableProperty]

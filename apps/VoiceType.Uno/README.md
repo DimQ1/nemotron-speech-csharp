@@ -12,7 +12,7 @@ Primary target platform: **Linux (Ubuntu, X11)**. Windows/macOS desktop work thr
 | Recognition pipeline (model lifecycle → capture loop → partial/final results) | ✅ Ported |
 | Microphone capture on Linux (ALSA `default` device, 16 kHz mono) | ✅ Implemented |
 | ONNX Runtime GenAI model inference (CPU EP) | ✅ Via SpeechLib.Nemotron (`-p:GpuArch=CPU`) |
-| Global hotkeys on Linux | ⬜ Stub (`IPlatformHotkeyService` → X11 `XGrabKey` / Wayland portal TODO) |
+| Global hotkeys on Linux (Wayland + X11) | ✅ `VoiceType.Hotkeys` library — XDG GlobalShortcuts portal (xdg-desktop-portal ≥ 1.18, GNOME 44+/KDE Plasma 5.27+); pure-X11 fallback `XGrabKey` backend possible behind the same interface |
 | Text injection on Linux | ⬜ Stub (`IPlatformTextInjector` → XTest / `ydotool` / clipboard TODO) |
 | Loopback ("WhatYouHear") capture on Linux | ⬜ Needs PulseAudio/PipeWire monitor source |
 | Audio mixer window | ⬜ Not ported (WinUI version is NAudio/WASAPI-based) |
@@ -32,12 +32,30 @@ The port deliberately fixes the main tech-debt findings of the WinUI app:
 
 ```
 SpeechLib (contracts) ─┬─ SpeechLib.Nemotron (ONNX GenAI model session, CPU EP on Linux)
+                       ├─ VoiceType.Hotkeys      (IGlobalHotkeyService; XDG GlobalShortcuts
+                       │                          portal backend on Linux, Null fallback)
                        └─ VoiceType.Uno
                             ├─ Services/          (platform-neutral: AppPaths, Settings, Recognition)
                             ├─ Services/Audio/    (AlsaAudioSourceFactory — Linux capture)
-                            ├─ Services/Platform/ (IPlatformHotkeyService, IPlatformTextInjector + Null)
+                            ├─ Services/Platform/ (IPlatformTextInjector + Null)
                             └─ Presentation/      (MainViewModel, MVVM via CommunityToolkit.Mvvm)
 ```
+
+### Global hotkeys on Linux
+
+Implemented in the standalone [VoiceType.Hotkeys](../../libraries/VoiceType.Hotkeys/README.md)
+library via the **XDG GlobalShortcuts portal** (D-Bus):
+
+- Works on **Wayland and X11** sessions with xdg-desktop-portal ≥ 1.18
+  (Ubuntu 24.04+ GNOME, KDE Plasma 5.27+).
+- First `RegisterAsync` triggers the compositor consent dialog once; the binding
+  persists in the portal afterwards.
+- On older/minimal compositors `TryCreateAsync` returns null and the app falls back
+  to `NullGlobalHotkeyService` — hotkeys show as unavailable instead of failing silently.
+- Chord format: `"Ctrl+Shift+Space"` (modifiers `Ctrl/Shift/Alt/Super` + key token).
+
+Set the chord in Settings (`ToggleHotkey`); presses toggle recording via
+`IGlobalHotkeyService.HotkeyPressed`.
 
 ## Build & run
 

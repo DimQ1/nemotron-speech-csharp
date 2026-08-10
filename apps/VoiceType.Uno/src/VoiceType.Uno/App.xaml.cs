@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Uno.Resizetizer;
+using VoiceType.Hotkeys;
+using VoiceType.Hotkeys.XdgPortal;
 using VoiceType.Uno.Presentation;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Audio;
@@ -42,18 +44,16 @@ public partial class App : Application
                     services.AddSingleton<SpeechLib.IAudioSourceFactory, AlsaAudioSourceFactory>();
                     services.AddSingleton<RecognitionService>();
 
-                    // ---- Platform abstractions (Linux backends registered per-OS) ----
-                    if (OperatingSystem.IsLinux())
+                    // ---- Platform abstractions (backends selected per-OS) ----
+                    // Global hotkeys: XDG GlobalShortcuts portal on Linux
+                    // (Wayland + X11, xdg-desktop-portal >= 1.18); Null Object fallback.
+                    services.AddSingleton<IGlobalHotkeyService>(_ =>
                     {
-                        // TODO: X11 backend (XGrabKey / XTest) — Null Object until implemented
-                        services.AddSingleton<IPlatformHotkeyService, NullHotkeyService>();
-                        services.AddSingleton<IPlatformTextInjector, NullTextInjector>();
-                    }
-                    else
-                    {
-                        services.AddSingleton<IPlatformHotkeyService, NullHotkeyService>();
-                        services.AddSingleton<IPlatformTextInjector, NullTextInjector>();
-                    }
+                        var portal = XdgGlobalShortcutsService.TryCreateAsync().GetAwaiter().GetResult();
+                        return (IGlobalHotkeyService?)portal ?? new NullGlobalHotkeyService();
+                    });
+                    // Text injection: XTest/ydotool backend TBD — Null Object until implemented
+                    services.AddSingleton<IPlatformTextInjector, NullTextInjector>();
 
                     // ---- ViewModels ----
                     services.AddSingleton<MainViewModel>();
