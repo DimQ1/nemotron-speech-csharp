@@ -13,6 +13,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly ISettingsService _settingsService;
     private readonly AppSettings _original;
+    private readonly WindowTargetHistory _targetHistory;
     private bool _isApplyingLanguageMessage;
 
     public nint OwnerWindowHandle { get; set; }
@@ -98,6 +99,38 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _postProcessingEnabled = true;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VoiceIntentModelStatus))]
+    private bool _voiceIntentEnabled;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VoiceIntentModelStatus))]
+    private string _voiceIntentModelPath = "";
+
+    [ObservableProperty]
+    private float _voiceIntentConfidenceThreshold = 0.85f;
+
+    [ObservableProperty]
+    private int _voiceIntentHysteresisM = 2;
+
+    [ObservableProperty]
+    private int _voiceIntentHysteresisN = 3;
+
+    [ObservableProperty]
+    private bool _voiceIntentRememberTargets = true;
+
+    [ObservableProperty]
+    private bool _voiceIntentConfirmTargetSwitch = true;
+
+    [ObservableProperty]
+    private int _voiceIntentHistoryPerProcess = 10;
+
+    [ObservableProperty]
+    private string _voiceIntentAliasesText = "";
+
+    [ObservableProperty]
+    private string _voiceIntentCustomIntentsFile = "";
+
     // ---- About info (read-only) ----
 
     /// <summary>Application version from package identity or assembly.</summary>
@@ -124,6 +157,24 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public ObservableCollection<string> AvailableModels { get; } = new();
     public ObservableCollection<PostProcessingRule> Rules { get; } = new();
+    public ObservableCollection<WindowTarget> RememberedTargets { get; } = new();
+
+    public string VoiceIntentModelStatus
+    {
+        get
+        {
+            if (!VoiceIntentEnabled)
+                return "Mode off - no intent model is loaded.";
+            if (string.IsNullOrWhiteSpace(VoiceIntentModelPath))
+                return "L0 lexical commands only (no semantic model configured).";
+
+            var modelFilesPresent = File.Exists(Path.Combine(VoiceIntentModelPath, "onnx", "model_int8.onnx"))
+                && File.Exists(Path.Combine(VoiceIntentModelPath, "sentencepiece.bpe.model"));
+            return modelFilesPresent
+                ? "Semantic model files found (MiniLM INT8, CPU)."
+                : "Model files not found; L0 lexical commands will still work.";
+        }
+    }
 
     public bool WasSaved { get; private set; }
     public event Action? RequestClose;
@@ -160,6 +211,23 @@ public sealed partial class SettingsViewModel : ObservableObject
         AlwaysOnTop = settings.AlwaysOnTop;
         ClearTextOnModelOrSessionChange = settings.ClearTextOnModelOrSessionChange;
         PostProcessingEnabled = settings.PostProcessingEnabled;
+
+        var voiceIntents = settings.VoiceIntents ?? new VoiceIntentSettings();
+        VoiceIntentEnabled = voiceIntents.Enabled;
+        VoiceIntentModelPath = voiceIntents.IntentModelPath;
+        VoiceIntentConfidenceThreshold = voiceIntents.ConfidenceThreshold;
+        VoiceIntentHysteresisM = voiceIntents.HysteresisM;
+        VoiceIntentHysteresisN = voiceIntents.HysteresisN;
+        VoiceIntentRememberTargets = voiceIntents.RememberTargets;
+        VoiceIntentConfirmTargetSwitch = voiceIntents.ConfirmTargetSwitch;
+        VoiceIntentHistoryPerProcess = voiceIntents.HistoryPerProcess;
+        VoiceIntentAliasesText = SerializeAliases(voiceIntents.AppAliases);
+        VoiceIntentCustomIntentsFile = voiceIntents.CustomIntentsFile;
+
+        _targetHistory = new WindowTargetHistory(
+            AppPaths.WindowTargetsFile,
+            voiceIntents.HistoryPerProcess);
+        RefreshRememberedTargets();
 
         foreach (var rule in settings.PostProcessingRules)
             Rules.Add(rule);
@@ -231,6 +299,21 @@ public sealed partial class SettingsViewModel : ObservableObject
     private void DeleteRule(PostProcessingRule? rule)
     {
         if (rule is not null) Rules.Remove(rule);
+    }
+
+    [RelayCommand]
+    private void ClearRememberedTargets()
+    {
+        _targetHistory.Clear();
+        RefreshRememberedTargets();
+    }
+
+    [RelayCommand]
+    private void RefreshRememberedTargets()
+    {
+        RememberedTargets.Clear();
+        foreach (var target in _targetHistory.Targets.OrderByDescending(target => target.LastUsed))
+            RememberedTargets.Add(target);
     }
 
     [RelayCommand]
@@ -349,6 +432,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         target.MuteHotkey = source.MuteHotkey;
         target.InjectTextHotkey = source.InjectTextHotkey;
         target.PostProcessingEnabled = source.PostProcessingEnabled;
+        target.VoiceIntents = source.VoiceIntents?.Clone() ?? new VoiceIntentSettings();
         target.PostProcessingRules = source.PostProcessingRules
             .Select(rule => new PostProcessingRule
             {
@@ -388,6 +472,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ClearTextOnModelOrSessionChange = ClearTextOnModelOrSessionChange,
         PostProcessingEnabled = PostProcessingEnabled,
         PostProcessingRules = Rules.ToList(),
+        VoiceIntents = BuildVoiceIntentSettings(),
         DownloaderRepoId = _original.DownloaderRepoId,
         DownloaderModelsRootPath = _original.DownloaderModelsRootPath,
         DownloaderSelectedFoldersRepoId = _original.DownloaderSelectedFoldersRepoId,
@@ -395,4 +480,45 @@ public sealed partial class SettingsViewModel : ObservableObject
         MicVolume = _original.MicVolume,
         LoopbackVolume = _original.LoopbackVolume,
     };
+
+    private VoiceIntentSettings BuildVoiceIntentSettings() => new()
+    {
+        Enabled = VoiceIntentEnabled,
+        IntentModelPath = VoiceIntentModelPath.Trim(),
+        ConfidenceThreshold = Math.Clamp(VoiceIntentConfidenceThreshold, 0.5f, 1.0f),
+        HysteresisM = Math.Max(1, VoiceIntentHysteresisM),
+        HysteresisN = Math.Max(Math.Max(1, VoiceIntentHysteresisM), VoiceIntentHysteresisN),
+        RememberTargets = VoiceIntentRememberTargets,
+        ConfirmTargetSwitch = VoiceIntentConfirmTargetSwitch,
+        HistoryPerProcess = Math.Max(1, VoiceIntentHistoryPerProcess),
+        AppAliases = ParseAliases(VoiceIntentAliasesText),
+        CustomIntentsFile = VoiceIntentCustomIntentsFile.Trim(),
+    };
+
+    private static string SerializeAliases(IReadOnlyDictionary<string, string[]> aliases) =>
+        string.Join(Environment.NewLine,
+            aliases.OrderBy(pair => pair.Key)
+                .Select(pair => $"{pair.Key} = {string.Join(", ", pair.Value)}"));
+
+    private static Dictionary<string, string[]> ParseAliases(string? text)
+    {
+        var aliases = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in (text ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var separator = line.IndexOf('=');
+            if (separator <= 0)
+                continue;
+
+            var processName = line[..separator].Trim().TrimEnd('.');
+            if (processName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                processName = processName[..^4];
+
+            var names = line[(separator + 1)..]
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (processName.Length > 0 && names.Length > 0)
+                aliases[processName] = names;
+        }
+
+        return aliases;
+    }
 }

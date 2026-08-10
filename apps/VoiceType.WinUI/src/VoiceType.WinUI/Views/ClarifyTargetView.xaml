@@ -1,0 +1,54 @@
+<UserControl
+    x:Class="VoiceType.WinUI.Views.ClarifyTargetView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:VoiceType.WinUI.ViewModels">
+
+    <StackPanel MinWidth="360" MaxWidth="460" Spacing="8">
+        <TextBlock Text="{x:Bind ViewModel.Prompt}"
+                   Foreground="{StaticResource FgBrush}"
+                   FontSize="14"
+                   TextWrapping="Wrap"/>
+
+        <ListView ItemsSource="{x:Bind ViewModel.Candidates}"
+                  SelectionMode="None"
+                  Background="{StaticResource BgSecondaryBrush}"
+                  BorderThickness="0"
+                  MaxHeight="260"
+                  Padding="0">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Margin" Value="0,0,0,4"/>
+                    <Setter Property="MinHeight" Value="0"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Button Tag="{Binding}"
+                            Click="CandidateButton_Click"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            Background="{StaticResource BgTertiaryBrush}"
+                            Foreground="{StaticResource FgBrush}"
+                            BorderThickness="0"
+                            Padding="8,7">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding Index}"
+                                       Foreground="{StaticResource AccentBrush}"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding Label}"
+                                       Foreground="{StaticResource FgBrush}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Button>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <TextBlock Text="Say the number, or select a target."
+                   Foreground="{StaticResource FgSecondaryBrush}"
+                   FontSize="11"
+                   TextWrapping="Wrap"/>
+    </StackPanel>
+</UserControl>

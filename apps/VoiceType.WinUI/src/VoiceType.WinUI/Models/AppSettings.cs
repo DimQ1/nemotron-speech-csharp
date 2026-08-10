@@ -80,6 +80,10 @@ public sealed class AppSettings
     /// <summary>Loopback volume (0.0 - 1.0). Applied in real-time during capture.</summary>
     public float LoopbackVolume { get; set; } = 1.0f;
 
+    // ── Voice Intent Mode ───────────────────────────
+    /// <summary>Settings for the optional voice-command (intent) mode.</summary>
+    public VoiceIntentSettings VoiceIntents { get; set; } = new();
+
     public AppSettings Clone()
     {
         var clone = (AppSettings)MemberwiseClone();
@@ -93,11 +97,77 @@ public sealed class AppSettings
             })
             .ToList();
         clone.DownloaderSelectedFolders = DownloaderSelectedFolders.ToList();
+            clone.VoiceIntents = VoiceIntents?.Clone() ?? new VoiceIntentSettings();
         return clone;
     }
 }
 
 public enum InjectionMethod { InputSimulator, SendInput, Clipboard }
+
+    /// <summary>
+    /// Settings for the optional Voice Intent Mode. When <see cref="Enabled"/> is
+    /// false (default), the dictation pipeline remains unchanged and no intent
+    /// model is loaded.
+    /// </summary>
+    public sealed class VoiceIntentSettings
+    {
+        /// <summary>Master toggle. False = mode fully off, no model loaded.</summary>
+        public bool Enabled { get; set; }
+
+        /// <summary>Path to the MiniLM ONNX model folder; empty = L0 heuristics only.</summary>
+        public string IntentModelPath { get; set; } = "";
+
+        /// <summary>Cosine / heuristic confidence threshold to accept a command.</summary>
+        public float ConfidenceThreshold { get; set; } = 0.85f;
+
+        /// <summary>Number of recent semantic scores that must reach the threshold.</summary>
+        public int HysteresisM { get; set; } = 2;
+
+        /// <summary>Number of scores retained by the semantic hysteresis window.</summary>
+        public int HysteresisN { get; set; } = 3;
+
+        /// <summary>Remember injection target windows and fields across sessions.</summary>
+        public bool RememberTargets { get; set; } = true;
+
+        /// <summary>Ask which remembered field to use when a command is ambiguous.</summary>
+        public bool ConfirmTargetSwitch { get; set; } = true;
+
+        /// <summary>Maximum remembered targets kept per process.</summary>
+        public int HistoryPerProcess { get; set; } = 10;
+
+        /// <summary>Maps process names to spoken aliases used for retargeting.</summary>
+        public Dictionary<string, string[]> AppAliases { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["code"] = new[] { "vs code", "visual studio code", "визуал студио код", "код" },
+            ["notepad"] = new[] { "notepad", "блокнот" },
+            ["notepad++"] = new[] { "notepad++", "notepad plus plus", "блокнот", "блокнот плюс плюс", "нотпад плюс плюс" },
+        };
+
+        /// <summary>Optional user-supplied intents.json overriding the built-in taxonomy.</summary>
+        public string CustomIntentsFile { get; set; } = "";
+
+        /// <summary>User-managed applications and executable paths available to target commands.</summary>
+        public List<VoiceCommandApp> Applications { get; set; } = new();
+
+        public VoiceIntentSettings Clone() => new()
+        {
+            Enabled = Enabled,
+            IntentModelPath = IntentModelPath,
+            ConfidenceThreshold = ConfidenceThreshold,
+            HysteresisM = HysteresisM,
+            HysteresisN = HysteresisN,
+            RememberTargets = RememberTargets,
+            ConfirmTargetSwitch = ConfirmTargetSwitch,
+            HistoryPerProcess = HistoryPerProcess,
+            AppAliases = new Dictionary<string, string[]>(AppAliases, StringComparer.OrdinalIgnoreCase)
+            {
+                // Clone the arrays as well: callers can edit aliases without
+                // mutating an older settings snapshot.
+            }.ToDictionary(pair => pair.Key, pair => pair.Value.ToArray(), StringComparer.OrdinalIgnoreCase),
+            CustomIntentsFile = CustomIntentsFile,
+            Applications = Applications.Select(app => app.Clone()).ToList(),
+        };
+    }
 
 /// <summary>
 /// A single post-processing rule: regex find-and-replace.

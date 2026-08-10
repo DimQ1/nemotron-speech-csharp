@@ -10,6 +10,8 @@ public sealed class AppPathsAdapter : IAppPaths
     public string SessionsDir => AppPaths.SessionsDir;
     public string SettingsFile => AppPaths.SettingsFile;
     public string ErrorLogFile => AppPaths.ErrorLogFile;
+    public string WindowTargetsFile => AppPaths.WindowTargetsFile;
+    public string VoiceIntentVectorsFile => AppPaths.VoiceIntentVectorsFile;
     public string TempDir => AppPaths.TempDir;
     public string EnsureDataRoot() => AppPaths.EnsureDataRoot();
     public string EnsureModelsDir() => AppPaths.EnsureModelsDir();

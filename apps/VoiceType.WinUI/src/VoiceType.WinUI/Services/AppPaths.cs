@@ -66,6 +66,12 @@ public static class AppPaths
     /// <summary>Error log file: <c>data/error.log</c>.</summary>
     public static string ErrorLogFile => Path.Combine(DataRoot, "error.log");
 
+    /// <summary>Remembered injection windows and focused fields.</summary>
+    public static string WindowTargetsFile => Path.Combine(DataRoot, "window-targets.json");
+
+    /// <summary>Persistent MiniLM embeddings used for semantic command retrieval.</summary>
+    public static string VoiceIntentVectorsFile => Path.Combine(DataRoot, "voice-intent-vectors.db");
+
     /// <summary>Temporary files (e.g. in-progress MP3 encoding): <c>data/temp</c>.</summary>
     public static string TempDir => Path.Combine(DataRoot, "temp");
 

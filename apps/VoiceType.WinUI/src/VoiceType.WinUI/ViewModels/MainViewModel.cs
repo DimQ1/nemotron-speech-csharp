@@ -2,12 +2,15 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using SpeechLib.Audio;
 using SpeechLib.Recognition;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Messages;
 using VoiceType.WinUI.Models;
 using VoiceType.WinUI.Services;
+using VoiceType.WinUI.Services.Intents;
 
 namespace VoiceType.WinUI.ViewModels;
 
@@ -22,6 +25,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IPostProcessingPipeline _postProcessing;
     private readonly IWindowInterop _windowInterop;
     private readonly IAudioMixer _audioMixer;
+    private readonly VoiceCommandAppCatalog _appCatalog;
     private readonly DispatcherQueue _dispatcher;
     private readonly RecognitionStateMachine _stateMachine = new();
     private readonly DispatcherQueueTimer _partialResultTimer;
@@ -46,6 +50,22 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly object _languagePersistenceGate = new();
     private readonly object _languageApplyGate = new();
     private readonly SemaphoreSlim _settingsApplyGate = new(1, 1);
+
+    // ---- Optional Voice Intent Mode ----
+
+    private VoiceIntentRouter? _intentRouter;
+    private InjectionController? _injectionController;
+    private WindowTargetHistory? _windowTargetHistory;
+    private ClarifyTargetViewModel? _pendingTargetClarification;
+    private ContentDialog? _targetClarificationDialog;
+    private readonly SemaphoreSlim _intentRoutingGate = new(1, 1);
+    private bool _partialCommandHandled;
+    private string? _lastPartialCommandIntent;
+    private string? _lastPartialCommandTarget;
+    private bool _isVoiceIntentActive;
+
+    [ObservableProperty]
+    private bool _voiceIntentEnabled;
 
     // ---- Observable properties (source-generated) ----
 
@@ -120,6 +140,12 @@ public sealed partial class MainViewModel : ObservableObject
     public static string RecommendedModelRepo => "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu";
     public static string RecommendedModelDisplay => "CPU (INT4, opset24, 0.56s) -- fast, low latency, ~749 MB";
 
+    public bool IsVoiceIntentActive
+    {
+        get => _isVoiceIntentActive;
+        private set => SetProperty(ref _isVoiceIntentActive, value);
+    }
+
     // ---- Events ----
 
     public event Action<bool>? AlwaysOnTopChanged;
@@ -136,6 +162,7 @@ public sealed partial class MainViewModel : ObservableObject
         IPostProcessingPipeline postProcessing,
         IWindowInterop windowInterop,
         IAudioMixer audioMixer,
+        VoiceCommandAppCatalog appCatalog,
         DispatcherQueue dispatcher)
     {
         _recognition = recognition;
@@ -147,6 +174,7 @@ public sealed partial class MainViewModel : ObservableObject
         _postProcessing = postProcessing;
         _windowInterop = windowInterop;
         _audioMixer = audioMixer;
+        _appCatalog = appCatalog;
         _dispatcher = dispatcher;
         _settings = settingsService.Load();
         _selectedLanguage = _settings.Language;
@@ -155,6 +183,7 @@ public sealed partial class MainViewModel : ObservableObject
         IsAutoScrollEnabled = _settings.IsAutoScrollEnabled;
         DisableInjectionOnFocusChange = _settings.DisableInjectionOnFocusChange;
         AlwaysOnTop = _settings.AlwaysOnTop;
+        VoiceIntentEnabled = _settings.VoiceIntents.Enabled;
 
         _hook.InputDetected += OnInputDetected;
         _recognition.PartialResult += OnPartialResult;
@@ -257,6 +286,16 @@ public sealed partial class MainViewModel : ObservableObject
 
         _settings.IsAutoScrollEnabled = value;
         SaveSettingsInBackground(settings => settings.IsAutoScrollEnabled = value);
+    }
+
+    partial void OnVoiceIntentEnabledChanged(bool value)
+    {
+        if (_isApplyingSettingsSnapshot)
+            return;
+
+        _settings.VoiceIntents.Enabled = value;
+        EnsureVoiceIntentServices();
+        SaveSettingsInBackground(settings => settings.VoiceIntents.Enabled = value);
     }
 
     partial void OnDisableInjectionOnFocusChangeChanged(bool value)
@@ -408,6 +447,23 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenVoiceCommands()
+    {
+        if (Views.VoiceCommandsSettingsWindow.OpenInstance is { } existing)
+        {
+            existing.Activate();
+            return;
+        }
+
+        if (!Views.VoiceCommandsSettingsWindow.TryAcquireGlobalGuard())
+            return;
+
+        var window = new Views.VoiceCommandsSettingsWindow(_settings);
+        App.MainWindow?.TrackChildWindow(window);
+        window.Activate();
+    }
+
+    [RelayCommand]
     private void OpenModelDownloader()
     {
         if (Views.ModelDownloaderWindow.OpenInstance is not null)
@@ -525,7 +581,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (!IsTextInjectionEnabled) return;
         if (string.IsNullOrEmpty(FloatingText)) return;
-        _textInjector.Inject(FloatingText, _settings.TextInjectionMethod);
+        InjectDelta(FloatingText);
     }
 
     // ---- Model lifecycle ----
@@ -753,6 +809,8 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             _settings = settings;
+            EnsureVoiceIntentServices();
+            VoiceIntentEnabled = settings.VoiceIntents.Enabled;
 
             if (!string.Equals(SelectedLanguage, settings.Language, StringComparison.Ordinal))
                 SelectedLanguage = settings.Language;
@@ -973,22 +1031,32 @@ public sealed partial class MainViewModel : ObservableObject
         _dispatcher.TryEnqueue(() =>
         {
             _partialResultTimer.Stop();
-            FlushPendingPartialResult();
+            FlushPendingPartialResult(primeIntent: false);
             _currentSessionText = text;
             UpdateDisplayedText();
 
-            if (IsTextInjectionEnabled && _currentSessionText.Length > _lastInjectedLength && CanInjectToTargetWindow())
+            // Intent mode owns the final utterance. Commands are consumed here;
+            // ordinary dictation is injected only after classification.
+            var isVoiceCommand = _partialCommandHandled || TryHandleVoiceCommand(_currentSessionText);
+            _partialCommandHandled = false;
+            _lastPartialCommandIntent = null;
+            _lastPartialCommandTarget = null;
+            if (!isVoiceCommand
+                && IsTextInjectionEnabled
+                && _currentSessionText.Length > _lastInjectedLength
+                && CanInjectToTargetWindow())
             {
                 var delta = _currentSessionText[_lastInjectedLength..];
                 var cleanedDelta = StripLeadingPunctuation(delta, _lastInjectedTextTail);
                 if (!string.IsNullOrEmpty(cleanedDelta))
-                    _textInjector.Inject(cleanedDelta, _settings.TextInjectionMethod);
+                    InjectDelta(cleanedDelta);
                 _lastInjectedTextTail = GetTextTail(_currentSessionText, 20);
             }
             _lastInjectedLength = 0;
 
             IsRecording = false;
-            StatusText = "Ready";
+            if (!isVoiceCommand)
+                StatusText = "Ready";
 
             if (_currentSession is not null && _settings.SaveSessions)
             {
@@ -1008,12 +1076,14 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _partialResultTimer.Stop();
             IsRecording = false;
+            ResetIntentRouter();
+            CloseTargetClarificationDialog();
             if (StatusText == "Finalizing...")
                 StatusText = "Ready";
         });
     }
 
-    private void FlushPendingPartialResult()
+    private void FlushPendingPartialResult(bool primeIntent = true)
     {
         string? text;
         lock (_partialResultGate)
@@ -1030,6 +1100,26 @@ public sealed partial class MainViewModel : ObservableObject
 
         _currentSessionText = text;
         UpdateDisplayedText();
+
+        // Partial results are display-only while intent mode is enabled. This
+        // prevents command words from reaching the target before final routing.
+        if (_settings.VoiceIntents.Enabled)
+        {
+            var intentCandidate = VoiceCommandStreamParser.ExtractIntentCandidate(_currentSessionText);
+            if (primeIntent && TryHandlePartialVoiceCommand(intentCandidate))
+            {
+                _partialCommandHandled = true;
+                return;
+            }
+
+            if (primeIntent
+                && _pendingTargetClarification is null
+                && _intentRouter is { HasSemanticScorer: true } router)
+            {
+                _ = PrimeIntentRouterAsync(router, intentCandidate);
+            }
+            return;
+        }
 
         if (!IsTextInjectionEnabled)
         {
@@ -1049,10 +1139,574 @@ public sealed partial class MainViewModel : ObservableObject
         var delta = _currentSessionText[_lastInjectedLength..];
         var cleanedDelta = StripLeadingPunctuation(delta, _lastInjectedTextTail);
         if (!string.IsNullOrEmpty(cleanedDelta))
-            _textInjector.Inject(cleanedDelta, _settings.TextInjectionMethod);
+            InjectDelta(cleanedDelta);
         _lastInjectedTextTail = GetTextTail(_currentSessionText, 20);
         _lastInjectedLength = _currentSessionText.Length;
         _injectionExplicitlyEnabled = false;
+    }
+
+    private void InjectDelta(string delta)
+    {
+        if (string.IsNullOrEmpty(delta))
+            return;
+
+        if (_injectionController is not null)
+        {
+            _injectionController.Inject(
+                delta,
+                _settings.TextInjectionMethod,
+                _settings.VoiceIntents.RememberTargets);
+            return;
+        }
+
+        _textInjector.Inject(delta, _settings.TextInjectionMethod);
+    }
+
+    private bool TryHandleVoiceCommand(string text)
+    {
+        if (!_settings.VoiceIntents.Enabled || _intentRouter is null || string.IsNullOrWhiteSpace(text))
+            return false;
+
+        if (_pendingTargetClarification is not null)
+        {
+            if (_pendingTargetClarification.TrySelectByVoice(text)
+                && _pendingTargetClarification.SelectedTarget is { } selectedTarget)
+            {
+                CloseTargetClarificationDialog();
+                ApplyVoiceTarget(selectedTarget);
+                return true;
+            }
+
+            if (IsVoiceCancelPhrase(text))
+            {
+                CloseTargetClarificationDialog();
+                StatusText = "Voice command cancelled";
+                return true;
+            }
+
+            StatusText = "Choose a target by number, or say cancel";
+            return true;
+        }
+
+        VoiceIntentResult result;
+        try
+        {
+            result = RouteIntentAsync(_intentRouter, text).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            App.Telemetry?.LogError("VoiceIntent", $"Intent route failed: {ex.Message}");
+            return false;
+        }
+
+        return HandleVoiceIntent(result, text);
+    }
+
+    private bool TryHandlePartialVoiceCommand(string text)
+    {
+        if (!_settings.VoiceIntents.Enabled || _intentRouter is null || string.IsNullOrWhiteSpace(text))
+            return false;
+
+        var candidate = VoiceCommandStreamParser.ExtractIntentCandidate(text);
+        var targetApplication = FindConfiguredApplicationAlias(candidate)
+            ?? VoiceCommandStreamParser.ExtractTargetApplication(candidate);
+        if (!string.IsNullOrWhiteSpace(targetApplication))
+        {
+            if (FindConfiguredApplicationAlias(candidate) is null
+                && VoiceCommandAppCatalog.Normalize(targetApplication).Length < 7)
+            {
+                return false;
+            }
+
+            return HandlePartialVoiceIntent(
+                new VoiceIntentResult(VoiceIntentIds.SwitchTarget, 0.95f, IsCommand: true),
+                candidate,
+                targetApplication);
+        }
+
+        return HandlePartialVoiceIntent(_intentRouter.RouteLexical(candidate), candidate);
+    }
+
+    private bool HandlePartialVoiceIntent(
+        VoiceIntentResult result,
+        string text,
+        string? targetApplication = null)
+    {
+        if (!result.IsCommand)
+            return false;
+
+        // Partial hypotheses retain earlier words, so a detected command remains
+        // present in every later update. Run it once until a different command wins.
+        if (string.Equals(_lastPartialCommandIntent, result.Intent, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(_lastPartialCommandTarget, targetApplication, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        _lastPartialCommandIntent = result.Intent;
+        _lastPartialCommandTarget = targetApplication;
+        return HandleVoiceIntent(result, text);
+    }
+
+    private bool HandleVoiceIntent(VoiceIntentResult result, string text)
+    {
+        if (!result.IsCommand)
+            return false;
+
+        App.Telemetry?.LogInfo("VoiceIntent", $"Command detected: {result.Intent}, score={result.Score:F2}, text={text}");
+
+        switch (result.Intent)
+        {
+            case VoiceIntentIds.StartTyping:
+                IsTextInjectionEnabled = true;
+                StatusText = "Typing enabled";
+                return true;
+
+            case VoiceIntentIds.StopTyping:
+                IsTextInjectionEnabled = false;
+                StatusText = "Typing stopped";
+                return true;
+
+            case VoiceIntentIds.SwitchTarget:
+                return TrySwitchVoiceTarget(text);
+
+            case VoiceIntentIds.Cancel:
+                StatusText = "Voice command cancelled";
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private bool TrySwitchVoiceTarget(string text)
+    {
+        if (_windowTargetHistory is null)
+            return true;
+
+        var appName = FindConfiguredApplicationAlias(text)
+            ?? VoiceCommandStreamParser.ExtractTargetApplication(text);
+        if (string.IsNullOrWhiteSpace(appName))
+            appName = ExtractSpokenAppName(text);
+        var candidates = _windowTargetHistory.FindCandidates(
+            appName,
+            _settings.VoiceIntents.AppAliases);
+        if (candidates.Count == 0)
+        {
+            ShowApplicationClarification(appName);
+            return true;
+        }
+
+        if (candidates.Count > 1 && _settings.VoiceIntents.ConfirmTargetSwitch)
+        {
+            ShowTargetClarification(appName, candidates);
+            return true;
+        }
+
+        ApplyVoiceTarget(candidates[0]);
+        return true;
+    }
+
+    private string? FindConfiguredApplicationAlias(string text)
+    {
+        if (!VoiceCommandStreamParser.HasCommandLead(text))
+            return null;
+
+        var spokenWords = HeuristicScorer.NormalizeForMatching(text)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        foreach (var (_, aliases) in _settings.VoiceIntents.AppAliases)
+        {
+            foreach (var alias in aliases)
+            {
+                var normalizedAlias = VoiceCommandAppCatalog.Normalize(alias);
+                if (normalizedAlias.Length < 4)
+                    continue;
+
+                if (spokenWords.Any(word => WordsShareStem(word, normalizedAlias)))
+                    return alias;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool WordsShareStem(string word, string alias)
+    {
+        var normalizedWord = VoiceCommandAppCatalog.Normalize(word);
+        // Wait for the complete alias or a longer grammatical form. For example,
+        // "блокно" is still a partial hypothesis, whereas "блокноте" is a
+        // complete Russian case form of the configured alias "блокнот".
+        if (normalizedWord.Length < alias.Length)
+            return false;
+
+        var stemLength = Math.Max(4, alias.Length - 2);
+        return string.Equals(normalizedWord[..stemLength], alias[..stemLength], StringComparison.Ordinal);
+    }
+
+    private void ShowApplicationClarification(string spokenAppName)
+    {
+        if (_targetClarificationDialog is not null)
+            return;
+
+        if (App.MainWindow?.Content is not UIElement root || root.XamlRoot is not { } xamlRoot)
+        {
+            StatusText = $"No remembered target for \"{spokenAppName}\"";
+            return;
+        }
+
+        var candidates = _appCatalog.FindCandidates(
+            spokenAppName,
+            _settings.VoiceIntents.Applications,
+            _settings.VoiceIntents.AppAliases);
+        if (candidates.Count == 0)
+        {
+            StatusText = $"No application found for \"{spokenAppName}\"";
+            return;
+        }
+
+        var picker = new ComboBox
+        {
+            ItemsSource = candidates,
+            DisplayMemberPath = nameof(VoiceCommandApp.DisplayName),
+            SelectedIndex = 0,
+            MinWidth = 340,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Choose application",
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock { Text = $"I could not resolve \"{spokenAppName}\". Which application did you mean?", TextWrapping = TextWrapping.Wrap },
+                    picker,
+                },
+            },
+            PrimaryButtonText = "Use application",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = xamlRoot,
+        };
+        _ = ResolveApplicationAsync(dialog, picker);
+    }
+
+    private async Task ResolveApplicationAsync(ContentDialog dialog, ComboBox picker)
+    {
+        try
+        {
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary || picker.SelectedItem is not VoiceCommandApp app)
+                return;
+
+            var hwnd = InjectionController.FindWindowByProcess(app.ProcessName);
+            if (hwnd != nint.Zero && InjectionController.TryFocusWindow(hwnd))
+            {
+                var snapshot = ForegroundWindowInspector.Capture(hwnd);
+                _ = ForegroundWindowInspector.TryFocusField(hwnd, snapshot.AutomationId, snapshot.ControlType, snapshot.ElementName);
+                _windowTargetHistory?.Record(snapshot);
+                _injectionTargetWindow = hwnd;
+                _injectionExplicitlyEnabled = true;
+                IsTextInjectionEnabled = true;
+                StatusText = $"Typing into {app.DisplayName}";
+                return;
+            }
+
+            StatusText = _appCatalog.Launch(app)
+                ? $"Opened {app.DisplayName}; select its input field, then repeat the command"
+                : $"Open {app.DisplayName}, select its input field, then repeat the command";
+        }
+        catch (Exception ex)
+        {
+            App.Telemetry?.LogError("VoiceIntent", $"Application clarification failed: {ex.Message}");
+            StatusText = "Could not select an application";
+        }
+    }
+
+    private void ApplyVoiceTarget(WindowTarget target)
+    {
+        var hwnd = InjectionController.FindWindowByProcess(target.ProcessName, target.WindowTitle);
+        if (hwnd == nint.Zero || !InjectionController.TryFocusWindow(hwnd, target))
+        {
+            StatusText = $"Switch to \"{target.ProcessName}\" manually";
+            return;
+        }
+
+        _windowTargetHistory?.MarkUsed(target);
+        _injectionTargetWindow = hwnd;
+        _injectionExplicitlyEnabled = true;
+        IsTextInjectionEnabled = true;
+        StatusText = $"Typing into {target.DisplayLabel}";
+    }
+
+    private void ShowTargetClarification(string appName, IReadOnlyList<WindowTarget> candidates)
+    {
+        CloseTargetClarificationDialog();
+
+        if (App.MainWindow?.Content is not UIElement root || root.XamlRoot is not { } xamlRoot)
+        {
+            StatusText = "Unable to show target choices";
+            return;
+        }
+
+        var viewModel = new ClarifyTargetViewModel(appName, candidates);
+        var view = new Views.ClarifyTargetView(viewModel);
+        var dialog = new ContentDialog
+        {
+            Title = "Choose target",
+            Content = view,
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = xamlRoot,
+        };
+
+        view.CandidateSelected += candidate =>
+        {
+            if (!viewModel.TrySelectByIndex(candidate.Index)
+                || viewModel.SelectedTarget is not { } selectedTarget)
+            {
+                return;
+            }
+
+            CloseTargetClarificationDialog();
+            ApplyVoiceTarget(selectedTarget);
+        };
+
+        _pendingTargetClarification = viewModel;
+        _targetClarificationDialog = dialog;
+        StatusText = $"Choose a target for \"{appName}\"";
+        _ = ShowTargetClarificationAsync(dialog);
+    }
+
+    private async Task ShowTargetClarificationAsync(ContentDialog dialog)
+    {
+        try
+        {
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.None
+                && ReferenceEquals(_targetClarificationDialog, dialog))
+            {
+                StatusText = "Voice command cancelled";
+            }
+        }
+        catch (Exception ex)
+        {
+            App.Telemetry?.LogError("VoiceIntent", $"Target clarification dialog failed: {ex.Message}");
+        }
+        finally
+        {
+            if (ReferenceEquals(_targetClarificationDialog, dialog))
+            {
+                _targetClarificationDialog = null;
+                _pendingTargetClarification = null;
+            }
+        }
+    }
+
+    private void CloseTargetClarificationDialog()
+    {
+        var dialog = _targetClarificationDialog;
+        _targetClarificationDialog = null;
+        _pendingTargetClarification = null;
+
+        try
+        {
+            dialog?.Hide();
+        }
+        catch (Exception ex)
+        {
+            App.Telemetry?.LogError("VoiceIntent", $"Closing target clarification failed: {ex.Message}");
+        }
+    }
+
+    private static bool IsVoiceCancelPhrase(string text)
+    {
+        var normalized = text.Trim().TrimEnd('.', ',', '!', '?', ';', ':').ToLowerInvariant();
+        return normalized is "отмена" or "не надо" or "забудь" or "отбой"
+            or "cancel" or "never mind" or "forget it" or "abort";
+    }
+
+    private static string ExtractSpokenAppName(string text)
+    {
+        var lower = HeuristicScorer.NormalizeForMatching(text);
+        string[] markers =
+        {
+            "набери в", "набрать в", "напечатай в", "напечатать в", "переключись в", "печатай в", "печатать в", "введи в", "ввести в",
+            "type this in", "type into", "switch to", "write in", "print in",
+        };
+
+        foreach (var marker in markers)
+        {
+            var index = lower.IndexOf(marker, StringComparison.Ordinal);
+            if (index < 0)
+                continue;
+
+            var appName = text[(index + marker.Length)..]
+                .Trim()
+                .TrimEnd('.', '?', '!');
+            if (appName.Length > 0)
+                return appName;
+        }
+
+        foreach (var verb in new[]
+                 {
+                     "напечатай", "напечатать",
+                     "набери", "набрать",
+                     "введи", "ввести",
+                     "печатай", "печатать",
+                 })
+        {
+            var verbIndex = lower.IndexOf(verb, StringComparison.Ordinal);
+            if (verbIndex < 0)
+                continue;
+
+            var targetMarkerIndex = lower.IndexOf(" в ", verbIndex + verb.Length, StringComparison.Ordinal);
+            if (targetMarkerIndex < 0)
+                continue;
+
+            var appName = lower[(targetMarkerIndex + 3)..]
+                .Trim()
+                .TrimEnd('.', '?', '!');
+            if (appName.Length > 0)
+                return appName;
+        }
+
+        return text.Trim();
+    }
+
+    private void EnsureVoiceIntentServices()
+    {
+        if (!_settings.VoiceIntents.Enabled)
+        {
+            TeardownVoiceIntentServices();
+            return;
+        }
+
+        if (_intentRouter is not null)
+            return;
+
+        WindowTargetHistory? history = null;
+        IIntentScorer? semanticScorer = null;
+        try
+        {
+            history = new WindowTargetHistory(
+                AppPaths.WindowTargetsFile,
+                _settings.VoiceIntents.HistoryPerProcess);
+
+            var taxonomy = VoiceIntentTaxonomy.Load(_settings.VoiceIntents.CustomIntentsFile);
+            if (!string.IsNullOrWhiteSpace(_settings.VoiceIntents.IntentModelPath))
+            {
+                try
+                {
+                    semanticScorer = new MiniLmIntentScorer(
+                        _settings.VoiceIntents.IntentModelPath,
+                        taxonomy);
+                }
+                catch (Exception ex)
+                {
+                    App.Telemetry?.LogError("VoiceIntent", $"Semantic model unavailable; using L0: {ex.Message}");
+                    semanticScorer = null;
+                }
+            }
+
+            _intentRouter = new VoiceIntentRouter(
+                _settings.VoiceIntents,
+                taxonomy,
+                semanticScorer);
+            _windowTargetHistory = history;
+            _injectionController = new InjectionController(
+                _textInjector,
+                _windowInterop,
+                history);
+            IsVoiceIntentActive = true;
+        }
+        catch (Exception ex)
+        {
+            semanticScorer?.Dispose();
+            App.Telemetry?.LogError("VoiceIntent", $"Voice intent initialization failed: {ex.Message}");
+            TeardownVoiceIntentServices();
+        }
+    }
+
+    private void TeardownVoiceIntentServices()
+    {
+        CloseTargetClarificationDialog();
+        var router = _intentRouter;
+        if (router is not null)
+        {
+            _intentRoutingGate.Wait();
+            try
+            {
+                router.Dispose();
+            }
+            finally
+            {
+                _intentRoutingGate.Release();
+            }
+        }
+
+        _intentRouter = null;
+        _injectionController = null;
+        _windowTargetHistory = null;
+        _lastPartialCommandIntent = null;
+        _lastPartialCommandTarget = null;
+        IsVoiceIntentActive = false;
+    }
+
+    private void ResetIntentRouter()
+    {
+        var router = _intentRouter;
+        if (router is null)
+            return;
+
+        _intentRoutingGate.Wait();
+        try
+        {
+            router.Reset();
+            _lastPartialCommandIntent = null;
+            _lastPartialCommandTarget = null;
+        }
+        finally
+        {
+            _intentRoutingGate.Release();
+        }
+    }
+
+    private async Task PrimeIntentRouterAsync(VoiceIntentRouter router, string text)
+    {
+        try
+        {
+            var result = await RouteIntentAsync(router, text).ConfigureAwait(false);
+            if (!result.IsCommand)
+                return;
+
+            _dispatcher.TryEnqueue(() =>
+            {
+                if (!ReferenceEquals(_intentRouter, router) || !_settings.VoiceIntents.Enabled)
+                    return;
+
+                if (HandlePartialVoiceIntent(result, text))
+                    _partialCommandHandled = true;
+            });
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (Exception ex)
+        {
+            App.Telemetry?.LogError("VoiceIntent", $"Partial intent scoring failed: {ex.Message}");
+        }
+    }
+
+    private async Task<VoiceIntentResult> RouteIntentAsync(VoiceIntentRouter router, string text)
+    {
+        await _intentRoutingGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            return await Task.Run(() => router.RouteAsync(text)).ConfigureAwait(false);
+        }
+        finally
+        {
+            _intentRoutingGate.Release();
+        }
     }
 
     /// <summary>

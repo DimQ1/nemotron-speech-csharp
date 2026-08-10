@@ -173,6 +173,7 @@ public partial class App : Application
         services.AddSingleton<DispatcherQueue>(_ => DispatcherQueue.GetForCurrentThread());
         services.AddSingleton<IAppPaths, AppPathsAdapter>();
         services.AddSingleton<ISystemTelemetry, ErrorTelemetryService>();
+        services.AddSingleton<VoiceCommandAppCatalog>();
 
         // ---- Services ----
         services.AddSingleton<ISettingsService, SettingsService>();

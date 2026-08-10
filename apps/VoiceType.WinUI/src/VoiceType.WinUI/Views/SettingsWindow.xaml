@@ -141,6 +141,90 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ── Voice Intent Mode ── -->
+                <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="8" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Voice Intent Mode" Foreground="{StaticResource FgBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <CheckBox Content="Enable voice commands"
+                                  IsChecked="{x:Bind ViewModel.VoiceIntentEnabled, Mode=TwoWay}"
+                                  Style="{StaticResource DarkCheckBox}" Margin="0,0,0,4"/>
+                        <TextBlock Text="When disabled, dictation follows the normal injection path."
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                        <TextBlock Text="{x:Bind ViewModel.VoiceIntentModelStatus, Mode=OneWay}"
+                                   Foreground="{StaticResource FgSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                        <TextBlock Text="Semantic model folder (optional)" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <TextBox Text="{x:Bind ViewModel.VoiceIntentModelPath, Mode=TwoWay}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+
+                        <TextBlock Text="Confidence threshold" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <Slider Minimum="0.5" Maximum="1.0" StepFrequency="0.05"
+                                Value="{x:Bind ViewModel.VoiceIntentConfidenceThreshold, Mode=TwoWay}" Margin="0,0,0,8"/>
+
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Text="Hysteresis M" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                                <TextBox Text="{x:Bind ViewModel.VoiceIntentHysteresisM, Mode=TwoWay}" Style="{StaticResource DarkTextBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,6,0">
+                                <TextBlock Text="Hysteresis N" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                                <TextBox Text="{x:Bind ViewModel.VoiceIntentHysteresisN, Mode=TwoWay}" Style="{StaticResource DarkTextBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="History / app" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                                <TextBox Text="{x:Bind ViewModel.VoiceIntentHistoryPerProcess, Mode=TwoWay}" Style="{StaticResource DarkTextBox}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <CheckBox Content="Remember target windows and fields"
+                                  IsChecked="{x:Bind ViewModel.VoiceIntentRememberTargets, Mode=TwoWay}"
+                                  Style="{StaticResource DarkCheckBox}" Margin="0,0,0,6"/>
+                        <CheckBox Content="Confirm ambiguous target switches"
+                                  IsChecked="{x:Bind ViewModel.VoiceIntentConfirmTargetSwitch, Mode=TwoWay}"
+                                  Style="{StaticResource DarkCheckBox}" Margin="0,0,0,8"/>
+
+                        <TextBlock Text="Application aliases (process = spoken names)" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <TextBox Text="{x:Bind ViewModel.VoiceIntentAliasesText, Mode=TwoWay}"
+                                 Style="{StaticResource DarkTextBox}" AcceptsReturn="True" MinHeight="64"
+                                 TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="0,0,0,8"/>
+
+                        <TextBlock Text="Custom taxonomy file (optional)" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <TextBox Text="{x:Bind ViewModel.VoiceIntentCustomIntentsFile, Mode=TwoWay}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+
+                        <Grid Margin="0,0,0,4">
+                            <TextBlock Text="Remembered targets" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+                                <Button Content="Refresh" Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
+                                        BorderThickness="0" Padding="8,3" FontSize="11"
+                                        Command="{x:Bind ViewModel.RefreshRememberedTargetsCommand}"/>
+                                <Button Content="Clear" Background="{StaticResource BgTertiaryBrush}" Foreground="{StaticResource FgBrush}"
+                                        BorderThickness="0" Padding="8,3" FontSize="11"
+                                        Command="{x:Bind ViewModel.ClearRememberedTargetsCommand}"/>
+                            </StackPanel>
+                        </Grid>
+                        <ListView ItemsSource="{x:Bind ViewModel.RememberedTargets}" SelectionMode="None"
+                                  Background="Transparent" BorderThickness="0" MaxHeight="120" Padding="0">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="MinHeight" Value="0"/>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DisplayLabel}" Foreground="{StaticResource FgBrush}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
+                </Border>
+
                 <!-- ── Sessions ── -->
                 <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="4" Padding="8" Margin="0,0,0,8">
                     <StackPanel>

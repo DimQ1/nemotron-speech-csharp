@@ -37,6 +37,10 @@
                         ToolTipService.ToolTip="Settings"
                         AutomationProperties.Name="Open settings"
                         Command="{x:Bind ViewModel.OpenSettingsCommand}"/>
+                <Button Content="&#xE720;" Style="{StaticResource IconButton}"
+                    ToolTipService.ToolTip="Voice command settings"
+                    AutomationProperties.Name="Open voice command settings"
+                    Command="{x:Bind ViewModel.OpenVoiceCommandsCommand}"/>
                 <Button Content="&#xE897;" Style="{StaticResource IconButton}"
                         ToolTipService.ToolTip="How to use"
                         AutomationProperties.Name="Open help"
@@ -202,8 +206,15 @@
                               Style="{StaticResource DarkCheckBox}"
                               VerticalAlignment="Center"/>
 
+                    <CheckBox Grid.Row="4"
+                              Content="Enable voice commands"
+                              Margin="0,4,0,0"
+                              IsChecked="{x:Bind ViewModel.VoiceIntentEnabled, Mode=TwoWay}"
+                              Style="{StaticResource DarkCheckBox}"
+                              VerticalAlignment="Center"/>
+
                     <!-- Language Switcher -->
-                    <Grid Grid.Row="4" Margin="0,8,0,0">
+                    <Grid Grid.Row="5" Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>

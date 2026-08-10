@@ -7,6 +7,8 @@ public interface IAppPaths
     string SessionsDir { get; }
     string SettingsFile { get; }
     string ErrorLogFile { get; }
+    string WindowTargetsFile { get; }
+    string VoiceIntentVectorsFile { get; }
     string TempDir { get; }
     string EnsureDataRoot();
     string EnsureModelsDir();

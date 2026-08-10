@@ -9,6 +9,8 @@ namespace VoiceType.WinUI.Serialization;
 /// Eliminates the need for reflection-based serialization, enabling trimming.
 /// </summary>
 [JsonSerializable(typeof(AppSettings))]
+[JsonSerializable(typeof(VoiceIntentSettings))]
+[JsonSerializable(typeof(VoiceCommandApp))]
 [JsonSerializable(typeof(PostProcessingRule))]
 [JsonSerializable(typeof(RecognitionSession))]
 [JsonSerializable(typeof(List<PostProcessingRule>))]

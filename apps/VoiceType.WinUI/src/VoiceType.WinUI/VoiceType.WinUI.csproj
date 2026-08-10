@@ -112,6 +112,8 @@
     <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="3.0.0" />
     <!-- MVVM (source generators for INotifyPropertyChanged and ICommand) -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <!-- MiniLM intent tokenizer (loaded only when Voice Intent Mode is enabled) -->
+    <PackageReference Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
     <!-- DI container & logging abstractions -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
