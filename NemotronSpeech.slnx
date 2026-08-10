@@ -1,14 +1,18 @@
 <Solution>
+  <Folder Name="/apps/" />
   <Folder Name="/apps/NemotronSpeech/">
     <Project Path="apps/NemotronSpeech/src/NemotronSpeech/NemotronSpeech.csproj" />
-  </Folder>
-  <Folder Name="/apps/VoiceType/">
-    <Project Path="apps/VoiceType/src/VoiceType/VoiceType.csproj" />
-    <Project Path="apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj" />
   </Folder>
   <Folder Name="/apps/VoiceType.WinUI/">
     <Project Path="apps/VoiceType.WinUI/src/VoiceType.WinUI/VoiceType.WinUI.csproj" />
   </Folder>
+  <!--
+    VoiceType.Uno lives under apps/VoiceType.Uno/src with its own VoiceType.Uno.sln
+    and global.json (Uno.Sdk resolution requires the local global.json).
+    Build it separately: dotnet build apps/VoiceType.Uno/src/VoiceType.Uno.sln -p:GpuArch=CPU
+  -->
+  <Folder Name="/apps/VoiceType.Uno/" />
+  <Folder Name="/libraries/" />
   <Folder Name="/libraries/SpeechLib/">
     <Project Path="libraries/SpeechLib/src/SpeechLib/SpeechLib.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.Audio.NAudio2/SpeechLib.Audio.NAudio2.csproj" />
