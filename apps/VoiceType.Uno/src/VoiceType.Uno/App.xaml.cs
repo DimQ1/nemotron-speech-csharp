@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Uno.Resizetizer;
 using VoiceType.Hotkeys;
-using VoiceType.Hotkeys.XdgPortal;
 using VoiceType.Uno.Presentation;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Audio;
@@ -47,11 +46,9 @@ public partial class App : Application
                     // ---- Platform abstractions (backends selected per-OS) ----
                     // Global hotkeys: XDG GlobalShortcuts portal on Linux
                     // (Wayland + X11, xdg-desktop-portal >= 1.18); Null Object fallback.
-                    services.AddSingleton<IGlobalHotkeyService>(_ =>
-                    {
-                        var portal = XdgGlobalShortcutsService.TryCreateAsync().GetAwaiter().GetResult();
-                        return (IGlobalHotkeyService?)portal ?? new NullGlobalHotkeyService();
-                    });
+                    // Note: portal connection is async — use Null for startup;
+                    // the ViewModel can swap in the real backend on a background task.
+                    services.AddSingleton<IGlobalHotkeyService>(_ => new NullGlobalHotkeyService());
                     // Text injection: XTest/ydotool backend TBD — Null Object until implemented
                     services.AddSingleton<IPlatformTextInjector, NullTextInjector>();
 
