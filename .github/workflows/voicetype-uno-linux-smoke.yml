@@ -1,0 +1,94 @@
+name: VoiceType.Uno Linux Smoke
+
+run-name: VoiceType.Uno Linux · ${{ github.ref_name }} · #${{ github.run_number }}
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - feature/uno-platform-linux
+    paths:
+      - '.github/workflows/voicetype-uno-linux-smoke.yml'
+      - 'apps/VoiceType.Uno/**'
+      - 'libraries/SpeechLib/**'
+      - 'libraries/VoiceType.Hotkeys/**'
+      - 'nuget.config'
+  pull_request:
+    paths:
+      - '.github/workflows/voicetype-uno-linux-smoke.yml'
+      - 'apps/VoiceType.Uno/**'
+      - 'libraries/SpeechLib/**'
+      - 'libraries/VoiceType.Hotkeys/**'
+      - 'nuget.config'
+
+jobs:
+  linux-smoke:
+    name: Linux build + startup smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Check .NET SDK info
+        run: dotnet --info
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libasound2 libfontconfig1 libpulse0 \
+            xvfb pulseaudio-utils
+
+      - name: Publish VoiceType.Uno (linux-x64, self-contained)
+        run: >
+          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+          -c Release -r linux-x64 -f net10.0-desktop -p:GpuArch=CPU
+          --self-contained true -o build/voicetype-uno-linux-smoke
+
+      - name: Start ALSA null capture (fake mic) + virtual X display
+        run: |
+          # PulseAudio with a null sink/source pair so capture streams open
+          # without real audio hardware.
+          pulseaudio --start --exit-idle-time=-1 --log-target=syslog || true
+          pactl load-module module-null-sink sink_name=fake_out sink_properties=device.description=fake_out || true
+          pactl load-module module-null-source source_name=fake_mic || true
+          pactl set-default-source fake_mic || true
+          pactl info
+          # Virtual X server for the Skia head.
+          Xvfb :99 -screen 0 1280x720x24 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+
+      - name: Startup smoke test (no model — must start, not crash)
+        run: |
+          set +e
+          # No model is present in CI, so the app is expected to attempt a
+          # background model download. We only validate that the process
+          # starts, opens the window, and stays alive for 10 seconds.
+          timeout -s TERM 15 ./build/voicetype-uno-linux-smoke/VoiceType.Uno &
+          APP_PID=$!
+          sleep 10
+          if kill -0 $APP_PID 2>/dev/null; then
+            echo "OK: app is still running after 10s"
+            kill $APP_PID 2>/dev/null || true
+            wait $APP_PID 2>/dev/null || true
+            exit 0
+          else
+            wait $APP_PID
+            echo "FAIL: app exited early with code $?"
+            exit 1
+          fi
+
+      - name: Upload smoke artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicetype-uno-linux-smoke-${{ github.run_number }}
+          path: build/voicetype-uno-linux-smoke
+          if-no-files-found: warn

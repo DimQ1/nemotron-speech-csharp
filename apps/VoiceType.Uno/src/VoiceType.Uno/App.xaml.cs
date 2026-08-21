@@ -1,10 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using Uno.Resizetizer;
+#if VOICE_TYPE_WINDOWS
+using SpeechLib.Audio;
+#endif
 using VoiceType.Hotkeys;
 using VoiceType.Uno.Presentation;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Audio;
 using VoiceType.Uno.Services.Platform;
+using VoiceType.Uno.Services.Platform.Linux;
 
 namespace VoiceType.Uno;
 
@@ -40,7 +44,12 @@ public partial class App : Application
                 {
                     // ---- Platform-independent services ----
                     services.AddSingleton<SettingsService>();
-                    services.AddSingleton<SpeechLib.IAudioSourceFactory, AlsaAudioSourceFactory>();
+                    services.AddSingleton<ModelDownloadService>();
+#if VOICE_TYPE_WINDOWS
+                    services.AddSingleton<SpeechLib.IAudioSourceFactory, NAudio3AudioSourceFactory>();
+#else
+                    services.AddSingleton<SpeechLib.IAudioSourceFactory, PulseAudioSourceFactory>();
+#endif
                     services.AddSingleton<RecognitionService>();
 
                     // ---- Platform abstractions (backends selected per-OS) ----
@@ -49,8 +58,17 @@ public partial class App : Application
                     // Note: portal connection is async — use Null for startup;
                     // the ViewModel can swap in the real backend on a background task.
                     services.AddSingleton<IGlobalHotkeyService>(_ => new NullGlobalHotkeyService());
-                    // Text injection: XTest/ydotool backend TBD — Null Object until implemented
-                    services.AddSingleton<IPlatformTextInjector, NullTextInjector>();
+                    // Text injection: SendInput+clipboard on Windows; on Linux the
+                    // injector picks clipboard (wl-copy/xclip/xsel) + keyboard
+                    // (XTest on X11, ydotool on Wayland) backends per session.
+                    services.AddSingleton<IPlatformTextInjector>(_ =>
+                        OperatingSystem.IsWindows() ? new WindowsTextInjector()
+                        : OperatingSystem.IsLinux() ? new LinuxTextInjector()
+                        : new NullTextInjector());
+                    // Tray recording indicator: StatusNotifierItem on Linux
+                    // (GNOME AppIndicator / KDE Plasma); Null elsewhere.
+                    services.AddSingleton<ITrayIndicator>(_ =>
+                        OperatingSystem.IsLinux() ? new LinuxTrayIndicator() : new NullTrayIndicator());
 
                     // ---- ViewModels ----
                     services.AddSingleton<MainViewModel>();

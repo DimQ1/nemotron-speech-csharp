@@ -7,8 +7,9 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/apps/VoiceType.WinUI/src/VoiceType.WinUI/VoiceType.WinUI.csproj",
+                "${workspaceFolder}/apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj",
                 "-c", "Debug",
+                "-f", "net10.0-windows10.0.26100",
                 "-p:GpuArch=CPU"
             ],
             "problemMatcher": "$msCompile",
@@ -16,6 +17,17 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "run: VoiceType.Uno (Linux WSL2)",
+            "type": "process",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "${workspaceFolder}/tools/scripts/run-voicetype-uno-linux.ps1"
+            ],
+            "problemMatcher": []
         },
         {
             "label": "aspire-dashboard",

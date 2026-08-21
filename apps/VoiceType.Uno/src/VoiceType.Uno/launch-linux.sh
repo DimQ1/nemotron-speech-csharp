@@ -22,8 +22,12 @@ export PULSE_SERVER="${PULSE_SERVER:-/mnt/wslg/PulseServer}"
 echo "Launching VoiceType.Uno (DISPLAY=$DISPLAY)..."
 
 # Start the window fixer companion (Python3) in the background.
-# It waits for a new X11 window to appear and maps it.
-FIXER_SCRIPT="${SCRIPT_DIR}/../../tools/scripts/x11-window-fixer.py"
+# Published bundles carry the fixer beside the app; source-tree runs use the
+# repository copy as a fallback.
+FIXER_SCRIPT="${SCRIPT_DIR}/x11-window-fixer.py"
+if [ ! -f "$FIXER_SCRIPT" ]; then
+    FIXER_SCRIPT="${SCRIPT_DIR}/../../../../tools/scripts/x11-window-fixer.py"
+fi
 if [ -f "$FIXER_SCRIPT" ]; then
     python3 "$FIXER_SCRIPT" &
     FIXER_PID=$!

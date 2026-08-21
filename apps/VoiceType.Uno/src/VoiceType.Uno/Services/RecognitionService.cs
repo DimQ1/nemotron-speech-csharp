@@ -29,6 +29,7 @@ public sealed class RecognitionService : IDisposable
     private readonly StringBuilder _accumulatedText = new();
     private readonly object _recognizerOperationGate = new();
     private string? _loadedModelPath;
+    private Exception? _captureException;
 
     public RecognitionService(IAudioSourceFactory audioSourceFactory)
     {
@@ -39,6 +40,7 @@ public sealed class RecognitionService : IDisposable
     public event Action<string>? FinalResult;
     public event Action? Stopped;
     public event Action<ModelLifecycleState>? ModelStateChanged;
+    public event Action<Exception>? Error;
 
     public bool IsRunning => _isRunning;
     public bool IsMuted => _captureMuted;
@@ -118,7 +120,12 @@ public sealed class RecognitionService : IDisposable
         if (_recognizer is null || ModelState != ModelLifecycleState.Loaded)
             throw new InvalidOperationException("Model is not loaded. Call LoadModelAsync first.");
 
+        if (_processTask is not null || _audioSource is not null)
+            StopAndCleanupAsync().GetAwaiter().GetResult();
+
+        ApplyRuntimeSettings(settings);
         _accumulatedText.Clear();
+        _captureException = null;
         _isRunning = true;
 
         _audioSource = _audioSourceFactory.Create(
@@ -129,9 +136,31 @@ public sealed class RecognitionService : IDisposable
         _signal = new ManualResetEventSlim(false);
         _captureState = new CaptureState();
 
-        _captureThread = new Thread(() => _audioSource.Start(_buffer, _signal, _captureState))
+        var audioSource = _audioSource;
+        var buffer = _buffer;
+        var signal = _signal;
+        var captureState = _captureState;
+        _captureThread = new Thread(() =>
         {
-            IsBackground = true
+            try
+            {
+                audioSource.Start(buffer, signal, captureState);
+            }
+            catch (Exception ex)
+            {
+                _captureException = ex;
+                _isRunning = false;
+                Error?.Invoke(ex);
+            }
+            finally
+            {
+                captureState.IsRunning = false;
+                signal.Set();
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "VoiceType audio capture"
         };
         _captureThread.Start();
 
@@ -148,54 +177,141 @@ public sealed class RecognitionService : IDisposable
 
     public void SetMuted(bool muted) => _captureMuted = muted;
 
-    private async Task ProcessLoop()
+    public void ApplyRuntimeSettings(AppSettings settings)
     {
-        while ((_isRunning && _captureState?.IsRunning == true) ||
-               (_captureThread?.IsAlive == true) ||
-               (_buffer?.IsEmpty == false))
+        lock (_recognizerOperationGate)
         {
-            var gotData = false;
-            while (_buffer?.TryDequeue(out var batch) == true)
+            if (_recognizer is IRuntimeConfigurable runtimeConfigurable)
             {
-                gotData = true;
-                if (_captureMuted)
-                    continue;
-
-                string? raw;
-                lock (_recognizerOperationGate)
-                    raw = _recognizer!.ProcessAudio(batch);
-
-                if (raw is not null)
-                {
-                    _accumulatedText.Append(raw);
-                    PartialResult?.Invoke(_accumulatedText.ToString());
-                }
+                runtimeConfigurable.TrySetVad(settings.UseVad);
+                runtimeConfigurable.TrySetSearchOptions(settings.NumBeams, settings.RepetitionPenalty);
             }
 
-            if (!gotData)
+            SetLanguageCore(settings.Language);
+        }
+    }
+
+    public void SetLanguage(string language)
+    {
+        lock (_recognizerOperationGate)
+            SetLanguageCore(language);
+    }
+
+    /// <summary>Stops capture, waits for final decoding, and releases session resources.</summary>
+    public async Task StopAndCleanupAsync()
+    {
+        Stop();
+
+        var processTask = _processTask;
+        if (processTask is not null)
+        {
+            try
             {
-                _signal?.Wait(50);
-                _signal?.Reset();
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                await processTask.WaitAsync(timeout.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                Error?.Invoke(new TimeoutException("Recognition shutdown timed out."));
+            }
+            catch (Exception ex)
+            {
+                Error?.Invoke(ex);
+            }
+            finally
+            {
+                _processTask = null;
             }
         }
 
-        string? final;
-        lock (_recognizerOperationGate)
-            final = _recognizer!.Flush();
-        if (final is not null)
-            _accumulatedText.Append(final);
+        CleanupCaptureResources();
+    }
 
-        FinalResult?.Invoke(_accumulatedText.ToString());
-        Stopped?.Invoke();
+    private void SetLanguageCore(string language)
+    {
+        if (_recognizer is not ILanguageConfigurable languageConfigurable)
+            return;
 
+        var languageId = LanguageMapper.Resolve(language);
+        if (languageId is not null)
+            languageConfigurable.TrySetLanguage(languageId);
+    }
+
+    private Task ProcessLoop()
+    {
+        try
+        {
+            while ((_isRunning && _captureState?.IsRunning == true) ||
+                   (_captureThread?.IsAlive == true) ||
+                   (_buffer?.IsEmpty == false))
+            {
+                var gotData = false;
+                while (_buffer?.TryDequeue(out var batch) == true)
+                {
+                    gotData = true;
+                    if (_captureMuted)
+                        continue;
+
+                    string? raw;
+                    lock (_recognizerOperationGate)
+                        raw = _recognizer!.ProcessAudio(batch);
+
+                    if (raw is not null)
+                    {
+                        _accumulatedText.Append(raw);
+                        PartialResult?.Invoke(_accumulatedText.ToString());
+                    }
+                }
+
+                if (!gotData)
+                {
+                    _signal?.Wait(50);
+                    _signal?.Reset();
+                }
+            }
+
+            string? final;
+            lock (_recognizerOperationGate)
+                final = _recognizer!.Flush();
+            if (final is not null)
+                _accumulatedText.Append(final);
+
+            FinalResult?.Invoke(_accumulatedText.ToString());
+        }
+        catch (Exception ex)
+        {
+            Error?.Invoke(_captureException ?? ex);
+        }
+        finally
+        {
+            Stopped?.Invoke();
+            _captureThread?.Join(TimeSpan.FromSeconds(1));
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void CleanupCaptureResources()
+    {
         _captureThread?.Join(TimeSpan.FromSeconds(1));
+        _captureThread = null;
+
+        _audioSource?.Dispose();
+        _audioSource = null;
+
+        _signal?.Dispose();
+        _signal = null;
+
+        _captureState?.Dispose();
+        _captureState = null;
+
+        _buffer = null;
     }
 
     public void Dispose()
     {
-        Stop();
+        StopAndCleanupAsync().GetAwaiter().GetResult();
         UnloadModel();
-        _signal?.Dispose();
     }
 }
 

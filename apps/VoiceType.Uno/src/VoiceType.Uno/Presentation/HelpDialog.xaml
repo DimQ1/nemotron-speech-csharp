@@ -1,0 +1,97 @@
+<ContentDialog x:Class="VoiceType.Uno.Presentation.HelpDialog"
+               xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               Title="VoiceType — Help"
+               CloseButtonText="Close"
+               DefaultButton="Close">
+  <ScrollViewer MaxHeight="560" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="12" Padding="4">
+
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Getting started" FontWeight="SemiBold" />
+          <TextBlock TextWrapping="Wrap">
+            <Run Text="1. On first start the recommended speech model downloads automatically." />
+            <LineBreak />
+            <Run Text="2. Press " />
+            <Run Text="Start" FontWeight="SemiBold" />
+            <Run Text=" and speak — the transcript appears live in the main window." />
+            <LineBreak />
+            <Run Text="3. With " />
+            <Run Text="Inject text" FontWeight="SemiBold" />
+            <Run Text=" enabled, each final phrase is also typed into the focused window." />
+          </TextBlock>
+        </StackPanel>
+      </Border>
+
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Global hotkey" FontWeight="SemiBold" />
+          <TextBlock TextWrapping="Wrap">
+            <Run Text="The default toggle hotkey is " />
+            <Run Text="Ctrl+Shift+V" FontWeight="SemiBold" />
+            <Run Text=". On Linux it is registered through the XDG GlobalShortcuts portal " />
+            <Run Text="(xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+); the compositor " />
+            <Run Text="shows a one-time consent dialog. On desktops without portal support the " />
+            <Run Text="hotkey is reported as unavailable." />
+          </TextBlock>
+        </StackPanel>
+      </Border>
+
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Text injection on Linux" FontWeight="SemiBold" />
+          <TextBlock TextWrapping="Wrap">
+            <Run Text="Injection sets the clipboard, then synthesizes the paste chord " />
+            <Run Text="(Ctrl+V by default — configurable in Settings) into the focused window." />
+            <LineBreak />
+            <LineBreak />
+            <Run Text="Required tools (install one per pair):" FontWeight="SemiBold" />
+            <LineBreak />
+            <Run Text="• Clipboard: wl-copy (Wayland) or xclip / xsel (X11)" />
+            <LineBreak />
+            <Run Text="• Keyboard: ydotool (Wayland, needs ydotoold) or libXtst / xdotool (X11)" />
+            <LineBreak />
+            <LineBreak />
+            <Run Text="Ubuntu: " />
+            <Run Text="sudo apt install wl-clipboard xclip xdotool" FontStyle="Italic" />
+          </TextBlock>
+        </StackPanel>
+      </Border>
+
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Audio capture" FontWeight="SemiBold" />
+          <TextBlock TextWrapping="Wrap">
+            <Run Text="Capture goes through the PulseAudio-compatible server " />
+            <Run Text="(PipeWire desktop setups and WSLg both provide one)." />
+            <LineBreak />
+            <Run Text="• Mic — default input source" />
+            <LineBreak />
+            <Run Text="• Loopback — monitor of the default output (" />
+            <Run Text="@DEFAULT_MONITOR@" FontStyle="Italic" />
+            <Run Text=")" />
+            <LineBreak />
+            <Run Text="• Mix — both, merged 50/50" />
+          </TextBlock>
+        </StackPanel>
+      </Border>
+
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Data locations" FontWeight="SemiBold" />
+          <TextBlock TextWrapping="Wrap">
+            <Run Text="• Settings: " />
+            <Run Text="~/.local/share/VoiceType/settings.json" FontStyle="Italic" />
+            <LineBreak />
+            <Run Text="• Models: " />
+            <Run Text="~/.local/share/VoiceType/models/" FontStyle="Italic" />
+            <LineBreak />
+            <Run Text="(on Windows these resolve under %LOCALAPPDATA%\VoiceType)" />
+          </TextBlock>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</ContentDialog>

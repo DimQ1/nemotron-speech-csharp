@@ -124,7 +124,7 @@
     <!-- Audio: NAudio comes transitively via SpeechLib.Audio.NAudio3 provider -->
     <!-- Exclude native ORT from Windows AI (managed via SpeechLib, which owns ORT GenAI dependencies) -->
     <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
-    <!-- GenAI 0.15.0 requires managed ORT 1.28.0. Native assets are copied below. -->
+    <!-- GenAI 0.15.2 requires managed ORT 1.28.0. Native assets are copied below. -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" ExcludeAssets="native" />
   </ItemGroup>
 
@@ -169,7 +169,7 @@
   </ItemGroup>
 
   <!-- Copy ORT 1.28.0 native DLL into AppX.
-       ORT 1.28.0 is required by GenAI 0.15.0. The stale transitive DLL
+      ORT 1.28.0 is required by GenAI 0.15.2. The stale transitive DLL
        from the GenAI dependency is overwritten.
        Also strips PDBs from AppX (Store submission requirement).
 

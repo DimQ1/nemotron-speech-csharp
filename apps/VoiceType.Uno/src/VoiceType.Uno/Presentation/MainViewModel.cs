@@ -4,6 +4,7 @@ using Microsoft.UI.Dispatching;
 using VoiceType.Hotkeys;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Platform;
+using VoiceType.Uno.Services.Platform.Linux;
 
 namespace VoiceType.Uno.Presentation;
 
@@ -16,29 +17,40 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly RecognitionService _recognition;
     private readonly SettingsService _settingsService;
+    private readonly ModelDownloadService _modelDownloader;
     private readonly IGlobalHotkeyService _hotkeys;
     private readonly IPlatformTextInjector _textInjector;
+    private readonly ITrayIndicator _tray;
     private readonly DispatcherQueue _dispatcher;
 
     private AppSettings _settings;
     private int _toggleHotkeyId;
+    private readonly SemaphoreSlim _settingsApplyGate = new(1, 1);
+    private int _settingsApplyVersion;
+    private Task? _modelInitializationTask;
+    private bool _isApplyingSettingsSnapshot;
 
     public MainViewModel(
         RecognitionService recognition,
         SettingsService settingsService,
+        ModelDownloadService modelDownloader,
         IGlobalHotkeyService hotkeys,
-        IPlatformTextInjector textInjector)
+        IPlatformTextInjector textInjector,
+        ITrayIndicator tray)
     {
         _recognition = recognition;
         _settingsService = settingsService;
+        _modelDownloader = modelDownloader;
         _hotkeys = hotkeys;
         _textInjector = textInjector;
+        _tray = tray;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
 
         _settings = settingsService.Load();
         _selectedLanguage = _settings.Language;
         IsTextInjectionEnabled = _settings.IsTextInjectionEnabled;
         IsAutoScrollEnabled = _settings.IsAutoScrollEnabled;
+        AlwaysOnTop = _settings.AlwaysOnTop;
 
         _recognition.PartialResult += text => _dispatcher.TryEnqueue(() => FloatingText = text);
         _recognition.FinalResult += text => _dispatcher.TryEnqueue(() =>
@@ -51,6 +63,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             IsRecording = false;
             StatusText = "Ready";
+            _tray.SetRecording(false);
         });
         _recognition.ModelStateChanged += state => _dispatcher.TryEnqueue(() =>
         {
@@ -66,6 +79,17 @@ public sealed partial class MainViewModel : ObservableObject
             };
             OnPropertyChanged(nameof(RecordButtonText));
         });
+        _recognition.Error += exception => _dispatcher.TryEnqueue(() =>
+            StatusText = $"Recognition error: {exception.Message}");
+
+        _modelDownloader.ProgressChanged += progress => _dispatcher.TryEnqueue(() =>
+        {
+            DownloadProgress = progress.OverallProgress;
+            ModelStatusText = progress.TotalFiles > 0
+                ? $"Downloading model... {progress.OverallProgress:F0}% ({progress.DownloadedFiles}/{progress.TotalFiles})"
+                : "Downloading model...";
+            OnPropertyChanged(nameof(RecordButtonText));
+        });
 
         // Global hotkeys: portal grants bindings asynchronously (consent dialog
         // on first run). Registration happens in the background; presses arrive
@@ -76,8 +100,17 @@ public sealed partial class MainViewModel : ObservableObject
                 _dispatcher.TryEnqueue(() => _ = ToggleAsync());
         };
 
+        // Tray indicator: register with the desktop environment; activation
+        // (icon click) toggles recording like the main button.
+        _tray.Activated += () => _dispatcher.TryEnqueue(() => _ = ToggleAsync());
+        _ = _tray.InitializeAsync();
+
         if (_hotkeys.IsAvailable && !string.IsNullOrWhiteSpace(_settings.ToggleHotkey))
             _ = RegisterToggleHotkeyAsync(_settings.ToggleHotkey);
+
+        IsModelLoading = true;
+        ModelStatusText = "Checking model...";
+        _modelInitializationTask = InitializeModelAsync();
     }
 
     private async Task RegisterToggleHotkeyAsync(string chord)
@@ -103,10 +136,16 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _isModelLoading;
 
     [ObservableProperty]
+    private bool _isModelDownloading;
+
+    [ObservableProperty]
     private bool _isModelReady;
 
     [ObservableProperty]
     private string _modelStatusText = "No model loaded";
+
+    [ObservableProperty]
+    private double _downloadProgress;
 
     [ObservableProperty]
     private bool _isTextInjectionEnabled;
@@ -117,7 +156,14 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _selectedLanguage;
 
-    public string RecordButtonText => IsModelLoading
+    [ObservableProperty]
+    private bool _alwaysOnTop;
+
+    public IReadOnlyList<string> LanguageOptions => SettingsViewModel.DefaultLanguageOptions;
+
+    public string RecordButtonText => IsModelDownloading
+        ? "Downloading model..."
+        : IsModelLoading
         ? "Loading model..."
         : IsRecording ? "Stop" : "Start";
 
@@ -142,15 +188,14 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        if (IsModelLoading)
+        if (IsModelLoading || IsModelDownloading)
             return;
 
         if (_recognition.ModelState != ModelLifecycleState.Loaded)
         {
-            StatusText = "Loading model...";
             try
             {
-                await _recognition.LoadModelAsync(_settings);
+                await EnsureModelReadyAsync();
             }
             catch (Exception ex)
             {
@@ -164,6 +209,7 @@ public sealed partial class MainViewModel : ObservableObject
             _recognition.Start(_settings);
             IsRecording = true;
             StatusText = "Listening...";
+            _tray.SetRecording(true);
         }
         catch (Exception ex)
         {
@@ -199,12 +245,223 @@ public sealed partial class MainViewModel : ObservableObject
     partial void OnIsCaptureMutedChanged(bool value) =>
         OnPropertyChanged(nameof(RecordingIndicator));
 
+    partial void OnIsModelLoadingChanged(bool value) =>
+        OnPropertyChanged(nameof(RecordButtonText));
+
+    partial void OnIsModelDownloadingChanged(bool value) =>
+        OnPropertyChanged(nameof(RecordButtonText));
+
     partial void OnIsTextInjectionEnabledChanged(bool value) =>
-        _settingsService.Update(s => s.IsTextInjectionEnabled = value);
+        _ = Task.Run(() => _settingsService.Update(s => s.IsTextInjectionEnabled = value));
+
+    partial void OnIsAutoScrollEnabledChanged(bool value) =>
+        _ = Task.Run(() => _settingsService.Update(s => s.IsAutoScrollEnabled = value));
+
+    partial void OnAlwaysOnTopChanged(bool value) =>
+        _ = Task.Run(() => _settingsService.Update(s => s.AlwaysOnTop = value));
 
     partial void OnSelectedLanguageChanged(string value)
     {
+        if (_isApplyingSettingsSnapshot)
+            return;
+
         _settings.Language = value;
-        _settingsService.Update(s => s.Language = value);
+        _ = Task.Run(() => _settingsService.Update(s => s.Language = value));
+        if (_recognition.ModelState == ModelLifecycleState.Loaded)
+            _ = Task.Run(() => _recognition.SetLanguage(value));
     }
+
+            public AppSettings CreateSettingsSnapshot() => _settings.Clone();
+
+    public async Task ApplySettingsAsync(AppSettings newSettings)
+    {
+        var version = Interlocked.Increment(ref _settingsApplyVersion);
+        await _settingsApplyGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (version != Volatile.Read(ref _settingsApplyVersion))
+                return;
+
+            var previousSettings = _settings;
+            ModelPathResolver.ApplyExistingModelPath(newSettings);
+            await Task.Run(() => _settingsService.Save(newSettings)).ConfigureAwait(false);
+            _settings = newSettings;
+            ApplySettingsSnapshot(newSettings);
+
+            var previousModelPath = _recognition.LoadedModelPath;
+            var newModelPath = ModelPathResolver.FindExistingModelPath(newSettings) ?? newSettings.ModelPath;
+            var modelChanged = !PathsEqual(previousModelPath, newModelPath);
+            var audioSourceChanged = !string.Equals(
+                previousSettings.AudioSource,
+                newSettings.AudioSource,
+                StringComparison.OrdinalIgnoreCase);
+
+            if (modelChanged)
+            {
+                await ReloadModelAsync(newSettings, newModelPath, version).ConfigureAwait(false);
+                return;
+            }
+
+            await Task.Run(() => _recognition.ApplyRuntimeSettings(newSettings)).ConfigureAwait(false);
+            if (audioSourceChanged && _recognition.IsRunning)
+                await RestartCaptureAsync(newSettings, version).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _dispatcher.TryEnqueue(() => StatusText = $"Settings error: {ex.Message}");
+        }
+        finally
+        {
+            _settingsApplyGate.Release();
+        }
+    }
+
+    private async Task InitializeModelAsync()
+    {
+        try
+        {
+            await EnsureModelReadyAsync().ConfigureAwait(false);
+            if (!_settings.FirstRunCompleted)
+            {
+                _settings.FirstRunCompleted = true;
+                await Task.Run(() => _settingsService.Save(_settings)).ConfigureAwait(false);
+            }
+
+            _dispatcher.TryEnqueue(() =>
+            {
+                IsModelLoading = false;
+                IsModelDownloading = false;
+                ModelStatusText = "Model ready";
+                if (_settings.AutoStartRecognition)
+                    _ = ToggleAsync();
+            });
+        }
+        catch (Exception ex)
+        {
+            _dispatcher.TryEnqueue(() =>
+            {
+                IsModelLoading = false;
+                IsModelDownloading = false;
+                ModelStatusText = $"Model unavailable: {ex.Message}";
+                StatusText = "Ready - download or select a model in Settings";
+            });
+        }
+    }
+
+    private async Task EnsureModelReadyAsync()
+    {
+        var settings = _settingsService.Load();
+        var modelPath = ModelPathResolver.FindExistingModelPath(settings);
+        if (modelPath is null)
+        {
+            SetModelPreparationState(true, true, "Downloading model...");
+            var modelsRoot = string.IsNullOrWhiteSpace(settings.ModelsRootPath)
+                ? AppPaths.ModelsDir
+                : settings.ModelsRootPath;
+            modelPath = await _modelDownloader.DownloadRecommendedAsync(modelsRoot).ConfigureAwait(false);
+            settings.ModelsRootPath = modelsRoot;
+            settings.SelectedModel = Path.GetFileName(modelPath);
+            settings.ModelPath = modelPath;
+            await Task.Run(() => _settingsService.Save(settings)).ConfigureAwait(false);
+        }
+        else
+        {
+            ModelPathResolver.ApplyExistingModelPath(settings);
+        }
+
+        _settings = settings;
+        SetModelPreparationState(true, false, "Loading model...");
+        await _recognition.LoadModelAsync(settings).ConfigureAwait(false);
+        if (_recognition.ModelState != ModelLifecycleState.Loaded)
+            throw new InvalidOperationException("The speech model did not reach the Loaded state.");
+    }
+
+    private async Task ReloadModelAsync(AppSettings settings, string? modelPath, int version)
+    {
+        _dispatcher.TryEnqueue(() =>
+        {
+            IsModelReady = false;
+            IsModelLoading = true;
+            ModelStatusText = "Reloading model...";
+        });
+
+        await _recognition.StopAndCleanupAsync().ConfigureAwait(false);
+        if (version != Volatile.Read(ref _settingsApplyVersion))
+            return;
+
+        _dispatcher.TryEnqueue(() => IsRecording = false);
+        _recognition.UnloadModel();
+        if (string.IsNullOrWhiteSpace(modelPath))
+        {
+            _dispatcher.TryEnqueue(() =>
+            {
+                IsModelLoading = false;
+                ModelStatusText = "No model selected";
+            });
+            return;
+        }
+
+        settings.ModelPath = modelPath;
+        await _recognition.LoadModelAsync(settings).ConfigureAwait(false);
+        await Task.Run(() => _recognition.ApplyRuntimeSettings(settings)).ConfigureAwait(false);
+    }
+
+    private async Task RestartCaptureAsync(AppSettings settings, int version)
+    {
+        var wasRecording = _recognition.IsRunning;
+        await _recognition.StopAndCleanupAsync().ConfigureAwait(false);
+        if (version != Volatile.Read(ref _settingsApplyVersion))
+            return;
+
+        _dispatcher.TryEnqueue(() =>
+        {
+            IsRecording = false;
+            IsCaptureMuted = false;
+        });
+
+        if (!wasRecording)
+            return;
+
+        _recognition.Start(settings);
+        _dispatcher.TryEnqueue(() =>
+        {
+            IsRecording = true;
+            StatusText = "Listening...";
+            _tray.SetRecording(true);
+        });
+    }
+
+    private void ApplySettingsSnapshot(AppSettings settings)
+    {
+        _isApplyingSettingsSnapshot = true;
+        try
+        {
+            if (!string.Equals(SelectedLanguage, settings.Language, StringComparison.Ordinal))
+                SelectedLanguage = settings.Language;
+            IsTextInjectionEnabled = settings.IsTextInjectionEnabled;
+            IsAutoScrollEnabled = settings.IsAutoScrollEnabled;
+            AlwaysOnTop = settings.AlwaysOnTop;
+
+            if (_textInjector is LinuxTextInjector linuxInjector
+                && !string.IsNullOrWhiteSpace(settings.PasteChord))
+                linuxInjector.PasteChord = settings.PasteChord.Trim();
+        }
+        finally
+        {
+            _isApplyingSettingsSnapshot = false;
+        }
+    }
+
+    private void SetModelPreparationState(bool loading, bool downloading, string status)
+    {
+        _dispatcher.TryEnqueue(() =>
+        {
+            IsModelLoading = loading;
+            IsModelDownloading = downloading;
+            ModelStatusText = status;
+        });
+    }
+
+    private static bool PathsEqual(string? left, string? right) =>
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
 }
