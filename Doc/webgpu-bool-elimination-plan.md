@@ -96,3 +96,44 @@ Sub(const_1.0, float) → float
 | Slice не принимает int32 данные | Средняя | Cast(int32→float) перед Slice, Cast назад после |
 | Graph capture всё равно не работает | Средняя | Проверить GetCpuPreferredNodes на оставшихся узлах |
 | Модель выдаёт другой транскрипт | Низкая | Эквивалентные математические замены |
+
+---
+
+## Результаты реализации (2026-07-31)
+
+### Скрипт: `transform_encoder.py`
+
+Полный скрипт трансформации — преобразует `modules/asr/webgpu-int4/encoder.onnx` → `modules/asr/webgpu-graph-int4/encoder.onnx`.
+
+**Фактические замены:**
+
+| Фаза | Узлы | Действие |
+|---|---|---|
+| 1 | Less[6,21,39,59] | Cast(bool→float) сразу за Less. Удалены ставшие no-op Cast[9,24,42,62] |
+| 2 | Less[82], GreaterOrEqual[84] | Cast(bool→float) |
+| 3 | And[85,90,91] | → Mul(float, float) |
+| 4 | Not[92,93] | → Sub(1.0, float) |
+| 5 | Initializer `alias` [1,77,77] | bool→float32 (attention mask) |
+| 5b | `unsqueeze_24`, `unsqueeze_25` | Cast(float→bool) перед Where (нужен bool condition) |
+| 6 | 29 value_info bool entries | Удалены устаревшие объявления типов |
+
+**Итог:** 0 Not, 0 And, 0 bool value_info. ONNX checker проходит.
+
+### Проверка модели
+
+- **Транскрипция:** идентична baseline INT4 (10.1s аудио, 58 токенов)
+- **Avg latency (graph-int4):** ~241ms vs baseline INT4 ~201ms (+20%)
+- **Причина замедления:** дополнительные Cast/Mul/Sub узлы. Ожидается компенсация при включении graph capture
+
+### Graph Capture
+
+- **Ключ:** `enableGraphCapture` (camelCase), session config option (не provider option)
+- **Статус:** PR #6288 влит 2026-07-31, но ещё не вошёл в ORT 1.28.0 / EP.WebGpu 0.2.1
+- **Настройка в genai_config.json:** `"session_options": {"enableGraphCapture": "1"}` (будет работать после обновления ORT)
+- **Ожидаемый эффект:** устранение per-op dispatch overhead (~10-30ms), компенсация overhead от Cast узлов
+
+### Следующие шаги
+
+1. Обновить ORT и EP.WebGpu до версий с поддержкой graph capture
+2. Перетестировать `webgpu-graph-int4` с `enableGraphCapture: "1"`
+3. Ожидаемый RTF: ~3.5-4.0x (лучше baseline 2.5x)

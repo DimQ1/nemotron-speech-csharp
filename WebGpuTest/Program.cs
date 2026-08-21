@@ -15,8 +15,8 @@ Console.WriteLine($"Arch: {System.Runtime.InteropServices.RuntimeInformation.OSA
 var env = OrtEnv.Instance();
 string libPath = WebGpuEp.GetLibraryPath();
 Console.WriteLine($"Library path: {libPath}");
-Console.WriteLine($"EP name:     {WebGpuEp.GetEpName()}");
-Console.WriteLine($"EP names:    [{string.Join(", ", WebGpuEp.GetEpNames())}]");
+string epName = Microsoft.ML.OnnxRuntime.EP.WebGpu.WebGpuEp.GetEpName();
+Console.WriteLine($"EP name:     {epName}");
 Console.WriteLine($"File exists: {File.Exists(libPath)}\n");
 
 // Companion DLLs
@@ -205,9 +205,10 @@ try
     // ---- Step 6: GenAI Streaming ASR with WebGPU (real audio, multiple models) ----
     string audioPath = @"E:\Work\Dimq1\Audio\nemotron-speech-csharp\Test-Audio\sample-0.mp3";
     string[] modelDirs = {
-        @"modules\asr\cpu-int4",
-        @"modules\asr\cpu-int8",
-        @"modules\asr\cpu-opset24-int4-c056"
+        @"modules\asr\webgpu-int4",
+        @"modules\asr\webgpu-int8",
+        @"modules\asr\webgpu-graph-int4",
+        @"modules\asr\webgpu-graph-int8"
     };
     string baseDir = @"E:\Work\Dimq1\Audio\nemotron-speech-csharp";
 
@@ -230,10 +231,10 @@ try
             int sampleRate = cfgJson.RootElement.GetProperty("model").GetProperty("sample_rate").GetInt32();
             int chunkSize = cfgJson.RootElement.GetProperty("model").GetProperty("chunk_samples").GetInt32();
 
-            // GPU provider: use WebGPU if available, otherwise report error
+            // GPU provider: use WebGPU plugin EP name from the package
             var config = new Config(modelPath);
             config.ClearProviders();
-            config.AppendProvider("webgpu");
+            config.AppendProvider(epName);
 
             Console.Write("  Creating model... ");
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -309,3 +310,4 @@ finally
 }
 
 Console.WriteLine("\nDone.");
+

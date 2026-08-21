@@ -64,12 +64,9 @@
         <DefineConstants>$(DefineConstants);GPU_NONE</DefineConstants>
       </PropertyGroup>
       <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.14.1" />
-        <!-- Override transitive ORT 1.23.0 -> 1.25.1: Nemotron conformer MHA fusion,
-             MatMulNBits DP4A tiling / K-parallelism improvements.
-             GeneratePathProperty exposes $(PkgMicrosoft_ML_OnnxRuntime) for the
-             native-asset copy target below. -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.25.1" GeneratePathProperty="true" />
+        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.15.0" />
+        <!-- GenAI 0.15.0 requires ORT >= 1.28.0 -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" GeneratePathProperty="true" />
       </ItemGroup>
     </When>
 
@@ -90,8 +87,9 @@
       </PropertyGroup>
       <ItemGroup>
         <!-- GenAI CPU package — WebGPU EP is registered at ORT level, not GenAI level -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.14.1" />
-        <!-- Plugin EP: WebGPU execution provider (Dawn + DXIL/DXC on Windows) -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.15.0" />
+        <!-- Plugin EP: WebGPU execution provider (Dawn + DXIL/DXC on Windows)
+             0.2.1 stable: graph capture OFF by default, enabled per-model via SetProviderOption -->
         <PackageReference Include="Microsoft.ML.OnnxRuntime.EP.WebGpu" Version="0.2.1" />
         <!-- Override transitive ORT 1.23.0 -> 1.28.0: plugin EP requires >= 1.24.4 -->
         <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" GeneratePathProperty="true" />
@@ -104,7 +102,7 @@
         <DefineConstants>$(DefineConstants);GPU_STANDARD</DefineConstants>
       </PropertyGroup>
       <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.14.1" />
+        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.15.0" />
       </ItemGroup>
     </Otherwise>
   </Choose>

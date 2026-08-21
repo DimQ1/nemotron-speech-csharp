@@ -49,7 +49,8 @@ public sealed class ModelSession : IStreamingSpeechRecognizer
         //   repetition_penalty=1.1 prevents the decoder from getting stuck in loops
         searchOptions ??= new GeneratorParamsArgs
         {
-            num_beams = string.Equals(executionProvider, "cpu", StringComparison.OrdinalIgnoreCase) ? 1 : 4,
+            num_beams = string.Equals(executionProvider, "cpu", StringComparison.OrdinalIgnoreCase)
+                     || string.Equals(executionProvider, "webgpu", StringComparison.OrdinalIgnoreCase) ? 1 : 4,
             do_sample = false,
             repetition_penalty = 1.1
         };

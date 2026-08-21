@@ -128,9 +128,10 @@
     <PackageReference Include="NAudio.Lame" Version="2.1.0" />
     <!-- Exclude native ORT from Windows AI (managed via SpeechLib, which owns ORT GenAI dependencies) -->
     <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
-    <!-- Force managed ORT 1.28.0 assembly (transitive 1.23 from GenAI is overridden).
-         1.28.0 is required for plugin EP API (WebGPU EP needs >= 1.24.4). -->
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" ExcludeAssets="native" />
+    <!-- Force managed ORT assembly — SpeechLib brings the correct version
+         via its GpuArch-specific dependencies (EP.WebGpu, GenAI.Cuda, etc.).
+         ExcludeAssets="native" because native DLLs are copied by the
+         CopyOrtNativeToAppX target below. -->
   </ItemGroup>
 
   <ItemGroup>
@@ -171,30 +172,57 @@
     <TrimmerRootDescriptor Include="TrimmerRoots.xml" Condition="Exists('TrimmerRoots.xml')" />
   </ItemGroup>
 
-  <!-- Copy ORT 1.28.0 native DLL and Swish custom op into AppX.
-       ORT 1.28.0 is required by plugin EP API (WebGPU) and opset-24 ONNX models.
-       The stale 1.23 DLL from the GenAI transitive dependency is overwritten.
-       Also strips PDBs from AppX (Store submission requirement).
-
-       NOTE: SpeechLib owns ORT GenAI dependencies with GpuArch selection.
-       Use -p:GpuArch=CPU for Store/CPU builds, -p:GpuArch=WebGPU for WebGPU builds. -->
-  <Target Name="CopyOrt128AndSwishOpToAppX" AfterTargets="Build">
-    <!-- ORT 1.28.0 from NuGet cache (CPU-only, no CUDA providers) -->
+  <!-- Copy ORT native DLLs and WebGPU EP plugin into AppX.
+       ORT version is resolved from NuGet cache — SpeechLib controls the exact
+       version via its GpuArch-specific PackageReferences.
+       WebGPU EP DLLs (dxil, dxcompiler, onnxruntime_providers_webgpu) are copied
+       from the EP.WebGpu package cache.
+       Also strips PDBs from AppX (Store submission requirement). -->
+  <Target Name="CopyOrtNativeToAppX" AfterTargets="Build">
+    <!-- Find ORT version in NuGet cache -->
+    <ItemGroup>
+      <_OrtDirs Include="$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime\*"
+                Condition="Exists('$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime\')" />
+    </ItemGroup>
+    <!-- Use the first matching directory (highest version when sorted) -->
     <PropertyGroup>
-      <_Ort128Cache>$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime\1.28.0\runtimes\win-x64\native\</_Ort128Cache>
+      <_OrtVer>@(_OrtDirs->'%(Filename)'->Distinct())</_OrtVer>
+      <_OrtCache>$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime\$(_OrtVer)\runtimes\win-x64\native\</_OrtCache>
     </PropertyGroup>
     <ItemGroup>
-      <_Ort128Native Include="$(_Ort128Cache)*.dll"
-                      Condition="Exists('$(_Ort128Cache)')" />
+      <_OrtNative Include="$(_OrtCache)*.dll"
+                  Condition="Exists('$(_OrtCache)')" />
     </ItemGroup>
-    <Copy SourceFiles="@(_Ort128Native)"
+    <Copy SourceFiles="@(_OrtNative)"
           DestinationFolder="$(OutputPath)"
           SkipUnchangedFiles="false"
-          Condition="'@(_Ort128Native)' != ''" />
-    <Copy SourceFiles="@(_Ort128Native)"
+          Condition="'@(_OrtNative)' != ''" />
+    <Copy SourceFiles="@(_OrtNative)"
           DestinationFolder="$(OutputPath)AppX"
           SkipUnchangedFiles="false"
-          Condition="'@(_Ort128Native)' != ''" />
+          Condition="'@(_OrtNative)' != ''" />
+
+    <!-- WebGPU EP plugin DLLs -->
+    <ItemGroup>
+      <_WebGpuDirs Include="$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime.ep.webgpu\*"
+                    Condition="Exists('$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime.ep.webgpu\')" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_WebGpuVer>@(_WebGpuDirs->'%(Filename)'->Distinct())</_WebGpuVer>
+      <_WebGpuCache>$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime.ep.webgpu\$(_WebGpuVer)\runtimes\win-x64\native\</_WebGpuCache>
+    </PropertyGroup>
+    <ItemGroup>
+      <_WebGpuNative Include="$(_WebGpuCache)*.dll"
+                     Condition="Exists('$(_WebGpuCache)')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_WebGpuNative)"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="false"
+          Condition="'@(_WebGpuNative)' != ''" />
+    <Copy SourceFiles="@(_WebGpuNative)"
+          DestinationFolder="$(OutputPath)AppX"
+          SkipUnchangedFiles="false"
+          Condition="'@(_WebGpuNative)' != ''" />
     <!-- Purge CUDA DLLs (incompatible with CPU/WebGPU builds) -->
     <Delete Files="$(OutputPath)AppX\onnxruntime_providers_cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_cuda.dll')" />
     <Delete Files="$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll')" />

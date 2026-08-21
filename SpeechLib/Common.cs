@@ -117,8 +117,24 @@ namespace SpeechLib
 
                     // High performance mode for Dawn/D3D12 adapter
                     config.SetProviderOption(ep, "powerPreference", "high-performance");
-                    // Note: graph capture (enableGraphCapture=1) tested but showed no improvement
-                    // through GenAI Config API — likely GenAI doesn't forward it to ORT sessions.
+                    // Match model layout: Nemotron uses NCHW, avoid GPU conversions
+                    config.SetProviderOption(ep, "preferredLayout", "NCHW");
+                    // Disable debug validation in release builds
+                    config.SetProviderOption(ep, "validationMode", "disabled");
+
+                    // Graph capture: read per-model setting from genai_config.json.
+                    // Bool-free INT4 models: "1" — faster with graph capture.
+                    // INT8 models (MatMulNBits bits=8 unsupported): "0" — disable.
+                    var gc = ReadGraphCaptureFromConfig(path);
+                    if (gc == "1")
+                    {
+                        config.SetProviderOption(ep, "enable_graph_capture", "1");
+                        Console.WriteLine("  Graph capture: ON");
+                    }
+                    else
+                    {
+                        Console.WriteLine("  Graph capture: OFF (disabled by model config)");
+                    }
                 }
                 else if (ep == "tensorrt" || ep == "NvTensorRtRtx")
                 {
@@ -184,6 +200,11 @@ namespace SpeechLib
             int logicalCores = Environment.ProcessorCount;
             int optimalIntraThreads = ComputeOptimalIntraThreads(logicalCores);
 
+            // Allow override via ORT_CPU_THREADS env var for quick testing
+            var envThreads = Environment.GetEnvironmentVariable("ORT_CPU_THREADS");
+            if (int.TryParse(envThreads, out int parsed) && parsed > 0)
+                optimalIntraThreads = parsed;
+
             string configPath = Path.Combine(path, "genai_config.json");
 
             try
@@ -222,14 +243,17 @@ namespace SpeechLib
                     // Pin intra-op threads to physical P-cores for best ONNX throughput.
                     // inter_op_num_threads = 1 avoids contention on CPU inference.
                     // force_spinning_stop prevents busy-waiting after work is done.
-                    sessionOptions["intra_op_num_threads"] = optimalIntraThreads;
-                    sessionOptions["inter_op_num_threads"] = 1;
+                    // execution_mode=sequential avoids thread pool overhead for batch=1 streaming.
+                    // Keys use ORT session config format: session.{option_name}
+                    sessionOptions["session.intra_op_num_threads"] = optimalIntraThreads.ToString();
+                    sessionOptions["session.inter_op_num_threads"] = "1";
                     sessionOptions["session.force_spinning_stop"] = "1";
+                    sessionOptions["session.execution_mode"] = "sequential";
                 }
 
                 string overlay = rootNode.ToJsonString();
                 Console.WriteLine($"CPU config: intra_op_num_threads={optimalIntraThreads} " +
-                                  $"(logical cores={logicalCores}).");
+                                  $"(logical cores={logicalCores}), execution=sequential, inter_op=1.");
                 return overlay;
             }
             catch (Exception ex)
@@ -249,10 +273,31 @@ namespace SpeechLib
             return logicalCores switch
             {
                 <= 4  => Math.Max(1, logicalCores - 1),   // Low-end: leave 1 thread for OS
-                <= 16 => logicalCores / 2,                 // Mid-range / hybrid: target P-cores
+                <= 16 => 4,                                // Mid-range: 4 threads optimal for streaming ASR
                 <= 32 => 8,                                // High-end: LLM scaling ceiling
                 _     => Math.Min(12, logicalCores / 4)    // 32+: slightly more, but capped
             };
+        }
+
+        /// <summary>
+        /// Reads enable_graph_capture from genai_config.json encoder session_options.
+        /// Returns "0" if not specified (default: OFF — safe for all models).
+        /// Bool-free INT4 models should explicitly set "1" to enable graph capture.
+        /// </summary>
+        private static string ReadGraphCaptureFromConfig(string modelPath)
+        {
+            try
+            {
+                var configPath = Path.Combine(modelPath, "genai_config.json");
+                if (!File.Exists(configPath)) return "0";
+                using var json = JsonDocument.Parse(File.ReadAllText(configPath));
+                var enc = json.RootElement.GetProperty("model").GetProperty("encoder");
+                if (enc.TryGetProperty("session_options", out var so) &&
+                    so.TryGetProperty("enable_graph_capture", out var gc))
+                    return gc.GetString() ?? "0";
+            }
+            catch { /* default OFF */ }
+            return "0";
         }
 
         /// <summary>
