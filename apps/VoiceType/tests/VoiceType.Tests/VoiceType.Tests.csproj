@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\VoiceType\VoiceType.csproj" />
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.LiteRT\SpeechLib.LiteRT.csproj" />
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.LiteRT.Native\SpeechLib.LiteRT.Native.csproj" />
   </ItemGroup>
 
 </Project>

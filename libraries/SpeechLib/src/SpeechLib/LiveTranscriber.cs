@@ -9,7 +9,15 @@ public static class LiveTranscriber
     /// Captures audio until the source stops, drains all queued batches, and flushes the recognizer.
     /// The source is disposed before this method returns.
     /// </summary>
-    public static string Run(IAudioSource source, string label, IStreamingSpeechRecognizer recognizer)
+    /// <param name="onTextDelta">
+    /// Optional callback invoked with each new transcription delta as it is decoded
+    /// (including the final flush). Lets callers stream translation in parallel.
+    /// </param>
+    public static string Run(
+        IAudioSource source,
+        string label,
+        IStreamingSpeechRecognizer recognizer,
+        Action<string>? onTextDelta = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(label);
@@ -60,7 +68,7 @@ public static class LiveTranscriber
                 var gotData = false;
                 while (buffer.TryDequeue(out var batch))
                 {
-                    AppendResult(transcript, recognizer.ProcessAudio(batch));
+                    AppendResult(transcript, recognizer.ProcessAudio(batch), onTextDelta);
                     gotData = true;
                 }
 
@@ -75,12 +83,12 @@ public static class LiveTranscriber
             captureThread.Join();
 
             while (buffer.TryDequeue(out var finalBatch))
-                AppendResult(transcript, recognizer.ProcessAudio(finalBatch));
+                AppendResult(transcript, recognizer.ProcessAudio(finalBatch), onTextDelta);
 
             if (captureError is not null)
                 throw new InvalidOperationException("Audio capture failed.", captureError);
 
-            AppendResult(transcript, recognizer.Flush());
+            AppendResult(transcript, recognizer.Flush(), onTextDelta);
         }
         finally
         {
@@ -108,9 +116,12 @@ public static class LiveTranscriber
         }
     }
 
-    private static void AppendResult(StringBuilder transcript, string? text)
+    private static void AppendResult(StringBuilder transcript, string? text, Action<string>? onTextDelta)
     {
-        if (text is not null)
-            transcript.Append(text);
+        if (text is null)
+            return;
+
+        transcript.Append(text);
+        onTextDelta?.Invoke(text);
     }
 }
