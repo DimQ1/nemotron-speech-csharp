@@ -119,6 +119,11 @@ public sealed partial class MainWindow : Window
             DispatcherQueue.TryEnqueue(() => TextScroller.ChangeView(null, double.MaxValue, null));
         }
 
+        if (e.PropertyName == nameof(MainViewModel.TranslatedText) && _vm.IsAutoScrollEnabled)
+        {
+            DispatcherQueue.TryEnqueue(() => TranslationScroller.ChangeView(null, double.MaxValue, null));
+        }
+
         if (e.PropertyName is nameof(MainViewModel.IsRecording)
             or nameof(MainViewModel.IsActivelyInjecting)
             or nameof(MainViewModel.IsTextInjectionEnabled))

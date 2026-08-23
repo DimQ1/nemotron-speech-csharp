@@ -57,6 +57,9 @@ public static class AppPaths
     /// <summary>Downloaded models: <c>data/Models</c>.</summary>
     public static string ModelsDir => Path.Combine(DataRoot, "Models");
 
+    /// <summary>Translation models (LiteRT <c>.litertlm</c>): <c>data/Models/Translation</c>.</summary>
+    public static string TranslationModelsDir => Path.Combine(ModelsDir, "Translation");
+
     /// <summary>Recognition sessions: <c>data/Sessions</c>.</summary>
     public static string SessionsDir => Path.Combine(DataRoot, "Sessions");
 
@@ -80,6 +83,12 @@ public static class AppPaths
     {
         Directory.CreateDirectory(ModelsDir);
         return ModelsDir;
+    }
+
+    public static string EnsureTranslationModelsDir()
+    {
+        Directory.CreateDirectory(TranslationModelsDir);
+        return TranslationModelsDir;
     }
 
     public static string EnsureSessionsDir()

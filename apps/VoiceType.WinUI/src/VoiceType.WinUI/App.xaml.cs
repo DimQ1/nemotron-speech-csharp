@@ -205,6 +205,7 @@ public partial class App : Application
 
         services.AddTransient<IGlobalInputHook, GlobalInputHook>();
         services.AddTransient<IModelDownloaderService, ModelDownloaderService>();
+        services.AddSingleton<ITranslationService, TranslationService>();
         services.AddSingleton<IWindowInterop, WindowInterop>();
 
         // ---- ViewModels ----

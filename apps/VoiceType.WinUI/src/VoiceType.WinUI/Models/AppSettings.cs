@@ -80,6 +80,12 @@ public sealed class AppSettings
     /// <summary>Loopback volume (0.0 - 1.0). Applied in real-time during capture.</summary>
     public float LoopbackVolume { get; set; } = 1.0f;
 
+    // ── Live translation (LiteRT / Gemma 4) ─────────
+    /// <summary>Translate recognized text on the fly using a local LiteRT model.</summary>
+    public bool TranslationEnabled { get; set; } = false;
+    /// <summary>BCP-47 target language for live translation (e.g. "ru", "en").</summary>
+    public string TranslationTargetLanguage { get; set; } = "ru";
+
     public AppSettings Clone()
     {
         var clone = (AppSettings)MemberwiseClone();

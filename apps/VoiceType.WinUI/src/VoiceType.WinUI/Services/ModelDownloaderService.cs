@@ -216,6 +216,83 @@ public sealed class ModelDownloaderService : IModelDownloaderService
         }
     }
 
+    /// <summary>Download a single file from a Hugging Face repo via its resolve URL,
+    /// reporting per-chunk progress. Used for the LiteRT translation model.</summary>
+    public async Task DownloadHuggingFaceFile(string repoId, string fileName, string destPath,
+        CancellationToken ct = default)
+    {
+        _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        IsDownloading = true;
+
+        var url = CreateResolveUrl(repoId, fileName);
+        var dir = Path.GetDirectoryName(destPath)!;
+        Directory.CreateDirectory(dir);
+
+        long chunkTotal = 0;
+        long actualTotal = 0;
+        double lastProgress = -1;
+        var progressGate = Stopwatch.StartNew();
+
+        try
+        {
+            StatusChanged?.Invoke($"Downloading {fileName}...");
+            await DownloadWithDownloaderAsync(url, destPath, 0,
+                (_, totalRead, total) =>
+                {
+                    chunkTotal = totalRead;
+                    actualTotal = total;
+                    EmitProgress(force: false);
+                },
+                _cts.Token);
+
+            EmitProgress(force: true);
+            StatusChanged?.Invoke($"Download complete → {destPath}");
+            Completed?.Invoke(true, destPath);
+        }
+        catch (OperationCanceledException)
+        {
+            StatusChanged?.Invoke("Download cancelled");
+            Completed?.Invoke(false, "Cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            StatusChanged?.Invoke($"Error on {fileName}: {ex.Message}");
+            Completed?.Invoke(false, ex.Message);
+            throw;
+        }
+        finally
+        {
+            IsDownloading = false;
+            _cts.Dispose();
+            _cts = null;
+        }
+
+        void EmitProgress(bool force)
+        {
+            var progress = actualTotal > 0 ? (double)chunkTotal / actualTotal * 100 : 100;
+
+            if (!force)
+            {
+                var changed = Math.Abs(progress - lastProgress) >= 0.5;
+                if (!changed && progressGate.ElapsedMilliseconds < 125)
+                    return;
+            }
+
+            lastProgress = progress;
+            progressGate.Restart();
+
+            ProgressChanged?.Invoke(new DownloadProgress
+            {
+                CurrentFile = fileName,
+                FileProgress = progress,
+                OverallProgress = progress,
+                DownloadedFiles = 0,
+                TotalFiles = 1
+            });
+        }
+    }
+
     public void Cancel()
     {
         _cts?.Cancel();
