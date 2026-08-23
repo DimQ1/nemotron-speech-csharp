@@ -34,6 +34,11 @@ public sealed class TranslationService : ITranslationService
     private readonly object _inflightLock = new();
     private readonly List<Task> _inflight = new();
 
+    // Monotonic session counter. Reset()/DisposeAsync() increment it so that
+    // in-flight final translations from a previous session can detect they are
+    // stale and must not write into the new session's display.
+    private long _generation;
+
     private LiteRTLmNativeTranslator? _translator;
     private volatile string _targetLanguage = "ru";
     private volatile string _statusText = "Translation off";
@@ -80,6 +85,16 @@ public sealed class TranslationService : ITranslationService
         List<string> sentences;
         lock (_bufferLock)
         {
+            // Recognizer revision: the accumulated transcript shrank (word correction).
+            // Re-buffer from scratch so sentence splitting never operates on a stale prefix.
+            if (fullText.Length < _fedLength)
+            {
+                _buffer.Clear();
+                _consumed = 0;
+                _fedLength = 0;
+                _draftSource = "";
+            }
+
             var start = Math.Clamp(_fedLength, 0, fullText.Length);
             var delta = fullText[start..];
             _fedLength = fullText.Length;
@@ -184,6 +199,7 @@ public sealed class TranslationService : ITranslationService
 
     public void Reset()
     {
+        Interlocked.Increment(ref _generation);
         _draftCts?.Cancel();
         _draftSource = "";
 
@@ -263,16 +279,40 @@ public sealed class TranslationService : ITranslationService
 
     public async ValueTask DisposeAsync()
     {
+        // Invalidate any in-flight final translation so it can't write to the
+        // display after the service is gone.
+        Interlocked.Increment(ref _generation);
         _draftCts?.Cancel();
+
+        Task[] inflight;
+        lock (_inflightLock)
+        {
+            inflight = _inflight.Where(t => !t.IsCompleted).ToArray();
+            _inflight.Clear();
+        }
+
+        var draft = _draftTask;
+        var all = draft is { IsCompleted: false } ? inflight.Append(draft).ToArray() : inflight;
+
+        // Let in-flight decodes wind down before disposing the native engine;
+        // force-dispose after a bounded grace period because native decode is
+        // not cancellable mid-token.
+        if (all.Length > 0)
+        {
+            try
+            {
+                await Task.WhenAll(all).WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // Best-effort shutdown: the engine is force-disposed below.
+            }
+        }
 
         _translator?.Dispose();
         _translator = null;
         _translateGate.Dispose();
         _loadGate.Dispose();
-
-        // Give in-flight tasks a moment to observe the disposed state; they hold
-        // their own references and will fail gracefully on the disposed engine.
-        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     // ── Internals ────────────────────────────────────────────────────────────
@@ -284,6 +324,11 @@ public sealed class TranslationService : ITranslationService
     /// </summary>
     private void EnqueueFinal(string sentence)
     {
+        // The target language is captured now so that a language change mid-flight
+        // does not re-target an already-queued sentence (finals are point-in-time).
+        var generation = Interlocked.Read(ref _generation);
+        var language = _targetLanguage;
+
         string? promoted = null;
         lock (_stateLock)
         {
@@ -296,8 +341,8 @@ public sealed class TranslationService : ITranslationService
         }
 
         var task = promoted is not null
-            ? CommitPromotedAsync(promoted)
-            : TranslateFinalAsync(sentence, _targetLanguage);
+            ? CommitPromotedAsync(promoted, generation)
+            : TranslateFinalAsync(sentence, language, generation);
 
         lock (_inflightLock)
         {
@@ -306,12 +351,15 @@ public sealed class TranslationService : ITranslationService
         }
     }
 
-    private async Task CommitPromotedAsync(string text)
+    private async Task CommitPromotedAsync(string text, long generation)
     {
         if (!await TryEnterTranslateGateAsync().ConfigureAwait(false))
             return;
         try
         {
+            if (Interlocked.Read(ref _generation) != generation)
+                return; // session was reset/disposed while queued
+
             ClearProvisional();
             AppendCompleted(text);
             RaiseTranslationChanged();
@@ -322,7 +370,7 @@ public sealed class TranslationService : ITranslationService
         }
     }
 
-    private async Task TranslateFinalAsync(string sentence, string language)
+    private async Task TranslateFinalAsync(string sentence, string language, long generation)
     {
         try
         {
@@ -330,7 +378,8 @@ public sealed class TranslationService : ITranslationService
         }
         catch (Exception ex)
         {
-            SetStatus($"Translation model failed to load: {ex.Message}");
+            if (Interlocked.Read(ref _generation) == generation)
+                SetStatus($"Translation model failed to load: {ex.Message}");
             return;
         }
 
@@ -342,11 +391,17 @@ public sealed class TranslationService : ITranslationService
             return;
         try
         {
+            if (Interlocked.Read(ref _generation) != generation)
+                return; // stale — do not touch the new session's display
+
             ClearProvisional();
 
             var partial = new StringBuilder();
             await foreach (var token in translator.TranslateStreamAsync(sentence, language).ConfigureAwait(false))
             {
+                if (Interlocked.Read(ref _generation) != generation)
+                    return; // session reset mid-decode; bail without committing
+
                 partial.Append(token);
                 lock (_stateLock)
                 {
@@ -355,6 +410,9 @@ public sealed class TranslationService : ITranslationService
                 }
                 RaiseTranslationChanged();
             }
+
+            if (Interlocked.Read(ref _generation) != generation)
+                return;
 
             var result = partial.ToString().Trim();
             if (result.Length > 0)
@@ -372,6 +430,9 @@ public sealed class TranslationService : ITranslationService
         }
         catch (Exception ex)
         {
+            if (Interlocked.Read(ref _generation) != generation)
+                return;
+
             lock (_stateLock)
             {
                 _streaming = "";

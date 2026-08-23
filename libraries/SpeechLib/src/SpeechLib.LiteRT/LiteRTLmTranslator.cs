@@ -25,6 +25,14 @@ public sealed class LiteRTLmTranslator : ITextTranslator
         _ownsClient = httpClient is null;
         _http = httpClient ?? new HttpClient();
 
+        if (_ownsClient)
+        {
+            // Streaming responses are a single long-lived connection. The default
+            // 100 s HttpClient.Timeout would cut off slow token streams; the caller
+            // governs lifetime via the per-call CancellationToken instead.
+            _http.Timeout = Timeout.InfiniteTimeSpan;
+        }
+
         if (_http.BaseAddress is null)
             _http.BaseAddress = new Uri(_options.BaseUrl);
     }

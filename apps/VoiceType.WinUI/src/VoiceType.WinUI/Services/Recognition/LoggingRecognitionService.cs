@@ -45,6 +45,12 @@ public sealed class LoggingRecognitionService : IRecognitionService
         remove => _inner.Stopped -= value;
     }
 
+    public event Action<string>? CaptureError
+    {
+        add => _inner.CaptureError += value;
+        remove => _inner.CaptureError -= value;
+    }
+
     public event Action<ModelState>? ModelStateChanged
     {
         add => _inner.ModelStateChanged += value;

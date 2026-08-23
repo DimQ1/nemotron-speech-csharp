@@ -237,6 +237,7 @@ public sealed partial class MainViewModel : ObservableObject
         _recognition.PartialResult += OnPartialResult;
         _recognition.FinalResult += OnFinalResult;
         _recognition.Stopped += OnRecognitionStopped;
+        _recognition.CaptureError += OnCaptureError;
         _recognition.ModelStateChanged += OnModelStateChanged;
 
         _partialResultTimer = _dispatcher.CreateTimer();
@@ -1222,6 +1223,18 @@ public sealed partial class MainViewModel : ObservableObject
             IsRecording = false;
             if (StatusText == "Finalizing...")
                 StatusText = "Ready";
+        });
+    }
+
+    private void OnCaptureError(string message)
+    {
+        _dispatcher.TryEnqueue(() =>
+        {
+            _partialResultTimer.Stop();
+            _stateMachine.Fire(RecognitionTrigger.Reset);
+            IsRecording = false;
+            StatusText = $"Capture error: {message}";
+            try { App.Telemetry?.LogError("Recognition", $"Audio capture failed: {message}"); } catch { }
         });
     }
 

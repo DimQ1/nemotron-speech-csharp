@@ -94,6 +94,15 @@ internal static class Program
 
             return 0;
         }
+        catch (InvalidOperationException ex) when (ex.Message.StartsWith("Audio capture failed.", StringComparison.Ordinal))
+        {
+            // Graceful handling for unavailable microphone / broken loopback devices.
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            Console.WriteLine($"Error: {detail}");
+            Console.WriteLine("Hint: check your audio devices — a microphone must be present for --mode mic,");
+            Console.WriteLine("      and a working playback device for --mode loopback.");
+            return 2;
+        }
         catch (Exception ex) when (ex is ArgumentException or DirectoryNotFoundException)
         {
             Console.WriteLine($"Error: {ex.Message}");
@@ -162,6 +171,9 @@ internal sealed class LiveTranslationCoordinator
     private readonly StringBuilder _buffer = new();
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly List<Task> _inflight = new();
+    private readonly SortedDictionary<long, string> _buffered = new();
+    private long _nextSeq;
+    private long _nextPrint = 1; // sequence numbers start at 1 (see Interlocked.Increment below)
     private int _consumed;
 
     public LiveTranslationCoordinator(ITextTranslator translator, string targetLang)
@@ -179,9 +191,13 @@ internal sealed class LiveTranslationCoordinator
         var sentences = SentenceSplitter.ExtractCompleteSentences(_buffer, ref _consumed);
         foreach (var sentence in sentences)
         {
-            var task = TranslateSentenceAsync(sentence);
+            var seq = Interlocked.Increment(ref _nextSeq);
+            var task = TranslateSentenceAsync(seq, sentence);
             lock (_inflight)
+            {
+                _inflight.RemoveAll(t => t.IsCompleted);
                 _inflight.Add(task);
+            }
         }
     }
 
@@ -204,9 +220,13 @@ internal sealed class LiveTranslationCoordinator
         var tail = _buffer.ToString(_consumed, _buffer.Length - _consumed).Trim();
         if (tail.Length > 0)
         {
-            var task = TranslateSentenceAsync(tail);
+            var seq = Interlocked.Increment(ref _nextSeq);
+            var task = TranslateSentenceAsync(seq, tail);
             lock (_inflight)
+            {
+                _inflight.RemoveAll(t => t.IsCompleted);
                 _inflight.Add(task);
+            }
         }
 
         Task[] pending;
@@ -216,27 +236,46 @@ internal sealed class LiveTranslationCoordinator
         await Task.WhenAll(pending);
     }
 
-    private async Task TranslateSentenceAsync(string sentence)
+    private async Task TranslateSentenceAsync(long seq, string sentence)
     {
+        string text;
+        try
+        {
+            var sb = new StringBuilder();
+            await foreach (var token in _translator.TranslateStreamAsync(sentence, _targetLang))
+                sb.Append(token);
+
+            text = sb.ToString().Trim();
+        }
+        catch (Exception ex)
+        {
+            text = $"[translate error] {ex.Message}";
+        }
+
+        // Print strictly in sentence order: buffer completed translations and drain
+        // contiguously, so a slow earlier sentence never lets a later one jump ahead.
         await _writeLock.WaitAsync();
         try
         {
-            Console.WriteLine();
-            Console.WriteLine($"  [{_targetLang}] ");
-            try
-            {
-                await foreach (var token in _translator.TranslateStreamAsync(sentence, _targetLang))
-                    Console.Write(token);
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"  [translate] {ex.Message}");
-            }
-            Console.WriteLine();
+            _buffered[seq] = text;
+            DrainBuffered();
         }
         finally
         {
             _writeLock.Release();
+        }
+    }
+
+    /// <summary>Prints every completed translation whose predecessors have already printed. Caller holds <see cref="_writeLock"/>.</summary>
+    private void DrainBuffered()
+    {
+        while (_buffered.TryGetValue(_nextPrint, out var text))
+        {
+            _buffered.Remove(_nextPrint);
+            _nextPrint++;
+            Console.WriteLine();
+            Console.WriteLine($"  [{_targetLang}] {text}");
+            Console.WriteLine();
         }
     }
 }
