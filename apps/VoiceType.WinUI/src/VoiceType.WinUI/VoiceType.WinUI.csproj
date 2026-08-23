@@ -177,19 +177,22 @@
        NOTE: SpeechLib owns ORT GenAI dependencies with GpuArch selection.
        Use -p:GpuArch=CPU for Store/CPU builds. -->
   <Target Name="CopyOrt1280NativeAssetsToAppX" AfterTargets="Build">
-    <!-- ORT 1.28.0 from NuGet cache (CPU-only, no CUDA providers) -->
-    <PropertyGroup>
+    <!-- ORT 1.28.0 from NuGet cache (CPU-only, no CUDA providers).
+         Only for CPU builds: for CUDA/DML/Blackwell builds the GenAI package already
+         flows its own onnxruntime.dll — copying the CPU one here would produce an
+         APPX1101 duplicate payload error. -->
+    <PropertyGroup Condition="'$(GpuArch)' == 'CPU'">
       <_Ort1280Cache>$(USERPROFILE)\.nuget\packages\microsoft.ml.onnxruntime\1.28.0\runtimes\win-x64\native\</_Ort1280Cache>
     </PropertyGroup>
-    <ItemGroup>
+    <ItemGroup Condition="'$(GpuArch)' == 'CPU'">
       <_Ort1280Native Include="$(_Ort1280Cache)*.dll" Condition="Exists('$(_Ort1280Cache)')" />
     </ItemGroup>
-    <Copy SourceFiles="@(_Ort1280Native)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="false" Condition="'@(_Ort1280Native)' != ''" />
-    <Copy SourceFiles="@(_Ort1280Native)" DestinationFolder="$(OutputPath)AppX" SkipUnchangedFiles="false" Condition="'@(_Ort1280Native)' != ''" />
+    <Copy SourceFiles="@(_Ort1280Native)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="false" Condition="'$(GpuArch)' == 'CPU' and '@(_Ort1280Native)' != ''" />
+    <Copy SourceFiles="@(_Ort1280Native)" DestinationFolder="$(OutputPath)AppX" SkipUnchangedFiles="false" Condition="'$(GpuArch)' == 'CPU' and '@(_Ort1280Native)' != ''" />
     <!-- Remove stale CUDA provider DLLs (incompatible with ORT 1.28.0 and unused on CPU) -->
-    <Delete Files="$(OutputPath)AppX\onnxruntime_providers_cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_cuda.dll')" />
-    <Delete Files="$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll')" />
-    <Delete Files="$(OutputPath)AppX\onnxruntime-genai-cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime-genai-cuda.dll')" />
+    <Delete Files="$(OutputPath)AppX\onnxruntime_providers_cuda.dll" Condition="'$(GpuArch)' == 'CPU' and Exists('$(OutputPath)AppX\onnxruntime_providers_cuda.dll')" />
+    <Delete Files="$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll" Condition="'$(GpuArch)' == 'CPU' and Exists('$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll')" />
+    <Delete Files="$(OutputPath)AppX\onnxruntime-genai-cuda.dll" Condition="'$(GpuArch)' == 'CPU' and Exists('$(OutputPath)AppX\onnxruntime-genai-cuda.dll')" />
     <!-- VC++ Runtime (required by ONNX Runtime native DLLs) -->
     <ItemGroup>
       <_VcRuntime Include="$(SystemRoot)\System32\vcruntime140.dll" />
