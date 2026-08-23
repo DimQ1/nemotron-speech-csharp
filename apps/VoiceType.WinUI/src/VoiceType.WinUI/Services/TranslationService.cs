@@ -20,8 +20,10 @@ namespace VoiceType.WinUI.Services;
 /// </remarks>
 public sealed class TranslationService : ITranslationService
 {
-    private const int DraftDebounceMs = 300;
+    private const int DraftDebounceMs = 150;
     private const int MinStableWords = 2;
+    private const int MaxTailChars = 160;
+    private const int MinForceChunkChars = 40;
 
     private readonly object _stateLock = new();
     private readonly object _bufferLock = new();
@@ -48,6 +50,7 @@ public sealed class TranslationService : ITranslationService
     private volatile string _draftSource = "";
     private string _draftCompletedSource = "";
     private string _draftPrevFull = "";
+    private string _draftDecodedSource = "";
     private CancellationTokenSource? _draftCts;
     private Task? _draftTask;
 
@@ -86,6 +89,24 @@ public sealed class TranslationService : ITranslationService
 
             _buffer.Append(delta);
             sentences = SentenceSplitter.ExtractCompleteSentences(_buffer, ref _consumed);
+
+            // When the recognizer omits punctuation for a long stretch, force-finalize
+            // bounded chunks so translation keeps progressing instead of stalling.
+            while (_buffer.Length - _consumed > MaxTailChars)
+            {
+                var chunk = CutForceChunkLocked();
+                if (chunk.Length == 0)
+                    break;
+                sentences.Add(chunk);
+            }
+        }
+
+        // A completed sentence supersedes the in-flight draft for the old tail:
+        // cancel it synchronously so the final translation grabs the gate promptly.
+        if (sentences.Count > 0)
+        {
+            _draftCts?.Cancel();
+            _draftSource = "";
         }
 
         foreach (var sentence in sentences)
@@ -94,10 +115,38 @@ public sealed class TranslationService : ITranslationService
         ScheduleDraft();
     }
 
+    /// <summary>
+    /// Splits an oversized unpunctuated tail at the last word boundary before
+    /// <see cref="MaxTailChars"/> and advances <see cref="_consumed"/> past it.
+    /// Must be called under <c>_bufferLock</c>.
+    /// </summary>
+    private string CutForceChunkLocked()
+    {
+        var tailStart = _consumed;
+        var tailLen = _buffer.Length - tailStart;
+        if (tailLen <= MaxTailChars)
+            return "";
+
+        var splitAt = tailStart + MaxTailChars;
+        while (splitAt > tailStart && !char.IsWhiteSpace(_buffer[splitAt - 1]))
+            splitAt--;
+
+        if (splitAt - tailStart < MinForceChunkChars)
+            splitAt = tailStart + MaxTailChars; // no usable word boundary — cut hard
+
+        var chunk = _buffer.ToString(tailStart, splitAt - tailStart).Trim();
+        var k = splitAt;
+        while (k < _buffer.Length && char.IsWhiteSpace(_buffer[k]))
+            k++;
+        _consumed = k;
+        return chunk;
+    }
+
     public async Task FlushAsync(CancellationToken cancellationToken = default)
     {
         _draftCts?.Cancel();
         _draftSource = "";
+        _draftDecodedSource = "";
 
         string tail;
         lock (_bufferLock)
@@ -152,6 +201,7 @@ public sealed class TranslationService : ITranslationService
             _streaming = "";
             _draftPrevFull = "";
             _draftCompletedSource = "";
+            _draftDecodedSource = "";
         }
 
         RaiseTranslationChanged();
@@ -288,9 +338,6 @@ public sealed class TranslationService : ITranslationService
         if (translator is null)
             return;
 
-        // A completed sentence supersedes any in-flight draft for the same span.
-        _draftCts?.Cancel();
-
         if (!await TryEnterTranslateGateAsync().ConfigureAwait(false))
             return;
         try
@@ -338,9 +385,9 @@ public sealed class TranslationService : ITranslationService
     }
 
     /// <summary>
-    /// Schedules a debounced, cancellable draft translation of the unfinished tail.
-    /// The latest tail always wins: an older draft is cancelled so its decode stops
-    /// and the newer one can start.
+    /// Schedules draft translation of the unfinished tail. A single draft loop keeps
+    /// re-translating the tail as it grows, streaming tokens to the display on the fly
+    /// and locking the stable word-aligned prefix after each completed pass.
     /// </summary>
     private void ScheduleDraft()
     {
@@ -357,27 +404,23 @@ public sealed class TranslationService : ITranslationService
             return;
         }
 
-        if (tail == _draftSource)
-            return;
+        if (tail == _draftSource && _draftTask is { IsCompleted: false })
+            return; // the running loop already owns this tail
 
         _draftSource = tail;
+
+        if (_draftTask is { IsCompleted: false } && _draftCts is { IsCancellationRequested: false })
+            return; // the live loop will observe the updated tail on its next pass
+
+        // Start (or restart) the draft loop.
         _draftCts?.Cancel();
         var cts = new CancellationTokenSource();
         _draftCts = cts;
-        _draftTask = RunDraftAsync(tail, cts.Token);
+        _draftTask = RunDraftLoopAsync(cts.Token);
     }
 
-    private async Task RunDraftAsync(string source, CancellationToken ct)
+    private async Task RunDraftLoopAsync(CancellationToken ct)
     {
-        try
-        {
-            await Task.Delay(DraftDebounceMs, ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-
         try
         {
             if (_translator is null)
@@ -397,59 +440,96 @@ public sealed class TranslationService : ITranslationService
         if (translator is null)
             return;
 
-        if (!await TryEnterTranslateGateAsync(ct).ConfigureAwait(false))
-            return;
-        try
+        while (!ct.IsCancellationRequested)
         {
-            if (ct.IsCancellationRequested || source != _draftSource)
-                return;
+            var source = _draftSource;
+            if (source.Length == 0)
+                break;
 
-            // Decode into a local buffer without touching the display, so a stale
-            // draft never flashes through the UI (double buffering).
-            var partial = new StringBuilder();
-            await foreach (var token in translator
-                .TranslateStreamAsync(source, _targetLanguage, cancellationToken: ct)
-                .ConfigureAwait(false))
+            // Coalesce bursts of partial updates before spending a decode pass.
+            try
             {
-                partial.Append(token);
+                await Task.Delay(DraftDebounceMs, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
 
-            var full = partial.ToString().Trim();
-            bool stale;
+            source = _draftSource;
+            if (source.Length == 0 || ct.IsCancellationRequested)
+                break;
+
+            if (source == _draftDecodedSource)
+                break; // caught up — a later Feed restarts the loop
+
+            if (!await TryEnterTranslateGateAsync(ct).ConfigureAwait(false))
+                break;
+
+            try
+            {
+                var current = _draftSource;
+                if (current != source || current.Length == 0)
+                    continue; // changed while waiting for the gate — retry with latest
+
+                var completed = await StreamDraftAsync(translator, current, ct).ConfigureAwait(false);
+                if (completed)
+                    _draftDecodedSource = current;
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            finally
+            {
+                ExitTranslateGate();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Streams a draft translation token-by-token into the provisional display and,
+    /// on completion, locks the stable word-aligned prefix. Returns <c>false</c> when
+    /// the draft was superseded before finishing (a newer tail now owns the display).
+    /// </summary>
+    private async Task<bool> StreamDraftAsync(LiteRTLmNativeTranslator translator, string source, CancellationToken ct)
+    {
+        var partial = new StringBuilder();
+        await foreach (var token in translator
+            .TranslateStreamAsync(source, _targetLanguage, cancellationToken: ct)
+            .ConfigureAwait(false))
+        {
+            partial.Append(token);
+            if (ct.IsCancellationRequested || source != _draftSource)
+                return false; // superseded — a newer pass owns the display
+
             lock (_stateLock)
             {
-                stale = ct.IsCancellationRequested || source != _draftSource;
-                if (!stale)
-                {
-                    var locked = StablePrefix.LongestWordAlignedCommonPrefix(_draftPrevFull, full, MinStableWords);
-                    _draftPrevFull = full;
-                    _draftCompletedSource = NormalizeTail(source);
-                    _locked = locked;
-                    _streaming = full.Length >= locked.Length ? full[locked.Length..] : "";
-                }
+                _locked = "";
+                _streaming = partial.ToString();
             }
-
-            if (stale)
-                return;
-
             RaiseTranslationChanged();
         }
-        catch (OperationCanceledException)
+
+        var full = partial.ToString().Trim();
+        var committed = false;
+        lock (_stateLock)
         {
-            // Superseded by a newer draft or a final translation — they own the display.
-        }
-        catch (Exception ex)
-        {
-            lock (_stateLock)
+            if (!ct.IsCancellationRequested && source == _draftSource)
             {
-                _streaming = "";
+                var locked = StablePrefix.LongestWordAlignedCommonPrefix(_draftPrevFull, full, MinStableWords);
+                _draftPrevFull = full;
+                _draftCompletedSource = NormalizeTail(source);
+                _locked = locked;
+                _streaming = full.Length >= locked.Length ? full[locked.Length..] : "";
+                committed = true;
             }
-            SetStatus($"Translation error: {ex.Message}");
         }
-        finally
-        {
-            ExitTranslateGate();
-        }
+
+        if (committed)
+            RaiseTranslationChanged();
+
+        return committed;
     }
 
     /// <summary>Acquires the translation gate, tolerating cancellation and shutdown.</summary>
