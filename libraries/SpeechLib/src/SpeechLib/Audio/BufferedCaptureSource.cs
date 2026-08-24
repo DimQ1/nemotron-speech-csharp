@@ -65,36 +65,91 @@ public sealed class BufferedCaptureSource : IAudioSource
 
         if (useLoopback)
         {
-            loopbackCapture = new WasapiLoopbackCapture();
-            loopbackProvider = CreateBuffer(loopbackCapture.WaveFormat);
-            loopbackCapture.DataAvailable += (_, ev) =>
+            try
             {
-                if (!state.IsRunning) return;
-                loopbackProvider.AddSamples(ev.Buffer, 0, ev.BytesRecorded);
-            };
-            loopbackCapture.RecordingStopped += (_, _) =>
+                loopbackCapture = new WasapiLoopbackCapture();
+                loopbackProvider = CreateBuffer(loopbackCapture.WaveFormat);
+                loopbackCapture.DataAvailable += (_, ev) =>
+                {
+                    if (!state.IsRunning) return;
+                    loopbackProvider.AddSamples(ev.Buffer, 0, ev.BytesRecorded);
+                };
+                loopbackCapture.RecordingStopped += (_, _) =>
+                {
+                    state.Stop();
+                    signal.Set();
+                };
+                loopbackCapture.StartRecording();
+            }
+            catch (Exception ex)
             {
-                state.Stop();
-                signal.Set();
-            };
-            loopbackCapture.StartRecording();
+                if (_mode == CaptureMode.Mix)
+                {
+                    // Missing render device is not fatal in Mix mode — degrade to mic-only.
+                    Console.Error.WriteLine($"[capture] Loopback unavailable — continuing with microphone only: {ex.Message}");
+                    loopbackCapture?.Dispose();
+                    loopbackCapture = null;
+                    loopbackProvider = null;
+                }
+                else
+                {
+                    loopbackCapture?.Dispose();
+                    throw new InvalidOperationException(
+                        "No audio render device is available for system-audio (loopback) capture. " +
+                        "Start playing audio, or run with a microphone instead.", ex);
+                }
+            }
         }
 
         if (useMic)
         {
-            micCapture = new WaveInEvent { WaveFormat = new WaveFormat(16000, 16, 1) };
-            micProvider = CreateBuffer(micCapture.WaveFormat);
-            micCapture.DataAvailable += (_, ev) =>
+            if (WaveInEvent.DeviceCount == 0)
             {
-                if (!state.IsRunning) return;
-                micProvider.AddSamples(ev.Buffer, 0, ev.BytesRecorded);
-            };
-            micCapture.RecordingStopped += (_, _) =>
+                if (_mode == CaptureMode.Mix)
+                {
+                    Console.Error.WriteLine("[capture] No microphone detected — continuing with system audio only.");
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        "No microphone input device was detected. Connect a microphone and try again.");
+                }
+            }
+            else
             {
-                state.Stop();
-                signal.Set();
-            };
-            micCapture.StartRecording();
+                try
+                {
+                    micCapture = new WaveInEvent { WaveFormat = new WaveFormat(16000, 16, 1) };
+                    micProvider = CreateBuffer(micCapture.WaveFormat);
+                    micCapture.DataAvailable += (_, ev) =>
+                    {
+                        if (!state.IsRunning) return;
+                        micProvider.AddSamples(ev.Buffer, 0, ev.BytesRecorded);
+                    };
+                    micCapture.RecordingStopped += (_, _) =>
+                    {
+                        state.Stop();
+                        signal.Set();
+                    };
+                    micCapture.StartRecording();
+                }
+                catch (Exception ex)
+                {
+                    if (_mode == CaptureMode.Mix)
+                    {
+                        Console.Error.WriteLine($"[capture] Microphone unavailable — continuing with system audio only: {ex.Message}");
+                        micCapture?.Dispose();
+                        micCapture = null;
+                        micProvider = null;
+                    }
+                    else
+                    {
+                        micCapture?.Dispose();
+                        throw new InvalidOperationException(
+                            "The microphone could not be started. It may be in use by another application or disabled.", ex);
+                    }
+                }
+            }
         }
 
         // Build lazy normalization pipeline(s) — mono + resample direct from ring buffers.
@@ -105,7 +160,8 @@ public sealed class BufferedCaptureSource : IAudioSource
             ? CreateNormalizedProvider(micProvider) : null;
 
         if (loopbackSource is null && micSource is null)
-            throw new InvalidOperationException("No audio sources configured");
+            throw new InvalidOperationException(
+                "No audio source could be started. Check your microphone and system-audio settings.");
 
         // ── Main drain loop — drain all available audio each cycle ──
         // Reads ALL buffered audio from each source independently and

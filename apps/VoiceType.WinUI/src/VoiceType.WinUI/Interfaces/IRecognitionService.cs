@@ -18,6 +18,9 @@ public interface IRecognitionService : IDisposable
     event Action<string>? FinalResult;
     event Action? Stopped;
 
+    /// <summary>Fires when audio capture fails to start (missing microphone, broken loopback, etc.).</summary>
+    event Action<string>? CaptureError;
+
     /// <summary>Fires when <see cref="ModelState"/> changes.</summary>
     event Action<ModelState>? ModelStateChanged;
 

@@ -38,6 +38,7 @@ public sealed class RecognitionService : IRecognitionService
     private CaptureState? _captureState;
     private bool _isRunning;
     private volatile bool _captureMuted;
+    private volatile Exception? _captureError;
     private Task? _processTask;
     private readonly StringBuilder _accumulatedText = new();
     private readonly StringBuilder _partialProcessedText = new();
@@ -70,6 +71,10 @@ public sealed class RecognitionService : IRecognitionService
     public event Action<string>? PartialResult;
     public event Action<string>? FinalResult;
     public event Action? Stopped;
+
+    /// <summary>Fires when audio capture fails to start (missing microphone, broken loopback, etc.).</summary>
+    public event Action<string>? CaptureError;
+
     public event Action<ModelState>? ModelStateChanged;
 
     public bool IsRunning => _isRunning;
@@ -204,6 +209,7 @@ public sealed class RecognitionService : IRecognitionService
         _accumulatedText.Clear();
         _partialProcessedText.Clear();
         _isRunning = true;
+        _captureError = null;
 
         if (settings.SaveAudioMp3)
         {
@@ -225,8 +231,24 @@ public sealed class RecognitionService : IRecognitionService
 
         _captureThread = new Thread(() =>
         {
-            _audioSource!.Start(_buffer, _signal!, _captureState);
-        }) { IsBackground = true };
+            try
+            {
+                _audioSource!.Start(_buffer, _signal!, _captureState);
+            }
+            catch (Exception ex)
+            {
+                // Record the failure so ProcessLoop can surface it instead of hanging
+                // in the "listening" state forever (thread would otherwise die silently).
+                _captureError = ex;
+            }
+            finally
+            {
+                // Guarantee ProcessLoop's wait condition can observe the failed capture
+                // and terminate even though _isRunning is still true.
+                _captureState?.Stop();
+                _signal?.Set();
+            }
+        }) { IsBackground = true, Name = "VoiceType-capture" };
         _captureThread.Start();
 
         // Processing loop on thread pool — track task to await on restart
@@ -350,6 +372,19 @@ public sealed class RecognitionService : IRecognitionService
                 _signal?.Wait(50);
                 _signal?.Reset();
             }
+        }
+
+        // If the capture source failed (missing mic, broken loopback, ...) there is no
+        // audio to flush — surface the error and stop cleanly instead of firing an
+        // empty FinalResult that would wipe the previously displayed text.
+        if (_captureError is not null)
+        {
+            var message = _captureError.Message;
+            _telemetry?.LogError("Recognition", $"Audio capture failed: {message}");
+            CaptureError?.Invoke(message);
+            Stopped?.Invoke();
+            _captureThread?.Join(TimeSpan.FromSeconds(1));
+            return;
         }
 
         // Flush

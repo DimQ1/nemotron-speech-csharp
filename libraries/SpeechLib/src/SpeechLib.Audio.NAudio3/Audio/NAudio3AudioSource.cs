@@ -62,16 +62,62 @@ public sealed class NAudio3AudioSource : IAudioSource
         if (Interlocked.CompareExchange(ref _activeState, state, null) is not null)
             throw new InvalidOperationException("Audio capture is already running.");
 
+        CaptureHandle? loopback = null;
+        CaptureHandle? microphone = null;
         try
         {
-            using var loopback = CreateLoopback(state, signal);
-            using var microphone = CreateMicrophone(state, signal);
+            if (_mode is CaptureMode.Loopback or CaptureMode.Mix)
+            {
+                try
+                {
+                    loopback = CreateLoopback(state, signal);
+                }
+                catch (Exception ex)
+                {
+                    if (_mode == CaptureMode.Mix)
+                    {
+                        // Missing render device is not fatal in Mix mode — degrade to mic-only.
+                        Console.Error.WriteLine($"[capture] Loopback unavailable — continuing with microphone only: {ex.Message}");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException(
+                            "No audio render device is available for system-audio (loopback) capture. " +
+                            "Start playing audio, or run with a microphone instead.", ex);
+                    }
+                }
+            }
+
+            if (_mode is CaptureMode.Mic or CaptureMode.Mix)
+            {
+                try
+                {
+                    microphone = CreateMicrophone(state, signal);
+                }
+                catch (Exception ex)
+                {
+                    if (_mode == CaptureMode.Mix)
+                    {
+                        Console.Error.WriteLine($"[capture] Microphone unavailable — continuing with system audio only: {ex.Message}");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException(
+                            "The microphone could not be started. It may be in use by another application or disabled.", ex);
+                    }
+                }
+            }
 
             if (loopback is null && microphone is null)
-                throw new InvalidOperationException($"Capture mode '{_mode}' has no configured source.");
+                throw new InvalidOperationException(
+                    "No audio source could be started. Check your microphone and system-audio settings.");
 
-            loopback?.StartRecording();
-            microphone?.StartRecording();
+            TryStart(loopback, "Loopback", signal, ref loopback);
+            TryStart(microphone, "Microphone", signal, ref microphone);
+
+            if (loopback is null && microphone is null)
+                throw new InvalidOperationException(
+                    "No audio source could be started. Check your microphone and system-audio settings.");
 
             var loopbackSource = loopback?.Buffer;
             var microphoneSource = microphone?.Buffer;
@@ -101,7 +147,37 @@ public sealed class NAudio3AudioSource : IAudioSource
         }
         finally
         {
+            loopback?.Dispose();
+            microphone?.Dispose();
             Interlocked.CompareExchange(ref _activeState, null, state);
+        }
+    }
+
+    /// <summary>
+    /// Starts one capture handle, degrading Mix mode to the other source when the
+    /// start call fails. Non-Mix failures are rethrown with an actionable message.
+    /// </summary>
+    private void TryStart(CaptureHandle? handle, string what, ManualResetEventSlim signal, ref CaptureHandle? target)
+    {
+        if (handle is null)
+            return;
+
+        try
+        {
+            handle.StartRecording();
+        }
+        catch (Exception ex)
+        {
+            if (_mode == CaptureMode.Mix)
+            {
+                Console.Error.WriteLine($"[capture] {what} failed to start — continuing with the other source: {ex.Message}");
+                handle.Dispose();
+                target = null;
+            }
+            else
+            {
+                throw new InvalidOperationException($"{what} capture could not start.", ex);
+            }
         }
     }
 
