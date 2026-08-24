@@ -1,0 +1,61 @@
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <!-- net10.0-windows10.0.26100 = WinAppSDK (WinUI 3) head for parity testing on Windows;
+         net10.0-desktop = Skia head (Linux X11 primary, also Windows/macOS) -->
+    <TargetFrameworks>net10.0-windows10.0.26100;net10.0-desktop</TargetFrameworks>
+
+    <OutputType>Exe</OutputType>
+    <UnoSingleProject>true</UnoSingleProject>
+
+    <!-- Display name -->
+    <ApplicationTitle>VoiceType.Uno</ApplicationTitle>
+    <!-- App Identifier -->
+    <ApplicationId>com.companyname.voicetype-uno</ApplicationId>
+    <!-- Versions -->
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <!-- Package Publisher -->
+    <ApplicationPublisher>VoiceType.Uno</ApplicationPublisher>
+    <!-- Package Description -->
+    <Description>VoiceType.Uno powered by Uno Platform.</Description>
+
+    <!--
+      UnoFeatures are used to quickly add and manage features enabled for your app.
+      https://aka.platform.uno/singleproject-features
+    -->
+    <UnoFeatures>
+      Hosting;
+      Mvvm;
+      SkiaRenderer;
+      Toolkit;
+    </UnoFeatures>
+
+    <!-- Match repository conventions -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'">
+    <DefineConstants>$(DefineConstants);VOICE_TYPE_WINDOWS</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Speech recognition contracts (IAudioSource, IStreamingSpeechRecognizer, ...) -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib\SpeechLib.csproj" />
+    <!-- ONNX Runtime GenAI model session (owns ORT GenAI dependencies, GpuArch selection).
+         Linux uses CPU execution provider: -p:GpuArch=CPU -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Nemotron\SpeechLib.Nemotron.csproj" />
+    <!-- Global hotkeys: XDG GlobalShortcuts portal on Linux (Wayland + X11) -->
+    <ProjectReference Include="..\..\..\..\libraries\VoiceType.Hotkeys\VoiceType.Hotkeys.csproj" />
+    <!-- Live translation via LiteRT-LM server (OpenAI-compatible HTTP endpoint;
+         pure managed code — works on Linux, unlike the native LiteRT backend) -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.LiteRT\SpeechLib.LiteRT.csproj" />
+    <!-- In-process LiteRT-LM translation (no sidecar): LiteRtLmSharp runtime packages
+         are RID-selected (win-x64 / linux-x64), so the native backend also works on Linux -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.LiteRT.Native\SpeechLib.LiteRT.Native.csproj" />
+    <!-- Windows audio capture (WASAPI) via NAudio 3.0.1 — portable TFM (net10.0), so
+         it links into both heads; PulseAudio is selected at runtime on Linux. -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Audio.NAudio3\SpeechLib.Audio.NAudio3.csproj" />
+  </ItemGroup>
+
+</Project>

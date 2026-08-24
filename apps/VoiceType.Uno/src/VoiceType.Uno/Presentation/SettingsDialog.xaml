@@ -1,0 +1,146 @@
+<ContentDialog x:Class="VoiceType.Uno.Presentation.SettingsDialog"
+               xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               Title="Settings"
+               PrimaryButtonText="Save"
+               SecondaryButtonText="Cancel"
+               DefaultButton="Primary">
+  <ScrollViewer MaxHeight="620" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="12" Padding="4">
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Speech Engine" FontWeight="SemiBold" />
+          <TextBlock Text="Models root folder" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.ModelsRootPath, Mode=TwoWay}" />
+          <TextBlock Text="Model" Opacity="0.7" FontSize="12" />
+          <ComboBox ItemsSource="{x:Bind ViewModel.AvailableModels}"
+                    SelectedItem="{x:Bind ViewModel.SelectedModel, Mode=TwoWay}"
+                    PlaceholderText="Auto-detect model" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Download recommended model"
+                    Click="DownloadModel_Click"
+                    IsEnabled="{x:Bind ViewModel.CanDownloadModel, Mode=OneWay}" />
+            <ProgressRing Width="20" Height="20"
+                          IsActive="{x:Bind ViewModel.IsDownloadingModel, Mode=OneWay}"
+                          Visibility="{x:Bind ViewModel.IsDownloadingModel, Mode=OneWay}" />
+          </StackPanel>
+          <TextBlock Text="{x:Bind ViewModel.DownloadStatus, Mode=OneWay}"
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+          <TextBlock Text="{x:Bind ViewModel.ModelPath, Mode=OneWay}"
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+          <TextBlock Text="Execution provider" Opacity="0.7" FontSize="12" />
+          <ComboBox ItemsSource="{x:Bind ViewModel.ExecutionProviderOptions}"
+                    SelectedItem="{x:Bind ViewModel.ExecutionProvider, Mode=TwoWay}" />
+          <TextBlock Text="Language" Opacity="0.7" FontSize="12" />
+          <ComboBox ItemsSource="{x:Bind ViewModel.LanguageOptions}"
+                    SelectedItem="{x:Bind ViewModel.Language, Mode=TwoWay}" />
+          <CheckBox Content="Use voice activity detection"
+                    IsChecked="{x:Bind ViewModel.UseVad, Mode=TwoWay}" />
+        </StackPanel>
+      </Border>
+
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Audio Capture" FontWeight="SemiBold" />
+          <TextBlock Text="Choose the live source used by recognition." Opacity="0.7" FontSize="12" />
+          <ComboBox ItemsSource="{x:Bind ViewModel.AudioSourceOptions}"
+                    SelectedItem="{x:Bind ViewModel.AudioSource, Mode=TwoWay}" />
+          <TextBlock Text="Mic uses the default input. Loopback captures system output. Mix combines both."
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Live Translation" FontWeight="SemiBold" />
+          <CheckBox Content="Translate recognized text on the fly"
+                    IsChecked="{x:Bind ViewModel.TranslationEnabled, Mode=TwoWay}" />
+          <TextBlock Text="Engine" Opacity="0.7" FontSize="12" />
+          <ComboBox ItemsSource="{x:Bind ViewModel.TranslationBackendOptions}"
+                    SelectedItem="{x:Bind ViewModel.TranslationBackend, Mode=TwoWay}" />
+          <TextBlock Text="native = in-process model (offline, no sidecar, works on Linux). http = external LiteRT-LM server."
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+          <TextBlock Text="Compute backend (native engine)" Opacity="0.7" FontSize="12" />
+          <ComboBox ItemsSource="{x:Bind ViewModel.TranslationComputeBackendOptions}"
+                    SelectedItem="{x:Bind ViewModel.TranslationComputeBackend, Mode=TwoWay}" />
+          <TextBlock Text="cpu = XNNPACK (stable, default). gpu = WebGPU delegate (needs a working GPU driver)."
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+          <TextBlock Text="Target language (BCP-47 code, e.g. ru, en, de)" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.TranslationTargetLanguage, Mode=TwoWay}"
+                   PlaceholderText="ru" />
+          <TextBlock Text="Native model (.litertlm)" Opacity="0.7" FontSize="12" />
+          <TextBlock Text="{x:Bind ViewModel.NativeModelStatus, Mode=OneWay}"
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Download native model"
+                    Click="DownloadTranslationModel_Click"
+                    IsEnabled="{x:Bind ViewModel.CanDownloadModel, Mode=OneWay}" />
+            <ProgressRing Width="20" Height="20"
+                          IsActive="{x:Bind ViewModel.IsDownloadingModel, Mode=OneWay}"
+                          Visibility="{x:Bind ViewModel.IsDownloadingModel, Mode=OneWay}" />
+          </StackPanel>
+          <TextBlock Text="LiteRT-LM server URL (http engine)" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.TranslationServerUrl, Mode=TwoWay}"
+                   PlaceholderText="http://localhost:9379" />
+          <TextBlock Text="Runs against a local LiteRT-LM server hosting a Gemma 4 model (.litertlm). The server exposes an OpenAI-compatible /v1/chat/completions endpoint and works offline."
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+          <TextBlock Text="Additional system prompt (Gemma 4)" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.TranslationSystemPrompt, Mode=TwoWay}"
+                   AcceptsReturn="True"
+                   TextWrapping="Wrap"
+                   MinHeight="72"
+                   MaxHeight="160"
+                   PlaceholderText="Optional extra instructions appended to the translation prompt (terminology, style, casing…). Leave empty to use the built-in prompt only." />
+        </StackPanel>
+      </Border>
+
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Global Hotkeys" FontWeight="SemiBold" />
+          <TextBlock Text="Toggle recognition" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.ToggleHotkey, Mode=TwoWay}"
+                   KeyDown="HotkeyBox_KeyDown" KeyUp="HotkeyBox_KeyUp"
+                   GotFocus="HotkeyBox_GotFocus"
+                   PlaceholderText="Click and press keys (e.g. Ctrl+Shift+V)" />
+          <TextBlock Text="Toggle mute" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.MuteHotkey, Mode=TwoWay}"
+                   KeyDown="HotkeyBox_KeyDown" KeyUp="HotkeyBox_KeyUp"
+                   GotFocus="HotkeyBox_GotFocus"
+                   PlaceholderText="Click and press keys" />
+          <TextBlock Text="Inject text" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.InjectTextHotkey, Mode=TwoWay}"
+                   KeyDown="HotkeyBox_KeyDown" KeyUp="HotkeyBox_KeyUp"
+                   GotFocus="HotkeyBox_GotFocus"
+                   PlaceholderText="Click and press keys" />
+          <TextBlock Text="Click a field and press the key combination. Press Esc to clear it."
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Behavior" FontWeight="SemiBold" Margin="0,0,0,2" />
+          <CheckBox Content="Enable text injection"
+                    IsChecked="{x:Bind ViewModel.IsTextInjectionEnabled, Mode=TwoWay}" />
+          <TextBlock Text="Paste chord used to insert clipboard text into the focused window"
+                     Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.PasteChord, Mode=TwoWay}"
+                   PlaceholderText="Ctrl+V" />
+          <TextBlock Text="Use Ctrl+V for most apps, Ctrl+Shift+V or Shift+Insert for terminals."
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+          <CheckBox Content="Keep transcript scrolled to the newest text"
+                    IsChecked="{x:Bind ViewModel.IsAutoScrollEnabled, Mode=TwoWay}" />
+          <CheckBox Content="Start recognition automatically when the model is ready"
+                    IsChecked="{x:Bind ViewModel.AutoStartRecognition, Mode=TwoWay}" />
+          <CheckBox Content="Keep the window always on top"
+                    IsChecked="{x:Bind ViewModel.AlwaysOnTop, Mode=TwoWay}" />
+          <CheckBox Content="Clear transcript when model or session changes"
+                    IsChecked="{x:Bind ViewModel.ClearTextOnModelOrSessionChange, Mode=TwoWay}" />
+        </StackPanel>
+      </Border>
+
+      <TextBlock Text="A missing model is downloaded in the background when the app starts."
+                 Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+    </StackPanel>
+  </ScrollViewer>
+</ContentDialog>

@@ -125,17 +125,51 @@
         </Border>
 
         <!-- Text area -->
-        <ScrollViewer x:Name="TextScroller" Grid.Row="3" VerticalScrollBarVisibility="Auto" Margin="14,10">
-            <TextBox x:Name="TextDisplay"
-                     Text="{x:Bind ViewModel.FloatingText, Mode=OneWay}"
-                     Foreground="{StaticResource FgBrush}"
-                     Background="Transparent"
-                     BorderThickness="0"
-                     FontSize="15"
-                     TextWrapping="Wrap"
-                     IsReadOnly="True"
-                     AcceptsReturn="True"/>
-        </ScrollViewer>
+        <Grid Grid.Row="3" Margin="14,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="2*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <ScrollViewer x:Name="TextScroller" Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                <TextBox x:Name="TextDisplay"
+                         Text="{x:Bind ViewModel.FloatingText, Mode=OneWay}"
+                         Foreground="{StaticResource FgBrush}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         FontSize="15"
+                         TextWrapping="Wrap"
+                         IsReadOnly="True"
+                         AcceptsReturn="True"/>
+            </ScrollViewer>
+
+            <!-- Translation divider -->
+            <Grid Grid.Row="1" Margin="0,6"
+                  Visibility="{x:Bind ViewModel.ShowTranslation, Mode=OneWay}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Border Height="1" Background="{StaticResource BgTertiaryBrush}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="Translation" FontSize="10"
+                           Foreground="{StaticResource FgSecondaryBrush}"
+                           Margin="8,0,0,0" VerticalAlignment="Center"/>
+            </Grid>
+
+            <ScrollViewer x:Name="TranslationScroller" Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                          Visibility="{x:Bind ViewModel.ShowTranslation, Mode=OneWay}">
+                <TextBox x:Name="TranslationDisplay"
+                         Text="{x:Bind ViewModel.TranslatedText, Mode=OneWay}"
+                         Foreground="{StaticResource AccentBrush}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         FontSize="14"
+                         TextWrapping="Wrap"
+                         IsReadOnly="True"
+                         AcceptsReturn="True"/>
+            </ScrollViewer>
+        </Grid>
 
         <!-- Bottom controls -->
         <Border Grid.Row="4" Background="{StaticResource BgSecondaryBrush}"
@@ -235,6 +269,61 @@
                             <ComboBoxItem Content="nl"/>
                         </ComboBox>
                     </Grid>
+
+                    <!-- Live translation -->
+                    <Grid Grid.Row="5" Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <CheckBox Grid.Column="0"
+                                  Content="Translate"
+                                  IsChecked="{x:Bind ViewModel.TranslationEnabled, Mode=TwoWay}"
+                                  Style="{StaticResource DarkCheckBox}"
+                                  VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Margin="8,0,0,0" Orientation="Horizontal" Spacing="6"
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind ViewModel.ShowTranslation, Mode=OneWay}">
+                            <ComboBox ItemsSource="{x:Bind ViewModel.TranslationLanguages, Mode=OneWay}"
+                                      DisplayMemberPath="Name"
+                                      SelectedItem="{x:Bind ViewModel.SelectedTranslationLanguage, Mode=TwoWay}"
+                                      Style="{StaticResource DarkComboBox}"
+                                      VerticalAlignment="Center" MinWidth="120"/>
+                            <ComboBox ItemsSource="{x:Bind ViewModel.TranslationComputeBackendOptions, Mode=OneWay}"
+                                      SelectedItem="{x:Bind ViewModel.TranslationComputeBackend, Mode=TwoWay}"
+                                      Style="{StaticResource DarkComboBox}"
+                                      VerticalAlignment="Center" MinWidth="80"
+                                      ToolTipService.ToolTip="Translation compute backend (cpu / gpu)"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Margin="12,0,0,0"
+                                   FontSize="11"
+                                   Foreground="{StaticResource FgSecondaryBrush}"
+                                   Text="{x:Bind ViewModel.TranslationStatus, Mode=OneWay}"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        <Button Grid.Column="3" Content="&#xE8C8;"
+                                FontFamily="Segoe MDL2 Assets"
+                                Margin="12,0,0,0"
+                                Background="{StaticResource BgTertiaryBrush}"
+                                Foreground="{StaticResource FgBrush}"
+                                BorderThickness="0"
+                                Padding="10,4"
+                                FontSize="14"
+                                ToolTipService.ToolTip="Copy translation"
+                                Command="{x:Bind ViewModel.CopyTranslationCommand}"
+                                Visibility="{x:Bind ViewModel.ShowTranslation, Mode=OneWay}"/>
+                    </Grid>
+
+                    <!-- Translation model download -->
+                    <StackPanel Grid.Row="6" Margin="0,8,0,0"
+                                Visibility="{x:Bind ViewModel.ShowTranslationDownloadPrompt, Mode=OneWay}">
+                        <Button Content="{x:Bind ViewModel.TranslationDownloadButtonText, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.IsTranslationDownloadButtonEnabled, Mode=OneWay}"
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{x:Bind ViewModel.DownloadTranslationModelCommand}"
+                                HorizontalAlignment="Stretch" Height="36"/>
+                    </StackPanel>
                 </Grid>
             </StackPanel>
         </Border>

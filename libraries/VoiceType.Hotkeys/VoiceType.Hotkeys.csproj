@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>VoiceType.Hotkeys</RootNamespace>
+    <AssemblyName>VoiceType.Hotkeys</AssemblyName>
+    <Description>
+      Cross-platform global hotkey registration.
+      Linux: XDG GlobalShortcuts portal (D-Bus, works on Wayland and X11).
+      Windows: RegisterHotKey/WM_HOTKEY (planned).
+      Backends are selected per-OS in the composition root; unsupported
+      environments degrade to a Null Object.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- D-Bus client for the XDG GlobalShortcuts portal (Linux-only runtime dep;
+         the package itself is platform-agnostic managed code).
+         Latest stable; 0.94.x fixes GHSA-xrw6-gwf8-vvr9 (DoS in earlier versions). -->
+    <PackageReference Include="Tmds.DBus" Version="0.94.2" />
+  </ItemGroup>
+
+</Project>

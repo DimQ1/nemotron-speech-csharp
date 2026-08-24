@@ -1,7 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows7.0</TargetFramework>
+    <!-- Portable TFM so this provider links into both the WinUI 3 head and the
+         Skia desktop head (Windows dev box). NAudio.Wasapi + NAudio.Core 3.0.1
+         are portable (net9.0); WaveIn/WinMM has been replaced with WasapiCapture
+         so the whole capture path is Windows-runtime portable. -->
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>SpeechLib.Audio.NAudio3</RootNamespace>
@@ -10,10 +14,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
-    <PackageReference Include="NAudio" Version="3.0.0-preview.19" />
+    <PackageReference Include="NAudio.Core" Version="3.0.1" />
+    <PackageReference Include="NAudio.Wasapi" Version="3.0.1" />
     <PackageReference Include="NAudio.Lame" Version="2.1.0" />
-    <PackageReference Include="NAudio.Wasapi" Version="3.0.0-preview.19" />
-    <PackageReference Include="NAudio.WinMM" Version="3.0.0-preview.19" />
     <Compile Include="..\SpeechLib\Audio\AudioMixerRegistry.cs" Link="AudioMixerRegistry.cs" />
     <Compile Include="..\SpeechLib\Audio\BufferedAudioRecorder.cs" Link="BufferedAudioRecorder.cs" />
     <Compile Include="..\SpeechLib\Transcriber.cs" Link="Transcriber.cs" />

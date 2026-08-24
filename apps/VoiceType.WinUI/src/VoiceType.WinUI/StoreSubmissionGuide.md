@@ -120,7 +120,7 @@ We will update this policy if data practices change. Continued use of the app co
 - Рекомендуемый рейтинг: **3+ (E for Everyone)**
 
 ### 3.4. Packages
-- Загрузите `.msixupload` файл (см. раздел 6)
+- Загрузите подписанный `.msix` файл (см. раздел 6); Partner Center переподпишет пакет
 - Выберите архитектуру: **x64** (основная), опционально ARM64
 
 ### 3.5. Store Listing Content (скопировать в Partner Center)
@@ -273,18 +273,25 @@ magick Assets\app-icon.png -resize 620x300 Assets\Wide310x150Logo.scale-200.png
 ### Команда сборки Store-пакета:
 
 ```powershell
-# Очистка и публикация x64 Release MSIX
+# Рекомендуемый способ — через скрипт (создаёт/переиспользует сертификат и подписывает):
+.\build-store-release.ps1 -Sign -CertThumbprint <thumbprint> -Clean
+
+# Или вручную (x64 Release MSIX, self-contained — .NET Runtime включён в пакет):
 dotnet publish VoiceType.WinUI\VoiceType.WinUI.csproj `
   -c Release `
   -p:Platform=x64 `
   -p:GpuArch=CPU `
-  -p:PublishProfile=Properties\PublishProfiles\win-x64.pubxml
+  -p:SelfContained=true `
+  -p:PublishAppxPackage=true `
+  -p:AppxBundle=Never `
+  -p:AppxPackageSigningEnabled=true `
+  -p:PackageCertificateThumbprint=<thumbprint>
 ```
 
 ### Что происходит при сборке:
-- ✅ Генерируется `.msix` файл в `VoiceType.WinUI\bin\Release\net10.0-windows10.0.26100.0\win-x64\publish\`
-- ✅ `PublishReadyToRun=true` — AOT-компиляция для быстрого запуска
-- ✅ `PublishTrimmed=true` — удаление неиспользуемого IL-кода
+- ✅ Генерируется `.msix` файл в `VoiceType.WinUI\AppPackages\VoiceType.WinUI_<version>_x64_Test\`
+- ✅ `PublishReadyToRun=false` — AOT отключён (CsWinRT-маршаллинг ломается при AOT)
+- ✅ `PublishTrimmed=false` — тримминг отключён (рефлексия ONNX Runtime / NAudio)
 - ✅ `SelfContained=true` — .NET Runtime включён в пакет
 - ✅ ORT 1.28.0 native DLL копируются в AppX
 
@@ -326,7 +333,7 @@ dotnet build VoiceType.WinUI\VoiceType.WinUI.csproj -c Release -p:GpuArch=CPU
 - [ ] Рейтинг: **3+ (E for Everyone)**
 
 ### 7.4. Packages (Пакеты)
-- [ ] Загрузить `.msixupload` (см. §6)
+- [ ] Загрузить подписанный `.msix` (см. §6)
 - [ ] Архитектура: **x64** (основная), опционально ARM64
 - [ ] **Device family availability:** Windows.Desktop
 

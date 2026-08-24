@@ -185,8 +185,12 @@ public static partial class Transcriber
     /// Transcribe from a live audio source using the stable NAudio 2 provider assembly.
     /// This compatibility entry point forwards to the provider-neutral live orchestrator.
     /// </summary>
-    public static string RunLive(IAudioSource source, string label, IStreamingSpeechRecognizer recognizer) =>
-        LiveTranscriber.Run(source, label, recognizer);
+    public static string RunLive(
+        IAudioSource source,
+        string label,
+        IStreamingSpeechRecognizer recognizer,
+        Action<string>? onTextDelta = null) =>
+        LiveTranscriber.Run(source, label, recognizer, onTextDelta);
 
     /// <summary>Create an <see cref="IAudioSource"/> for the given capture mode.</summary>
     public static IAudioSource CreateAudioSource(CaptureMode mode, int sampleRate) =>

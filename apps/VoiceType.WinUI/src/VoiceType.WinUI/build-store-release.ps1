@@ -14,9 +14,9 @@
 #   .\build-store-release.ps1 -Sign -CertThumbprint "ABCD1234..."
 #
 # Output:
-#   VoiceType.WinUI\bin\Release\net10.0-windows10.0.26100.0\win-x64\AppPackages\
-#     └─ VoiceType.WinUI_1.0.0.0_x64.msix     (local install / WACK)
-#     └─ VoiceType.WinUI_1.0.0.0_x64.msixupload (only with Store-associated packaging)
+#   VoiceType.WinUI\AppPackages\VoiceType.WinUI_<version>_x64_Test\
+#     └─ VoiceType.WinUI_<version>_x64.msix     (local install / WACK / Store)
+#     └─ VoiceType.WinUI_<version>_x64.msixupload (only with Store-associated packaging)
 
 param(
     [ValidateSet('x64', 'x86', 'arm64')]
@@ -47,13 +47,20 @@ if ($Clean) {
     if ($LASTEXITCODE -ne 0) { throw 'Clean failed' }
 }
 
-# 2. Publish → MSIX (PublishProfile auto-selects win-{Arch}.pubxml)
+# 2. Publish → MSIX
+#    SelfContained=true bundles the .NET 10 runtime into the package — required for
+#    Microsoft Store distribution, where the .NET runtime is NOT auto-installed.
+#    PublishAppxPackage=true triggers single-project MSIX packaging during `dotnet publish`
+#    (no publish profile is committed to git — the csproj defaults to framework-dependent).
 Write-Host '[2/3] Publishing MSIX package...' -ForegroundColor Yellow
 $publishArgs = @(
     'publish', $csprojPath,
     '-c', 'Release',
     "-p:Platform=$Arch",
-    '-p:GpuArch=CPU'
+    '-p:GpuArch=CPU',
+    '-p:SelfContained=true',
+    '-p:PublishAppxPackage=true',
+    '-p:AppxBundle=Never'
 )
 
 if ($Sign -and $CertThumbprint) {
@@ -75,7 +82,9 @@ dotnet @publishArgs
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
 
 # 3. Find the generated MSIX
-$appPackagesDir = Join-Path $PSScriptRoot "bin\Release\net10.0-windows10.0.26100.0\win-$Arch\AppPackages"
+#    Single-project MSIX packaging outputs to <ProjectDir>\AppPackages\ (not under bin\)
+#    when publishing from the command line without an explicit OutDir.
+$appPackagesDir = Join-Path $PSScriptRoot 'AppPackages'
 $manifestPath = Join-Path $PSScriptRoot 'Package.appxmanifest'
 [xml]$manifest = Get-Content -Path $manifestPath -Raw
 $packageVersion = [string]$manifest.Package.Identity.Version

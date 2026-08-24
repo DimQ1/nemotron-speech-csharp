@@ -134,19 +134,13 @@ public sealed class ModelSession : IStreamingSpeechRecognizer, ILanguageConfigur
     /// <inheritdoc />
     string? IStreamingSpeechRecognizer.ProcessAudio(float[] chunk)
     {
-        var inputs = _processor.Process(chunk);
-        if (inputs is null) return null;
-        _generator.SetInputs(inputs);
-        return DecodeTokens().Text;
+        return DecodeInputs(_processor.Process(chunk));
     }
 
     /// <inheritdoc />
     string? IStreamingSpeechRecognizer.Flush()
     {
-        var inputs = _processor.Flush();
-        if (inputs is null) return null;
-        _generator.SetInputs(inputs);
-        return DecodeTokens().Text;
+        return DecodeInputs(_processor.Flush());
     }
 
     int IStreamingSpeechRecognizer.SampleRate => SampleRate;
@@ -179,6 +173,17 @@ public sealed class ModelSession : IStreamingSpeechRecognizer, ILanguageConfigur
         var result = new DecodeResult(text.ToString(), tokenCount);
         LastTokenCount = tokenCount;
         return result;
+    }
+
+    private string? DecodeInputs(NamedTensors? inputs)
+    {
+        if (inputs is null) return null;
+
+        using (inputs)
+        {
+            _generator.SetInputs(inputs);
+            return DecodeTokens().Text;
+        }
     }
 
     public void Dispose()
