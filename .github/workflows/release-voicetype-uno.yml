@@ -1,0 +1,96 @@
+name: VoiceType.Uno Tagged Release
+
+run-name: VoiceType.Uno Release · ${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - 'uno-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Publish Windows (win-x64, Skia)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish VoiceType.Uno (win-x64, self-contained)
+        run: >-
+          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+          -c Release -f net10.0-desktop -r win-x64 -p:GpuArch=CPU
+          --self-contained true -o build/voicetype-uno-win
+
+      - name: Create archive
+        shell: pwsh
+        run: Compress-Archive -Path build/voicetype-uno-win/* -DestinationPath build/VoiceType.Uno-win-x64.zip -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceType.Uno-win-x64
+          path: build/VoiceType.Uno-win-x64.zip
+          if-no-files-found: error
+
+  linux:
+    name: Publish Linux (linux-x64, Skia)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish VoiceType.Uno (linux-x64, self-contained)
+        run: >-
+          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+          -c Release -f net10.0-desktop -r linux-x64 -p:GpuArch=CPU
+          --self-contained true -o build/voicetype-uno-linux
+
+      - name: Create archive
+        run: tar -czf build/VoiceType.Uno-linux-x64.tar.gz -C build/voicetype-uno-linux .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceType.Uno-linux-x64
+          path: build/VoiceType.Uno-linux-x64.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [windows, linux]
+
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: VoiceType.Uno-win-x64
+          path: release-assets
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: VoiceType.Uno-linux-x64
+          path: release-assets
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/VoiceType.Uno-win-x64.zip
+            release-assets/VoiceType.Uno-linux-x64.tar.gz

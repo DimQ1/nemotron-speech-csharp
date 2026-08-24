@@ -1,0 +1,85 @@
+name: VoiceType.Uno CI
+
+run-name: VoiceType.Uno CI · ${{ github.ref_name }} · #${{ github.run_number }}
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - feature/uno-platform-linux
+    paths:
+      - '.github/workflows/build-voicetype-uno.yml'
+      - '.github/workflows/release-voicetype-uno.yml'
+      - 'apps/VoiceType.Uno/**'
+      - 'libraries/SpeechLib/**'
+      - 'libraries/VoiceType.Hotkeys/**'
+      - 'nuget.config'
+  pull_request:
+    paths:
+      - '.github/workflows/build-voicetype-uno.yml'
+      - '.github/workflows/release-voicetype-uno.yml'
+      - 'apps/VoiceType.Uno/**'
+      - 'libraries/SpeechLib/**'
+      - 'libraries/VoiceType.Hotkeys/**'
+      - 'nuget.config'
+
+jobs:
+  windows:
+    name: Publish Windows (win-x64, Skia)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish VoiceType.Uno (win-x64, self-contained)
+        run: >-
+          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+          -c Release -f net10.0-desktop -r win-x64 -p:GpuArch=CPU
+          --self-contained true -o build/voicetype-uno-win
+
+      - name: Create archive
+        shell: pwsh
+        run: Compress-Archive -Path build/voicetype-uno-win/* -DestinationPath build/VoiceType.Uno-win-x64.zip -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceType.Uno-win-x64
+          path: build/VoiceType.Uno-win-x64.zip
+          if-no-files-found: error
+
+  linux:
+    name: Publish Linux (linux-x64, Skia)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish VoiceType.Uno (linux-x64, self-contained)
+        run: >-
+          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+          -c Release -f net10.0-desktop -r linux-x64 -p:GpuArch=CPU
+          --self-contained true -o build/voicetype-uno-linux
+
+      - name: Create archive
+        run: tar -czf build/VoiceType.Uno-linux-x64.tar.gz -C build/voicetype-uno-linux .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceType.Uno-linux-x64
+          path: build/VoiceType.Uno-linux-x64.tar.gz
+          if-no-files-found: error
