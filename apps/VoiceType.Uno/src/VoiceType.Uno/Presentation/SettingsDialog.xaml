@@ -51,6 +51,22 @@
       </Border>
 
       <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Live Translation" FontWeight="SemiBold" />
+          <CheckBox Content="Translate recognized text on the fly"
+                    IsChecked="{x:Bind ViewModel.TranslationEnabled, Mode=TwoWay}" />
+          <TextBlock Text="Target language (BCP-47 code, e.g. ru, en, de)" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.TranslationTargetLanguage, Mode=TwoWay}"
+                   PlaceholderText="ru" />
+          <TextBlock Text="LiteRT-LM server URL" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.TranslationServerUrl, Mode=TwoWay}"
+                   PlaceholderText="http://localhost:9379" />
+          <TextBlock Text="Runs against a local LiteRT-LM server hosting a Gemma 4 model (.litertlm). The server exposes an OpenAI-compatible /v1/chat/completions endpoint and works offline."
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
         <StackPanel Spacing="6">
           <TextBlock Text="Behavior" FontWeight="SemiBold" Margin="0,0,0,2" />
           <CheckBox Content="Enable text injection"

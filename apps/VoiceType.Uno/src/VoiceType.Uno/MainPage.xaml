@@ -9,6 +9,7 @@
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
     <!-- Status and quick settings -->
@@ -50,8 +51,24 @@
                  TextWrapping="Wrap" IsTextSelectionEnabled="True" />
     </ScrollViewer>
 
+    <!-- Live translation -->
+    <Border Grid.Row="3"
+            Visibility="{x:Bind ViewModel.IsTranslationVisible, Mode=OneWay}"
+            BorderThickness="1"
+            BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+            Padding="8">
+      <StackPanel Spacing="4">
+        <TextBlock Text="{x:Bind ViewModel.TranslationStatusText, Mode=OneWay}"
+                   Opacity="0.6" FontSize="12" />
+        <ScrollViewer MaxHeight="120">
+          <TextBlock Text="{x:Bind ViewModel.TranslatedText, Mode=OneWay}"
+                     TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+        </ScrollViewer>
+      </StackPanel>
+    </Border>
+
     <!-- Controls -->
-    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+    <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
       <Button Content="{x:Bind ViewModel.RecordButtonText, Mode=OneWay}"
               Command="{x:Bind ViewModel.ToggleCommand}"
               Style="{StaticResource AccentButtonStyle}" />
@@ -62,6 +79,8 @@
               Command="{x:Bind ViewModel.CopyCommand}" />
       <ToggleButton Content="Inject text"
                     IsChecked="{x:Bind ViewModel.IsTextInjectionEnabled, Mode=TwoWay}" />
+      <ToggleButton Content="Translate"
+                    IsChecked="{x:Bind ViewModel.IsTranslationEnabled, Mode=TwoWay}" />
     </StackPanel>
   </Grid>
 </Page>

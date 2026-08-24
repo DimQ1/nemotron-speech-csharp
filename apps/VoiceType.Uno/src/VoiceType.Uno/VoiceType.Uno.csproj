@@ -46,6 +46,9 @@
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Nemotron\SpeechLib.Nemotron.csproj" />
     <!-- Global hotkeys: XDG GlobalShortcuts portal on Linux (Wayland + X11) -->
     <ProjectReference Include="..\..\..\..\libraries\VoiceType.Hotkeys\VoiceType.Hotkeys.csproj" />
+    <!-- Live translation via LiteRT-LM server (OpenAI-compatible HTTP endpoint;
+         pure managed code — works on Linux, unlike the native LiteRT backend) -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.LiteRT\SpeechLib.LiteRT.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'">

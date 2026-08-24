@@ -7,17 +7,22 @@ Primary target platform: **Linux (Ubuntu, X11)**. Windows/macOS desktop work thr
 
 | Feature | Status |
 |---|---|
-| XAML UI (start/stop/mute/copy/inject toggle, live transcript) | ✅ Ported |
+| XAML UI (start/stop/mute/copy/inject/translate toggles, live transcript) | ✅ Ported |
 | Settings persistence (settings.json, atomic writes) | ✅ Ported |
 | Recognition pipeline (model lifecycle → capture loop → partial/final results) | ✅ Ported |
-| Microphone capture on Linux (ALSA `default` device, 16 kHz mono) | ✅ Implemented |
+| Microphone capture on Linux (PulseAudio-compatible server: ALSA `default` and Pulse sources, 16 kHz mono) | ✅ Implemented |
 | ONNX Runtime GenAI model inference (CPU EP) | ✅ Via SpeechLib.Nemotron (`-p:GpuArch=CPU`) |
-| Global hotkeys on Linux (Wayland + X11) | ✅ `VoiceType.Hotkeys` library — XDG GlobalShortcuts portal (xdg-desktop-portal ≥ 1.18, GNOME 44+/KDE Plasma 5.27+); pure-X11 fallback `XGrabKey` backend possible behind the same interface |
-| Text injection on Linux | ⬜ Stub (`IPlatformTextInjector` → XTest / `ydotool` / clipboard TODO) |
-| Loopback ("WhatYouHear") capture on Linux | ⬜ Needs PulseAudio/PipeWire monitor source |
+| Global hotkeys on Linux (Wayland + X11) | ✅ `VoiceType.Hotkeys` library — XDG GlobalShortcuts portal (xdg-desktop-portal ≥ 1.18, GNOME 44+/KDE Plasma 5.27+); Null fallback on older compositors |
+| Text injection on Linux | ✅ `LinuxTextInjector` — clipboard (wl-copy / xclip / xsel) + synthetic paste chord (XTest on X11, ydotool on Wayland, xdotool fallback); paste chord configurable in Settings |
+| Text injection on Windows (WinUI 3 head) | ✅ `WindowsTextInjector` — SendInput + user32 clipboard (parity with VoiceType.WinUI) |
+| Loopback ("WhatYouHear") capture on Linux | ✅ `PulseAudioSourceFactory` — `@DEFAULT_MONITOR@`; Mic / Loopback / Mix modes |
+| Live translation (LiteRT-LM, Gemma 4) | ✅ Via SpeechLib.LiteRT HTTP backend (OpenAI-compatible endpoint, offline, works on Linux); native backend stays Windows-only |
+| Model downloader (auto-download on first run + button in Settings) | ✅ Ported |
+| Settings dialog (engine, audio, translation, behavior) | ✅ Ported |
+| Help dialog (hotkeys, injection tools, audio sources, data paths) | ✅ Added |
+| Taskbar/tray recording indicator | ✅ Linux: StatusNotifierItem (AppIndicator) via `VoiceType.Hotkeys` D-Bus; icon click toggles recording |
+| Linux CI smoke test | ✅ `.github/workflows/voicetype-uno-linux-smoke.yml` (xvfb + PulseAudio null source) |
 | Audio mixer window | ⬜ Not ported (WinUI version is NAudio/WASAPI-based) |
-| Model downloader, first-run wizard, settings window, help window | ⬜ Not ported yet |
-| Taskbar/tray recording indicator | ⬜ Linux: needs StatusNotifierItem (AppIndicator) |
 
 ## Architecture
 

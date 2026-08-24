@@ -21,6 +21,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IGlobalHotkeyService _hotkeys;
     private readonly IPlatformTextInjector _textInjector;
     private readonly ITrayIndicator _tray;
+    private readonly TranslationService _translation;
     private readonly DispatcherQueue _dispatcher;
 
     private AppSettings _settings;
@@ -36,7 +37,8 @@ public sealed partial class MainViewModel : ObservableObject
         ModelDownloadService modelDownloader,
         IGlobalHotkeyService hotkeys,
         IPlatformTextInjector textInjector,
-        ITrayIndicator tray)
+        ITrayIndicator tray,
+        TranslationService translation)
     {
         _recognition = recognition;
         _settingsService = settingsService;
@@ -44,6 +46,7 @@ public sealed partial class MainViewModel : ObservableObject
         _hotkeys = hotkeys;
         _textInjector = textInjector;
         _tray = tray;
+        _translation = translation;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
 
         _settings = settingsService.Load();
@@ -51,13 +54,26 @@ public sealed partial class MainViewModel : ObservableObject
         IsTextInjectionEnabled = _settings.IsTextInjectionEnabled;
         IsAutoScrollEnabled = _settings.IsAutoScrollEnabled;
         AlwaysOnTop = _settings.AlwaysOnTop;
+        IsTranslationEnabled = _settings.TranslationEnabled;
+        _translation.SetTargetLanguage(_settings.TranslationTargetLanguage);
 
-        _recognition.PartialResult += text => _dispatcher.TryEnqueue(() => FloatingText = text);
+        _recognition.PartialResult += text => _dispatcher.TryEnqueue(() =>
+        {
+            FloatingText = text;
+            if (IsTranslationEnabled)
+                _translation.Feed(text);
+        });
         _recognition.FinalResult += text => _dispatcher.TryEnqueue(() =>
         {
             FloatingText = text;
             if (IsTextInjectionEnabled && !string.IsNullOrEmpty(text))
                 _textInjector.Inject(text);
+
+            if (IsTranslationEnabled)
+            {
+                _translation.Feed(text);
+                _ = _translation.FlushAsync();
+            }
         });
         _recognition.Stopped += () => _dispatcher.TryEnqueue(() =>
         {
@@ -104,6 +120,12 @@ public sealed partial class MainViewModel : ObservableObject
         // (icon click) toggles recording like the main button.
         _tray.Activated += () => _dispatcher.TryEnqueue(() => _ = ToggleAsync());
         _ = _tray.InitializeAsync();
+
+        // Live translation: stream transcript deltas through the LiteRT-LM
+        // server; translated text is displayed (and injectable) alongside the
+        // original transcript.
+        _translation.TranslationChanged += text => _dispatcher.TryEnqueue(() => TranslatedText = text);
+        _translation.StatusChanged += status => _dispatcher.TryEnqueue(() => TranslationStatusText = status);
 
         if (_hotkeys.IsAvailable && !string.IsNullOrWhiteSpace(_settings.ToggleHotkey))
             _ = RegisterToggleHotkeyAsync(_settings.ToggleHotkey);
@@ -158,6 +180,32 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _alwaysOnTop;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsTranslationVisible))]
+    private bool _isTranslationEnabled;
+
+    [ObservableProperty]
+    private string _translatedText = "";
+
+    [ObservableProperty]
+    private string _translationStatusText = "Translation off";
+
+    public bool IsTranslationVisible => IsTranslationEnabled;
+
+    partial void OnIsTranslationEnabledChanged(bool value)
+    {
+        if (_isApplyingSettingsSnapshot)
+            return;
+
+        _settings.TranslationEnabled = value;
+        _ = Task.Run(() => _settingsService.Update(s => s.TranslationEnabled = value));
+        if (!value)
+        {
+            _translation.Reset();
+            TranslatedText = "";
+        }
+    }
 
     public IReadOnlyList<string> LanguageOptions => SettingsViewModel.DefaultLanguageOptions;
 
@@ -441,6 +489,9 @@ public sealed partial class MainViewModel : ObservableObject
             IsTextInjectionEnabled = settings.IsTextInjectionEnabled;
             IsAutoScrollEnabled = settings.IsAutoScrollEnabled;
             AlwaysOnTop = settings.AlwaysOnTop;
+            IsTranslationEnabled = settings.TranslationEnabled;
+            _translation.SetTargetLanguage(settings.TranslationTargetLanguage);
+            _translation.UpdateServerUrl(settings.TranslationServerUrl);
 
             if (_textInjector is LinuxTextInjector linuxInjector
                 && !string.IsNullOrWhiteSpace(settings.PasteChord))

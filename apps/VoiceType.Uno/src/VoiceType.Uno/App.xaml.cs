@@ -9,6 +9,7 @@ using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Audio;
 using VoiceType.Uno.Services.Platform;
 using VoiceType.Uno.Services.Platform.Linux;
+using SpeechLib.LiteRT;
 
 namespace VoiceType.Uno;
 
@@ -69,6 +70,13 @@ public partial class App : Application
                     // (GNOME AppIndicator / KDE Plasma); Null elsewhere.
                     services.AddSingleton<ITrayIndicator>(_ =>
                         OperatingSystem.IsLinux() ? new LinuxTrayIndicator() : new NullTrayIndicator());
+                    // Live translation via a local LiteRT-LM server (HTTP backend;
+                    // works on Linux, unlike the native LiteRT backend). The server
+                    // URL comes from settings and can be changed at runtime.
+                    services.AddSingleton(sp => new TranslationService(new LiteRTLmOptions
+                    {
+                        BaseUrl = sp.GetRequiredService<SettingsService>().Load().TranslationServerUrl
+                    }));
 
                     // ---- ViewModels ----
                     services.AddSingleton<MainViewModel>();

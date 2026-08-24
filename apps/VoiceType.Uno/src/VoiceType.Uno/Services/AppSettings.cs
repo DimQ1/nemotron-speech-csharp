@@ -27,6 +27,14 @@ public sealed class AppSettings
     public bool SaveAudioMp3 { get; set; }
     public bool FirstRunCompleted { get; set; }
 
+    // ── Live translation (LiteRT-LM server, OpenAI-compatible endpoint) ─────
+    /// <summary>Translate recognized text on the fly via a local LiteRT-LM server.</summary>
+    public bool TranslationEnabled { get; set; }
+    /// <summary>BCP-47 target language for live translation (e.g. "ru", "en").</summary>
+    public string TranslationTargetLanguage { get; set; } = "ru";
+    /// <summary>Base URL of the LiteRT-LM server (gemma-translator topology).</summary>
+    public string TranslationServerUrl { get; set; } = "http://localhost:9379";
+
     /// <summary>
     /// Key chord synthesized after setting the clipboard during text injection.
     /// "Ctrl+V" works for most apps; terminals often need "Ctrl+Shift+V" or

@@ -54,6 +54,15 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string _pasteChord = "Ctrl+V";
 
     [ObservableProperty]
+    private bool _translationEnabled;
+
+    [ObservableProperty]
+    private string _translationTargetLanguage = "ru";
+
+    [ObservableProperty]
+    private string _translationServerUrl = "http://localhost:9379";
+
+    [ObservableProperty]
     private bool _isAutoScrollEnabled = true;
 
     [ObservableProperty]
@@ -97,6 +106,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         RepetitionPenalty = settings.RepetitionPenalty;
         IsTextInjectionEnabled = settings.IsTextInjectionEnabled;
         PasteChord = string.IsNullOrWhiteSpace(settings.PasteChord) ? "Ctrl+V" : settings.PasteChord;
+        TranslationEnabled = settings.TranslationEnabled;
+        TranslationTargetLanguage = settings.TranslationTargetLanguage;
+        TranslationServerUrl = settings.TranslationServerUrl;
         IsAutoScrollEnabled = settings.IsAutoScrollEnabled;
         AlwaysOnTop = settings.AlwaysOnTop;
         AutoStartRecognition = settings.AutoStartRecognition;
@@ -136,6 +148,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         settings.RepetitionPenalty = Math.Max(1, RepetitionPenalty);
         settings.IsTextInjectionEnabled = IsTextInjectionEnabled;
         settings.PasteChord = string.IsNullOrWhiteSpace(PasteChord) ? "Ctrl+V" : PasteChord.Trim();
+        settings.TranslationEnabled = TranslationEnabled;
+        settings.TranslationTargetLanguage = string.IsNullOrWhiteSpace(TranslationTargetLanguage) ? "ru" : TranslationTargetLanguage.Trim();
+        settings.TranslationServerUrl = string.IsNullOrWhiteSpace(TranslationServerUrl) ? "http://localhost:9379" : TranslationServerUrl.Trim();
         settings.IsAutoScrollEnabled = IsAutoScrollEnabled;
         settings.AlwaysOnTop = AlwaysOnTop;
         settings.AutoStartRecognition = AutoStartRecognition;
