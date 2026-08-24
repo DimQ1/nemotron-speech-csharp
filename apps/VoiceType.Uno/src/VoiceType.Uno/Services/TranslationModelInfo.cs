@@ -26,4 +26,7 @@ public static class TranslationModelInfo
 
     /// <summary>True when the model file already exists on disk.</summary>
     public static bool IsDownloaded => File.Exists(LocalModelPath);
+
+    /// <summary>True when a stale .part file remains from an interrupted download.</summary>
+    public static bool HasPartialDownload => File.Exists(LocalModelPath + ".part");
 }

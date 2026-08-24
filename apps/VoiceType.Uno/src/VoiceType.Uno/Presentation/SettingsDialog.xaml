@@ -60,6 +60,11 @@
                     SelectedItem="{x:Bind ViewModel.TranslationBackend, Mode=TwoWay}" />
           <TextBlock Text="native = in-process model (offline, no sidecar, works on Linux). http = external LiteRT-LM server."
                      Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+          <TextBlock Text="Compute backend (native engine)" Opacity="0.7" FontSize="12" />
+          <ComboBox ItemsSource="{x:Bind ViewModel.TranslationComputeBackendOptions}"
+                    SelectedItem="{x:Bind ViewModel.TranslationComputeBackend, Mode=TwoWay}" />
+          <TextBlock Text="cpu = XNNPACK (stable, default). gpu = WebGPU delegate (needs a working GPU driver)."
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
           <TextBlock Text="Target language (BCP-47 code, e.g. ru, en, de)" Opacity="0.7" FontSize="12" />
           <TextBox Text="{x:Bind ViewModel.TranslationTargetLanguage, Mode=TwoWay}"
                    PlaceholderText="ru" />
@@ -78,6 +83,36 @@
           <TextBox Text="{x:Bind ViewModel.TranslationServerUrl, Mode=TwoWay}"
                    PlaceholderText="http://localhost:9379" />
           <TextBlock Text="Runs against a local LiteRT-LM server hosting a Gemma 4 model (.litertlm). The server exposes an OpenAI-compatible /v1/chat/completions endpoint and works offline."
+                     Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+          <TextBlock Text="Additional system prompt (Gemma 4)" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.TranslationSystemPrompt, Mode=TwoWay}"
+                   AcceptsReturn="True"
+                   TextWrapping="Wrap"
+                   MinHeight="72"
+                   MaxHeight="160"
+                   PlaceholderText="Optional extra instructions appended to the translation prompt (terminology, style, casing…). Leave empty to use the built-in prompt only." />
+        </StackPanel>
+      </Border>
+
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Global Hotkeys" FontWeight="SemiBold" />
+          <TextBlock Text="Toggle recognition" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.ToggleHotkey, Mode=TwoWay}"
+                   KeyDown="HotkeyBox_KeyDown" KeyUp="HotkeyBox_KeyUp"
+                   GotFocus="HotkeyBox_GotFocus"
+                   PlaceholderText="Click and press keys (e.g. Ctrl+Shift+V)" />
+          <TextBlock Text="Toggle mute" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.MuteHotkey, Mode=TwoWay}"
+                   KeyDown="HotkeyBox_KeyDown" KeyUp="HotkeyBox_KeyUp"
+                   GotFocus="HotkeyBox_GotFocus"
+                   PlaceholderText="Click and press keys" />
+          <TextBlock Text="Inject text" Opacity="0.7" FontSize="12" />
+          <TextBox Text="{x:Bind ViewModel.InjectTextHotkey, Mode=TwoWay}"
+                   KeyDown="HotkeyBox_KeyDown" KeyUp="HotkeyBox_KeyUp"
+                   GotFocus="HotkeyBox_GotFocus"
+                   PlaceholderText="Click and press keys" />
+          <TextBlock Text="Click a field and press the key combination. Press Esc to clear it."
                      Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
         </StackPanel>
       </Border>

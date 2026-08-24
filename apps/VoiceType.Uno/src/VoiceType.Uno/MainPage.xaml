@@ -3,14 +3,16 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:local="using:VoiceType.Uno"
       Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-  <Grid Padding="16" RowSpacing="12">
+  <Grid Padding="16,16,16,8" RowSpacing="6">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
-      <RowDefinition Height="Auto" x:Name="TranslationRow" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="200" x:Name="TranslationRow" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
@@ -18,6 +20,7 @@
     <Grid>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
@@ -34,20 +37,28 @@
           ItemsSource="{x:Bind ViewModel.LanguageOptions}"
           SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}" />
       </StackPanel>
-      <Button Grid.Column="2" Content="Downloads" Click="Downloads_Click" />
-      <Button Grid.Column="3" Content="Help" Click="Help_Click" />
-      <Button Grid.Column="4" Content="Settings" Click="Settings_Click" />
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+          Margin="0,0,8,0" VerticalAlignment="Center"
+          Visibility="{x:Bind ViewModel.IsTranslationVisible, Mode=OneWay}">
+        <TextBlock Text="Translate to" Opacity="0.7" VerticalAlignment="Center" />
+        <ComboBox Width="112"
+          ItemsSource="{x:Bind ViewModel.LanguageOptions}"
+          SelectedItem="{x:Bind ViewModel.TranslationTargetLanguage, Mode=TwoWay}" />
+      </StackPanel>
+      <Button Grid.Column="3" Content="Downloads" Click="Downloads_Click" Margin="10,0,0,0" />
+      <Button Grid.Column="4" Content="Help" Click="Help_Click" Margin="10,0,0,0" />
+      <Button Grid.Column="5" Content="Settings" Click="Settings_Click" Margin="10,0,0,0" />
     </Grid>
 
-    <!-- ASR model missing banner -->
+    <!-- ASR model missing banner (matches the translation banner style) -->
     <Border Grid.Row="1"
             Visibility="{x:Bind ViewModel.IsAsrModelBannerVisible, Mode=OneWay}"
-            Background="{ThemeResource SystemFillColorAttentionBackgroundBrush}"
+            Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
             BorderThickness="1"
-            BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
+            BorderBrush="{ThemeResource SystemFillColorCautionBrush}"
             Padding="8" CornerRadius="4">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <TextBlock Text="⚠" VerticalAlignment="Center" />
+        <TextBlock Text="ℹ" VerticalAlignment="Center" />
         <TextBlock Text="{x:Bind ViewModel.AsrModelBannerText, Mode=OneWay}"
                    VerticalAlignment="Center" TextWrapping="Wrap" />
         <Button Content="Download" Click="DownloadAsrModel_Click" VerticalAlignment="Center" />
@@ -86,59 +97,79 @@
     </StackPanel>
 
     <!-- Transcript (resizable, shares space with translation) -->
-    <ScrollViewer Grid.Row="5" BorderThickness="1"
+    <ScrollViewer x:Name="TranscriptScroll" Grid.Row="5" BorderThickness="1"
                   BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Padding="8">
       <TextBlock Text="{x:Bind ViewModel.FloatingText, Mode=OneWay}"
                  TextWrapping="Wrap" IsTextSelectionEnabled="True" />
     </ScrollViewer>
 
-    <!-- Draggable divider between transcript and translation -->
+    <!-- Draggable divider between transcript and translation (wide grab area) -->
     <Border Grid.Row="6"
-            Height="8"
+            Height="24"
             Background="Transparent"
-            Visibility="{x:Bind ViewModel.IsTranslationVisible, Mode=OneWay}">
-      <Border Height="2"
-              VerticalAlignment="Center"
-              Background="{ThemeResource ControlStrokeColorDefaultBrush}"
-              CornerRadius="1"
-              PointerPressed="Divider_PointerPressed"
-              PointerMoved="Divider_PointerMoved"
-              PointerReleased="Divider_PointerReleased"
-              PointerCaptureLost="Divider_PointerReleased" />
+            Visibility="{x:Bind ViewModel.IsTranslationVisible, Mode=OneWay}"
+            PointerPressed="Divider_PointerPressed"
+            PointerMoved="Divider_PointerMoved"
+            PointerReleased="Divider_PointerReleased"
+            PointerCaptureLost="Divider_PointerReleased">
+      <Grid>
+        <Border Height="4"
+                VerticalAlignment="Center"
+                Background="{ThemeResource ControlStrokeColorDefaultBrush}"
+                CornerRadius="2" />
+        <!-- Grip dots so the divider reads as a draggable handle -->
+        <StackPanel Orientation="Horizontal" Spacing="4"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Ellipse Width="4" Height="4"
+                   Fill="{ThemeResource ControlStrokeColorDefaultBrush}" />
+          <Ellipse Width="4" Height="4"
+                   Fill="{ThemeResource ControlStrokeColorDefaultBrush}" />
+          <Ellipse Width="4" Height="4"
+                   Fill="{ThemeResource ControlStrokeColorDefaultBrush}" />
+        </StackPanel>
+      </Grid>
     </Border>
 
-    <!-- Live translation (resizable) -->
+    <!-- Live translation (resizable height via the divider above) -->
     <Border Grid.Row="7"
             Visibility="{x:Bind ViewModel.IsTranslationVisible, Mode=OneWay}"
             BorderThickness="1"
             BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
             Padding="8"
-            MinHeight="80"
-            MaxHeight="400">
-      <StackPanel Spacing="4">
-        <TextBlock Text="{x:Bind ViewModel.TranslationStatusText, Mode=OneWay}"
+            MinHeight="80">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="{x:Bind ViewModel.TranslationStatusText, Mode=OneWay}"
                    Opacity="0.6" FontSize="12" />
-        <ScrollViewer>
+        <ScrollViewer x:Name="TranslationScroll" Grid.Row="1">
           <TextBlock Text="{x:Bind ViewModel.TranslatedText, Mode=OneWay}"
                      TextWrapping="Wrap" IsTextSelectionEnabled="True" />
         </ScrollViewer>
-      </StackPanel>
+      </Grid>
     </Border>
 
     <!-- Controls -->
-    <StackPanel Grid.Row="8" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+    <StackPanel Grid.Row="8" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
       <Button Content="{x:Bind ViewModel.RecordButtonText, Mode=OneWay}"
               Command="{x:Bind ViewModel.ToggleCommand}"
-              Style="{StaticResource AccentButtonStyle}" />
+              Style="{StaticResource AccentButtonStyle}"
+              MinWidth="96" Padding="16,8" />
       <Button Content="Mute"
               Command="{x:Bind ViewModel.ToggleMuteCommand}"
-              IsEnabled="{x:Bind ViewModel.IsRecording, Mode=OneWay}" />
+              IsEnabled="{x:Bind ViewModel.IsRecording, Mode=OneWay}"
+              MinWidth="80" Padding="16,8" />
       <Button Content="Copy"
-              Command="{x:Bind ViewModel.CopyCommand}" />
+              Command="{x:Bind ViewModel.CopyCommand}"
+              MinWidth="80" Padding="16,8" />
       <ToggleButton Content="Inject text"
-                    IsChecked="{x:Bind ViewModel.IsTextInjectionEnabled, Mode=TwoWay}" />
+                    IsChecked="{x:Bind ViewModel.IsTextInjectionEnabled, Mode=TwoWay}"
+                    MinWidth="110" Padding="16,8" />
       <ToggleButton Content="Translate"
-                    IsChecked="{x:Bind ViewModel.IsTranslationEnabled, Mode=TwoWay}" />
+                    IsChecked="{x:Bind ViewModel.IsTranslationEnabled, Mode=TwoWay}"
+                    MinWidth="110" Padding="16,8" />
     </StackPanel>
   </Grid>
 </Page>

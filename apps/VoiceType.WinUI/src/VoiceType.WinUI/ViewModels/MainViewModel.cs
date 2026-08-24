@@ -133,6 +133,12 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private TranslationLanguageOption _selectedTranslationLanguage;
 
+    /// <summary>Compute backend choices for the native translation engine.</summary>
+    public IReadOnlyList<string> TranslationComputeBackendOptions { get; } = ["cpu", "gpu"];
+
+    [ObservableProperty]
+    private string _translationComputeBackend = "cpu";
+
     [ObservableProperty]
     private string _translatedText = "";
 
@@ -224,6 +230,10 @@ public sealed partial class MainViewModel : ObservableObject
         _translationEnabled = _settings.TranslationEnabled;
         _selectedTranslationLanguage = ResolveTranslationLanguage(_settings.TranslationTargetLanguage);
         _translation.SetTargetLanguage(_selectedTranslationLanguage.Name);
+        _translationComputeBackend = string.IsNullOrWhiteSpace(_settings.TranslationComputeBackend)
+            ? "cpu"
+            : _settings.TranslationComputeBackend;
+        _translation.SetComputeBackend(_translationComputeBackend);
         IsTranslationModelAvailable = _translation.IsModelAvailable;
         TranslationStatus = _translation.StatusText;
 
@@ -414,6 +424,17 @@ public sealed partial class MainViewModel : ObservableObject
         _settings.TranslationTargetLanguage = option.Code;
         SaveSettingsInBackground(settings => settings.TranslationTargetLanguage = option.Code);
         _translation.SetTargetLanguage(option.Name);
+    }
+
+    partial void OnTranslationComputeBackendChanged(string value)
+    {
+        if (_isApplyingSettingsSnapshot)
+            return;
+
+        var backend = string.IsNullOrWhiteSpace(value) ? "cpu" : value;
+        _settings.TranslationComputeBackend = backend;
+        SaveSettingsInBackground(settings => settings.TranslationComputeBackend = backend);
+        _translation.SetComputeBackend(backend);
     }
 
     private void ApplyLanguageSelection(string value)

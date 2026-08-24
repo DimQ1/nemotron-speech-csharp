@@ -39,8 +39,18 @@ public sealed class AppSettings
     /// when the model is not downloaded.
     /// </summary>
     public string TranslationBackend { get; set; } = "native";
+    /// <summary>
+    /// Compute backend for the native translation engine: "cpu" (XNNPACK, stable,
+    /// default) or "gpu" (WebGPU delegate). Applies only to the "native" engine.
+    /// </summary>
+    public string TranslationComputeBackend { get; set; } = "cpu";
     /// <summary>Base URL of the LiteRT-LM server (gemma-translator topology), used by the "http" backend.</summary>
     public string TranslationServerUrl { get; set; } = "http://localhost:9379";
+    /// <summary>
+    /// Optional extra system-prompt text appended to the built-in translation
+    /// instruction (terminology, style, casing rules for Gemma 4). Empty by default.
+    /// </summary>
+    public string TranslationSystemPrompt { get; set; } = "";
 
     /// <summary>
     /// Key chord synthesized after setting the clipboard during text injection.

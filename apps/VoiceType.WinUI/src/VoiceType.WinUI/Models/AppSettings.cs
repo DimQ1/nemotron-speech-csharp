@@ -85,6 +85,8 @@ public sealed class AppSettings
     public bool TranslationEnabled { get; set; } = false;
     /// <summary>BCP-47 target language for live translation (e.g. "ru", "en").</summary>
     public string TranslationTargetLanguage { get; set; } = "ru";
+    /// <summary>Compute backend for the native translation engine: "cpu" (XNNPACK) or "gpu" (WebGPU).</summary>
+    public string TranslationComputeBackend { get; set; } = "cpu";
 
     public AppSettings Clone()
     {

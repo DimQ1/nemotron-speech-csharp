@@ -9,9 +9,19 @@
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <TextBlock Text="Model downloads" FontSize="20" FontWeight="SemiBold" />
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock Text="Model downloads" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.ActiveCountText, Mode=OneWay}" Opacity="0.7" VerticalAlignment="Center" Margin="12,0" />
+      <Button Grid.Column="2" Content="Clear finished" Command="{x:Bind ViewModel.ClearFinishedCommand}" />
+    </Grid>
 
     <!-- Aggregate queue progress -->
     <StackPanel Grid.Row="1" Spacing="4">
@@ -32,7 +42,7 @@
               <Border BorderThickness="1"
                       BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                       Padding="12" CornerRadius="4">
-                <Grid ColumnSpacing="12">
+                <Grid ColumnSpacing="12" RowSpacing="4">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -41,14 +51,36 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                   </Grid.RowDefinitions>
+
                   <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                  <TextBlock Grid.Column="1" Text="{x:Bind StateText, Mode=OneWay}" Opacity="0.7" />
-                  <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{x:Bind Status, Mode=OneWay}"
-                             Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
-                  <ProgressBar Grid.Row="2" Grid.ColumnSpan="2" Height="4" Margin="0,6,0,0"
+                  <TextBlock Grid.Column="1" Text="{x:Bind StateText, Mode=OneWay}" Opacity="0.7" HorizontalAlignment="Right" />
+
+                  <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="{x:Bind Status, Mode=OneWay}" Opacity="0.7" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Bind SizeText, Mode=OneWay}" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                  </StackPanel>
+
+                  <ProgressBar Grid.Row="2" Grid.ColumnSpan="2" Height="4" Margin="0,4,0,0"
                                Value="{x:Bind Percent, Mode=OneWay}" Maximum="100"
                                IsIndeterminate="{x:Bind IsIndeterminate, Mode=OneWay}" />
+
+                  <!-- Actions -->
+                  <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                    <Button Content="Cancel"
+                            Command="{x:Bind CancelCommand}"
+                            IsEnabled="{x:Bind IsRunning, Mode=OneWay}"
+                            Padding="8,4" />
+                    <Button Content="Retry"
+                            Command="{x:Bind RetryCommand}"
+                            IsEnabled="{x:Bind IsFailed, Mode=OneWay}"
+                            Padding="8,4" />
+                    <Button Content="Remove"
+                            Command="{x:Bind RemoveCommand}"
+                            IsEnabled="{x:Bind IsFinished, Mode=OneWay}"
+                            Padding="8,4" />
+                  </StackPanel>
                 </Grid>
               </Border>
             </DataTemplate>
@@ -56,5 +88,8 @@
         </ItemsControl>
       </StackPanel>
     </ScrollViewer>
+
+    <TextBlock Grid.Row="3" Opacity="0.5" FontSize="11" TextWrapping="Wrap"
+               Text="Up to 2 downloads run in parallel. Retry re-enqueues a failed or cancelled download. Remove drops a finished item from the list." />
   </Grid>
 </Window>

@@ -41,6 +41,7 @@ public sealed class TranslationService : ITranslationService
 
     private LiteRTLmNativeTranslator? _translator;
     private volatile string _targetLanguage = "ru";
+    private volatile string _computeBackend = "cpu";
     private volatile string _statusText = "Translation off";
     private volatile bool _isLoaded;
     private volatile bool _isLoading;
@@ -75,6 +76,26 @@ public sealed class TranslationService : ITranslationService
     {
         if (!string.IsNullOrWhiteSpace(language))
             _targetLanguage = language;
+    }
+
+    /// <summary>
+    /// Selects the compute backend for the native engine: "cpu" (XNNPACK) or
+    /// "gpu" (WebGPU delegate). Drops the loaded engine so the change takes
+    /// effect on the next translation.
+    /// </summary>
+    public void SetComputeBackend(string backend)
+    {
+        var normalized = (backend ?? "cpu").Trim().ToLowerInvariant();
+        if (normalized is not ("cpu" or "gpu"))
+            normalized = "cpu";
+
+        if (_computeBackend == normalized)
+            return;
+
+        _computeBackend = normalized;
+        _translator?.Dispose();
+        _translator = null;
+        _isLoaded = false;
     }
 
     public void Feed(string fullText)
@@ -250,7 +271,7 @@ public sealed class TranslationService : ITranslationService
                     var options = new LiteRTLmNativeOptions
                     {
                         ModelPath = TranslationModelInfo.LocalModelPath,
-                        Backend = TranslationModelInfo.Backend,
+                        Backend = _computeBackend,
                         LogLevel = LiteRTLmLogLevel.Silent,
                     };
                     return new LiteRTLmNativeTranslator(options);
@@ -394,7 +415,13 @@ public sealed class TranslationService : ITranslationService
             if (Interlocked.Read(ref _generation) != generation)
                 return; // stale — do not touch the new session's display
 
-            ClearProvisional();
+            string previous;
+            lock (_stateLock)
+            {
+                previous = _locked + _streaming;
+                _locked = "";
+                _streaming = previous;
+            }
 
             var partial = new StringBuilder();
             await foreach (var token in translator.TranslateStreamAsync(sentence, language).ConfigureAwait(false))
@@ -405,8 +432,7 @@ public sealed class TranslationService : ITranslationService
                 partial.Append(token);
                 lock (_stateLock)
                 {
-                    _locked = "";
-                    _streaming = partial.ToString();
+                    _streaming = MergeProvisional(previous, partial.ToString());
                 }
                 RaiseTranslationChanged();
             }
@@ -555,6 +581,14 @@ public sealed class TranslationService : ITranslationService
     /// </summary>
     private async Task<bool> StreamDraftAsync(LiteRTLmNativeTranslator translator, string source, CancellationToken ct)
     {
+        string previous;
+        lock (_stateLock)
+        {
+            previous = _locked + _streaming;
+            _locked = "";
+            _streaming = previous;
+        }
+
         var partial = new StringBuilder();
         await foreach (var token in translator
             .TranslateStreamAsync(source, _targetLanguage, cancellationToken: ct)
@@ -566,8 +600,7 @@ public sealed class TranslationService : ITranslationService
 
             lock (_stateLock)
             {
-                _locked = "";
-                _streaming = partial.ToString();
+                _streaming = MergeProvisional(previous, partial.ToString());
             }
             RaiseTranslationChanged();
         }
@@ -640,6 +673,29 @@ public sealed class TranslationService : ITranslationService
             _locked = "";
             _streaming = "";
         }
+    }
+
+    /// <summary>
+    /// Merges a freshly streamed partial with the previously displayed provisional
+    /// text so the live text updates incrementally (append / change the tail)
+    /// instead of blinking back to empty on each re-run. When one string is a
+    /// prefix of the other (the common case as the ASR tail grows), the longer
+    /// one is shown; on divergence the new text wins.
+    /// </summary>
+    private static string MergeProvisional(string previous, string current)
+    {
+        if (previous.Length == 0)
+            return current;
+
+        var common = 0;
+        var max = previous.Length < current.Length ? previous.Length : current.Length;
+        while (common < max && previous[common] == current[common])
+            common++;
+
+        if (common == previous.Length || common == current.Length)
+            return current.Length >= previous.Length ? current : previous;
+
+        return current;
     }
 
     private static string NormalizeTail(string text)

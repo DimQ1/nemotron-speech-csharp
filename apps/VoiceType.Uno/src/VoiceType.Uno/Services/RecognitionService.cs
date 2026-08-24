@@ -2,6 +2,7 @@ using System.Text;
 using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Models;
+using SpeechLib.PostProcessing;
 
 namespace VoiceType.Uno.Services;
 
@@ -259,7 +260,8 @@ public sealed class RecognitionService : IDisposable
                     if (raw is not null)
                     {
                         _accumulatedText.Append(raw);
-                        PartialResult?.Invoke(_accumulatedText.ToString());
+                        // Strip <ru-RU> language tags live so the transcript reads clean.
+                        PartialResult?.Invoke(PartialPostProcessing.Execute(_accumulatedText.ToString()));
                     }
                 }
 
@@ -276,7 +278,8 @@ public sealed class RecognitionService : IDisposable
             if (final is not null)
                 _accumulatedText.Append(final);
 
-            FinalResult?.Invoke(_accumulatedText.ToString());
+            // Final pass: strip language tags AND normalize whitespace for clean output.
+            FinalResult?.Invoke(FinalPostProcessing.Execute(_accumulatedText.ToString()));
         }
         catch (Exception ex)
         {
@@ -290,6 +293,12 @@ public sealed class RecognitionService : IDisposable
 
         return Task.CompletedTask;
     }
+
+    private static readonly PostProcessingChain PartialPostProcessing =
+        new PostProcessingChain().Add(new LanguageTagStripper());
+
+    private static readonly PostProcessingChain FinalPostProcessing =
+        new PostProcessingChain().Add(new LanguageTagStripper()).Add(new WhitespaceNormalizer());
 
     private void CleanupCaptureResources()
     {

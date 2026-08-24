@@ -5,13 +5,56 @@ namespace VoiceType.Uno;
 
 public sealed partial class MainPage : Page
 {
+    private const double DefaultTranslationHeight = 200;
+
+    private double _translationRowHeight = DefaultTranslationHeight;
+
     public MainPage()
     {
         this.InitializeComponent();
         DataContext = App.Services.GetRequiredService<MainViewModel>();
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
     }
 
     public MainViewModel ViewModel => (MainViewModel)DataContext;
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.IsTranslationVisible))
+            UpdateTranslationRowHeight();
+        else if (e.PropertyName == nameof(MainViewModel.FloatingText) && ViewModel.IsAutoScrollEnabled)
+            ScrollToEnd(TranscriptScroll);
+        else if (e.PropertyName == nameof(MainViewModel.TranslatedText) && ViewModel.IsAutoScrollEnabled)
+            ScrollToEnd(TranslationScroll);
+    }
+
+    /// <summary>Auto-scroll a view to the newest text.</summary>
+    private static void ScrollToEnd(ScrollViewer scroll)
+    {
+        if (scroll is null)
+            return;
+        scroll.UpdateLayout();
+        scroll.ChangeView(null, scroll.ScrollableHeight, null);
+    }
+
+    /// <summary>
+    /// The translation row is pixel-sized so the divider can resize it. When
+    /// translation is toggled off, collapse the row to zero so no empty band
+    /// remains; when toggled on, restore the user's chosen height.
+    /// </summary>
+    private void UpdateTranslationRowHeight()
+    {
+        if (ViewModel.IsTranslationVisible)
+        {
+            TranslationRow.Height = new GridLength(Math.Max(80, _translationRowHeight));
+        }
+        else
+        {
+            if (TranslationRow.Height.IsAbsolute)
+                _translationRowHeight = TranslationRow.Height.Value;
+            TranslationRow.Height = new GridLength(0);
+        }
+    }
 
     private async void Settings_Click(object sender, RoutedEventArgs e)
     {
@@ -45,8 +88,8 @@ public sealed partial class MainPage : Page
     // ── Resizable divider between transcript and translation ───────────────
     // GridSplitter (CommunityToolkit v7 Uno port) is not compatible with the
     // WinUI 3 head, so the divider is dragged manually: capture the pointer,
-    // measure the vertical delta, and resize the translation row's MaxHeight
-    // (the transcript row is star-sized and absorbs the freed space).
+    // measured by dragging the divider: the transcript row is star-sized and
+    // absorbs the space the translation row gains/loses.
 
     private bool _dividerDragging;
     private double _dividerStartY;
@@ -59,9 +102,7 @@ public sealed partial class MainPage : Page
 
         _dividerDragging = true;
         _dividerStartY = e.GetCurrentPoint(this).Position.Y;
-        _dividerStartTranslationHeight = TranslationRow.MaxHeight > 0
-            ? TranslationRow.MaxHeight
-            : 400; // default cap from XAML
+        _dividerStartTranslationHeight = TranslationRow.Height.Value;
         element.CapturePointer(e.Pointer);
         e.Handled = true;
     }
@@ -74,10 +115,11 @@ public sealed partial class MainPage : Page
         var currentY = e.GetCurrentPoint(this).Position.Y;
         var delta = currentY - _dividerStartY;
 
-        // Dragging down increases the transcript, so the translation shrinks;
-        // dragging up grows the translation. Clamp to the XAML min/max.
+        // Dragging down grows the transcript, so the translation shrinks;
+        // dragging up grows the translation. Clamp to sensible bounds.
         var newHeight = Math.Clamp(_dividerStartTranslationHeight - delta, 80, 400);
-        TranslationRow.MaxHeight = newHeight;
+        TranslationRow.Height = new GridLength(newHeight);
+        _translationRowHeight = newHeight;
         e.Handled = true;
     }
 

@@ -29,6 +29,9 @@ public interface ITranslationService : IAsyncDisposable
     /// <summary>Sets the target language for subsequently-enqueued sentences.</summary>
     void SetTargetLanguage(string language);
 
+    /// <summary>Selects the compute backend ("cpu" or "gpu") for the native engine.</summary>
+    void SetComputeBackend(string backend);
+
     /// <summary>Feeds the current full recognized text; only the new suffix is processed.</summary>
     void Feed(string fullText);
 

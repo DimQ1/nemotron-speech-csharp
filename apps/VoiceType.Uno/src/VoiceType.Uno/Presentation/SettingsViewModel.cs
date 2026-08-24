@@ -17,11 +17,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     public static IReadOnlyList<string> DefaultAudioSourceOptions { get; } = ["Mic", "Loopback", "Mix"];
     public static IReadOnlyList<string> DefaultExecutionProviderOptions { get; } = ["cpu", "follow_config"];
     public static IReadOnlyList<string> DefaultTranslationBackendOptions { get; } = ["native", "http"];
+    public static IReadOnlyList<string> DefaultTranslationComputeBackendOptions { get; } = ["cpu", "gpu"];
 
     public IReadOnlyList<string> LanguageOptions => DefaultLanguageOptions;
     public IReadOnlyList<string> AudioSourceOptions => DefaultAudioSourceOptions;
     public IReadOnlyList<string> ExecutionProviderOptions => DefaultExecutionProviderOptions;
     public IReadOnlyList<string> TranslationBackendOptions => DefaultTranslationBackendOptions;
+    public IReadOnlyList<string> TranslationComputeBackendOptions => DefaultTranslationComputeBackendOptions;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ModelPath))]
@@ -62,10 +64,25 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string _translationBackend = "native";
 
     [ObservableProperty]
+    private string _translationComputeBackend = "cpu";
+
+    [ObservableProperty]
     private string _translationTargetLanguage = "ru";
 
     [ObservableProperty]
     private string _translationServerUrl = "http://localhost:9379";
+
+    [ObservableProperty]
+    private string _translationSystemPrompt = "";
+
+    [ObservableProperty]
+    private string _toggleHotkey = "Ctrl+Shift+V";
+
+    [ObservableProperty]
+    private string _muteHotkey = "Ctrl+Shift+M";
+
+    [ObservableProperty]
+    private string _injectTextHotkey = "Ctrl+Shift+I";
 
     /// <summary>True when the native .litertlm translation model is present on disk.</summary>
     public bool IsNativeModelDownloaded => TranslationModelInfo.IsDownloaded;
@@ -127,8 +144,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         PasteChord = string.IsNullOrWhiteSpace(settings.PasteChord) ? "Ctrl+V" : settings.PasteChord;
         TranslationEnabled = settings.TranslationEnabled;
         TranslationBackend = string.IsNullOrWhiteSpace(settings.TranslationBackend) ? "native" : settings.TranslationBackend;
+        TranslationComputeBackend = string.IsNullOrWhiteSpace(settings.TranslationComputeBackend) ? "cpu" : settings.TranslationComputeBackend;
         TranslationTargetLanguage = settings.TranslationTargetLanguage;
         TranslationServerUrl = settings.TranslationServerUrl;
+        TranslationSystemPrompt = settings.TranslationSystemPrompt;
+        ToggleHotkey = settings.ToggleHotkey;
+        MuteHotkey = settings.MuteHotkey;
+        InjectTextHotkey = settings.InjectTextHotkey;
         IsAutoScrollEnabled = settings.IsAutoScrollEnabled;
         AlwaysOnTop = settings.AlwaysOnTop;
         AutoStartRecognition = settings.AutoStartRecognition;
@@ -170,12 +192,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         settings.PasteChord = string.IsNullOrWhiteSpace(PasteChord) ? "Ctrl+V" : PasteChord.Trim();
         settings.TranslationEnabled = TranslationEnabled;
         settings.TranslationBackend = string.IsNullOrWhiteSpace(TranslationBackend) ? "native" : TranslationBackend.Trim();
+        settings.TranslationComputeBackend = string.IsNullOrWhiteSpace(TranslationComputeBackend) ? "cpu" : TranslationComputeBackend.Trim();
         settings.TranslationTargetLanguage = string.IsNullOrWhiteSpace(TranslationTargetLanguage) ? "ru" : TranslationTargetLanguage.Trim();
         settings.TranslationServerUrl = string.IsNullOrWhiteSpace(TranslationServerUrl) ? "http://localhost:9379" : TranslationServerUrl.Trim();
+        settings.TranslationSystemPrompt = TranslationSystemPrompt?.Trim() ?? "";
         settings.IsAutoScrollEnabled = IsAutoScrollEnabled;
         settings.AlwaysOnTop = AlwaysOnTop;
         settings.AutoStartRecognition = AutoStartRecognition;
         settings.ClearTextOnModelOrSessionChange = ClearTextOnModelOrSessionChange;
+        settings.ToggleHotkey = string.IsNullOrWhiteSpace(ToggleHotkey) ? "" : ToggleHotkey.Trim();
+        settings.MuteHotkey = string.IsNullOrWhiteSpace(MuteHotkey) ? "" : MuteHotkey.Trim();
+        settings.InjectTextHotkey = string.IsNullOrWhiteSpace(InjectTextHotkey) ? "" : InjectTextHotkey.Trim();
         return settings;
     }
 }

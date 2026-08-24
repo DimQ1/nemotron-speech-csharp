@@ -1,3 +1,4 @@
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using SpeechLib.Models;
@@ -325,10 +326,10 @@ public sealed class NAudio3AudioSource : IAudioSource
 
     private sealed class CaptureHandle : IDisposable
     {
-        private readonly WaveIn? _microphone;
+        private readonly WasapiCapture? _microphone;
         private readonly WasapiLoopbackCapture? _loopback;
 
-        private CaptureHandle(WaveIn microphone)
+        private CaptureHandle(WasapiCapture microphone)
         {
             _microphone = microphone;
             Buffer = CreateBuffer(microphone.WaveFormat);
@@ -351,11 +352,17 @@ public sealed class NAudio3AudioSource : IAudioSource
 
         public static CaptureHandle CreateMicrophone(CaptureState state, ManualResetEventSlim signal)
         {
-            var handle = new CaptureHandle(new WaveIn { WaveFormat = new WaveFormat(16000, 16, 1) });
+            // WasapiCapture (shared mode) replaces WaveIn/WinMM so the whole
+            // capture path stays portable (NAudio.Wasapi targets net9.0). It
+            // records the default capture endpoint; the Drain step resamples to
+            // 16 kHz mono regardless of the device mix format.
+            var device = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
+            var capture = new WasapiCapture(device);
+            var handle = new CaptureHandle(capture);
             handle._microphone!.DataAvailable += (_, args) =>
             {
                 if (state.IsRunning)
-                    handle.Buffer.AddSamples(args.BufferSpan[..args.BytesRecorded]);
+                    handle.Buffer.AddSamples(args.Buffer, 0, args.BytesRecorded);
             };
             handle._microphone.RecordingStopped += (_, _) =>
             {

@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
 using VoiceType.Hotkeys;
+using VoiceType.Hotkeys.XdgPortal;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Platform;
 using VoiceType.Uno.Services.Platform.Linux;
@@ -19,7 +20,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly SettingsService _settingsService;
     private readonly ModelDownloadService _modelDownloader;
     private readonly DownloadQueueService _downloadQueue;
-    private readonly IGlobalHotkeyService _hotkeys;
+    private IGlobalHotkeyService _hotkeys;
     private readonly IPlatformTextInjector _textInjector;
     private readonly ITrayIndicator _tray;
     private readonly TranslationService _translation;
@@ -27,6 +28,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     private AppSettings _settings;
     private int _toggleHotkeyId;
+    private int _muteHotkeyId;
+    private int _injectTextHotkeyId;
     private readonly SemaphoreSlim _settingsApplyGate = new(1, 1);
     private int _settingsApplyVersion;
     private Task? _modelInitializationTask;
@@ -58,7 +61,10 @@ public sealed partial class MainViewModel : ObservableObject
         IsAutoScrollEnabled = _settings.IsAutoScrollEnabled;
         AlwaysOnTop = _settings.AlwaysOnTop;
         IsTranslationEnabled = _settings.TranslationEnabled;
+        _translationTargetLanguage = _settings.TranslationTargetLanguage;
         _translation.SetTargetLanguage(_settings.TranslationTargetLanguage);
+        _translation.SetAdditionalSystemPrompt(_settings.TranslationSystemPrompt);
+        _translation.SetComputeBackend(_settings.TranslationComputeBackend);
 
         _recognition.PartialResult += text => _dispatcher.TryEnqueue(() =>
         {
@@ -115,14 +121,10 @@ public sealed partial class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(RecordButtonText));
         });
 
-        // Global hotkeys: portal grants bindings asynchronously (consent dialog
-        // on first run). Registration happens in the background; presses arrive
-        // via the HotkeyPressed event.
-        _hotkeys.HotkeyPressed += id =>
-        {
-            if (id == _toggleHotkeyId)
-                _dispatcher.TryEnqueue(() => _ = ToggleAsync());
-        };
+        // Global hotkeys: presses arrive via the HotkeyPressed event. On Linux
+        // the XDG portal is swapped in asynchronously (consent dialog on first
+        // run); on Windows RegisterHotKey is wired in the composition root.
+        _hotkeys.HotkeyPressed += OnHotkeyPressed;
 
         // Tray indicator: register with the desktop environment; activation
         // (icon click) toggles recording like the main button.
@@ -135,8 +137,7 @@ public sealed partial class MainViewModel : ObservableObject
         _translation.TranslationChanged += text => _dispatcher.TryEnqueue(() => TranslatedText = text);
         _translation.StatusChanged += status => _dispatcher.TryEnqueue(() => TranslationStatusText = status);
 
-        if (_hotkeys.IsAvailable && !string.IsNullOrWhiteSpace(_settings.ToggleHotkey))
-            _ = RegisterToggleHotkeyAsync(_settings.ToggleHotkey);
+        _ = InitializeHotkeysAsync();
 
         RefreshModelBanners();
         RefreshQueueProgress();
@@ -146,11 +147,65 @@ public sealed partial class MainViewModel : ObservableObject
         _modelInitializationTask = InitializeModelAsync();
     }
 
-    private async Task RegisterToggleHotkeyAsync(string chord)
+    private async Task InitializeHotkeysAsync()
     {
-        var id = await _hotkeys.RegisterAsync(chord);
-        if (id > 0)
-            _toggleHotkeyId = id;
+        var service = _hotkeys;
+
+        // On Linux, connect the XDG GlobalShortcuts portal in the background and
+        // swap it in place of the startup Null object.
+        if (!service.IsAvailable && OperatingSystem.IsLinux())
+        {
+            var xdg = await XdgGlobalShortcutsService.TryCreateAsync().ConfigureAwait(false);
+            if (xdg is not null)
+            {
+                _hotkeys = xdg;
+                xdg.HotkeyPressed += OnHotkeyPressed;
+                service = xdg;
+            }
+        }
+
+        if (!service.IsAvailable)
+            return;
+
+        if (!string.IsNullOrWhiteSpace(_settings.ToggleHotkey))
+            _toggleHotkeyId = await service.RegisterAsync(_settings.ToggleHotkey).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(_settings.MuteHotkey))
+            _muteHotkeyId = await service.RegisterAsync(_settings.MuteHotkey).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(_settings.InjectTextHotkey))
+            _injectTextHotkeyId = await service.RegisterAsync(_settings.InjectTextHotkey).ConfigureAwait(false);
+    }
+
+    private async Task ReregisterHotkeysAsync()
+    {
+        try
+        {
+            if (_hotkeys.IsAvailable)
+                await _hotkeys.UnregisterAllAsync().ConfigureAwait(false);
+
+            _toggleHotkeyId = 0;
+            _muteHotkeyId = 0;
+            _injectTextHotkeyId = 0;
+
+            await InitializeHotkeysAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _dispatcher.TryEnqueue(() => StatusText = $"Hotkey error: {ex.Message}");
+        }
+    }
+
+    private void OnHotkeyPressed(int id)
+    {
+        if (id > 0 && id == _toggleHotkeyId)
+            _dispatcher.TryEnqueue(() => _ = ToggleAsync());
+        else if (id > 0 && id == _muteHotkeyId)
+            _dispatcher.TryEnqueue(() => ToggleMute());
+        else if (id > 0 && id == _injectTextHotkeyId)
+            _dispatcher.TryEnqueue(() =>
+            {
+                if (!string.IsNullOrEmpty(FloatingText))
+                    _textInjector.Inject(FloatingText);
+            });
     }
 
     [ObservableProperty]
@@ -213,6 +268,12 @@ public sealed partial class MainViewModel : ObservableObject
     private string _translationModelBannerText =
         "Translation model is not downloaded — translation will use the HTTP server fallback or stay off.";
 
+    [ObservableProperty]
+    private bool _isAsrModelPartial;
+
+    [ObservableProperty]
+    private bool _isTranslationModelPartial;
+
     public bool IsTranslationModelBannerVisible => IsTranslationModelMissing && IsTranslationEnabled;
 
     private void RefreshQueueProgress()
@@ -231,17 +292,39 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void RefreshModelBanners()
     {
-        IsAsrModelMissing = ModelPathResolver.FindExistingModelPath(_settings) is null;
+        // Check the configured/asr path integrity so a broken or partially
+        // downloaded model is reported as "re-download" rather than "missing".
+        var asrPath = ModelPathResolver.FindExistingModelPath(_settings);
+        var asrIntegrity = asrPath is not null
+            ? ModelPathResolver.ModelIntegrity.Complete
+            : ModelPathResolver.CheckIntegrity(_settings.ModelPath);
+        IsAsrModelPartial = asrIntegrity == ModelPathResolver.ModelIntegrity.Broken;
+        IsAsrModelMissing = asrIntegrity != ModelPathResolver.ModelIntegrity.Complete;
+        AsrModelBannerText = asrIntegrity switch
+        {
+            ModelPathResolver.ModelIntegrity.Broken =>
+                "ASR model is broken or incomplete — re-download it to start dictation.",
+            ModelPathResolver.ModelIntegrity.Missing =>
+                "ASR model is not available — download it to start dictation.",
+            _ => AsrModelBannerText
+        };
+
+        IsTranslationModelPartial = !TranslationModelInfo.IsDownloaded && TranslationModelInfo.HasPartialDownload;
         IsTranslationModelMissing = !TranslationModelInfo.IsDownloaded;
+        TranslationModelBannerText = IsTranslationModelPartial
+            ? "Translation model download is incomplete — re-download it to finish."
+            : "Translation model is not downloaded — translation will use the HTTP server fallback or stay off.";
+
         OnPropertyChanged(nameof(IsTranslationModelBannerVisible));
     }
 
-    /// <summary>Enqueues the ASR model download into the shared parallel queue.</summary>
+    /// <summary>Enqueues the ASR model download into the shared parallel queue (force re-download when partial).</summary>
     public void EnqueueAsrModelDownload()
     {
         var modelsRoot = string.IsNullOrWhiteSpace(_settings.ModelsRootPath)
             ? AppPaths.ModelsDir
             : _settings.ModelsRootPath;
+        var force = IsAsrModelPartial;
         _downloadQueue.EnqueueAsrModel(modelsRoot, modelPath =>
             _dispatcher.TryEnqueue(async () =>
             {
@@ -252,18 +335,21 @@ public sealed partial class MainViewModel : ObservableObject
                 await Task.Run(() => _settingsService.Save(settings));
                 _settings = settings;
                 RefreshModelBanners();
-            }));
+            }),
+            forceRedownload: force);
     }
 
-    /// <summary>Enqueues the translation model download into the shared parallel queue.</summary>
+    /// <summary>Enqueues the translation model download into the shared parallel queue (force re-download when partial).</summary>
     public void EnqueueTranslationModelDownload()
     {
+        var force = IsTranslationModelPartial;
         _downloadQueue.EnqueueTranslationModel(_ =>
             _dispatcher.TryEnqueue(() =>
             {
                 RefreshModelBanners();
                 _translation.UpdateBackend(TranslationService.BackendKind.Native);
-            }));
+            }),
+            forceRedownload: force);
     }
 
     private static string FormatBytes(long bytes) => bytes switch
@@ -296,6 +382,9 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _translationStatusText = "Translation off";
 
+    [ObservableProperty]
+    private string _translationTargetLanguage = "ru";
+
     public bool IsTranslationVisible => IsTranslationEnabled;
 
     partial void OnIsTranslationEnabledChanged(bool value)
@@ -310,7 +399,21 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _translation.Reset();
             TranslatedText = "";
+            return;
         }
+
+        // Warm up the translation engine in the background as soon as it's enabled.
+        _ = _translation.EnsureConnectedAsync();
+    }
+
+    partial void OnTranslationTargetLanguageChanged(string value)
+    {
+        if (_isApplyingSettingsSnapshot)
+            return;
+
+        _settings.TranslationTargetLanguage = value;
+        _ = Task.Run(() => _settingsService.Update(s => s.TranslationTargetLanguage = value));
+        _translation.SetTargetLanguage(value);
     }
 
     public IReadOnlyList<string> LanguageOptions => SettingsViewModel.DefaultLanguageOptions;
@@ -441,6 +544,7 @@ public sealed partial class MainViewModel : ObservableObject
             await Task.Run(() => _settingsService.Save(newSettings)).ConfigureAwait(false);
             _settings = newSettings;
             ApplySettingsSnapshot(newSettings);
+            _ = ReregisterHotkeysAsync();
 
             var previousModelPath = _recognition.LoadedModelPath;
             var newModelPath = ModelPathResolver.FindExistingModelPath(newSettings) ?? newSettings.ModelPath;
@@ -602,11 +706,16 @@ public sealed partial class MainViewModel : ObservableObject
             IsAutoScrollEnabled = settings.IsAutoScrollEnabled;
             AlwaysOnTop = settings.AlwaysOnTop;
             IsTranslationEnabled = settings.TranslationEnabled;
+            TranslationTargetLanguage = settings.TranslationTargetLanguage;
             _translation.SetTargetLanguage(settings.TranslationTargetLanguage);
+            _translation.SetAdditionalSystemPrompt(settings.TranslationSystemPrompt);
             _translation.UpdateServerUrl(settings.TranslationServerUrl);
             _translation.UpdateBackend(string.Equals(settings.TranslationBackend, "http", StringComparison.OrdinalIgnoreCase)
                 ? TranslationService.BackendKind.Http
                 : TranslationService.BackendKind.Native);
+            _translation.SetComputeBackend(settings.TranslationComputeBackend);
+            if (settings.TranslationEnabled)
+                _ = _translation.EnsureConnectedAsync();
 
             if (_textInjector is LinuxTextInjector linuxInjector
                 && !string.IsNullOrWhiteSpace(settings.PasteChord))

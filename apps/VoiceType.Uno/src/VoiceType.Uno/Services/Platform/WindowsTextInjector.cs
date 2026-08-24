@@ -65,32 +65,26 @@ public sealed class WindowsTextInjector : IPlatformTextInjector
     private static INPUT MakeUnicodeKey(char ch, bool keyUp) => new()
     {
         type = INPUT_KEYBOARD,
-        U = new InputUnion
+        ki = new KEYBDINPUT
         {
-            ki = new KEYBDINPUT
-            {
-                wVk = 0,
-                wScan = ch,
-                dwFlags = KEYEVENTF_UNICODE | (keyUp ? KEYEVENTF_KEYUP : 0),
-                time = 0,
-                dwExtraInfo = nint.Zero
-            }
+            wVk = 0,
+            wScan = ch,
+            dwFlags = KEYEVENTF_UNICODE | (keyUp ? KEYEVENTF_KEYUP : 0),
+            time = 0,
+            dwExtraInfo = nint.Zero
         }
     };
 
     private static INPUT MakeVkKey(ushort vk, bool keyUp) => new()
     {
         type = INPUT_KEYBOARD,
-        U = new InputUnion
+        ki = new KEYBDINPUT
         {
-            ki = new KEYBDINPUT
-            {
-                wVk = vk,
-                wScan = 0,
-                dwFlags = keyUp ? KEYEVENTF_KEYUP : 0,
-                time = 0,
-                dwExtraInfo = nint.Zero
-            }
+            wVk = vk,
+            wScan = 0,
+            dwFlags = keyUp ? KEYEVENTF_KEYUP : 0,
+            time = 0,
+            dwExtraInfo = nint.Zero
         }
     };
 
@@ -146,17 +140,11 @@ public sealed class WindowsTextInjector : IPlatformTextInjector
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool GlobalUnlock(nint hMem);
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Explicit, Size = 40)]
     private struct INPUT
     {
-        public uint type;
-        public InputUnion U;
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    private struct InputUnion
-    {
-        [FieldOffset(0)] public KEYBDINPUT ki;
+        [FieldOffset(0)] public uint type;
+        [FieldOffset(8)] public KEYBDINPUT ki;
     }
 
     [StructLayout(LayoutKind.Sequential)]

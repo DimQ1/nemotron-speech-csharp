@@ -1,3 +1,5 @@
+using LiteRtLmSharp;
+
 namespace SpeechLib.LiteRT.Native;
 
 /// <summary>
@@ -23,15 +25,40 @@ public sealed class LiteRTLmNativeOptions
     public int MaxTokens { get; init; } = 256;
 
     /// <summary>
+    /// Model context window (max tokens). The translations are short ASR
+    /// sentences (a few hundred chars at most), so a large window is mostly
+    /// padding that only costs memory and prefill time on CPU. Kept modest at
+    /// 2048 so the constant per-call overhead stays low.
+    /// </summary>
+    public int MaxContextTokens { get; init; } = 2048;
+
+    /// <summary>
+    /// Model weight-cache location passed to the engine. This controls the
+    /// XNNPack weight cache (persisted weights so a repeated model load is
+    /// faster), not the per-call prompt prefix. <see cref="LiteRtCache.InMemory"/>
+    /// is not enabled in this LiteRT build and logs "in-memory cache is not
+    /// enabled" errors, so keep the default, or point <see cref="LiteRtCache.Directory"/>
+    /// at a writable folder if you want a disk-backed weight cache.
+    /// </summary>
+    public LiteRtCache Cache { get; init; } = LiteRtCache.Default;
+
+    /// <summary>
     /// Native log verbosity. Defaults to <c>Warning</c> so model-load progress is
     /// not drowned out; set to <c>Silent</c> to suppress everything.
     /// </summary>
     public LiteRTLmLogLevel LogLevel { get; init; } = LiteRTLmLogLevel.Warning;
 
     /// <summary>
-    /// Builds the system prompt that instructs the model to translate and to
-    /// reply with only the translated text (no JSON envelope, no preamble), so
-    /// that streamed deltas can be shown to the user as they arrive.
+    /// Optional extra system-prompt text appended to the built-in translation
+    /// instruction (terminology, style, casing, etc.). Empty by default.
+    /// </summary>
+    public string AdditionalSystemPrompt { get; init; } = "";
+
+    /// <summary>
+    /// Builds the system prompt. A plain instruction to translate the source text
+    /// into the target language, preserving meaning/tone/formatting and replying
+    /// with only the translation. <c>AdditionalSystemPrompt</c> is appended so
+    /// users can add their own rules.
     /// </summary>
     public string BuildSystemPrompt(string targetLang, string? sourceLang)
     {
@@ -39,11 +66,15 @@ public sealed class LiteRTLmNativeOptions
             ? "the source language"
             : sourceLang;
 
-        return
+        var prompt =
             "You are a professional translation engine. " +
             $"Translate the user's message from {source} into {targetLang}. " +
             "Preserve meaning, tone, and formatting. " +
             "Reply with only the translation, with no preamble, no explanation, and no JSON.";
+
+        return string.IsNullOrWhiteSpace(AdditionalSystemPrompt)
+            ? prompt
+            : prompt + "\n\nAdditional instructions:\n" + AdditionalSystemPrompt;
     }
 }
 

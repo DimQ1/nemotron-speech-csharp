@@ -25,9 +25,12 @@ public sealed class TranslationService : IDisposable
 {
     public enum BackendKind { Native, Http }
 
-    private const int DraftDebounceMs = 150;
+    // Lower debounce so the tail translation appears sooner (faster perceived
+    // response), while keeping a coalescing window so bursts of partials do not
+    // each trigger a decode pass.
+    private const int DraftDebounceMs = 80;
     private const int MinStableWords = 2;
-    private const int MaxTailChars = 160;
+    private const int MaxTailChars = 200;
     private const int MinForceChunkChars = 40;
 
     private readonly object _stateLock = new();
@@ -44,6 +47,8 @@ public sealed class TranslationService : IDisposable
     private readonly LiteRTLmOptions _baseOptions;
     private volatile string _serverUrl;
     private volatile BackendKind _backend = BackendKind.Native;
+    private volatile string _computeBackend = "cpu";
+    private volatile string _additionalSystemPrompt = "";
     private HttpClient? _http;
     private ITextTranslator? _translator;
     private BackendKind _activeEngine;
@@ -70,6 +75,23 @@ public sealed class TranslationService : IDisposable
         _baseOptions = options;
         _serverUrl = options.BaseUrl;
         _backend = backend;
+        Log($"created with backend={backend}, maxOutputTokens={options.MaxTokens}, model={options.Model}");
+    }
+
+    private static void Log(string message)
+    {
+        var line = $"{DateTime.Now:HH:mm:ss.fff} [Translate] {message}";
+        System.Diagnostics.Debug.WriteLine($"[Translate] {message}");
+        try
+        {
+            var path = Path.Combine(AppPaths.DataRoot, "translation.log");
+            Directory.CreateDirectory(AppPaths.DataRoot);
+            File.AppendAllText(path, line + Environment.NewLine);
+        }
+        catch
+        {
+            // Best-effort file logging; never let logging crash the translator.
+        }
     }
 
     public event Action<string>? TranslationChanged;
@@ -85,8 +107,26 @@ public sealed class TranslationService : IDisposable
 
     public void SetTargetLanguage(string language)
     {
-        if (!string.IsNullOrWhiteSpace(language))
+        if (!string.IsNullOrWhiteSpace(language) && language != _targetLanguage)
+        {
             _targetLanguage = language;
+            Log($"target language -> {language}");
+        }
+    }
+
+    /// <summary>
+    /// Sets an optional extra system prompt appended to the built-in translation
+    /// instruction. Changing it re-establishes the engine so the new prompt takes
+    /// effect on the next translation.
+    /// </summary>
+    public void SetAdditionalSystemPrompt(string? prompt)
+    {
+        var trimmed = prompt?.Trim() ?? "";
+        if (string.Equals(_additionalSystemPrompt, trimmed, StringComparison.Ordinal))
+            return;
+
+        _additionalSystemPrompt = trimmed;
+        ResetEngine();
     }
 
     /// <summary>
@@ -98,11 +138,34 @@ public sealed class TranslationService : IDisposable
         if (_backend == backend)
             return;
 
+        var previous = _backend;
         _backend = backend;
         ResetEngine();
+        Log($"backend switched -> {backend} (was {previous})");
         SetStatus(backend == BackendKind.Native
             ? "Translation engine: native (in-process)"
             : "Translation engine: HTTP server");
+    }
+
+    /// <summary>
+    /// Selects the compute backend for the native engine: "cpu" (XNNPACK) or
+    /// "gpu" (WebGPU delegate). Drops the active native engine so the change
+    /// takes effect on the next translation.
+    /// </summary>
+    public void SetComputeBackend(string backend)
+    {
+        var normalized = (backend ?? "cpu").Trim().ToLowerInvariant();
+        if (normalized is not ("cpu" or "gpu"))
+            normalized = "cpu";
+
+        if (_computeBackend == normalized)
+            return;
+
+        _computeBackend = normalized;
+        if (_activeEngine == BackendKind.Native)
+            ResetEngine();
+
+        Log($"compute backend -> {normalized}");
     }
 
     /// <summary>
@@ -313,16 +376,21 @@ public sealed class TranslationService : IDisposable
     private async Task ConnectNativeAsync(CancellationToken cancellationToken)
     {
         SetStatus("Loading translation model (native)...");
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Log($"connecting native: modelPath={TranslationModelInfo.LocalModelPath}, backend={_computeBackend}");
         _translator = await Task.Run(() => (ITextTranslator)new LiteRTLmNativeTranslator(new LiteRTLmNativeOptions
         {
             ModelPath = TranslationModelInfo.LocalModelPath,
-            Backend = TranslationModelInfo.Backend,
+            Backend = _computeBackend,
             LogLevel = LiteRTLmLogLevel.Warning,
-            MaxTokens = _baseOptions.MaxTokens
+            MaxTokens = _baseOptions.MaxTokens,
+            AdditionalSystemPrompt = _additionalSystemPrompt
         }), cancellationToken).ConfigureAwait(false);
 
         _activeEngine = BackendKind.Native;
         _isConnected = true;
+        sw.Stop();
+        Log($"native connected in {sw.ElapsedMilliseconds} ms (engine={_activeEngine})");
         SetStatus("Translation ready (native)");
     }
 
@@ -332,6 +400,7 @@ public sealed class TranslationService : IDisposable
             ? "Model not downloaded — falling back to translation server..."
             : "Connecting to translation server...");
 
+        Log("connecting http: no native model or http backend forced — using server");
         _http ??= new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
         _translator = new LiteRTLmTranslator(new LiteRTLmOptions
         {
@@ -339,18 +408,22 @@ public sealed class TranslationService : IDisposable
             Endpoint = _baseOptions.Endpoint,
             Model = _baseOptions.Model,
             Temperature = _baseOptions.Temperature,
-            MaxTokens = _baseOptions.MaxTokens
+            MaxTokens = _baseOptions.MaxTokens,
+            AdditionalSystemPrompt = _additionalSystemPrompt
         });
 
         // Cheap reachability probe: translate an empty-ish payload. A reachable
         // server answers; an unreachable one throws, flipping status to offline.
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         using var probe = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         probe.CancelAfter(TimeSpan.FromSeconds(4));
         await _translator.TranslateAsync("ok", _targetLanguage, null, probe.Token)
             .ConfigureAwait(false);
+        sw.Stop();
 
         _activeEngine = BackendKind.Http;
         _isConnected = true;
+        Log($"http connected at {_serverUrl} in {sw.ElapsedMilliseconds} ms (engine={_activeEngine})");
         SetStatus("Translation ready (server)");
     }
 
@@ -436,8 +509,16 @@ public sealed class TranslationService : IDisposable
             if (Interlocked.Read(ref _generation) != generation)
                 return;
 
-            ClearProvisional();
+            string previous;
+            lock (_stateLock)
+            {
+                previous = _locked + _streaming;
+                _locked = "";
+                _streaming = previous;
+            }
 
+            Log($"final translate start (len={sentence.Length}) engine={_activeEngine}");
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             var partial = new StringBuilder();
             await foreach (var token in translator.TranslateStreamAsync(sentence, language).ConfigureAwait(false))
             {
@@ -447,11 +528,12 @@ public sealed class TranslationService : IDisposable
                 partial.Append(token);
                 lock (_stateLock)
                 {
-                    _locked = "";
-                    _streaming = partial.ToString();
+                    _streaming = MergeProvisional(previous, partial.ToString());
                 }
                 RaiseTranslationChanged();
             }
+            sw.Stop();
+            Log($"final translate done in {sw.ElapsedMilliseconds} ms (charsOut={partial.Length}) engine={_activeEngine}");
 
             if (Interlocked.Read(ref _generation) != generation)
                 return;
@@ -584,6 +666,17 @@ public sealed class TranslationService : IDisposable
 
     private async Task<bool> StreamDraftAsync(ITextTranslator translator, string source, CancellationToken ct)
     {
+        Log($"draft translate start (len={source.Length}) engine={_activeEngine}");
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        string previous;
+        lock (_stateLock)
+        {
+            previous = _locked + _streaming;
+            _locked = "";
+            _streaming = previous;
+        }
+
         var partial = new StringBuilder();
         await foreach (var token in translator
             .TranslateStreamAsync(source, _targetLanguage, cancellationToken: ct)
@@ -595,11 +688,12 @@ public sealed class TranslationService : IDisposable
 
             lock (_stateLock)
             {
-                _locked = "";
-                _streaming = partial.ToString();
+                _streaming = MergeProvisional(previous, partial.ToString());
             }
             RaiseTranslationChanged();
         }
+        sw.Stop();
+        Log($"draft translate done in {sw.ElapsedMilliseconds} ms (charsOut={partial.Length}) engine={_activeEngine}");
 
         var full = partial.ToString().Trim();
         var committed = false;
@@ -667,6 +761,29 @@ public sealed class TranslationService : IDisposable
             _locked = "";
             _streaming = "";
         }
+    }
+
+    /// <summary>
+    /// Merges a freshly streamed partial with the previously displayed provisional
+    /// text so the live text updates incrementally (append / change the tail)
+    /// instead of blinking back to empty on each re-run. When one string is a
+    /// prefix of the other (the common case as the ASR tail grows), the longer
+    /// one is shown; on divergence the new text wins.
+    /// </summary>
+    private static string MergeProvisional(string previous, string current)
+    {
+        if (previous.Length == 0)
+            return current;
+
+        var common = 0;
+        var max = previous.Length < current.Length ? previous.Length : current.Length;
+        while (common < max && previous[common] == current[common])
+            common++;
+
+        if (common == previous.Length || common == current.Length)
+            return current.Length >= previous.Length ? current : previous;
+
+        return current;
     }
 
     private static string NormalizeTail(string text)

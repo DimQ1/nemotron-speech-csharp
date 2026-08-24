@@ -36,7 +36,8 @@ public sealed class LiteRTLmNativeTranslator : ITextTranslator
             ModelPath = options.ModelPath,
             Backend = LiteRtBackend.Parse(options.Backend),
             NumThreads = options.NumThreads > 0 ? options.NumThreads : null,
-            MaxNumTokens = 4096,
+            MaxNumTokens = options.MaxContextTokens > 0 ? options.MaxContextTokens : 4096,
+            Cache = options.Cache,
         });
     }
 

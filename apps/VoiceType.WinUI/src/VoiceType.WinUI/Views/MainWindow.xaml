@@ -283,13 +283,20 @@
                                   IsChecked="{x:Bind ViewModel.TranslationEnabled, Mode=TwoWay}"
                                   Style="{StaticResource DarkCheckBox}"
                                   VerticalAlignment="Center"/>
-                        <ComboBox Grid.Column="1" Margin="8,0,0,0"
-                                  ItemsSource="{x:Bind ViewModel.TranslationLanguages, Mode=OneWay}"
-                                  DisplayMemberPath="Name"
-                                  SelectedItem="{x:Bind ViewModel.SelectedTranslationLanguage, Mode=TwoWay}"
-                                  Style="{StaticResource DarkComboBox}"
-                                  VerticalAlignment="Center" MinWidth="120"
-                                  Visibility="{x:Bind ViewModel.ShowTranslation, Mode=OneWay}"/>
+                        <StackPanel Grid.Column="1" Margin="8,0,0,0" Orientation="Horizontal" Spacing="6"
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind ViewModel.ShowTranslation, Mode=OneWay}">
+                            <ComboBox ItemsSource="{x:Bind ViewModel.TranslationLanguages, Mode=OneWay}"
+                                      DisplayMemberPath="Name"
+                                      SelectedItem="{x:Bind ViewModel.SelectedTranslationLanguage, Mode=TwoWay}"
+                                      Style="{StaticResource DarkComboBox}"
+                                      VerticalAlignment="Center" MinWidth="120"/>
+                            <ComboBox ItemsSource="{x:Bind ViewModel.TranslationComputeBackendOptions, Mode=OneWay}"
+                                      SelectedItem="{x:Bind ViewModel.TranslationComputeBackend, Mode=TwoWay}"
+                                      Style="{StaticResource DarkComboBox}"
+                                      VerticalAlignment="Center" MinWidth="80"
+                                      ToolTipService.ToolTip="Translation compute backend (cpu / gpu)"/>
+                        </StackPanel>
                         <TextBlock Grid.Column="2" Margin="12,0,0,0"
                                    FontSize="11"
                                    Foreground="{StaticResource FgSecondaryBrush}"

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
@@ -17,7 +18,14 @@ public sealed class ModelDownloadService : IDisposable
 
     public ModelDownloadService()
     {
-        _httpClient = new HttpClient
+        // Accept-Encoding: gzip, deflate, br; the handler transparently decompresses.
+        var handler = new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip
+                | DecompressionMethods.Deflate
+                | DecompressionMethods.Brotli
+        };
+        _httpClient = new HttpClient(handler)
         {
             Timeout = Timeout.InfiniteTimeSpan
         };

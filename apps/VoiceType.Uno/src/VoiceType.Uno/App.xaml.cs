@@ -1,9 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Uno.Resizetizer;
-#if VOICE_TYPE_WINDOWS
-using SpeechLib.Audio;
-#endif
 using VoiceType.Hotkeys;
+using VoiceType.Hotkeys.Windows;
 using VoiceType.Uno.Presentation;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Audio;
@@ -50,18 +48,26 @@ public partial class App : Application
                     // time, aggregated progress for the whole queue).
                     services.AddSingleton<DownloadQueueService>();
 #if VOICE_TYPE_WINDOWS
-                    services.AddSingleton<SpeechLib.IAudioSourceFactory, NAudio3AudioSourceFactory>();
+                    services.AddSingleton<SpeechLib.IAudioSourceFactory, SpeechLib.Audio.NAudio3AudioSourceFactory>();
 #else
-                    services.AddSingleton<SpeechLib.IAudioSourceFactory, PulseAudioSourceFactory>();
+                    // Skia desktop head. Audio capture is picked at runtime:
+                    //   Windows → NAudio 3.0.1 (WASAPI) so dictation works on a dev box;
+                    //   Linux   → PulseAudio (libpulse-simple) for the real target.
+                    services.AddSingleton<SpeechLib.IAudioSourceFactory>(_ =>
+                        OperatingSystem.IsWindows()
+                            ? (SpeechLib.IAudioSourceFactory)new SpeechLib.Audio.NAudio3AudioSourceFactory()
+                            : new PulseAudioSourceFactory());
 #endif
                     services.AddSingleton<RecognitionService>();
 
                     // ---- Platform abstractions (backends selected per-OS) ----
-                    // Global hotkeys: XDG GlobalShortcuts portal on Linux
-                    // (Wayland + X11, xdg-desktop-portal >= 1.18); Null Object fallback.
-                    // Note: portal connection is async — use Null for startup;
-                    // the ViewModel can swap in the real backend on a background task.
-                    services.AddSingleton<IGlobalHotkeyService>(_ => new NullGlobalHotkeyService());
+                    // Global hotkeys: Windows → RegisterHotKey (message-only
+                    // window); Linux → XDG GlobalShortcuts portal (swapped in
+                    // asynchronously by the ViewModel); Null elsewhere.
+                    services.AddSingleton<IGlobalHotkeyService>(_ =>
+                        OperatingSystem.IsWindows()
+                            ? (IGlobalHotkeyService)new WindowsGlobalHotkeyService()
+                            : new NullGlobalHotkeyService());
                     // Text injection: SendInput+clipboard on Windows; on Linux the
                     // injector picks clipboard (wl-copy/xclip/xsel) + keyboard
                     // (XTest on X11, ydotool on Wayland) backends per session.
@@ -98,7 +104,6 @@ public partial class App : Application
         #if DEBUG
         MainWindow.UseStudio();
 #endif
-                MainWindow.SetWindowIcon();
 
         Host = builder.Build();
 
@@ -122,5 +127,7 @@ public partial class App : Application
         }
         // Ensure the current window is active
         MainWindow.Activate();
+        // Apply the app icon now that the native window handle exists.
+        MainWindow.SetWindowIcon();
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
@@ -22,7 +23,15 @@ public sealed class DownloadQueueService : IDisposable
 
     public DownloadQueueService()
     {
-        _http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        // Accept-Encoding: gzip, deflate, br; the handler transparently decompresses.
+        // This keeps the HF metadata and any text payloads small over the wire.
+        var handler = new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip
+                | DecompressionMethods.Deflate
+                | DecompressionMethods.Brotli
+        };
+        _http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
         _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("VoiceType.Uno", "1.0"));
     }
 
@@ -59,9 +68,14 @@ public sealed class DownloadQueueService : IDisposable
     /// <summary>
     /// Enqueues the recommended ASR model download. Returns the queue item.
     /// If an identical download is already queued/running, returns the existing item.
+    /// When <paramref name="forceRedownload"/> is true, the existing on-disk model
+    /// directory is deleted first (used to repair a broken/partial install).
     /// </summary>
-    public DownloadQueueItem EnqueueAsrModel(string targetRoot, Action<string> onCompleted)
+    public DownloadQueueItem EnqueueAsrModel(string targetRoot, Action<string> onCompleted, bool forceRedownload = false)
     {
+        if (forceRedownload)
+            DeleteAsrModelDirectory(targetRoot);
+
         var existing = FindDuplicate(ModelKind.Asr);
         if (existing is not null)
             return existing;
@@ -80,9 +94,14 @@ public sealed class DownloadQueueService : IDisposable
 
     /// <summary>
     /// Enqueues the LiteRT-LM translation model download (~2.6 GB single file).
+    /// When <paramref name="forceRedownload"/> is true, the existing model file is
+    /// deleted first (used to repair a broken/partial download).
     /// </summary>
-    public DownloadQueueItem EnqueueTranslationModel(Action<string> onCompleted)
+    public DownloadQueueItem EnqueueTranslationModel(Action<string> onCompleted, bool forceRedownload = false)
     {
+        if (forceRedownload)
+            DeleteTranslationModelFile();
+
         var existing = FindDuplicate(ModelKind.Translation);
         if (existing is not null)
             return existing;
@@ -103,6 +122,41 @@ public sealed class DownloadQueueService : IDisposable
     {
         if (_items.TryGetValue(id, out var item))
             item.Cancel();
+    }
+
+    /// <summary>
+    /// Removes an item from the queue. Running/queued items are cancelled first;
+    /// finished (completed/failed/cancelled) items are simply dropped from the list.
+    /// </summary>
+    public void Remove(Guid id)
+    {
+        if (!_items.TryGetValue(id, out var item))
+            return;
+
+        item.Cancel();
+        if (_items.TryRemove(id, out _))
+            Changed?.Invoke();
+    }
+
+    /// <summary>Re-enqueues a failed/cancelled item as a fresh download.</summary>
+    public DownloadQueueItem? Retry(Guid id)
+    {
+        if (!_items.TryGetValue(id, out var item))
+            return null;
+        if (item.State is DownloadQueueItemState.Queued or DownloadQueueItemState.Running)
+            return item; // already in flight
+
+        Remove(id);
+        return item.Kind switch
+        {
+            ModelKind.Asr => EnqueueAsrModel(
+                string.IsNullOrWhiteSpace(item.ResultPath)
+                    ? AppPaths.ModelsDir
+                    : Path.GetDirectoryName(item.ResultPath) ?? AppPaths.ModelsDir,
+                item.OnCompleted),
+            ModelKind.Translation => EnqueueTranslationModel(item.OnCompleted),
+            _ => null
+        };
     }
 
     public void CancelAll()
@@ -220,7 +274,9 @@ public sealed class DownloadQueueService : IDisposable
 
     private async Task<List<RemoteFile>> FetchFilesAsync(string repoId, CancellationToken ct)
     {
-        var endpoint = $"https://huggingface.co/api/models/{repoId}";
+        // blobs=true is required — without it the API omits file sizes, which
+        // leaves the queue progress at "0/N done" with no byte-level percent.
+        var endpoint = $"https://huggingface.co/api/models/{repoId}?blobs=true";
         using var response = await _http.GetAsync(endpoint, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         await using var content = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
@@ -299,6 +355,54 @@ public sealed class DownloadQueueService : IDisposable
             throw new InvalidOperationException($"Unsafe model file path: {relativePath}");
 
         return destination;
+    }
+
+    /// <summary>
+    /// Deletes the on-disk ASR model directory (and any stale .part files) so a
+    /// broken/partial install can be re-downloaded cleanly. Best effort — a busy
+    /// or missing directory is not an error.
+    /// </summary>
+    private static void DeleteAsrModelDirectory(string targetRoot)
+    {
+        try
+        {
+            var repoId = ModelDownloadService.RecommendedRepoId;
+            var subfolder = repoId[(repoId.LastIndexOf('/') + 1)..];
+            var modelRoot = Path.GetFullPath(Path.Combine(targetRoot, subfolder));
+            if (Directory.Exists(modelRoot))
+                Directory.Delete(modelRoot, recursive: true);
+
+            foreach (var part in Directory.EnumerateFiles(targetRoot, "*.part", SearchOption.AllDirectories))
+            {
+                try { File.Delete(part); } catch { /* best effort */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[VoiceType.Uno] Could not delete ASR model directory: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Deletes the on-disk translation model file (and its .part) so a
+    /// broken/partial download can be re-downloaded cleanly. Best effort.
+    /// </summary>
+    private static void DeleteTranslationModelFile()
+    {
+        try
+        {
+            var path = TranslationModelInfo.LocalModelPath;
+            if (File.Exists(path))
+                File.Delete(path);
+
+            var part = path + ".part";
+            if (File.Exists(part))
+                File.Delete(part);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[VoiceType.Uno] Could not delete translation model file: {ex.Message}");
+        }
     }
 
     private readonly record struct RemoteFile(string RelativePath, long SizeBytes);
