@@ -46,6 +46,9 @@ public partial class App : Application
                     // ---- Platform-independent services ----
                     services.AddSingleton<SettingsService>();
                     services.AddSingleton<ModelDownloadService>();
+                    // Parallel model download queue (ASR + translation at the same
+                    // time, aggregated progress for the whole queue).
+                    services.AddSingleton<DownloadQueueService>();
 #if VOICE_TYPE_WINDOWS
                     services.AddSingleton<SpeechLib.IAudioSourceFactory, NAudio3AudioSourceFactory>();
 #else

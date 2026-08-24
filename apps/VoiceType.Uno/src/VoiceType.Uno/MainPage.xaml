@@ -7,8 +7,10 @@
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
-      <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" x:Name="TranslationRow" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
@@ -16,6 +18,7 @@
     <Grid>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
@@ -31,36 +34,91 @@
           ItemsSource="{x:Bind ViewModel.LanguageOptions}"
           SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}" />
       </StackPanel>
-      <Button Grid.Column="2" Content="Help" Click="Help_Click" />
-      <Button Grid.Column="3" Content="Settings" Click="Settings_Click" />
+      <Button Grid.Column="2" Content="Downloads" Click="Downloads_Click" />
+      <Button Grid.Column="3" Content="Help" Click="Help_Click" />
+      <Button Grid.Column="4" Content="Settings" Click="Settings_Click" />
     </Grid>
 
-    <!-- Model status -->
-    <StackPanel Grid.Row="1" Spacing="4">
-      <TextBlock Text="{x:Bind ViewModel.ModelStatusText, Mode=OneWay}"
-                 Opacity="0.6" FontSize="12" />
+    <!-- ASR model missing banner -->
+    <Border Grid.Row="1"
+            Visibility="{x:Bind ViewModel.IsAsrModelBannerVisible, Mode=OneWay}"
+            Background="{ThemeResource SystemFillColorAttentionBackgroundBrush}"
+            BorderThickness="1"
+            BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
+            Padding="8" CornerRadius="4">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="⚠" VerticalAlignment="Center" />
+        <TextBlock Text="{x:Bind ViewModel.AsrModelBannerText, Mode=OneWay}"
+                   VerticalAlignment="Center" TextWrapping="Wrap" />
+        <Button Content="Download" Click="DownloadAsrModel_Click" VerticalAlignment="Center" />
+      </StackPanel>
+    </Border>
+
+    <!-- Translation model missing banner -->
+    <Border Grid.Row="2"
+            Visibility="{x:Bind ViewModel.IsTranslationModelBannerVisible, Mode=OneWay}"
+            Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+            BorderThickness="1"
+            BorderBrush="{ThemeResource SystemFillColorCautionBrush}"
+            Padding="8" CornerRadius="4">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="ℹ" VerticalAlignment="Center" />
+        <TextBlock Text="{x:Bind ViewModel.TranslationModelBannerText, Mode=OneWay}"
+                   VerticalAlignment="Center" TextWrapping="Wrap" />
+        <Button Content="Download" Click="DownloadTranslationModel_Click" VerticalAlignment="Center" />
+      </StackPanel>
+    </Border>
+
+    <!-- Download queue aggregate progress -->
+    <StackPanel Grid.Row="3" Spacing="4"
+                Visibility="{x:Bind ViewModel.IsQueueProgressVisible, Mode=OneWay}">
+      <TextBlock Text="{x:Bind ViewModel.QueueProgressText, Mode=OneWay}"
+                 Opacity="0.7" FontSize="12" />
       <ProgressBar Height="4"
                    IsIndeterminate="{x:Bind ViewModel.IsModelDownloading, Mode=OneWay}"
-                   Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}" />
+                   Value="{x:Bind ViewModel.QueueProgressPercent, Mode=OneWay}" />
     </StackPanel>
 
-    <!-- Transcript -->
-    <ScrollViewer Grid.Row="2" BorderThickness="1"
+    <!-- Model status -->
+    <StackPanel Grid.Row="4" Spacing="4">
+      <TextBlock Text="{x:Bind ViewModel.ModelStatusText, Mode=OneWay}"
+                 Opacity="0.6" FontSize="12" />
+    </StackPanel>
+
+    <!-- Transcript (resizable, shares space with translation) -->
+    <ScrollViewer Grid.Row="5" BorderThickness="1"
                   BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Padding="8">
       <TextBlock Text="{x:Bind ViewModel.FloatingText, Mode=OneWay}"
                  TextWrapping="Wrap" IsTextSelectionEnabled="True" />
     </ScrollViewer>
 
-    <!-- Live translation -->
-    <Border Grid.Row="3"
+    <!-- Draggable divider between transcript and translation -->
+    <Border Grid.Row="6"
+            Height="8"
+            Background="Transparent"
+            Visibility="{x:Bind ViewModel.IsTranslationVisible, Mode=OneWay}">
+      <Border Height="2"
+              VerticalAlignment="Center"
+              Background="{ThemeResource ControlStrokeColorDefaultBrush}"
+              CornerRadius="1"
+              PointerPressed="Divider_PointerPressed"
+              PointerMoved="Divider_PointerMoved"
+              PointerReleased="Divider_PointerReleased"
+              PointerCaptureLost="Divider_PointerReleased" />
+    </Border>
+
+    <!-- Live translation (resizable) -->
+    <Border Grid.Row="7"
             Visibility="{x:Bind ViewModel.IsTranslationVisible, Mode=OneWay}"
             BorderThickness="1"
             BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-            Padding="8">
+            Padding="8"
+            MinHeight="80"
+            MaxHeight="400">
       <StackPanel Spacing="4">
         <TextBlock Text="{x:Bind ViewModel.TranslationStatusText, Mode=OneWay}"
                    Opacity="0.6" FontSize="12" />
-        <ScrollViewer MaxHeight="120">
+        <ScrollViewer>
           <TextBlock Text="{x:Bind ViewModel.TranslatedText, Mode=OneWay}"
                      TextWrapping="Wrap" IsTextSelectionEnabled="True" />
         </ScrollViewer>
@@ -68,7 +126,7 @@
     </Border>
 
     <!-- Controls -->
-    <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+    <StackPanel Grid.Row="8" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
       <Button Content="{x:Bind ViewModel.RecordButtonText, Mode=OneWay}"
               Command="{x:Bind ViewModel.ToggleCommand}"
               Style="{StaticResource AccentButtonStyle}" />

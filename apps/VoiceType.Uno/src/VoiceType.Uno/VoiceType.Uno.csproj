@@ -27,6 +27,7 @@
       Hosting;
       Mvvm;
       SkiaRenderer;
+      Toolkit;
     </UnoFeatures>
 
     <!-- Match repository conventions -->

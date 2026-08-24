@@ -18,6 +18,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly RecognitionService _recognition;
     private readonly SettingsService _settingsService;
     private readonly ModelDownloadService _modelDownloader;
+    private readonly DownloadQueueService _downloadQueue;
     private readonly IGlobalHotkeyService _hotkeys;
     private readonly IPlatformTextInjector _textInjector;
     private readonly ITrayIndicator _tray;
@@ -35,6 +36,7 @@ public sealed partial class MainViewModel : ObservableObject
         RecognitionService recognition,
         SettingsService settingsService,
         ModelDownloadService modelDownloader,
+        DownloadQueueService downloadQueue,
         IGlobalHotkeyService hotkeys,
         IPlatformTextInjector textInjector,
         ITrayIndicator tray,
@@ -43,6 +45,7 @@ public sealed partial class MainViewModel : ObservableObject
         _recognition = recognition;
         _settingsService = settingsService;
         _modelDownloader = modelDownloader;
+        _downloadQueue = downloadQueue;
         _hotkeys = hotkeys;
         _textInjector = textInjector;
         _tray = tray;
@@ -98,6 +101,11 @@ public sealed partial class MainViewModel : ObservableObject
         _recognition.Error += exception => _dispatcher.TryEnqueue(() =>
             StatusText = $"Recognition error: {exception.Message}");
 
+        // Aggregated progress for the whole download queue (ASR + translation
+        // in parallel). The single-download ProgressChanged below stays for the
+        // one-off model initialization path.
+        _downloadQueue.Changed += () => _dispatcher.TryEnqueue(RefreshQueueProgress);
+
         _modelDownloader.ProgressChanged += progress => _dispatcher.TryEnqueue(() =>
         {
             DownloadProgress = progress.OverallProgress;
@@ -129,6 +137,9 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (_hotkeys.IsAvailable && !string.IsNullOrWhiteSpace(_settings.ToggleHotkey))
             _ = RegisterToggleHotkeyAsync(_settings.ToggleHotkey);
+
+        RefreshModelBanners();
+        RefreshQueueProgress();
 
         IsModelLoading = true;
         ModelStatusText = "Checking model...";
@@ -169,6 +180,100 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private double _downloadProgress;
 
+    // ── Download queue (parallel downloads, aggregate progress) ─────────────
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsQueueProgressVisible))]
+    private bool _isQueueActive;
+
+    [ObservableProperty]
+    private double _queueProgressPercent;
+
+    [ObservableProperty]
+    private string _queueProgressText = "";
+
+    public bool IsQueueProgressVisible => IsQueueActive;
+
+    // ── Model availability banners ──────────────────────────────────────────
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAsrModelBannerVisible))]
+    private bool _isAsrModelMissing;
+
+    [ObservableProperty]
+    private string _asrModelBannerText = "ASR model is not available — download it to start dictation.";
+
+    public bool IsAsrModelBannerVisible => IsAsrModelMissing;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsTranslationModelBannerVisible))]
+    private bool _isTranslationModelMissing;
+
+    [ObservableProperty]
+    private string _translationModelBannerText =
+        "Translation model is not downloaded — translation will use the HTTP server fallback or stay off.";
+
+    public bool IsTranslationModelBannerVisible => IsTranslationModelMissing && IsTranslationEnabled;
+
+    private void RefreshQueueProgress()
+    {
+        var aggregate = _downloadQueue.GetAggregateProgress();
+        IsQueueActive = aggregate.ActiveItems > 0;
+        QueueProgressPercent = aggregate.Percent;
+        QueueProgressText = aggregate.TotalBytes > 0
+            ? $"Downloading models: {aggregate.Percent:F0}% " +
+              $"({FormatBytes(aggregate.DownloadedBytes)} / {FormatBytes(aggregate.TotalBytes)}, " +
+              $"{aggregate.CompletedItems}/{aggregate.TotalItems} done)"
+            : aggregate.ActiveItems > 0
+                ? $"Downloading models... ({aggregate.CompletedItems}/{aggregate.TotalItems} done)"
+                : "";
+    }
+
+    private void RefreshModelBanners()
+    {
+        IsAsrModelMissing = ModelPathResolver.FindExistingModelPath(_settings) is null;
+        IsTranslationModelMissing = !TranslationModelInfo.IsDownloaded;
+        OnPropertyChanged(nameof(IsTranslationModelBannerVisible));
+    }
+
+    /// <summary>Enqueues the ASR model download into the shared parallel queue.</summary>
+    public void EnqueueAsrModelDownload()
+    {
+        var modelsRoot = string.IsNullOrWhiteSpace(_settings.ModelsRootPath)
+            ? AppPaths.ModelsDir
+            : _settings.ModelsRootPath;
+        _downloadQueue.EnqueueAsrModel(modelsRoot, modelPath =>
+            _dispatcher.TryEnqueue(async () =>
+            {
+                var settings = _settingsService.Load();
+                settings.ModelsRootPath = modelsRoot;
+                settings.SelectedModel = Path.GetFileName(modelPath);
+                settings.ModelPath = modelPath;
+                await Task.Run(() => _settingsService.Save(settings));
+                _settings = settings;
+                RefreshModelBanners();
+            }));
+    }
+
+    /// <summary>Enqueues the translation model download into the shared parallel queue.</summary>
+    public void EnqueueTranslationModelDownload()
+    {
+        _downloadQueue.EnqueueTranslationModel(_ =>
+            _dispatcher.TryEnqueue(() =>
+            {
+                RefreshModelBanners();
+                _translation.UpdateBackend(TranslationService.BackendKind.Native);
+            }));
+    }
+
+    private static string FormatBytes(long bytes) => bytes switch
+    {
+        >= 1L << 30 => $"{bytes / (double)(1L << 30):F2} GB",
+        >= 1L << 20 => $"{bytes / (double)(1L << 20):F1} MB",
+        >= 1L << 10 => $"{bytes / (double)(1L << 10):F0} KB",
+        _ => $"{bytes} B"
+    };
+
     [ObservableProperty]
     private bool _isTextInjectionEnabled;
 
@@ -195,6 +300,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnIsTranslationEnabledChanged(bool value)
     {
+        OnPropertyChanged(nameof(IsTranslationModelBannerVisible));
         if (_isApplyingSettingsSnapshot)
             return;
 
@@ -406,7 +512,12 @@ public sealed partial class MainViewModel : ObservableObject
             var modelsRoot = string.IsNullOrWhiteSpace(settings.ModelsRootPath)
                 ? AppPaths.ModelsDir
                 : settings.ModelsRootPath;
-            modelPath = await _modelDownloader.DownloadRecommendedAsync(modelsRoot).ConfigureAwait(false);
+
+            // Enqueue into the shared parallel download queue and await this
+            // item's completion. Aggregate progress shows on the main window.
+            var item = _downloadQueue.EnqueueAsrModel(modelsRoot, _ => { });
+            modelPath = await item.Completion.ConfigureAwait(false);
+
             settings.ModelsRootPath = modelsRoot;
             settings.SelectedModel = Path.GetFileName(modelPath);
             settings.ModelPath = modelPath;
@@ -418,6 +529,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         _settings = settings;
+        _dispatcher.TryEnqueue(RefreshModelBanners);
         SetModelPreparationState(true, false, "Loading model...");
         await _recognition.LoadModelAsync(settings).ConfigureAwait(false);
         if (_recognition.ModelState != ModelLifecycleState.Loaded)
