@@ -32,7 +32,14 @@ public sealed class AppSettings
     public bool TranslationEnabled { get; set; }
     /// <summary>BCP-47 target language for live translation (e.g. "ru", "en").</summary>
     public string TranslationTargetLanguage { get; set; } = "ru";
-    /// <summary>Base URL of the LiteRT-LM server (gemma-translator topology).</summary>
+    /// <summary>
+    /// Translation engine: "native" loads the .litertlm model in-process (offline,
+    /// no sidecar — works on Linux via LiteRtLmSharp linux-x64 natives); "http"
+    /// talks to an external LiteRT-LM server. Default "native" with HTTP fallback
+    /// when the model is not downloaded.
+    /// </summary>
+    public string TranslationBackend { get; set; } = "native";
+    /// <summary>Base URL of the LiteRT-LM server (gemma-translator topology), used by the "http" backend.</summary>
     public string TranslationServerUrl { get; set; } = "http://localhost:9379";
 
     /// <summary>

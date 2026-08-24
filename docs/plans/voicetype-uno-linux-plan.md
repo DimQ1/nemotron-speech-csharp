@@ -54,18 +54,23 @@ Scope: complete the Linux-first port of VoiceType on Uno Platform (Skia Desktop 
 ## Phase 5b — Live translation (DONE, 2026-08-24)
 
 Master brought LiteRT-LM live translation into VoiceType.WinUI. The native
-backend (SpeechLib.LiteRT.Native) ships Windows-only natives, so the Uno port
-uses the HTTP backend (SpeechLib.LiteRT — OpenAI-compatible endpoint, pure
-managed code, works on Linux).
+backend (SpeechLib.LiteRT.Native) is powered by LiteRtLmSharp, which ships
+runtime packages for **win-x64 AND linux-x64** (validated on real hardware,
+CPU + WebGPU→Vulkan GPU) — so the in-process backend works on Linux with no
+sidecar. The Uno port defaults to native and falls back to the HTTP backend
+(SpeechLib.LiteRT) when the .litertlm model is not downloaded.
 
 | Item | Status | Location |
 |---|---|---|
 | TranslationService port (sentence split + draft/stable-prefix locking) | Done | apps/VoiceType.Uno/src/VoiceType.Uno/Services/TranslationService.cs |
-| Settings: TranslationEnabled / TargetLanguage / ServerUrl | Done | AppSettings + SettingsDialog "Live Translation" section |
+| Backend selection: native (default, in-process) + HTTP fallback | Done | TranslationService.BackendKind + AppSettings.TranslationBackend |
+| linux-x64 natives for LiteRtLmSharp | Done | SpeechLib.LiteRT.Native.csproj (+ LiteRtLmSharp.runtime.linux-x64) |
+| Translation model download (gemma-4-E2B-it.litertlm, ~2.6 GB) | Done | ModelDownloadService.DownloadTranslationModelAsync + Settings button |
+| Settings: TranslationEnabled / Backend / TargetLanguage / ServerUrl | Done | AppSettings + SettingsDialog "Live Translation" section |
 | MainViewModel wiring (Feed on partial/final, Flush on final, Reset on toggle off) | Done | Presentation/MainViewModel.cs |
 | Translation pane + Translate toggle on main page | Done | MainPage.xaml |
-| Server URL switch at runtime (re-probe endpoint) | Done | TranslationService.UpdateServerUrl |
-| Native LiteRT backend on Linux | Not planned | LiteRtLmSharp ships win-x64 natives only; HTTP backend covers Linux |
+| Server URL + backend switch at runtime | Done | TranslationService.UpdateServerUrl / UpdateBackend |
+| GPU delegate on Linux | Deferred | WebGPU (Dawn→Vulkan) needs a Vulkan driver; CPU pinned by default |
 
 ## Phase 6 — Remaining / future
 

@@ -70,13 +70,21 @@ public partial class App : Application
                     // (GNOME AppIndicator / KDE Plasma); Null elsewhere.
                     services.AddSingleton<ITrayIndicator>(_ =>
                         OperatingSystem.IsLinux() ? new LinuxTrayIndicator() : new NullTrayIndicator());
-                    // Live translation via a local LiteRT-LM server (HTTP backend;
-                    // works on Linux, unlike the native LiteRT backend). The server
-                    // URL comes from settings and can be changed at runtime.
-                    services.AddSingleton(sp => new TranslationService(new LiteRTLmOptions
+                    // Live translation via LiteRT-LM. Two engines, picked from settings:
+                    //   native — in-process model (LiteRtLmSharp natives, no sidecar;
+                    //            win-x64 + linux-x64), preferred; falls back to http
+                    //            when the .litertlm model is not downloaded.
+                    //   http   — external OpenAI-compatible server at TranslationServerUrl.
+                    services.AddSingleton(sp =>
                     {
-                        BaseUrl = sp.GetRequiredService<SettingsService>().Load().TranslationServerUrl
-                    }));
+                        var settings = sp.GetRequiredService<SettingsService>().Load();
+                        var backend = string.Equals(settings.TranslationBackend, "http", StringComparison.OrdinalIgnoreCase)
+                            ? TranslationService.BackendKind.Http
+                            : TranslationService.BackendKind.Native;
+                        return new TranslationService(
+                            new LiteRTLmOptions { BaseUrl = settings.TranslationServerUrl },
+                            backend);
+                    });
 
                     // ---- ViewModels ----
                     services.AddSingleton<MainViewModel>();

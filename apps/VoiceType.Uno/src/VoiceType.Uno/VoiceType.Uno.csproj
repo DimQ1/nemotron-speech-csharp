@@ -49,6 +49,9 @@
     <!-- Live translation via LiteRT-LM server (OpenAI-compatible HTTP endpoint;
          pure managed code — works on Linux, unlike the native LiteRT backend) -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.LiteRT\SpeechLib.LiteRT.csproj" />
+    <!-- In-process LiteRT-LM translation (no sidecar): LiteRtLmSharp runtime packages
+         are RID-selected (win-x64 / linux-x64), so the native backend also works on Linux -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.LiteRT.Native\SpeechLib.LiteRT.Native.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'">

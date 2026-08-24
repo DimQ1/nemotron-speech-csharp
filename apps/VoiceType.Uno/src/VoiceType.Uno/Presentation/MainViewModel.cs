@@ -492,6 +492,9 @@ public sealed partial class MainViewModel : ObservableObject
             IsTranslationEnabled = settings.TranslationEnabled;
             _translation.SetTargetLanguage(settings.TranslationTargetLanguage);
             _translation.UpdateServerUrl(settings.TranslationServerUrl);
+            _translation.UpdateBackend(string.Equals(settings.TranslationBackend, "http", StringComparison.OrdinalIgnoreCase)
+                ? TranslationService.BackendKind.Http
+                : TranslationService.BackendKind.Native);
 
             if (_textInjector is LinuxTextInjector linuxInjector
                 && !string.IsNullOrWhiteSpace(settings.PasteChord))

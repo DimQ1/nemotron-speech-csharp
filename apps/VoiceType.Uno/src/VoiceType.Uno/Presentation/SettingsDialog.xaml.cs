@@ -51,4 +51,43 @@ public sealed partial class SettingsDialog : ContentDialog
             });
         }
     }
+
+    private async void DownloadTranslationModel_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        ViewModel.IsDownloadingModel = true;
+        ViewModel.DownloadStatus = "Downloading translation model...";
+        try
+        {
+            var downloader = App.Services.GetRequiredService<ModelDownloadService>();
+            downloader.ProgressChanged += OnProgress;
+            try
+            {
+                var modelPath = await downloader.DownloadTranslationModelAsync();
+                ViewModel.DownloadStatus = $"Downloaded to {modelPath}";
+                ViewModel.NotifyNativeModelChanged();
+            }
+            finally
+            {
+                downloader.ProgressChanged -= OnProgress;
+            }
+        }
+        catch (Exception ex)
+        {
+            ViewModel.DownloadStatus = $"Download failed: {ex.Message}";
+        }
+        finally
+        {
+            ViewModel.IsDownloadingModel = false;
+        }
+
+        void OnProgress(ModelDownloadProgress progress)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                ViewModel.DownloadStatus = progress.TotalBytes > 0
+                    ? $"Downloading translation model... {progress.OverallProgress:F0}%"
+                    : "Downloading translation model...";
+            });
+        }
+    }
 }

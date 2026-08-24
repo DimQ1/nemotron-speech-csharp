@@ -16,7 +16,7 @@ Primary target platform: **Linux (Ubuntu, X11)**. Windows/macOS desktop work thr
 | Text injection on Linux | ✅ `LinuxTextInjector` — clipboard (wl-copy / xclip / xsel) + synthetic paste chord (XTest on X11, ydotool on Wayland, xdotool fallback); paste chord configurable in Settings |
 | Text injection on Windows (WinUI 3 head) | ✅ `WindowsTextInjector` — SendInput + user32 clipboard (parity with VoiceType.WinUI) |
 | Loopback ("WhatYouHear") capture on Linux | ✅ `PulseAudioSourceFactory` — `@DEFAULT_MONITOR@`; Mic / Loopback / Mix modes |
-| Live translation (LiteRT-LM, Gemma 4) | ✅ Via SpeechLib.LiteRT HTTP backend (OpenAI-compatible endpoint, offline, works on Linux); native backend stays Windows-only |
+| Live translation (LiteRT-LM, Gemma 4) | ✅ In-process native backend via SpeechLib.LiteRT.Native (LiteRtLmSharp natives ship for win-x64 **and linux-x64** — no sidecar/server needed); HTTP backend (SpeechLib.LiteRT) as fallback when the model is not downloaded |
 | Model downloader (auto-download on first run + button in Settings) | ✅ Ported |
 | Settings dialog (engine, audio, translation, behavior) | ✅ Ported |
 | Help dialog (hotkeys, injection tools, audio sources, data paths) | ✅ Added |

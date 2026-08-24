@@ -87,6 +87,51 @@ public sealed class ModelDownloadService : IDisposable
 
     public void Cancel() => _downloadCts?.Cancel();
 
+    /// <summary>
+    /// Downloads the LiteRT-LM translation model (single .litertlm file, ~2.6 GB)
+    /// for the in-process native translation backend. Returns the model file path.
+    /// </summary>
+    public async Task<string> DownloadTranslationModelAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsDownloading)
+            throw new InvalidOperationException("A model download is already in progress.");
+
+        _downloadCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        IsDownloading = true;
+
+        try
+        {
+            var destination = TranslationModelInfo.LocalModelPath;
+            StatusChanged?.Invoke($"Fetching {TranslationModelInfo.RepoId}...");
+
+            var files = await FetchFilesAsync(TranslationModelInfo.RepoId, _downloadCts.Token).ConfigureAwait(false);
+            var modelFile = files.FirstOrDefault(f =>
+                string.Equals(f.RelativePath, TranslationModelInfo.FileName, StringComparison.Ordinal));
+            if (modelFile.RelativePath.Length == 0)
+                throw new InvalidOperationException(
+                    $"{TranslationModelInfo.FileName} was not found in {TranslationModelInfo.RepoId}.");
+
+            await DownloadFileAsync(
+                TranslationModelInfo.RepoId,
+                modelFile,
+                destination,
+                downloadedBytes: 0,
+                totalBytes: modelFile.SizeBytes,
+                fileIndex: 0,
+                totalFiles: 1,
+                _downloadCts.Token).ConfigureAwait(false);
+
+            StatusChanged?.Invoke("Translation model download complete.");
+            return destination;
+        }
+        finally
+        {
+            IsDownloading = false;
+            _downloadCts.Dispose();
+            _downloadCts = null;
+        }
+    }
+
     public void Dispose()
     {
         Cancel();

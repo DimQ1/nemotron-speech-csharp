@@ -18,9 +18,14 @@
       validated on Windows x64 CPU/GPU. The upstream v0.16.0 C API prebuilt
       heap-corrupts on plain-chat CPU decode with Gemma 4 (liteRT-LM #2149),
       so we do NOT hand-roll P/Invoke against that prebuilt.
+
+      Runtime packages are RID-selected at publish time: win-x64 for Windows
+      builds, linux-x64 (validated on real hardware, CPU + WebGPU->Vulkan GPU)
+      for Linux builds.
     -->
     <PackageReference Include="LiteRtLmSharp" Version="1.1.1" />
     <PackageReference Include="LiteRtLmSharp.runtime.win-x64" Version="1.1.1" />
+    <PackageReference Include="LiteRtLmSharp.runtime.linux-x64" Version="1.1.1" />
   </ItemGroup>
 
 </Project>

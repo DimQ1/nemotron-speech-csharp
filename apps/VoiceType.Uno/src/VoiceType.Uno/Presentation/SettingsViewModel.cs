@@ -16,10 +16,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public static IReadOnlyList<string> DefaultAudioSourceOptions { get; } = ["Mic", "Loopback", "Mix"];
     public static IReadOnlyList<string> DefaultExecutionProviderOptions { get; } = ["cpu", "follow_config"];
+    public static IReadOnlyList<string> DefaultTranslationBackendOptions { get; } = ["native", "http"];
 
     public IReadOnlyList<string> LanguageOptions => DefaultLanguageOptions;
     public IReadOnlyList<string> AudioSourceOptions => DefaultAudioSourceOptions;
     public IReadOnlyList<string> ExecutionProviderOptions => DefaultExecutionProviderOptions;
+    public IReadOnlyList<string> TranslationBackendOptions => DefaultTranslationBackendOptions;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ModelPath))]
@@ -57,10 +59,27 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _translationEnabled;
 
     [ObservableProperty]
+    private string _translationBackend = "native";
+
+    [ObservableProperty]
     private string _translationTargetLanguage = "ru";
 
     [ObservableProperty]
     private string _translationServerUrl = "http://localhost:9379";
+
+    /// <summary>True when the native .litertlm translation model is present on disk.</summary>
+    public bool IsNativeModelDownloaded => TranslationModelInfo.IsDownloaded;
+
+    public string NativeModelStatus => TranslationModelInfo.IsDownloaded
+        ? $"Downloaded: {TranslationModelInfo.LocalModelPath}"
+        : $"Not downloaded — will fall back to the HTTP server. ({TranslationModelInfo.FileName}, ~2.6 GB)";
+
+    /// <summary>Re-evaluates native model presence after a download completes.</summary>
+    public void NotifyNativeModelChanged()
+    {
+        OnPropertyChanged(nameof(IsNativeModelDownloaded));
+        OnPropertyChanged(nameof(NativeModelStatus));
+    }
 
     [ObservableProperty]
     private bool _isAutoScrollEnabled = true;
@@ -107,6 +126,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         IsTextInjectionEnabled = settings.IsTextInjectionEnabled;
         PasteChord = string.IsNullOrWhiteSpace(settings.PasteChord) ? "Ctrl+V" : settings.PasteChord;
         TranslationEnabled = settings.TranslationEnabled;
+        TranslationBackend = string.IsNullOrWhiteSpace(settings.TranslationBackend) ? "native" : settings.TranslationBackend;
         TranslationTargetLanguage = settings.TranslationTargetLanguage;
         TranslationServerUrl = settings.TranslationServerUrl;
         IsAutoScrollEnabled = settings.IsAutoScrollEnabled;
@@ -149,6 +169,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         settings.IsTextInjectionEnabled = IsTextInjectionEnabled;
         settings.PasteChord = string.IsNullOrWhiteSpace(PasteChord) ? "Ctrl+V" : PasteChord.Trim();
         settings.TranslationEnabled = TranslationEnabled;
+        settings.TranslationBackend = string.IsNullOrWhiteSpace(TranslationBackend) ? "native" : TranslationBackend.Trim();
         settings.TranslationTargetLanguage = string.IsNullOrWhiteSpace(TranslationTargetLanguage) ? "ru" : TranslationTargetLanguage.Trim();
         settings.TranslationServerUrl = string.IsNullOrWhiteSpace(TranslationServerUrl) ? "http://localhost:9379" : TranslationServerUrl.Trim();
         settings.IsAutoScrollEnabled = IsAutoScrollEnabled;

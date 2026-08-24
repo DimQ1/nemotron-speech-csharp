@@ -1,15 +1,21 @@
 using System.Text;
 using SpeechLib;
 using SpeechLib.LiteRT;
+using SpeechLib.LiteRT.Native;
 using SpeechLib.Translation;
 
 namespace VoiceType.Uno.Services;
 
 /// <summary>
 /// Cross-platform live translation for the streaming transcript. Ports the
-/// VoiceType.WinUI TranslationService behavior onto the HTTP LiteRT-LM backend
-/// (<see cref="LiteRTLmTranslator"/>), which is pure managed code and therefore
-/// works on Linux — unlike the native LiteRT-LM backend (Windows-only NuGet).
+/// VoiceType.WinUI TranslationService behavior with two interchangeable engines:
+///
+///   native — in-process LiteRT-LM (<see cref="LiteRTLmNativeTranslator"/>); the
+///     .litertlm model runs in the same process via LiteRtLmSharp natives, which
+///     ship for win-x64 and linux-x64, so there is no sidecar/server on Linux.
+///   http   — external LiteRT-LM server (<see cref="LiteRTLmTranslator"/>) over an
+///     OpenAI-compatible endpoint; used as the fallback when the native model
+///     has not been downloaded.
 ///
 /// Complete sentences are translated and finalized immediately; the unfinished
 /// tail is translated as a cancellable "draft" re-run as new words arrive, with
@@ -17,6 +23,8 @@ namespace VoiceType.Uno.Services;
 /// </summary>
 public sealed class TranslationService : IDisposable
 {
+    public enum BackendKind { Native, Http }
+
     private const int DraftDebounceMs = 150;
     private const int MinStableWords = 2;
     private const int MaxTailChars = 160;
@@ -35,8 +43,10 @@ public sealed class TranslationService : IDisposable
 
     private readonly LiteRTLmOptions _baseOptions;
     private volatile string _serverUrl;
+    private volatile BackendKind _backend = BackendKind.Native;
     private HttpClient? _http;
     private ITextTranslator? _translator;
+    private BackendKind _activeEngine;
     private volatile string _targetLanguage = "ru";
     private volatile string _statusText = "Translation off";
     private volatile bool _isConnected;
@@ -55,10 +65,11 @@ public sealed class TranslationService : IDisposable
     private int _consumed;
     private int _fedLength;
 
-    public TranslationService(LiteRTLmOptions options)
+    public TranslationService(LiteRTLmOptions options, BackendKind backend = BackendKind.Native)
     {
         _baseOptions = options;
         _serverUrl = options.BaseUrl;
+        _backend = backend;
     }
 
     public event Action<string>? TranslationChanged;
@@ -67,6 +78,10 @@ public sealed class TranslationService : IDisposable
     public bool IsConnected => _isConnected;
     public bool IsConnecting => _isConnecting;
     public string StatusText => _statusText;
+    public BackendKind Backend => _backend;
+
+    /// <summary>True when the native .litertlm model is present on disk.</summary>
+    public bool IsNativeModelAvailable => TranslationModelInfo.IsDownloaded;
 
     public void SetTargetLanguage(string language)
     {
@@ -75,8 +90,24 @@ public sealed class TranslationService : IDisposable
     }
 
     /// <summary>
-    /// Switches to a different LiteRT-LM server. Drops the current connection
-    /// state; the next translation re-probes the new endpoint.
+    /// Switches the translation engine (native/http). Drops the active translator;
+    /// the next translation re-establishes it (loads the model or probes the server).
+    /// </summary>
+    public void UpdateBackend(BackendKind backend)
+    {
+        if (_backend == backend)
+            return;
+
+        _backend = backend;
+        ResetEngine();
+        SetStatus(backend == BackendKind.Native
+            ? "Translation engine: native (in-process)"
+            : "Translation engine: HTTP server");
+    }
+
+    /// <summary>
+    /// Switches to a different LiteRT-LM server (HTTP engine). Drops the current
+    /// connection state; the next translation re-probes the new endpoint.
     /// </summary>
     public void UpdateServerUrl(string baseUrl)
     {
@@ -86,12 +117,18 @@ public sealed class TranslationService : IDisposable
             return;
 
         _serverUrl = trimmed;
+        if (_activeEngine == BackendKind.Http)
+            ResetEngine();
+        SetStatus("Translation server changed");
+    }
+
+    private void ResetEngine()
+    {
         (_translator as IDisposable)?.Dispose();
         _translator = null;
         _http?.Dispose();
         _http = null;
         _isConnected = false;
-        SetStatus("Translation server changed");
     }
 
     public void Feed(string fullText)
@@ -229,8 +266,9 @@ public sealed class TranslationService : IDisposable
     }
 
     /// <summary>
-    /// Establishes the connection to the LiteRT-LM server. The HTTP backend is
-    /// stateless, so "loading" is a cheap reachability check against the server.
+    /// Establishes the active translation engine. Native loads the .litertlm
+    /// model in-process (no sidecar); when the model is not downloaded it falls
+    /// back to the HTTP server, which needs only a reachability probe.
     /// </summary>
     public async Task EnsureConnectedAsync(CancellationToken cancellationToken = default)
     {
@@ -244,35 +282,22 @@ public sealed class TranslationService : IDisposable
                 return;
 
             _isConnecting = true;
-            SetStatus("Connecting to translation server...");
-
             try
             {
-                _http ??= new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-                _translator ??= new LiteRTLmTranslator(new LiteRTLmOptions
+                // Native engine (preferred): in-process, offline, no sidecar.
+                // Falls back to the HTTP server when the model is not downloaded.
+                if (_backend == BackendKind.Native && TranslationModelInfo.IsDownloaded)
                 {
-                    BaseUrl = _serverUrl,
-                    Endpoint = _baseOptions.Endpoint,
-                    Model = _baseOptions.Model,
-                    Temperature = _baseOptions.Temperature,
-                    MaxTokens = _baseOptions.MaxTokens
-                });
+                    await ConnectNativeAsync(cancellationToken).ConfigureAwait(false);
+                    return;
+                }
 
-                // Cheap reachability probe: translate an empty-ish payload. A
-                // reachable server answers (even with an empty translation);
-                // an unreachable one throws, which flips the status to offline.
-                using var probe = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                probe.CancelAfter(TimeSpan.FromSeconds(4));
-                await _translator.TranslateAsync("ok", _targetLanguage, null, probe.Token)
-                    .ConfigureAwait(false);
-
-                _isConnected = true;
-                SetStatus("Translation ready");
+                await ConnectHttpAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 _isConnected = false;
-                SetStatus($"Translation server offline: {ex.Message}");
+                SetStatus($"Translation unavailable: {ex.Message}");
             }
             finally
             {
@@ -283,6 +308,50 @@ public sealed class TranslationService : IDisposable
         {
             _loadGate.Release();
         }
+    }
+
+    private async Task ConnectNativeAsync(CancellationToken cancellationToken)
+    {
+        SetStatus("Loading translation model (native)...");
+        _translator = await Task.Run(() => (ITextTranslator)new LiteRTLmNativeTranslator(new LiteRTLmNativeOptions
+        {
+            ModelPath = TranslationModelInfo.LocalModelPath,
+            Backend = TranslationModelInfo.Backend,
+            LogLevel = LiteRTLmLogLevel.Warning,
+            MaxTokens = _baseOptions.MaxTokens
+        }), cancellationToken).ConfigureAwait(false);
+
+        _activeEngine = BackendKind.Native;
+        _isConnected = true;
+        SetStatus("Translation ready (native)");
+    }
+
+    private async Task ConnectHttpAsync(CancellationToken cancellationToken)
+    {
+        SetStatus(_backend == BackendKind.Native && !TranslationModelInfo.IsDownloaded
+            ? "Model not downloaded — falling back to translation server..."
+            : "Connecting to translation server...");
+
+        _http ??= new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        _translator = new LiteRTLmTranslator(new LiteRTLmOptions
+        {
+            BaseUrl = _serverUrl,
+            Endpoint = _baseOptions.Endpoint,
+            Model = _baseOptions.Model,
+            Temperature = _baseOptions.Temperature,
+            MaxTokens = _baseOptions.MaxTokens
+        });
+
+        // Cheap reachability probe: translate an empty-ish payload. A reachable
+        // server answers; an unreachable one throws, flipping status to offline.
+        using var probe = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        probe.CancelAfter(TimeSpan.FromSeconds(4));
+        await _translator.TranslateAsync("ok", _targetLanguage, null, probe.Token)
+            .ConfigureAwait(false);
+
+        _activeEngine = BackendKind.Http;
+        _isConnected = true;
+        SetStatus("Translation ready (server)");
     }
 
     public void Dispose()
