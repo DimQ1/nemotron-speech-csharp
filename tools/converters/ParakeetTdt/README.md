@@ -9,9 +9,10 @@
 |---|---|
 | Оценка качества и стриминга | ✅ `docs/research/asr/parakeet-tdt-0.6b-v3-evaluation.md` |
 | Экспорт ONNX (FP32) | ✅ готовые артефакты: `istupakov/parakeet-tdt-0.6b-v3-onnx` |
-| Квантизация (INT8/FP16) | ✅ готовые: `.int8.onnx`, `grikdotnet/parakeet-tdt-0.6b-fp16` |
-| Загрузка на HuggingFace | ✅ токен есть (`hf auth list`), скрипт `upload_to_hf.ps1` |
+| Квантизация (INT8/INT4) | ✅ `.int8.onnx` (готовые) + `.int4.onnx` (MatMulNBits, верифицированы) |
+| Загрузка на HuggingFace | ✅ `DimQ1/parakeet-tdt-0.6b-v3-onnx` (FP32 + INT8 + INT4) |
 | Интеграция в приложения | ✅ `SpeechLib.ParakeetTdt` (C# + OnnxRuntime) — собран, логика верифицирована |
+| Потоковое распознавание | ✅ сегментное (chunked) в C#; cache-aware encoder — `export_streaming_encoder.py` + CI |
 
 ## Блокеры (важно прочитать до запуска)
 
@@ -47,6 +48,12 @@
     → `outputs [vocab + duration logits], output_states_1/2`.
   - TDT: `vocab_logits = outputs[:vocab_size]`; `duration = argmax(outputs[vocab_size:])`.
 - **Сервер-обёртка:** `groxaxo/parakeet-tdt-0.6b-v3-fastapi-openai` (OpenAI-совместимый FastAPI).
+- **Собственный HF-репо:** `DimQ1/parakeet-tdt-0.6b-v3-onnx` — каждая квантизация
+  в своей папке: `fp32/`, `int8/`, `int4/` (внутри — стандартные имена
+  `encoder-model.onnx`, `decoder_joint-model.onnx`, `nemo128.onnx`, `vocab.txt`, `config.json`).
+  INT4 создан `MatMulNBitsQuantizer` bits=4 block_size=32 symmetric (encoder INT4
+  648 МБ vs FP32 2.36 ГБ, decoder_joint INT4 49 МБ vs 69 МБ); INT4 даёт идентичный
+  INT8 текст на тестовом сэмпле LibriSpeech.
 
 ### 2. Окружение конвертации — решено через GitHub Actions
 
@@ -81,15 +88,24 @@ transformers
   `build/verify_parakeet.py`) — выдаёт корректный текст.
 
 Подключение в приложениях — заменить/дополнить `SpeechLib.Nemotron` на
-`SpeechLib.ParakeetTdt` (загрузка каталога `istupakov/parakeet-tdt-0.6b-v3-onnx`).
+`SpeechLib.ParakeetTdt`; конструктор принимает папку квантизации:
+`new ParakeetTdtRecognizer("models/parakeet-tdt/int8")` (или `.../int4`, `.../fp32`).
 
-### Модели для провайдера (каталог из HF `istupakov/parakeet-tdt-0.6b-v3-onnx`)
+### Структура каталога моделей (HF `DimQ1/parakeet-tdt-0.6b-v3-onnx`)
 
-- `encoder-model.int8.onnx` (652 МБ) / `.onnx` + `.data` (FP32)
-- `decoder_joint-model.int8.onnx` (18 МБ) / `.onnx` (FP32)
-- `nemo128.onnx` (log-mel препроцессор)
-- `vocab.txt` (8193 строки, blank=`<blk>`=8192)
-- `config.json` (`nemo-conformer-tdt`, features 128, subsampling 8)
+```
+parakeet-tdt-0.6b-v3-onnx/
+├── fp32/
+│   ├── encoder-model.onnx (+ encoder-model.onnx.data)
+│   ├── decoder_joint-model.onnx
+│   ├── nemo128.onnx, vocab.txt, config.json
+├── int8/    (тот же набор, INT8-веса)
+└── int4/    (тот же набор, INT4-веса)
+```
+
+- `nemo128.onnx` — log-mel препроцессор (waveform → [1,128,T])
+- `vocab.txt` — 8193 строки, blank=`<blk>`=8192
+- `config.json` — `nemo-conformer-tdt`, features 128, subsampling 8
 
 ## Референсы
 

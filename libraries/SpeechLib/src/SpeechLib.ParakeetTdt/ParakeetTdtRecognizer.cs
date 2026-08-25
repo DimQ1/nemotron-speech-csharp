@@ -8,17 +8,22 @@ namespace SpeechLib.ParakeetTdt;
 /// <summary>
 /// Parakeet TDT 0.6B v3 ASR recognizer on plain ONNX Runtime.
 ///
-/// Executes the onnx-asr exported artifacts:
+/// Executes the onnx-asr exported artifacts (inside a quantization folder
+/// fp32/ | int8/ | int4/):
 ///   - nemo128.onnx                  (log-mel preprocessor: waveform -> [1,128,T])
-///   - encoder-model.int8.onnx       (FastConformer encoder)
-///   - decoder_joint-model.int8.onnx (TDT decoder + joint: token + duration)
+///   - encoder-model.onnx            (FastConformer encoder)
+///   - decoder_joint-model.onnx      (TDT decoder + joint: token + duration)
 ///   - vocab.txt + config.json
 ///
 /// The TDT greedy decode loop is ported from onnx-asr's
 /// <c>NemoConformerTdt</c> / <c>_AsrWithTransducerDecoding</c>.
 ///
-/// Streaming: the current exported encoder is non-cache-aware (full-length),
-/// so this implementation buffers chunks and transcribes on <see cref="Flush"/>.
+/// Streaming: the exported encoder is non-cache-aware (full-length), so this
+/// implementation transcribes incrementally in fixed-length segments: audio is
+/// buffered and, once <c>segmentSeconds</c> of audio has accumulated, that
+/// segment is decoded and returned from <see cref="ProcessAudio"/>. The
+/// remaining tail is decoded in <see cref="Flush"/>. (A fully incremental
+/// cache-aware encoder is a separate export step — see the converter README.)
 /// </summary>
 public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
 {
@@ -34,6 +39,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     private readonly int _maxTokensPerStep;
 
     private readonly List<float> _buffer = new();
+    private readonly int _segmentSamples;
     private bool _disposed;
 
     /// <inheritdoc />
@@ -43,23 +49,29 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     public int ChunkSamples => 1600; // 100 ms at 16 kHz
 
     /// <summary>
-    /// Loads the exported model directory (must contain the five onnx-asr files).
+    /// Loads a quantization folder (fp32 / int8 / int4) of the exported model.
+    /// The folder must contain encoder-model.onnx, decoder_joint-model.onnx,
+    /// nemo128.onnx, vocab.txt and config.json (standard onnx-asr names, no
+    /// quantization suffix — the folder itself selects the precision).
     /// </summary>
-    public ParakeetTdtRecognizer(string modelDir)
+    /// <param name="modelDir">Path to the quantization folder (e.g. .../int8).</param>
+    /// <param name="segmentSeconds">Streaming segment length (seconds) decoded per call.</param>
+    public ParakeetTdtRecognizer(string modelDir, double segmentSeconds = 2.0)
     {
         var dir = Path.GetFullPath(modelDir);
         if (!Directory.Exists(dir))
             throw new DirectoryNotFoundException($"Model directory not found: {dir}");
 
         _preprocessor = new InferenceSession(Path.Combine(dir, "nemo128.onnx"));
-        _encoder = new InferenceSession(Path.Combine(dir, "encoder-model.int8.onnx"));
-        _decoderJoint = new InferenceSession(Path.Combine(dir, "decoder_joint-model.int8.onnx"));
+        _encoder = new InferenceSession(Path.Combine(dir, "encoder-model.onnx"));
+        _decoderJoint = new InferenceSession(Path.Combine(dir, "decoder_joint-model.onnx"));
 
         LoadVocab(Path.Combine(dir, "vocab.txt"));
         _vocabSize = _vocab.Count;
         _blankIdx = _vocab.First(kv => kv.Value == "<blk>").Key;
 
         _maxTokensPerStep = LoadMaxTokensPerStep(Path.Combine(dir, "config.json"));
+        _segmentSamples = Math.Max(ChunkSamples, (int)(16000 * segmentSeconds));
     }
 
     /// <inheritdoc />
@@ -67,16 +79,18 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _buffer.AddRange(chunk);
-        return null; // full-length encoder — transcribe on Flush
+        return _buffer.Count >= _segmentSamples ? TranscribeBuffer() : null;
     }
 
     /// <inheritdoc />
     public string? Flush()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (_buffer.Count == 0)
-            return null;
+        return _buffer.Count > 0 ? TranscribeBuffer() : null;
+    }
 
+    private string? TranscribeBuffer()
+    {
         var waveform = _buffer.ToArray();
         _buffer.Clear();
         return Transcribe(waveform);
