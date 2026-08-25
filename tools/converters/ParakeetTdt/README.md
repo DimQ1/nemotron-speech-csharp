@@ -8,8 +8,8 @@
 | Шаг | Статус |
 |---|---|
 | Оценка качества и стриминга | ✅ `docs/research/asr/parakeet-tdt-0.6b-v3-evaluation.md` |
-| Экспорт ONNX (FP32) | ⏳ блокировано — см. «Блокеры» |
-| Квантизация INT4 | ⏳ блокировано — требуется FP32-артефакт |
+| Экспорт ONNX (FP32) | ✅ `export_onnx.py` + CI `convert-parakeet-tdt.yml`; запуск вручную |
+| Квантизация INT4 | ✅ включена в `export_onnx.py` (MatMul4BitsQuantizer) |
 | Загрузка на HuggingFace | ✅ токен есть (`hf auth list`), скрипт `upload_to_hf.ps1` готов |
 | Интеграция в приложения | ⏳ блокировано — ORT GenAI не поддерживает TDT |
 
@@ -36,15 +36,12 @@
 - **C.** Использовать `NeMo-Speech.cpp` (GGUF `parakeet-tdt-0.6b-v3.q8_0.gguf`)
   как sidecar через P/Invoke или subprocess — не ONNX, но рабочий путь.
 
-### 2. Отсутствует окружение конвертации
+### 2. Окружение конвертации — решено через GitHub Actions
 
-Требуется `nemo_toolkit[asr]` (модель в формате NeMo `.nemo`), `olive-ai` или
-`torch.onnx`, плюс GPU для калибровки INT4. На машине:
-
-- `torch`, `nemo_toolkit`, `olive-ai`, `transformers` — **не установлены**.
-- `conda` — **не установлен** (рекомендуется для NeMo 2.4, Python 3.10).
-- Доступен GPU: RTX 5070 Ti Laptop (12 ГБ) — хватит для 0.6B, но впритык для FP32.
-- Системный Python 3.12 (NeMo 2.4 официально поддерживает 3.10–3.12).
+Локально `torch`/`nemo_toolkit`/`conda` отсутствуют (системный Python 3.12).
+Поэтому конвертация выполняется в CI (`.github/workflows/convert-parakeet-tdt.yml`):
+Linux runner + Python 3.10 + NeMo 2.4 + torch CPU (GPU для экспорта не обязателен).
+Запуск: `workflow_dispatch`. Для шага загрузки на HF добавьте секрет `HF_TOKEN`.
 
 ## Требования
 
@@ -62,16 +59,11 @@ transformers
 
 ## Порядок работы (после снятия блокеров)
 
-1. Создать окружение: `.\setup-env.ps1`
-2. Экспорт компонентов:
-   - `encoder` — FastConformer (можно переиспользовать `StreamingEncoderWrapper`
-     из `tools/converters/NemotronAsr/src/nemotron_model_load.py`).
-   - `decoder` — **TDT-декодер** (потребуется новый wrapper; изучить
-     `asr_model.decoder` в NeMo 2.4).
-3. Квантизация encoder до INT4 (k-quant, см. `nemotron_encoder_int4_cpu.json`).
-4. Проверка вывода (encoder FP32 vs INT4) на `Test-Audio/librispeech/`.
-5. Загрузка на HF: `.\upload_to_hf.ps1 -RepoId DimQ1/parakeet-tdt-0.6b-v3-onnx`
-6. Интеграция в приложения (путь B или C из блокера 1).
+1. Запустить CI-конвертацию: GitHub → Actions → «Convert Parakeet TDT to ONNX» → Run workflow.
+   (или локально: `.\setup-env.ps1` затем `python export_onnx.py`)
+2. `export_onnx.py` экспортирует encoder (FP32 + INT4) и диагностирует TDT-декодер.
+3. Артефакты — как workflow artifact + авто-загрузка на HF (секрет `HF_TOKEN`).
+4. Интеграция в приложения — после решения блокера 1 (путь B или C).
 
 ## Референсы
 
