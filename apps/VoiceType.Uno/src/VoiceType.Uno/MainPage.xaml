@@ -96,11 +96,18 @@
                  Opacity="0.6" FontSize="12" />
     </StackPanel>
 
-    <!-- Transcript (resizable, shares space with translation) -->
+<!-- Transcript (resizable, shares space with translation).
+         Read-only by default; editable when the Manual input chip is on so text
+         typed by hand can be translated without dictation. -->
     <ScrollViewer x:Name="TranscriptScroll" Grid.Row="5" BorderThickness="1"
-                  BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Padding="8">
-      <TextBlock Text="{x:Bind ViewModel.FloatingText, Mode=OneWay}"
-                 TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                   BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Padding="8">
+      <TextBox Text="{x:Bind ViewModel.FloatingText, Mode=TwoWay}"
+               IsReadOnly="{x:Bind ViewModel.IsTranscriptReadOnly, Mode=OneWay}"
+               AcceptsReturn="True"
+               TextWrapping="Wrap"
+               BorderThickness="0"
+               Background="Transparent"
+               PlaceholderText="Transcript — enable Manual input to type text for translation" />
     </ScrollViewer>
 
     <!-- Draggable divider between transcript and translation (wide grab area) -->
@@ -170,6 +177,11 @@
       <ToggleButton Content="Translate"
                     IsChecked="{x:Bind ViewModel.IsTranslationEnabled, Mode=TwoWay}"
                     MinWidth="110" Padding="16,8" />
+      <!-- Chip: manual keyboard input mode for the transcript field.
+           Off by default (read-only transcript driven by speech). -->
+      <ToggleButton Content="Manual input"
+                    IsChecked="{x:Bind ViewModel.IsManualInputEnabled, Mode=TwoWay}"
+                    MinWidth="120" Padding="16,8" />
     </StackPanel>
   </Grid>
 </Page>

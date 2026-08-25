@@ -1,9 +1,11 @@
 using SpeechLib.Models;
 using SpeechLib;
+using System.Runtime.Versioning;
 
 namespace SpeechLib.Audio;
 
 /// <summary>Creates live capture sources backed by the NAudio 3 preview provider.</summary>
+[SupportedOSPlatform("windows")]
 public sealed class NAudio3AudioSourceFactory : IAudioSourceFactory
 {
     static NAudio3AudioSourceFactory()

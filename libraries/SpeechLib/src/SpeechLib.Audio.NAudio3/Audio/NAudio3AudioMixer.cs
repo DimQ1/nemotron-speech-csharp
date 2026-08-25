@@ -1,6 +1,9 @@
+using System.Runtime.Versioning;
+
 namespace SpeechLib.Audio;
 
 /// <summary>NAudio 3 mixer: exposes mic/loopback gain and the shared level meter.</summary>
+[SupportedOSPlatform("windows")]
 public sealed class NAudio3AudioMixer : IAudioMixer
 {
     /// <summary>Singleton instance for the NAudio 3 provider.</summary>

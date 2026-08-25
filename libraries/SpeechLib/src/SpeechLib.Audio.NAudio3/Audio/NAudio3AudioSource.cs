@@ -3,6 +3,7 @@ using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using SpeechLib.Models;
 using System.Buffers;
+using System.Runtime.Versioning;
 
 namespace SpeechLib.Audio;
 
@@ -11,6 +12,7 @@ namespace SpeechLib.Audio;
 /// The provider keeps the same batched float contract as the stable NAudio provider,
 /// so switching providers does not change recognizer allocation behavior.
 /// </summary>
+[SupportedOSPlatform("windows")]
 public sealed class NAudio3AudioSource : IAudioSource
 {
     private const int DrainIntervalMilliseconds = 100;
@@ -324,6 +326,10 @@ public sealed class NAudio3AudioSource : IAudioSource
             ArrayPool<float>.Shared.Return(samples);
     }
 
+// CS0618: WasapiCapture/WasapiLoopbackCapture are deprecated in NAudio 3 preview in
+// favour of WasapiRecorderBuilder, but the builder API never raised DataAvailable for
+// loopback in this scenario (capture-diag.log investigation), so the proven classes stay.
+#pragma warning disable CS0618
     private sealed class CaptureHandle : IDisposable
     {
         private readonly WasapiCapture? _microphone;
@@ -410,4 +416,5 @@ public sealed class NAudio3AudioSource : IAudioSource
             _loopback?.Dispose();
         }
     }
+#pragma warning restore CS0618
 }
