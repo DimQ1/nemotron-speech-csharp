@@ -68,12 +68,18 @@ public sealed partial class MainViewModel : ObservableObject
 
         _recognition.PartialResult += text => _dispatcher.TryEnqueue(() =>
         {
+            if (IsManualInputEnabled)
+                return; // manual keyboard input owns the transcript while enabled
+
             FloatingText = text;
             if (IsTranslationEnabled)
                 _translation.Feed(text);
         });
         _recognition.FinalResult += text => _dispatcher.TryEnqueue(() =>
         {
+            if (IsManualInputEnabled)
+                return; // manual keyboard input owns the transcript while enabled
+
             FloatingText = text;
             if (IsTextInjectionEnabled && !string.IsNullOrEmpty(text))
                 _textInjector.Inject(text);
@@ -213,6 +219,37 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string _floatingText = "";
+
+    /// <summary>
+    /// Manual keyboard input mode for the transcript field. Off by default
+    /// (read-only transcript driven by speech). When on, the field is editable
+    /// and typed text is fed to the translator instead of speech results.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsTranscriptReadOnly))]
+    private bool _isManualInputEnabled;
+
+    /// <summary>Transcript field is read-only unless manual input mode is on.</summary>
+    public bool IsTranscriptReadOnly => !IsManualInputEnabled;
+
+    /// <summary>
+    /// While manual input is on, feed the typed transcript to the translator so
+    /// text entered by hand can be translated without dictation. When speech
+    /// drives the transcript, PartialResult/FinalResult already feed it.
+    /// </summary>
+    partial void OnFloatingTextChanged(string value)
+    {
+        if (IsManualInputEnabled && IsTranslationEnabled && !string.IsNullOrEmpty(value))
+            _translation.Feed(value);
+    }
+
+    partial void OnIsManualInputEnabledChanged(bool value)
+    {
+        // Entering manual mode starts a fresh translation buffer for typed text;
+        // leaving it returns ownership of the transcript to speech results.
+        if (IsTranslationEnabled)
+            _translation.Reset();
+    }
 
     [ObservableProperty]
     private bool _isRecording;
