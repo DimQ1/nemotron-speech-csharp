@@ -73,10 +73,25 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync();
     }
 
-    private void Downloads_Click(object sender, RoutedEventArgs e)
+    private async void Downloads_Click(object sender, RoutedEventArgs e)
     {
+#if __ANDROID__
+        // Android is single-window — show the shared DownloadsView in a dialog
+        // instead of opening a second Window.
+        var view = new DownloadsView();
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Content = view,
+            CloseButtonText = "Close",
+            DefaultButton = ContentDialogButton.Close
+        };
+        await dialog.ShowAsync();
+        view.DetachViewModel();
+#else
         var window = new DownloadsWindow();
         window.Activate();
+#endif
     }
 
     private void DownloadAsrModel_Click(object sender, RoutedEventArgs e)

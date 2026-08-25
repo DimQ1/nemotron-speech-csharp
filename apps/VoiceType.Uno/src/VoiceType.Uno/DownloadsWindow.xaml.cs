@@ -1,19 +1,17 @@
-using Microsoft.UI.Dispatching;
 using VoiceType.Uno.Presentation;
-using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno;
 
+/// <summary>
+/// Desktop host for the download queue UI. The content lives in the shared
+/// <see cref="DownloadsView" /> control so Android (single-window) can show the
+/// same UI inside a ContentDialog instead.
+/// </summary>
 public sealed partial class DownloadsWindow : Window
 {
-    public DownloadsViewModel ViewModel { get; }
-
     public DownloadsWindow()
     {
         InitializeComponent();
-        ViewModel = new DownloadsViewModel(
-            App.Services.GetRequiredService<DownloadQueueService>(),
-            DispatcherQueue.GetForCurrentThread());
-        Closed += (_, _) => ViewModel.Detach();
+        Closed += (_, _) => View.DetachViewModel();
     }
 }

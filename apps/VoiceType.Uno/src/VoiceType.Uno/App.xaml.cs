@@ -49,6 +49,11 @@ public partial class App : Application
                     services.AddSingleton<DownloadQueueService>();
 #if VOICE_TYPE_WINDOWS
                     services.AddSingleton<SpeechLib.IAudioSourceFactory, SpeechLib.Audio.NAudio3AudioSourceFactory>();
+#elif __ANDROID__
+                    // Android head: microphone capture via AudioRecord
+                    // (Services/Audio/AndroidAudioSourceFactory.cs). Loopback/Mix are
+                    // unavailable without elevated privileges — Mic only.
+                    services.AddSingleton<SpeechLib.IAudioSourceFactory, AndroidAudioSourceFactory>();
 #else
                     // Skia desktop head. Audio capture is picked at runtime:
                     //   Windows → NAudio 3.0.1 (WASAPI) so dictation works on a dev box;
@@ -87,12 +92,21 @@ public partial class App : Application
                     services.AddSingleton(sp =>
                     {
                         var settings = sp.GetRequiredService<SettingsService>().Load();
+#if __ANDROID__
+                        // LiteRtLmSharp natives ship for win-x64 / linux-x64 only, so the
+                        // in-process native backend cannot run on Android — always use the
+                        // external LiteRT-LM server (HTTP backend) there.
+                        return new TranslationService(
+                            new LiteRTLmOptions { BaseUrl = settings.TranslationServerUrl },
+                            TranslationService.BackendKind.Http);
+#else
                         var backend = string.Equals(settings.TranslationBackend, "http", StringComparison.OrdinalIgnoreCase)
                             ? TranslationService.BackendKind.Http
                             : TranslationService.BackendKind.Native;
                         return new TranslationService(
                             new LiteRTLmOptions { BaseUrl = settings.TranslationServerUrl },
                             backend);
+#endif
                     });
 
                     // ---- ViewModels ----

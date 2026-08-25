@@ -1,8 +1,10 @@
 <Project Sdk="Uno.Sdk">
   <PropertyGroup>
     <!-- net10.0-windows10.0.26100 = WinAppSDK (WinUI 3) head for parity testing on Windows;
-         net10.0-desktop = Skia head (Linux X11 primary, also Windows/macOS) -->
-    <TargetFrameworks>net10.0-windows10.0.26100;net10.0-desktop</TargetFrameworks>
+         net10.0-desktop = Skia head (Linux X11 primary, also Windows/macOS);
+         net10.0-android = Android head (Skia). ORT GenAI ships an android-arm64 native
+         so Nemotron CPU inference runs on device. -p:GpuArch=CPU -->
+    <TargetFrameworks>net10.0-windows10.0.26100;net10.0-desktop;net10.0-android</TargetFrameworks>
 
     <OutputType>Exe</OutputType>
     <UnoSingleProject>true</UnoSingleProject>
@@ -37,6 +39,12 @@
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'">
     <DefineConstants>$(DefineConstants);VOICE_TYPE_WINDOWS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+    <!-- ONNX Runtime AAR declares minSdk 24 (uses APIs not available below);
+         align the app's minSdk with the library instead of overrideLibrary. -->
+    <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
   </PropertyGroup>
 
   <ItemGroup>
