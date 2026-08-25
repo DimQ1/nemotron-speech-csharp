@@ -16,8 +16,12 @@
           <ComboBox ItemsSource="{x:Bind ViewModel.AvailableModels}"
                     SelectedItem="{x:Bind ViewModel.SelectedModel, Mode=TwoWay}"
                     PlaceholderText="Auto-detect model" />
+          <TextBlock Text="Download variant (Hugging Face)" Opacity="0.7" FontSize="12" />
+          <ComboBox ItemsSource="{x:Bind ViewModel.AsrModelOptions}"
+                    SelectedItem="{x:Bind ViewModel.SelectedAsrModel, Mode=TwoWay}"
+                    HorizontalAlignment="Stretch" />
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Download recommended model"
+            <Button Content="Download selected model"
                     Click="DownloadModel_Click"
                     IsEnabled="{x:Bind ViewModel.CanDownloadModel, Mode=OneWay}" />
             <ProgressRing Width="20" Height="20"

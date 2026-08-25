@@ -68,29 +68,36 @@ public sealed class DownloadQueueService : IDisposable
     public event Action? Changed;
 
     /// <summary>
-    /// Enqueues the recommended ASR model download. Returns the queue item.
+    /// Enqueues an ASR model download. Returns the queue item.
     /// If an identical download is already queued/running, returns the existing item.
     /// When <paramref name="forceRedownload"/> is true, the existing on-disk model
     /// directory is deleted first (used to repair a broken/partial install).
     /// </summary>
-    public DownloadQueueItem EnqueueAsrModel(string targetRoot, Action<string> onCompleted, bool forceRedownload = false)
+    /// <param name="targetRoot">Models root folder.</param>
+    /// <param name="onCompleted">Called with the downloaded model root path.</param>
+    /// <param name="forceRedownload">Delete the existing model directory first.</param>
+    /// <param name="repoId">Hugging Face repo id; defaults to the recommended model.</param>
+    public DownloadQueueItem EnqueueAsrModel(string targetRoot, Action<string> onCompleted, bool forceRedownload = false, string? repoId = null)
     {
-        if (forceRedownload)
-            DeleteAsrModelDirectory(targetRoot);
+        repoId ??= ModelDownloadService.RecommendedRepoId;
 
-        var existing = FindDuplicate(ModelKind.Asr);
+        if (forceRedownload)
+            DeleteAsrModelDirectory(targetRoot, repoId);
+
+        var existing = FindDuplicate(ModelKind.Asr, repoId);
         if (existing is not null)
             return existing;
 
         var item = new DownloadQueueItem(
             id: Guid.NewGuid(),
             kind: ModelKind.Asr,
-            displayName: "ASR model (Nemotron 3.5 streaming int4)",
+            displayName: $"ASR model ({AsrModelCatalog.Models.FirstOrDefault(m => m.RepoId == repoId)?.Name ?? repoId})",
             enqueuedAtUtc: DateTime.UtcNow,
-            onCompleted);
+            onCompleted,
+            repoId);
 
         Register(item);
-        _ = RunItemAsync(item, ct => DownloadAsrAsync(item, targetRoot, ct));
+        _ = RunItemAsync(item, ct => DownloadAsrAsync(item, targetRoot, repoId, ct));
         return item;
     }
 
@@ -176,8 +183,9 @@ public sealed class DownloadQueueService : IDisposable
 
     // ── Queue internals ────────────────────────────────────────────────────
 
-    private DownloadQueueItem? FindDuplicate(ModelKind kind) =>
+    private DownloadQueueItem? FindDuplicate(ModelKind kind, string? repoId = null) =>
         Items.FirstOrDefault(i => i.Kind == kind
+            && (repoId is null || i.Kind != ModelKind.Asr || i.RepoId == repoId)
             && i.State is DownloadQueueItemState.Queued or DownloadQueueItemState.Running);
 
     private void Register(DownloadQueueItem item)
@@ -227,9 +235,8 @@ public sealed class DownloadQueueService : IDisposable
 
     // ── Download implementations ───────────────────────────────────────────
 
-    private async Task<string> DownloadAsrAsync(DownloadQueueItem item, string targetRoot, CancellationToken ct)
+    private async Task<string> DownloadAsrAsync(DownloadQueueItem item, string targetRoot, string repoId, CancellationToken ct)
     {
-        var repoId = ModelDownloadService.RecommendedRepoId;
         var subfolder = repoId[(repoId.LastIndexOf('/') + 1)..];
         var modelRoot = Path.GetFullPath(Path.Combine(targetRoot, subfolder));
         Directory.CreateDirectory(modelRoot);
@@ -583,11 +590,10 @@ public sealed class DownloadQueueService : IDisposable
     /// broken/partial install can be re-downloaded cleanly. Best effort — a busy
     /// or missing directory is not an error.
     /// </summary>
-    private static void DeleteAsrModelDirectory(string targetRoot)
+    private static void DeleteAsrModelDirectory(string targetRoot, string repoId)
     {
         try
         {
-            var repoId = ModelDownloadService.RecommendedRepoId;
             var subfolder = repoId[(repoId.LastIndexOf('/') + 1)..];
             var modelRoot = Path.GetFullPath(Path.Combine(targetRoot, subfolder));
             if (Directory.Exists(modelRoot))
@@ -645,13 +651,14 @@ public sealed class DownloadQueueItem
     private long _downloadedBytes;
     private long _pendingDelta;
 
-    public DownloadQueueItem(Guid id, ModelKind kind, string displayName, DateTime enqueuedAtUtc, Action<string> onCompleted)
+    public DownloadQueueItem(Guid id, ModelKind kind, string displayName, DateTime enqueuedAtUtc, Action<string> onCompleted, string? repoId = null)
     {
         Id = id;
         Kind = kind;
         DisplayName = displayName;
         EnqueuedAtUtc = enqueuedAtUtc;
         OnCompleted = onCompleted;
+        RepoId = repoId;
     }
 
     public Guid Id { get; }
@@ -659,6 +666,8 @@ public sealed class DownloadQueueItem
     public string DisplayName { get; }
     public DateTime EnqueuedAtUtc { get; }
     public Action<string> OnCompleted { get; }
+    /// <summary>Hugging Face repo id being downloaded (ASR items only).</summary>
+    public string? RepoId { get; }
     public CancellationToken CancellationToken => _cts.Token;
 
     /// <summary>Awaitable completion: resolves with the result path, faults on failure, cancels on Cancel().</summary>

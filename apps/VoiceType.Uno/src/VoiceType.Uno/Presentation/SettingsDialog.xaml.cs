@@ -112,6 +112,7 @@ public sealed partial class SettingsDialog : ContentDialog
         {
             // Route through the shared parallel queue so the aggregate progress
             // shows on the main window and in the Downloads window.
+            // The variant comes from the Hugging Face catalog picker in Settings.
             var queue = App.Services.GetRequiredService<DownloadQueueService>();
             var item = queue.EnqueueAsrModel(
                 ViewModel.ModelsRootPath,
@@ -120,7 +121,8 @@ public sealed partial class SettingsDialog : ContentDialog
                     ViewModel.SelectedModel = Path.GetFileName(modelPath);
                     ViewModel.DownloadStatus = $"Downloaded to {modelPath}";
                     ViewModel.NotifyNativeModelChanged();
-                }));
+                }),
+                repoId: ViewModel.SelectedAsrModel.RepoId);
 
             await item.Completion;
         }

@@ -122,6 +122,13 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public List<string> AvailableModels { get; } = [];
 
+    /// <summary>ASR model variants published on Hugging Face (see AsrModelCatalog).</summary>
+    public IReadOnlyList<AsrModelCatalogEntry> AsrModelOptions => AsrModelCatalog.Models;
+
+    /// <summary>The Hugging Face model variant the Download button will fetch.</summary>
+    [ObservableProperty]
+    private AsrModelCatalogEntry _selectedAsrModel = AsrModelCatalog.Recommended;
+
     public string ModelPath => !string.IsNullOrWhiteSpace(ModelsRootPath)
         && !string.IsNullOrWhiteSpace(SelectedModel)
         ? Path.Combine(ModelsRootPath, SelectedModel)
