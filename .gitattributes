@@ -1,0 +1,4 @@
+# Keep line endings consistent for scripts executed directly on Linux/WSL:
+# a CRLF shebang (`#!/usr/bin/env bash\r`) breaks the interpreter lookup.
+*.sh   text eol=lf
+*.py   text eol=lf
