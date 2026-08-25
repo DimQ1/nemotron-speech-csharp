@@ -4,11 +4,12 @@
          net10.0-desktop = Skia head (Linux X11 primary, also Windows/macOS);
          net10.0-android = Android head (Skia). ORT GenAI ships an android-arm64 native
          so Nemotron CPU inference runs on device. -p:GpuArch=CPU
-         The android head is excluded when building for the linux-x64 RID: a
-         linux RID would make the android head resolve a non-existent Mono
-         linux-x64 runtime pack during restore (dotnet publish -r linux-x64). -->
+         The android head is excluded when publishing for a desktop RID: a desktop RID
+         (linux-x64 / win-x64) would make the android head resolve a non-existent Mono
+         runtime pack during restore (dotnet publish -r <desktop-rid>). The android head
+         is published with its own TFM (no -r). -->
     <TargetFrameworks>net10.0-windows10.0.26100;net10.0-desktop</TargetFrameworks>
-    <TargetFrameworks Condition="'$(RuntimeIdentifier)' != 'linux-x64'">$(TargetFrameworks);net10.0-android</TargetFrameworks>
+    <TargetFrameworks Condition="'$(RuntimeIdentifier)' != 'linux-x64' and '$(RuntimeIdentifier)' != 'win-x64'">$(TargetFrameworks);net10.0-android</TargetFrameworks>
 
     <OutputType>Exe</OutputType>
     <UnoSingleProject>true</UnoSingleProject>
