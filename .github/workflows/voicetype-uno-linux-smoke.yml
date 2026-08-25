@@ -43,7 +43,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libasound2 libfontconfig1 libpulse0 \
+            libasound2t64 libfontconfig1 libpulse0 \
             xvfb pulseaudio-utils
 
       - name: Publish VoiceType.Uno (linux-x64, self-contained)
