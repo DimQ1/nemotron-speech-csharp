@@ -5,10 +5,10 @@ using VoiceType.Uno.Services;
 namespace VoiceType.Uno;
 
 /// <summary>
-/// Model download queue UI, shared between the desktop second window
-/// (DownloadsWindow) and the Android single-window ContentDialog fallback.
-/// Owns its DownloadsViewModel; callers must call <see cref="DetachViewModel"/>
-/// when the host closes so the view model unsubscribes from the queue service.
+/// Model download queue UI, shown inside a ContentDialog from the main page on
+/// every platform (Windows, desktop and Android). Owns its DownloadsViewModel;
+/// the caller must call <see cref="DetachViewModel"/> when the host closes so the
+/// view model unsubscribes from the queue service.
 /// </summary>
 public sealed partial class DownloadsView : UserControl
 {
