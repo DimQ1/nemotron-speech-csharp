@@ -8,10 +8,10 @@
 | Шаг | Статус |
 |---|---|
 | Оценка качества и стриминга | ✅ `docs/research/asr/parakeet-tdt-0.6b-v3-evaluation.md` |
-| Экспорт ONNX (FP32) | ✅ `export_onnx.py` + CI `convert-parakeet-tdt.yml`; запуск вручную |
-| Квантизация INT4 | ✅ включена в `export_onnx.py` (MatMul4BitsQuantizer) |
-| Загрузка на HuggingFace | ✅ токен есть (`hf auth list`), скрипт `upload_to_hf.ps1` готов |
-| Интеграция в приложения | ⏳ блокировано — ORT GenAI не поддерживает TDT |
+| Экспорт ONNX (FP32) | ✅ готовые артефакты: `istupakov/parakeet-tdt-0.6b-v3-onnx` |
+| Квантизация (INT8/FP16) | ✅ готовые: `.int8.onnx`, `grikdotnet/parakeet-tdt-0.6b-fp16` |
+| Загрузка на HuggingFace | ✅ токен есть (`hf auth list`), скрипт `upload_to_hf.ps1` |
+| Интеграция в приложения | ✅ `SpeechLib.ParakeetTdt` (C# + OnnxRuntime) — собран, логика верифицирована |
 
 ## Блокеры (важно прочитать до запуска)
 
@@ -26,15 +26,27 @@
 `(token, duration)`, а не классический RNN-T с отдельным joint. Такой декодер
 **не входит** в поддерживаемую ORT GenAI модель.
 
-Следствие: даже корректно экспортированный TDT-ONNX не запустится через
-текущий C# API без доработки C++-ядра `onnxruntime-genai`.
+Следствие: TDT-ONNX **не запустится через ORT GenAI**. Но это не блокирует
+интеграцию — обычный **`Microsoft.ML.OnnxRuntime`** исполняет `encoder` +
+`decoder_joint` TDT-модели, а greedy-декодер реализуется на C# (референс: `onnx-asr`).
 
-**Возможные пути (нужно решение):**
-- **A.** Доработать `onnxruntime-genai` (C++) для TDT — большой объём, вне рамок рецепта.
-- **B.** Экспортировать TDT-компоненты в обычный ONNX и реализовать TDT beam-search
-  декодирование на C# через `Microsoft.ML.OnnxRuntime` (новый провайдер `SpeechLib.ParakeetTdt`).
-- **C.** Использовать `NeMo-Speech.cpp` (GGUF `parakeet-tdt-0.6b-v3.q8_0.gguf`)
-  как sidecar через P/Invoke или subprocess — не ONNX, но рабочий путь.
+## Рабочий путь (проверен)
+
+Конвертация и декодирование TDT уже решены в проекте [onnx-asr](https://github.com/istupakov/onnx-asr) (MIT):
+
+- **Конвертация:** `nemo_asr.models.ASRModel.from_pretrained(...).export("model.onnx")`
+  → `encoder-model.onnx` + `decoder_joint-model.onnx` + `nemo128.onnx` + `vocab.txt`
+  + `config.json` (`model_type: "nemo-conformer-tdt"`, `features_size: 128`,
+  `subsampling_factor: 8`, `max_tokens_per_step: 10`).
+- **Готовые артефакты** (идентичны): `istupakov/parakeet-tdt-0.6b-v3-onnx`
+  и `PalatineVision/parakeet-tdt-0.6b-v3-onnx` (FP32 + INT8).
+- **Точность:** WER 2.16 % LibriSpeech test-clean (INT8 = FP32), RTF ~0.05 (~20× real-time) на CPU.
+- **Декодирование** (TDT greedy, `onnx_asr/models/nemo.py`):
+  - encoder: `audio_signal [B,128,T], length [B]` → `outputs [B,D,T'], encoded_lengths [B]`.
+  - decoder_joint: `encoder_outputs [1,D,1], targets [[token]], target_length [1], input_states_1/2`
+    → `outputs [vocab + duration logits], output_states_1/2`.
+  - TDT: `vocab_logits = outputs[:vocab_size]`; `duration = argmax(outputs[vocab_size:])`.
+- **Сервер-обёртка:** `groxaxo/parakeet-tdt-0.6b-v3-fastapi-openai` (OpenAI-совместимый FastAPI).
 
 ### 2. Окружение конвертации — решено через GitHub Actions
 
@@ -57,13 +69,27 @@ huggingface_hub
 transformers
 ```
 
-## Порядок работы (после снятия блокеров)
+## Интеграция в C# (реализовано)
 
-1. Запустить CI-конвертацию: GitHub → Actions → «Convert Parakeet TDT to ONNX» → Run workflow.
-   (или локально: `.\setup-env.ps1` затем `python export_onnx.py`)
-2. `export_onnx.py` экспортирует encoder (FP32 + INT4) и диагностирует TDT-декодер.
-3. Артефакты — как workflow artifact + авто-загрузка на HF (секрет `HF_TOKEN`).
-4. Интеграция в приложения — после решения блокера 1 (путь B или C).
+Провайдер `SpeechLib.ParakeetTdt` реализован и компилируется:
+
+- `libraries/SpeechLib/src/SpeechLib.ParakeetTdt/ParakeetTdtRecognizer.cs`
+  реализует `IStreamingSpeechRecognizer` поверх `Microsoft.ML.OnnxRuntime`:
+  nemo128 → encoder → TDT greedy (duration-продвижение) → детокенизация.
+- Проект добавлен в `NemotronSpeech.slnx`.
+- Логика greedy-декодера верифицирована на `Test-Audio/librispeech` (через
+  `build/verify_parakeet.py`) — выдаёт корректный текст.
+
+Подключение в приложениях — заменить/дополнить `SpeechLib.Nemotron` на
+`SpeechLib.ParakeetTdt` (загрузка каталога `istupakov/parakeet-tdt-0.6b-v3-onnx`).
+
+### Модели для провайдера (каталог из HF `istupakov/parakeet-tdt-0.6b-v3-onnx`)
+
+- `encoder-model.int8.onnx` (652 МБ) / `.onnx` + `.data` (FP32)
+- `decoder_joint-model.int8.onnx` (18 МБ) / `.onnx` (FP32)
+- `nemo128.onnx` (log-mel препроцессор)
+- `vocab.txt` (8193 строки, blank=`<blk>`=8192)
+- `config.json` (`nemo-conformer-tdt`, features 128, subsampling 8)
 
 ## Референсы
 

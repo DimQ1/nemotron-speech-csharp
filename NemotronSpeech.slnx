@@ -23,6 +23,7 @@
     <Project Path="libraries/SpeechLib/src/SpeechLib.Audio.NAudio2/SpeechLib.Audio.NAudio2.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/SpeechLib.Audio.NAudio3.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.Nemotron/SpeechLib.Nemotron.csproj" />
+    <Project Path="libraries/SpeechLib/src/SpeechLib.ParakeetTdt/SpeechLib.ParakeetTdt.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.LiteRT/SpeechLib.LiteRT.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.LiteRT.Native/SpeechLib.LiteRT.Native.csproj" />
   </Folder>

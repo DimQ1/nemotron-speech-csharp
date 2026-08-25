@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>SpeechLib.ParakeetTdt</RootNamespace>
+    <AssemblyName>SpeechLib.ParakeetTdt</AssemblyName>
+  </PropertyGroup>
+
+  <!--
+    Parakeet TDT ASR provider on plain ONNX Runtime (not GenAI).
+    Executes the onnx-asr exported artifacts (encoder-model.onnx +
+    decoder_joint-model.onnx + nemo128.onnx + vocab.txt + config.json).
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" />
+  </ItemGroup>
+
+</Project>

@@ -134,24 +134,24 @@ python speech_to_text_streaming_infer_rnnt.py \
 
 ---
 
-## 6. Статус конвертации (2026-08-26)
+## 6. Статус конвертации и интеграции (2026-08-26)
 
-Попытка конвертации в ONNX (FP32 + INT4) выявила два блокера:
+**Конвертация и интеграция решены** — TDT-модель работает через обычный
+ONNX Runtime (не GenAI):
 
-1. **ORT GenAI не поддерживает TDT.** C#-стек проекта построен на
-   `Microsoft.ML.OnnxRuntimeGenAI` 0.15.2, чья ASR-поддержка
-   (`nemotron_speech.py`, `StreamingProcessor` + `Generator`) реализована
-   только для Nemotron 3.5 ASR с **RNN-T** декодером (encoder + decoder +
-   joint). TDT-декодер (token + duration) в эту модель не входит — даже
-   экспортированный ONNX не запустится без доработки C++-ядра genai.
-2. **Нет окружения конвертации.** `torch`, `nemo_toolkit`, `olive-ai`,
-   `transformers` не установлены; `conda` отсутствует. GPU (RTX 5070 Ti, 12 ГБ)
-   есть, HF write-токен есть (`hf auth list`).
+- Готовые артефакты: `istupakov/parakeet-tdt-0.6b-v3-onnx` / `PalatineVision/...`
+  (`encoder-model.onnx` + `decoder_joint-model.onnx` + `nemo128.onnx` +
+  `vocab.txt` + `config.json`; FP32 и INT8). Способ конвертации — NeMo
+  `model.export()`, референс-декодер — пакет `onnx-asr` (MIT, istupakov).
+- Точность: WER 2.16 % LibriSpeech test-clean (INT8 = FP32), RTF ~0.05 (~20× real-time).
+- Реализован C#-провайдер `SpeechLib.ParakeetTdt` (`IStreamingSpeechRecognizer`
+  поверх `Microsoft.ML.OnnxRuntime`) — собирается без ошибок, greedy-логика
+  верифицирована на `Test-Audio/librispeech` (корректный транскрипт).
+- Сервер-обёртка (альтернатива): `groxaxo/parakeet-tdt-0.6b-v3-fastapi-openai`.
 
-Инфраструктура подготовлена в `tools/converters/ParakeetTdt/` (README с планом,
-`requirements.txt`, `setup-env.ps1`, `upload_to_hf.ps1`). Дальнейшие шаги зависят
-от выбора пути интеграции (доработка genai / собственный ONNX-декодер на C# /
-NeMo-Speech.cpp GGUF).
+Ограничение: ORT GenAI (текущий Nemotron-стек) TDT не поддерживает — провайдер
+использует обычный OnnxRuntime и batch-распознавание (streaming-encoder
+cache-aware — отдельная доработка).
 
 ## Источники
 
