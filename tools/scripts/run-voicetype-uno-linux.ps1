@@ -31,6 +31,9 @@ function Convert-WindowsPathToWsl {
 }
 
 Write-Host "Publishing VoiceType.Uno for Linux..."
+# Note: `-r linux-x64` with a multi-TFM project would also restore the android
+# head (failing on a Mono linux-x64 runtime pack); the csproj excludes the
+# android TFM when RuntimeIdentifier is linux-x64.
 & dotnet publish $project -c Debug -r linux-x64 -f net10.0-desktop -p:GpuArch=CPU --self-contained true
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
