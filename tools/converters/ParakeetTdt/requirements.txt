@@ -1,0 +1,12 @@
+# Parakeet TDT 0.6B v3 conversion dependencies
+# Install with: .\setup-env.ps1  (creates .venv and installs these)
+torch>=2.4
+nemo_toolkit[asr]>=2.4
+olive-ai
+onnx>=1.16
+onnxruntime>=1.19
+onnxruntime-genai==0.15.2
+sentencepiece
+huggingface_hub>=1.22
+transformers
+numpy
