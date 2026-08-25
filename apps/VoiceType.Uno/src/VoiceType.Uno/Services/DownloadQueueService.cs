@@ -15,6 +15,8 @@ namespace VoiceType.Uno.Services;
 public sealed class DownloadQueueService : IDisposable
 {
     private const int MaxParallelDownloads = 2;
+    private const int DownloadBufferSize = 128 * 1024;
+    private static readonly TimeSpan MetadataTimeout = TimeSpan.FromSeconds(30);
 
     private readonly HttpClient _http;
     private readonly SemaphoreSlim _parallelismGate = new(MaxParallelDownloads, MaxParallelDownloads);
@@ -277,11 +279,43 @@ public sealed class DownloadQueueService : IDisposable
         // blobs=true is required — without it the API omits file sizes, which
         // leaves the queue progress at "0/N done" with no byte-level percent.
         var endpoint = $"https://huggingface.co/api/models/{repoId}?blobs=true";
-        using var response = await _http.GetAsync(endpoint, ct).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        await using var content = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-        using var document = await JsonDocument.ParseAsync(content, cancellationToken: ct).ConfigureAwait(false);
+        if (GetWslWindowsCurlPath() is { } curlPath)
+        {
+            try
+            {
+                var json = await RunCurlTextAsync(curlPath, endpoint, ct).ConfigureAwait(false);
+                return ParseRemoteFiles(json);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new HttpRequestException(
+                    $"Could not reach Hugging Face from WSL via Windows curl: {ex.Message}", ex);
+            }
+        }
 
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(MetadataTimeout);
+        try
+        {
+            using var response = await _http.GetAsync(endpoint, timeout.Token).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
+            return ParseRemoteFiles(json);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"Timed out fetching Hugging Face metadata after {MetadataTimeout.TotalSeconds:F0} seconds.");
+        }
+    }
+
+    private static List<RemoteFile> ParseRemoteFiles(string json)
+    {
+        using var document = JsonDocument.Parse(json);
         if (!document.RootElement.TryGetProperty("siblings", out var siblings))
             return [];
 
@@ -298,6 +332,23 @@ public sealed class DownloadQueueService : IDisposable
     }
 
     private async Task<long> DownloadFileAsync(
+        string repoId,
+        RemoteFile file,
+        string destination,
+        DownloadQueueItem item,
+        CancellationToken ct)
+    {
+        if (GetWslWindowsCurlPath() is { } curlPath)
+        {
+            return await DownloadFileWithCurlAsync(
+                curlPath, repoId, file, destination, item, ct).ConfigureAwait(false);
+        }
+
+        return await DownloadFileWithHttpAsync(
+            repoId, file, destination, item, ct).ConfigureAwait(false);
+    }
+
+    private async Task<long> DownloadFileWithHttpAsync(
         string repoId,
         RemoteFile file,
         string destination,
@@ -322,27 +373,197 @@ public sealed class DownloadQueueService : IDisposable
         {
             var buffer = new byte[128 * 1024];
             fileBytes = 0;
+            long pendingProgressBytes = 0;
             var stopwatch = Stopwatch.StartNew();
             int read;
             while ((read = await input.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
             {
                 await output.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
                 fileBytes += read;
+                pendingProgressBytes += read;
                 if (stopwatch.ElapsedMilliseconds >= 100)
                 {
-                    item.AddDownloaded(read);
+                    item.AddDownloaded(pendingProgressBytes);
+                    pendingProgressBytes = 0;
                     stopwatch.Restart();
                 }
             }
 
-            if (fileBytes > 0)
-                item.AddDownloaded(0); // flush pending bytes
+            if (pendingProgressBytes > 0)
+                item.AddDownloaded(pendingProgressBytes);
 
             await output.FlushAsync(ct).ConfigureAwait(false);
         }
 
         File.Move(temporaryPath, destination, overwrite: true);
         return fileBytes;
+    }
+
+    private static async Task<long> DownloadFileWithCurlAsync(
+        string curlPath,
+        string repoId,
+        RemoteFile file,
+        string destination,
+        DownloadQueueItem item,
+        CancellationToken ct)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        var temporaryPath = destination + ".part";
+        var endpoint = $"https://huggingface.co/{repoId}/resolve/main/{Uri.EscapeDataString(file.RelativePath).Replace("%2F", "/", StringComparison.OrdinalIgnoreCase)}";
+        using var process = StartCurlProcess(curlPath, endpoint);
+        var errorTask = process.StandardError.ReadToEndAsync();
+
+        try
+        {
+            long fileBytes = 0;
+            long pendingProgressBytes = 0;
+            var stopwatch = Stopwatch.StartNew();
+
+            await using (var output = new FileStream(
+                temporaryPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                DownloadBufferSize,
+                FileOptions.Asynchronous | FileOptions.SequentialScan))
+            {
+                var buffer = new byte[DownloadBufferSize];
+                int read;
+                while ((read = await process.StandardOutput.BaseStream
+                    .ReadAsync(buffer.AsMemory(0, buffer.Length), ct)
+                    .ConfigureAwait(false)) > 0)
+                {
+                    await output.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
+                    fileBytes += read;
+                    pendingProgressBytes += read;
+                    if (stopwatch.ElapsedMilliseconds >= 100)
+                    {
+                        item.AddDownloaded(pendingProgressBytes);
+                        pendingProgressBytes = 0;
+                        stopwatch.Restart();
+                    }
+                }
+
+                if (pendingProgressBytes > 0)
+                    item.AddDownloaded(pendingProgressBytes);
+
+                await output.FlushAsync(ct).ConfigureAwait(false);
+            }
+
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            var error = await errorTask.ConfigureAwait(false);
+            if (process.ExitCode != 0)
+            {
+                var detail = string.IsNullOrWhiteSpace(error)
+                    ? $"exit code {process.ExitCode}"
+                    : error.Trim();
+                throw new HttpRequestException($"curl download failed: {detail}");
+            }
+
+            if (fileBytes == 0)
+                throw new InvalidOperationException("curl returned an empty model file.");
+
+            File.Move(temporaryPath, destination, overwrite: true);
+            return fileBytes;
+        }
+        catch
+        {
+            TryTerminateProcess(process);
+            try { await errorTask.ConfigureAwait(false); } catch { }
+            try { File.Delete(temporaryPath); } catch { }
+            throw;
+        }
+    }
+
+    private static async Task<string> RunCurlTextAsync(
+        string curlPath,
+        string endpoint,
+        CancellationToken ct)
+    {
+        using var process = StartCurlProcess(curlPath, endpoint);
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+
+        try
+        {
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            var output = await outputTask.ConfigureAwait(false);
+            var error = await errorTask.ConfigureAwait(false);
+            if (process.ExitCode != 0)
+            {
+                var detail = string.IsNullOrWhiteSpace(error)
+                    ? $"exit code {process.ExitCode}"
+                    : error.Trim();
+                throw new HttpRequestException($"curl request failed: {detail}");
+            }
+
+            return output;
+        }
+        catch
+        {
+            TryTerminateProcess(process);
+            try { await outputTask.ConfigureAwait(false); } catch { }
+            try { await errorTask.ConfigureAwait(false); } catch { }
+            throw;
+        }
+    }
+
+    private static Process StartCurlProcess(string curlPath, string endpoint)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = curlPath,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+        startInfo.ArgumentList.Add("--fail-with-body");
+        startInfo.ArgumentList.Add("--location");
+        startInfo.ArgumentList.Add("--retry");
+        startInfo.ArgumentList.Add("3");
+        startInfo.ArgumentList.Add("--retry-delay");
+        startInfo.ArgumentList.Add("1");
+        startInfo.ArgumentList.Add("--retry-all-errors");
+        startInfo.ArgumentList.Add("--connect-timeout");
+        startInfo.ArgumentList.Add("15");
+        startInfo.ArgumentList.Add("--silent");
+        startInfo.ArgumentList.Add("--show-error");
+        startInfo.ArgumentList.Add("--output");
+        startInfo.ArgumentList.Add("-");
+        startInfo.ArgumentList.Add(endpoint);
+
+        var process = new Process { StartInfo = startInfo };
+        if (!process.Start())
+        {
+            process.Dispose();
+            throw new InvalidOperationException($"Could not start curl executable '{curlPath}'.");
+        }
+
+        return process;
+    }
+
+    private static string? GetWslWindowsCurlPath()
+    {
+        if (!OperatingSystem.IsLinux()
+            || string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("WSL_INTEROP")))
+            return null;
+
+        const string systemCurl = "/mnt/c/Windows/System32/curl.exe";
+        return File.Exists(systemCurl) ? systemCurl : "curl.exe";
+    }
+
+    private static void TryTerminateProcess(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+                process.Kill(entireProcessTree: true);
+        }
+        catch
+        {
+            // Best effort: the original exception contains the useful failure.
+        }
     }
 
     private static string GetSafeDestination(string modelRoot, string relativePath)
