@@ -92,21 +92,12 @@ public partial class App : Application
                     services.AddSingleton(sp =>
                     {
                         var settings = sp.GetRequiredService<SettingsService>().Load();
-#if __ANDROID__
-                        // LiteRtLmSharp natives ship for win-x64 / linux-x64 only, so the
-                        // in-process native backend cannot run on Android — always use the
-                        // external LiteRT-LM server (HTTP backend) there.
-                        return new TranslationService(
-                            new LiteRTLmOptions { BaseUrl = settings.TranslationServerUrl },
-                            TranslationService.BackendKind.Http);
-#else
                         var backend = string.Equals(settings.TranslationBackend, "http", StringComparison.OrdinalIgnoreCase)
                             ? TranslationService.BackendKind.Http
                             : TranslationService.BackendKind.Native;
                         return new TranslationService(
                             new LiteRTLmOptions { BaseUrl = settings.TranslationServerUrl },
                             backend);
-#endif
                     });
 
                     // ---- ViewModels ----
