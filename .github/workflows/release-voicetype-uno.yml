@@ -85,10 +85,54 @@ jobs:
           path: build/linux-packages
           if-no-files-found: error
 
+  android:
+    name: Publish Android (AAB + APK)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Publish VoiceType.Uno (net10.0-android, AAB)
+        run: >-
+          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+          -c Release -f net10.0-android -p:GpuArch=CPU
+          -p:AndroidPackageFormat=aab
+
+      - name: Publish VoiceType.Uno (net10.0-android, APK for sideload)
+        run: >-
+          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+          -c Release -f net10.0-android -p:GpuArch=CPU
+          -p:AndroidPackageFormat=apk
+
+      - name: Collect package artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build/voicetype-uno-android | Out-Null
+          $publish = "apps/VoiceType.Uno/src/VoiceType.Uno/bin/Release/net10.0-android/publish"
+          Copy-Item "$publish/*-Signed.aab" build/voicetype-uno-android/
+          Copy-Item "$publish/*-Signed.apk" build/voicetype-uno-android/
+          Get-ChildItem build/voicetype-uno-android | Format-Table Name, Length
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceType.Uno-android
+          path: build/voicetype-uno-android
+          if-no-files-found: error
+
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [windows, linux]
+    needs: [windows, linux, android]
 
     steps:
       - name: Download Windows artifact
@@ -109,6 +153,12 @@ jobs:
           name: VoiceType.Uno-linux-deb-amd64
           path: release-assets/linux-deb
 
+      - name: Download Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: VoiceType.Uno-android
+          path: release-assets/android
+
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
@@ -118,3 +168,5 @@ jobs:
             release-assets/linux-deb/voicetype-uno_*_amd64.deb
             release-assets/linux-deb/README.md
             release-assets/linux-deb/SHA256SUMS
+            release-assets/android/*-Signed.aab
+            release-assets/android/*-Signed.apk
