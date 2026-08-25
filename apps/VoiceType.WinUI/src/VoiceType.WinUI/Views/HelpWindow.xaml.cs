@@ -38,12 +38,23 @@ public sealed partial class HelpWindow : Window
     {
         if (OpenInstance is { } existing)
         {
-            existing.Activate();
+            existing.RestoreAndActivate();
             return;
         }
         var window = new HelpWindow();
         App.MainWindow?.TrackChildWindow(window);
         window.Activate();
+    }
+
+    private void RestoreAndActivate()
+    {
+        if (AppWindow?.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.Restore(true);
+            return;
+        }
+
+        Activate();
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => this.Close();
@@ -63,7 +74,7 @@ public sealed partial class HelpWindow : Window
         if (AppWindow?.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = true;
-            presenter.IsMaximizable = false;
+            presenter.IsMaximizable = true;
         }
     }
 

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=VoiceType
+Comment=Offline AI voice dictation and translation
+Exec=voicetype-uno
+Icon=voicetype-uno
+Terminal=false
+Categories=AudioVideo;Audio;Utility;Accessibility;
+StartupNotify=true
+StartupWMClass=VoiceType.Uno

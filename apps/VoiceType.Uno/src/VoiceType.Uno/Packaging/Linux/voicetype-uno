@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /opt/voicetype-uno/launch-linux.sh "$@"

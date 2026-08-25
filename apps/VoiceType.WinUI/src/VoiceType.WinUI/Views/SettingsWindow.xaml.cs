@@ -3,6 +3,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Runtime.InteropServices;
+using System.Text;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
 using VoiceType.WinUI.Services;
@@ -22,6 +23,27 @@ public sealed partial class SettingsWindow : Window
 
     /// <summary>Acquire the cross-process guard for this window type (call before constructing).</summary>
     public static bool TryAcquireGlobalGuard() => ChildWindowGuard.TryAcquire(WindowKey);
+
+    public static bool TryActivateExistingGlobalWindow()
+    {
+        nint existingHwnd = nint.Zero;
+        EnumWindows((hwnd, _) =>
+        {
+            var title = new StringBuilder(256);
+            GetWindowText(hwnd, title, title.Capacity);
+            if (!string.Equals(title.ToString(), "VoiceType Settings", StringComparison.Ordinal))
+                return true;
+
+            existingHwnd = hwnd;
+            return false;
+        }, nint.Zero);
+
+        if (existingHwnd == nint.Zero)
+            return false;
+
+        ShowWindow(existingHwnd, SW_RESTORE);
+        return SetForegroundWindow(existingHwnd);
+    }
 
     public SettingsViewModel ViewModel => _vm;
     public AppSettings ResultSettings { get; private set; } = null!;
@@ -70,7 +92,23 @@ public sealed partial class SettingsWindow : Window
         {
             presenter.IsResizable = true;
             presenter.IsMaximizable = false;
+            presenter.IsMinimizable = false;
         }
+    }
+
+    public void RestoreAndActivate()
+    {
+        if (AppWindow?.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.Restore(true);
+            return;
+        }
+
+        var hwnd = WindowNative.GetWindowHandle(this);
+        if (hwnd != nint.Zero && IsIconic(hwnd))
+            ShowWindow(hwnd, SW_RESTORE);
+
+        Activate();
     }
 
     private void DeleteRule_Click(object sender, RoutedEventArgs e)
@@ -86,13 +124,31 @@ public sealed partial class SettingsWindow : Window
 
     // ---- Win32 interop ----
 
+    private delegate bool EnumWindowsProc(nint hWnd, nint lParam);
+
     private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOZORDER = 0x0004;
+    private const int SW_RESTORE = 9;
     private const uint MONITOR_DEFAULTTONEAREST = 2;
     private const int MDT_EFFECTIVE_DPI = 0;
 
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(nint hWnd, int hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(nint hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(nint hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, nint lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(nint hWnd, StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(nint hWnd);
 
     [DllImport("user32.dll")]
     private static extern nint MonitorFromWindow(nint hWnd, uint dwFlags);

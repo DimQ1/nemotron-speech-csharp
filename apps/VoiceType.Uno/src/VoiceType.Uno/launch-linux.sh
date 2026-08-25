@@ -17,7 +17,9 @@ fi
 export DISPLAY="${DISPLAY:-:0}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 mkdir -p "$XDG_RUNTIME_DIR"
-export PULSE_SERVER="${PULSE_SERVER:-/mnt/wslg/PulseServer}"
+if [ -z "${PULSE_SERVER:-}" ] && [ -S /mnt/wslg/PulseServer ]; then
+    export PULSE_SERVER=/mnt/wslg/PulseServer
+fi
 
 echo "Launching VoiceType.Uno (DISPLAY=$DISPLAY)..."
 
@@ -39,7 +41,7 @@ fi
 
 # Run the app (foreground)
 cd "$APP_DIR"
-"${APP_DIR}/VoiceType.Uno"
+"${APP_DIR}/VoiceType.Uno" "$@"
 APP_EXIT=$?
 
 # Clean up

@@ -2,3 +2,6 @@
 # a CRLF shebang (`#!/usr/bin/env bash\r`) breaks the interpreter lookup.
 *.sh   text eol=lf
 *.py   text eol=lf
+apps/VoiceType.Uno/src/VoiceType.Uno/Packaging/Linux/control text eol=lf
+apps/VoiceType.Uno/src/VoiceType.Uno/Packaging/Linux/voicetype-uno text eol=lf
+*.desktop text eol=lf

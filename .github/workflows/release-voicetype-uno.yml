@@ -63,11 +63,26 @@ jobs:
       - name: Create archive
         run: tar -czf build/VoiceType.Uno-linux-x64.tar.gz -C build/voicetype-uno-linux .
 
+      - name: Build Debian installer
+        env:
+          PACKAGE_VERSION: ${{ github.ref_name }}
+          PUBLISH_DIR: ${{ github.workspace }}/build/voicetype-uno-linux
+        run: |
+          PACKAGE_VERSION="${PACKAGE_VERSION#uno-v}"
+          bash apps/VoiceType.Uno/src/VoiceType.Uno/build-deb.sh "$PACKAGE_VERSION"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: VoiceType.Uno-linux-x64
           path: build/VoiceType.Uno-linux-x64.tar.gz
+          if-no-files-found: error
+
+      - name: Upload Debian installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceType.Uno-linux-deb-amd64
+          path: build/linux-packages
           if-no-files-found: error
 
   release:
@@ -88,9 +103,18 @@ jobs:
           name: VoiceType.Uno-linux-x64
           path: release-assets
 
+      - name: Download Debian installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: VoiceType.Uno-linux-deb-amd64
+          path: release-assets/linux-deb
+
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
             release-assets/VoiceType.Uno-win-x64.zip
             release-assets/VoiceType.Uno-linux-x64.tar.gz
+            release-assets/linux-deb/voicetype-uno_*_amd64.deb
+            release-assets/linux-deb/README.md
+            release-assets/linux-deb/SHA256SUMS

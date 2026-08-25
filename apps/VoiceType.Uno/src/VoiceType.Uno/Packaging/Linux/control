@@ -1,0 +1,11 @@
+Package: voicetype-uno
+Version: @VERSION@
+Section: sound
+Priority: optional
+Architecture: amd64
+Maintainer: DimQ1
+Depends: python3, libx11-6, libasound2t64 | libasound2, libfontconfig1, libpulse0
+Recommends: xdg-desktop-portal, wl-clipboard | xclip | xsel, ydotool | xdotool
+Description: Offline AI voice dictation and translation
+ VoiceType provides local speech recognition, text injection, global hotkeys,
+ and optional on-device translation using Uno Platform and Nemotron ASR.

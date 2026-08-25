@@ -5,6 +5,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Services;
@@ -23,8 +24,13 @@ public sealed partial class MainWindow : Window
     private SubclassProc? _subclassProc;
     private nint _subclassId = 1;
     private readonly List<Window> _childWindows = new();
+    private readonly HashSet<Window> _childrenMinimizedWithMain = new();
     private readonly HashSet<nint> _initiallyPlacedChildWindows = new();
+    private bool _wasMinimized;
     private bool _isTopmostEnabled;
+    private const double TextPaneMinHeight = 64;
+    private const double TranslationDividerHeight = 18;
+    private double _translationPaneRatio = 1d / 3d;
     private bool _childPlacementScheduled;
     private DispatcherQueueTimer? _childPlacementTimer;
     private int _childPlacementAttempts;
@@ -39,6 +45,7 @@ public sealed partial class MainWindow : Window
         public bool InSizeMove;
         public bool AllowProgrammaticMove;
         public bool UserMoved;
+        public bool IsMinimizing;
     }
 
     private readonly Dictionary<nint, (SubclassProc Proc, ChildWindowState State)> _childSubclass = new();
@@ -60,6 +67,7 @@ public sealed partial class MainWindow : Window
         _windowIconService = App.Services.GetRequiredService<WindowIconService>();
 
         InitializeComponent();
+        TextAreaGrid.Loaded += (_, _) => UpdateTranslationLayout();
 
         _vm.PropertyChanged += OnViewModelPropertyChanged;
 
@@ -106,7 +114,7 @@ public sealed partial class MainWindow : Window
         if (AppWindow?.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = true;
-            presenter.IsMaximizable = false;
+            presenter.IsMaximizable = true;
         }
     }
 
@@ -124,6 +132,9 @@ public sealed partial class MainWindow : Window
             DispatcherQueue.TryEnqueue(() => TranslationScroller.ChangeView(null, double.MaxValue, null));
         }
 
+        if (e.PropertyName == nameof(MainViewModel.ShowTranslation))
+            UpdateTranslationLayout();
+
         if (e.PropertyName is nameof(MainViewModel.IsRecording)
             or nameof(MainViewModel.IsActivelyInjecting)
             or nameof(MainViewModel.IsTextInjectionEnabled))
@@ -135,6 +146,42 @@ public sealed partial class MainWindow : Window
 
         if (e.PropertyName == nameof(MainViewModel.IsCaptureMuted))
             UpdateTaskbarIndicator();
+    }
+
+    private void UpdateTranslationLayout()
+    {
+        if (!_vm.ShowTranslation)
+        {
+            RecognitionTextRow.Height = new GridLength(1, GridUnitType.Star);
+            TranslationDividerRow.Height = new GridLength(0);
+            TranslationTextRow.Height = new GridLength(0);
+            return;
+        }
+
+        var translationRatio = Math.Clamp(_translationPaneRatio, 0.05, 0.95);
+        RecognitionTextRow.Height = new GridLength(1 - translationRatio, GridUnitType.Star);
+        TranslationDividerRow.Height = new GridLength(TranslationDividerHeight);
+        TranslationTextRow.Height = new GridLength(translationRatio, GridUnitType.Star);
+    }
+
+    private void TranslationSplitter_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (!_vm.ShowTranslation)
+            return;
+
+        var availableHeight = TextAreaGrid.ActualHeight - TranslationDividerRow.ActualHeight;
+        if (availableHeight <= TextPaneMinHeight * 2)
+            return;
+
+        var recognitionHeight = Math.Clamp(
+            RecognitionTextRow.ActualHeight + e.VerticalChange,
+            TextPaneMinHeight,
+            availableHeight - TextPaneMinHeight);
+        var translationHeight = availableHeight - recognitionHeight;
+
+        _translationPaneRatio = translationHeight / availableHeight;
+        RecognitionTextRow.Height = new GridLength(recognitionHeight / availableHeight, GridUnitType.Star);
+        TranslationTextRow.Height = new GridLength(translationHeight / availableHeight, GridUnitType.Star);
     }
 
     private void UpdateMicrophoneIcon()
@@ -196,8 +243,53 @@ public sealed partial class MainWindow : Window
             try { child.Close(); } catch { }
         }
         _childWindows.Clear();
+        _childrenMinimizedWithMain.Clear();
         _initiallyPlacedChildWindows.Clear();
         _windowIconService.Dispose();
+    }
+
+    private void SynchronizeChildWindowState(bool isMinimized)
+    {
+        if (isMinimized == _wasMinimized)
+            return;
+
+        _wasMinimized = isMinimized;
+        if (isMinimized)
+            MinimizeChildWindows();
+        else
+            RestoreChildWindows();
+    }
+
+    private void MinimizeChildWindows()
+    {
+        _childrenMinimizedWithMain.Clear();
+
+        foreach (var child in _childWindows.ToArray())
+        {
+            if (child.AppWindow is not { IsVisible: true, Presenter: OverlappedPresenter presenter }
+                || presenter.State == OverlappedPresenterState.Minimized)
+            {
+                continue;
+            }
+
+            _childrenMinimizedWithMain.Add(child);
+            presenter.Minimize();
+        }
+    }
+
+    private void RestoreChildWindows()
+    {
+        foreach (var child in _childrenMinimizedWithMain.ToArray())
+        {
+            if (_childWindows.Contains(child)
+                && child.AppWindow?.Presenter is OverlappedPresenter presenter
+                && presenter.State == OverlappedPresenterState.Minimized)
+            {
+                presenter.Restore(false);
+            }
+        }
+
+        _childrenMinimizedWithMain.Clear();
     }
 
     private void SubclassWindow()
@@ -216,6 +308,9 @@ public sealed partial class MainWindow : Window
 
     private nint WndProcHook(nint hwnd, uint msg, nint wParam, nint lParam, nint uIdSubclass, nint dwRefData)
     {
+        const uint WM_SIZE = 0x0005;
+        const long SIZE_MINIMIZED = 1;
+
         if (msg == WM_HOTKEY)
         {
             var hotkeyId = wParam.ToInt32();
@@ -225,12 +320,20 @@ public sealed partial class MainWindow : Window
             _vm.HandleHotkey(hotkeyId);
             return nint.Zero;
         }
+
+        if (msg == WM_SIZE)
+        {
+            var isMinimized = (wParam.ToInt64() & 0xFFFF) == SIZE_MINIMIZED;
+            DispatcherQueue.TryEnqueue(() => SynchronizeChildWindowState(isMinimized));
+        }
+
         return DefSubclassProc(hwnd, msg, wParam, lParam);
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
     {
-        this.AppWindow?.Hide();
+        if (AppWindow?.Presenter is OverlappedPresenter presenter)
+            presenter.Minimize();
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -270,12 +373,39 @@ public sealed partial class MainWindow : Window
         {
             SubclassProc proc = (hwnd, msg, wParam, lParam, uIdSubclass, dwRefData) =>
             {
+                const uint WM_SIZE = 0x0005;
+                const uint WM_SYSCOMMAND = 0x0112;
                 const uint WM_ENTERSIZEMOVE = 0x0231;
                 const uint WM_EXITSIZEMOVE = 0x0232;
                 const uint WM_WINDOWPOSCHANGING = 0x0046;
+                const long SC_MINIMIZE = 0xF020;
+                const long SC_RESTORE = 0xF120;
+                const long SIZE_MINIMIZED = 1;
                 const uint SWP_NOMOVE_FLAG = 0x0002;
 
-                if (msg == WM_ENTERSIZEMOVE)
+                if (msg == WM_SYSCOMMAND)
+                {
+                    var command = wParam.ToInt64() & 0xFFF0;
+                    state.IsMinimizing = command == SC_MINIMIZE;
+                    if (command == SC_RESTORE)
+                    {
+                        state.IsMinimizing = false;
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            if (child.AppWindow?.Presenter is OverlappedPresenter presenter
+                                && presenter.State == OverlappedPresenterState.Minimized)
+                            {
+                                presenter.Restore(false);
+                            }
+                        });
+                        return nint.Zero;
+                    }
+                }
+                else if (msg == WM_SIZE)
+                {
+                    state.IsMinimizing = (wParam.ToInt64() & 0xFFFF) == SIZE_MINIMIZED;
+                }
+                else if (msg == WM_ENTERSIZEMOVE)
                     state.InSizeMove = true;
                 else if (msg == WM_EXITSIZEMOVE)
                 {
@@ -283,7 +413,11 @@ public sealed partial class MainWindow : Window
                         state.UserMoved = true;
                     state.InSizeMove = false;
                 }
-                else if (msg == WM_WINDOWPOSCHANGING && !state.InSizeMove && !state.AllowProgrammaticMove)
+                else if (msg == WM_WINDOWPOSCHANGING
+                    && !state.InSizeMove
+                    && !state.AllowProgrammaticMove
+                    && !state.IsMinimizing
+                    && !IsIconic(hwnd))
                 {
                     // A move request that did not come from user drag/resize — strip the
                     // position change so the window stays where the user left it.
@@ -305,6 +439,7 @@ public sealed partial class MainWindow : Window
         child.Closed += (_, _) =>
         {
             _childWindows.Remove(child);
+            _childrenMinimizedWithMain.Remove(child);
             _initiallyPlacedChildWindows.Remove(childHwnd);
             if (childHwnd != nint.Zero && _childSubclass.Remove(childHwnd, out var entry))
                 RemoveWindowSubclass(childHwnd, entry.Proc, (nint)(childHwnd.ToInt64() ^ 0x5A5A));
@@ -316,9 +451,6 @@ public sealed partial class MainWindow : Window
         {
             presenter.IsAlwaysOnTop = true;
         }
-
-        child.Activated += (_, _) => ScheduleChildPlacement();
-        ScheduleChildPlacement();
     }
 
     private void ScheduleChildPlacement()
@@ -592,6 +724,9 @@ public sealed partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool IsWindowVisible(nint hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(nint hWnd);
 
     [DllImport("user32.dll")]
     private static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);

@@ -29,6 +29,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ModelPath))]
     private string _executionProvider = "cpu";
 
+    /// <summary>Compute backend choices for the native translation engine.</summary>
+    public IReadOnlyList<string> TranslationComputeBackendOptions { get; } = ["cpu", "gpu"];
+
+    [ObservableProperty]
+    private string _translationComputeBackend = "cpu";
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ModelPath))]
     private string _language = "auto";
@@ -138,6 +144,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ModelsRootPath = settings.ModelsRootPath;
         SelectedModel = settings.SelectedModel;
         ExecutionProvider = settings.ExecutionProvider;
+        TranslationComputeBackend = NormalizeTranslationComputeBackend(settings.TranslationComputeBackend);
         _language = settings.Language;
         UseVad = settings.UseVad;
         NumBeams = settings.NumBeams;
@@ -331,6 +338,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         target.SelectedModel = source.SelectedModel;
         target.ModelPath = source.ModelPath;
         target.ExecutionProvider = source.ExecutionProvider;
+        target.TranslationEnabled = source.TranslationEnabled;
+        target.TranslationTargetLanguage = source.TranslationTargetLanguage;
+        target.TranslationComputeBackend = source.TranslationComputeBackend;
         target.Language = source.Language;
         target.UseVad = source.UseVad;
         target.NumBeams = source.NumBeams;
@@ -366,6 +376,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         SelectedModel = SelectedModel,
         ModelPath = ModelPath,
         ExecutionProvider = ExecutionProvider,
+        TranslationEnabled = _original.TranslationEnabled,
+        TranslationTargetLanguage = _original.TranslationTargetLanguage,
+        TranslationComputeBackend = TranslationComputeBackend,
         Language = Language,
         UseVad = UseVad,
         NumBeams = Math.Max(1, NumBeams),
@@ -395,4 +408,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         MicVolume = _original.MicVolume,
         LoopbackVolume = _original.LoopbackVolume,
     };
+
+    private static string NormalizeTranslationComputeBackend(string? backend) =>
+        string.Equals(backend, "gpu", StringComparison.OrdinalIgnoreCase) ? "gpu" : "cpu";
 }

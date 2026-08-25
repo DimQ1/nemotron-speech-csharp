@@ -570,14 +570,17 @@ public sealed partial class MainViewModel : ObservableObject
         // after Close() but before the Closed handler runs).
         if (Views.SettingsWindow.OpenInstance is { } existing)
         {
-            existing.Activate();
+            existing.RestoreAndActivate();
             return;
         }
 
         // Cross-process guard: block a second settings window even from another
         // app instance (e.g. installed MSIX package running alongside a debug build).
         if (!Views.SettingsWindow.TryAcquireGlobalGuard())
+        {
+            Views.SettingsWindow.TryActivateExistingGlobalWindow();
             return;
+        }
 
         var settingsWindow = new Views.SettingsWindow(_settings);
         _settingsWindow = settingsWindow;
@@ -638,9 +641,7 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenHelp()
     {
-        var help = Views.HelpWindow.OpenInstance ?? new Views.HelpWindow();
-        App.MainWindow?.TrackChildWindow(help);
-        help.Activate();
+        Views.HelpWindow.Show();
     }
 
     // ---- Hotkey ----
@@ -976,6 +977,12 @@ public sealed partial class MainViewModel : ObservableObject
             DisableInjectionOnFocusChange = settings.DisableInjectionOnFocusChange;
             AlwaysOnTop = settings.AlwaysOnTop;
             TranslationEnabled = settings.TranslationEnabled;
+
+            var translationBackend = string.Equals(settings.TranslationComputeBackend, "gpu", StringComparison.OrdinalIgnoreCase)
+                ? "gpu"
+                : "cpu";
+            TranslationComputeBackend = translationBackend;
+            _translation.SetComputeBackend(translationBackend);
 
             var languageOption = ResolveTranslationLanguage(settings.TranslationTargetLanguage);
             if (!string.Equals(SelectedTranslationLanguage?.Code, languageOption.Code, StringComparison.OrdinalIgnoreCase))

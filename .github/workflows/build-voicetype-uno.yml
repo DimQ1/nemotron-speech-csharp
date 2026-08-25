@@ -77,9 +77,22 @@ jobs:
       - name: Create archive
         run: tar -czf build/VoiceType.Uno-linux-x64.tar.gz -C build/voicetype-uno-linux .
 
+      - name: Build Debian installer
+        env:
+          PACKAGE_VERSION: 1.0.${{ github.run_number }}
+          PUBLISH_DIR: ${{ github.workspace }}/build/voicetype-uno-linux
+        run: bash apps/VoiceType.Uno/src/VoiceType.Uno/build-deb.sh "$PACKAGE_VERSION"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: VoiceType.Uno-linux-x64
           path: build/VoiceType.Uno-linux-x64.tar.gz
+          if-no-files-found: error
+
+      - name: Upload Debian installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceType.Uno-linux-deb-amd64
+          path: build/linux-packages
           if-no-files-found: error

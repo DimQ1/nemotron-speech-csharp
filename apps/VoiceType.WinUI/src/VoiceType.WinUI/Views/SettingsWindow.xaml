@@ -74,6 +74,11 @@
                             <ComboBoxItem Content="follow_config"/>
                         </ComboBox>
 
+                        <TextBlock Text="Translation acceleration" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
+                        <ComboBox ItemsSource="{x:Bind ViewModel.TranslationComputeBackendOptions, Mode=OneWay}"
+                                  SelectedItem="{x:Bind ViewModel.TranslationComputeBackend, Mode=TwoWay}"
+                                  Style="{StaticResource DarkComboBox}" Margin="0,0,0,8"/>
+
                         <TextBlock Text="Language (BCP-47 code or 'auto')" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
                         <ComboBox SelectedValue="{x:Bind ViewModel.Language, Mode=TwoWay}"
                                   SelectedValuePath="Content"

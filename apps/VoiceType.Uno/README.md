@@ -88,6 +88,26 @@ dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -c Rele
 
 Wayland sessions: hotkeys and text injection require the XDG GlobalShortcuts / RemoteDesktop portals — not implemented yet; run under X11 (XWayland) for now.
 
+## Debian package
+
+Build the self-contained `linux-x64` package from Windows using the Ubuntu WSL distribution:
+
+```powershell
+./apps/VoiceType.Uno/src/VoiceType.Uno/build-deb.ps1 -Version 1.0.0 -Clean
+```
+
+The installer is written to `build/linux-packages/voicetype-uno_<version>_amd64.deb`.
+Install or update it on Ubuntu with:
+
+```bash
+sudo apt install ./voicetype-uno_1.0.0_amd64.deb
+voicetype-uno
+```
+
+The package installs application files under `/opt/voicetype-uno` and desktop integration under
+`/usr/share`. User settings and downloaded models remain under `~/.local/share/VoiceType` and are
+preserved across package updates and removal. Remove the application with `sudo apt remove voicetype-uno`.
+
 ## Manual testing of the Linux build from a Windows machine
 
 Linux-only functionality (ALSA capture, X11 hotkeys/injection, XDG paths) cannot run on Windows at all — it needs a real Linux userspace. Options, ordered by fidelity:
