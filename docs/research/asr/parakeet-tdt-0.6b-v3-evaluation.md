@@ -147,11 +147,16 @@ ONNX Runtime (не GenAI):
 - Реализован C#-провайдер `SpeechLib.ParakeetTdt` (`IStreamingSpeechRecognizer`
   поверх `Microsoft.ML.OnnxRuntime`) — собирается без ошибок, greedy-логика
   верифицирована на `Test-Audio/librispeech` (корректный транскрипт).
+- **Стриминг** — buffer-based (перекрывающиеся окна `left|chunk|right` через
+  полный encoder, TDT-состояние переносится между чанками). Cache-aware
+  `forward_for_export` неприменим: у модели `att_context_style="regular"`
+  (full attention) — подтверждено инспекцией NeMo 3.0 `ConformerEncoder`.
+- Модель выложена на HF: `DimQ1/parakeet-tdt-0.6b-v3-onnx` (папки
+  `fp32/`, `int8/`, `int4/`).
 - Сервер-обёртка (альтернатива): `groxaxo/parakeet-tdt-0.6b-v3-fastapi-openai`.
 
 Ограничение: ORT GenAI (текущий Nemotron-стек) TDT не поддерживает — провайдер
-использует обычный OnnxRuntime и batch-распознавание (streaming-encoder
-cache-aware — отдельная доработка).
+использует обычный OnnxRuntime и buffer-based стриминг.
 
 ## Источники
 

@@ -38,12 +38,6 @@ jobs:
             --model "$MODEL" \
             --out build/parakeet-tdt-onnx
 
-      - name: Export cache-aware streaming encoder
-        run: |
-          python tools/converters/ParakeetTdt/export_streaming_encoder.py \
-            --model "$MODEL" \
-            --out build/parakeet-tdt-onnx
-
       - name: List artifacts
         run: |
           ls -la build/parakeet-tdt-onnx

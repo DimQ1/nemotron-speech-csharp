@@ -12,7 +12,7 @@
 | Квантизация (INT8/INT4) | ✅ `.int8.onnx` (готовые) + `.int4.onnx` (MatMulNBits, верифицированы) |
 | Загрузка на HuggingFace | ✅ `DimQ1/parakeet-tdt-0.6b-v3-onnx` (FP32 + INT8 + INT4) |
 | Интеграция в приложения | ✅ `SpeechLib.ParakeetTdt` (C# + OnnxRuntime) — собран, логика верифицирована |
-| Потоковое распознавание | ✅ сегментное (chunked) в C#; cache-aware encoder — `export_streaming_encoder.py` + CI |
+| Потоковое распознавание | ✅ buffer-based (окна left/chunk/right) в C#; cache-aware неприменим (модель «regular» attention) |
 
 ## Блокеры (важно прочитать до запуска)
 
@@ -83,6 +83,11 @@ transformers
 - `libraries/SpeechLib/src/SpeechLib.ParakeetTdt/ParakeetTdtRecognizer.cs`
   реализует `IStreamingSpeechRecognizer` поверх `Microsoft.ML.OnnxRuntime`:
   nemo128 → encoder → TDT greedy (duration-продвижение) → детокенизация.
+- **Стриминг** — buffer-based (как в NeMo `speech_to_text_streaming_infer_rnnt.py`):
+  перекрывающиеся окна `[left | chunk | right]` подаются в полный encoder, и
+  декодируются только кадры chunk; TDT-состояние (LSTM) переносится между
+  чанками. Конструктор: `new ParakeetTdtRecognizer(dir, chunkSeconds, leftContextSeconds, rightContextSeconds)`.
+  Cache-aware `forward_for_export` **неприменим** — у модели `att_context_style="regular"` (full attention).
 - Проект добавлен в `NemotronSpeech.slnx`.
 - Логика greedy-декодера верифицирована на `Test-Audio/librispeech` (через
   `build/verify_parakeet.py`) — выдаёт корректный текст.
