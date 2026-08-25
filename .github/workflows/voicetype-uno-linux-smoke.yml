@@ -44,7 +44,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libasound2t64 libfontconfig1 libpulse0 \
-            xvfb pulseaudio-utils
+            xvfb pulseaudio pulseaudio-utils
 
       - name: Publish VoiceType.Uno (linux-x64, self-contained)
         run: >
@@ -60,7 +60,7 @@ jobs:
           pactl load-module module-null-sink sink_name=fake_out sink_properties=device.description=fake_out || true
           pactl load-module module-null-source source_name=fake_mic || true
           pactl set-default-source fake_mic || true
-          pactl info
+          pactl info || true
           # Virtual X server for the Skia head.
           Xvfb :99 -screen 0 1280x720x24 &
           echo "DISPLAY=:99" >> "$GITHUB_ENV"
