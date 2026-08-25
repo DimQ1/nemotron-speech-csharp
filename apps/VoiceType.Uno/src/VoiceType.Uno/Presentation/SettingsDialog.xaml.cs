@@ -122,7 +122,8 @@ public sealed partial class SettingsDialog : ContentDialog
                     ViewModel.DownloadStatus = $"Downloaded to {modelPath}";
                     ViewModel.NotifyNativeModelChanged();
                 }),
-                repoId: ViewModel.SelectedAsrModel.RepoId);
+                repoId: ViewModel.SelectedAsrModel.RepoId,
+                quantizationFolder: ViewModel.SelectedAsrModel.QuantizationFolder);
 
             await item.Completion;
         }

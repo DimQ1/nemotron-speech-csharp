@@ -14,7 +14,15 @@ public sealed class AvailableModel : INotifyPropertyChanged
 
     public string Name { get; init; } = "";
     public string RepoId { get; init; } = "";
-    public string SubfolderName => RepoId.Contains('/') ? RepoId[(RepoId.LastIndexOf('/') + 1)..] : RepoId;
+    public string? QuantizationFolder { get; init; }
+    public string SubfolderName
+    {
+        get
+        {
+            var repoName = RepoId.Contains('/') ? RepoId[(RepoId.LastIndexOf('/') + 1)..] : RepoId;
+            return QuantizationFolder is null ? repoName : $"{repoName}-{QuantizationFolder}";
+        }
+    }
     public string Description { get; init; } = "";
     public string SizeDisplay { get; init; } = "";
     public string Precision { get; init; } = "";
@@ -105,6 +113,35 @@ public sealed class AvailableModel : INotifyPropertyChanged
             Description = "Full precision FP32, opset 24, 1.12s window — maximum accuracy",
             SizeDisplay = "2,479 MB",
             Precision = "FP32"
+        },
+
+        // ── Parakeet TDT 0.6B v3 (multilingual, 25 languages) ──────────
+        new()
+        {
+            Name = "Parakeet TDT · FP32 — Best Quality",
+            RepoId = "DimQ1/parakeet-tdt-0.6b-v3-onnx",
+            Description = "Multilingual TDT (25 European languages), full precision",
+            SizeDisplay = "2,550 MB",
+            Precision = "FP32",
+            QuantizationFolder = "fp32"
+        },
+        new()
+        {
+            Name = "Parakeet TDT · INT8 — Balanced",
+            RepoId = "DimQ1/parakeet-tdt-0.6b-v3-onnx",
+            Description = "Multilingual TDT (25 European languages), 8-bit quantization",
+            SizeDisplay = "670 MB",
+            Precision = "INT8",
+            QuantizationFolder = "int8"
+        },
+        new()
+        {
+            Name = "Parakeet TDT · INT4 — Fastest",
+            RepoId = "DimQ1/parakeet-tdt-0.6b-v3-onnx",
+            Description = "Multilingual TDT (25 European languages), 4-bit quantization",
+            SizeDisplay = "730 MB",
+            Precision = "INT4",
+            QuantizationFolder = "int4"
         },
     };
 

@@ -4,6 +4,7 @@ using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Decorators;
 using SpeechLib.Models;
+using SpeechLib.ParakeetTdt;
 using SpeechLib.Recognition;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
@@ -130,10 +131,16 @@ public sealed class RecognitionService : IRecognitionService
                     repetition_penalty = settings.RepetitionPenalty
                 };
 
-                IStreamingSpeechRecognizer newRecognizer = new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
+                // Parakeet TDT (onnx-asr export) has a different decoder than
+                // the Nemotron GenAI export — select the matching provider.
+                IStreamingSpeechRecognizer newRecognizer =
+                    ParakeetTdtRecognizer.IsParakeetTdtModel(modelPath)
+                        ? new ParakeetTdtRecognizer(modelPath)
+                        : new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
 
-                // Wrap with metrics decorator for latency/token tracking
-                newRecognizer = new MetricsRecognizerDecorator(newRecognizer, "ModelSession");
+                // Wrap with metrics decorator for latency/token tracking (Nemotron only)
+                if (newRecognizer is not ParakeetTdtRecognizer)
+                    newRecognizer = new MetricsRecognizerDecorator(newRecognizer, "ModelSession");
 
                 // Atomically swap recognizers
                 var old = Interlocked.Exchange(ref _recognizer, newRecognizer);

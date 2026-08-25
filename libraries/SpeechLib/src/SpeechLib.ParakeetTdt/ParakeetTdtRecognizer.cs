@@ -358,6 +358,28 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         return best;
     }
 
+    /// <summary>
+    /// True when <paramref name="modelDir"/> contains a parakeet-tdt ONNX export
+    /// (<c>config.json</c> with <c>model_type: "nemo-conformer-tdt"</c>), as
+    /// opposed to a Nemotron GenAI export (<c>genai_config.json</c>).
+    /// </summary>
+    public static bool IsParakeetTdtModel(string modelDir)
+    {
+        if (string.IsNullOrWhiteSpace(modelDir)) return false;
+        var config = Path.Combine(modelDir, "config.json");
+        if (!File.Exists(config)) return false;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(config));
+            return doc.RootElement.TryGetProperty("model_type", out var t)
+                && t.GetString() == "nemo-conformer-tdt";
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
