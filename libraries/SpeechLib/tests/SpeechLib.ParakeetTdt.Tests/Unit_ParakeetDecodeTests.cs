@@ -18,7 +18,7 @@ public sealed class Unit_ParakeetDecodeTests
     [Fact]
     public void CreateSessionOptions_LimitsIntraOpThreads_ToHalfCores()
     {
-        var options = InvokeStatic<SessionOptions>("CreateSessionOptions");
+        var options = InvokeStatic<SessionOptions>("CreateSessionOptions", "cpu");
 
         int expected = Math.Max(2, Environment.ProcessorCount / 2);
         Assert.Equal(expected, options.IntraOpNumThreads);
@@ -30,7 +30,7 @@ public sealed class Unit_ParakeetDecodeTests
     public void CreateSessionOptions_NeverBelowTwoThreads()
     {
         // Even on a hypothetical 2-core box the floor is 2 threads.
-        var options = InvokeStatic<SessionOptions>("CreateSessionOptions");
+        var options = InvokeStatic<SessionOptions>("CreateSessionOptions", "cpu");
         Assert.True(options.IntraOpNumThreads >= 2);
     }
 
@@ -88,6 +88,21 @@ public sealed class Unit_ParakeetDecodeTests
         Assert.NotNull(RecognizerType.GetField("_wordStartIds", BindingFlags.NonPublic | BindingFlags.Instance));
         Assert.NotNull(RecognizerType.GetMethod("DetokenizeChunk", BindingFlags.NonPublic | BindingFlags.Instance));
         Assert.NotNull(RecognizerType.GetMethod("ShouldPrefixSpace", BindingFlags.NonPublic | BindingFlags.Static));
+    }
+
+    [Theory]
+    [InlineData("cpu", new[] { "CPUExecutionProvider" }, "Cpu")]
+    [InlineData("cuda", new[] { "CPUExecutionProvider", "CUDAExecutionProvider" }, "Cuda")]
+    [InlineData("cuda", new[] { "CPUExecutionProvider" }, "Cpu")] // unavailable -> fallback
+    [InlineData("dml", new[] { "CPUExecutionProvider", "DmlExecutionProvider" }, "Dml")]
+    [InlineData("dml", new[] { "CPUExecutionProvider" }, "Cpu")]  // unavailable -> fallback
+    [InlineData("garbage", new[] { "CPUExecutionProvider", "CUDAExecutionProvider" }, "Cpu")]
+    [InlineData(null, new[] { "CPUExecutionProvider", "CUDAExecutionProvider" }, "Cpu")]
+    public void SelectProvider_ResolvesRequestedOrFallsBackToCpu(
+        string? requested, string[] available, string expected)
+    {
+        var result = InvokeStatic<object>("SelectProvider", requested, available);
+        Assert.Equal(expected, result.ToString());
     }
 
     private static T InvokeStatic<T>(string methodName, params object?[] args)

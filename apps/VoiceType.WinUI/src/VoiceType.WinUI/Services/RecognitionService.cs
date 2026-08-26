@@ -135,7 +135,7 @@ public sealed class RecognitionService : IRecognitionService
                 // the Nemotron GenAI export — select the matching provider.
                 bool isParakeet = ParakeetTdtRecognizer.IsParakeetTdtModel(modelPath);
                 IStreamingSpeechRecognizer newRecognizer = isParakeet
-                    ? new ParakeetTdtRecognizer(modelPath)
+                    ? new ParakeetTdtRecognizer(modelPath, executionProvider: settings.ExecutionProvider)
                     : new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
 
                 // Universal Silero VAD gate: any recognizer that does not manage

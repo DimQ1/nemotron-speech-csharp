@@ -69,11 +69,14 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     /// <param name="chunkSeconds">Chunk length decoded per call (seconds).</param>
     /// <param name="leftContextSeconds">Left audio context prepended to each chunk.</param>
     /// <param name="rightContextSeconds">Right audio context appended to each chunk.</param>
+    /// <param name="executionProvider">Requested provider: "cpu", "cuda" or "dml".
+    /// Falls back to CPU when the requested provider is unavailable.</param>
     public ParakeetTdtRecognizer(
         string modelDir,
         double chunkSeconds = 2.0,
         double leftContextSeconds = 5.0,
-        double rightContextSeconds = 2.0)
+        double rightContextSeconds = 2.0,
+        string executionProvider = "cpu")
     {
         var dir = Path.GetFullPath(modelDir);
         if (!Directory.Exists(dir))
@@ -82,7 +85,9 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         // Constrain ORT threads so the heavy full-window encoder does not saturate
         // every core on each chunk (see DecodeNextChunk: a 14s window is re-encoded
         // every 2s of audio). Half the logical cores is plenty for real-time on CPU.
-        var options = CreateSessionOptions();
+        // The execution provider (cpu/cuda/dml) is selected at runtime and falls
+        // back to CPU when the requested provider's native DLL is not present.
+        var options = CreateSessionOptions(executionProvider);
         _preprocessor = new InferenceSession(Path.Combine(dir, "nemo128.onnx"), options);
         _encoder = new InferenceSession(Path.Combine(dir, "encoder-model.onnx"), options);
         _decoderJoint = new InferenceSession(Path.Combine(dir, "decoder_joint-model.onnx"), options);
@@ -281,14 +286,47 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         }
     }
 
-    private static SessionOptions CreateSessionOptions()
+    private static SessionOptions CreateSessionOptions(string executionProvider)
     {
         int threads = Math.Max(2, Environment.ProcessorCount / 2);
-        return new SessionOptions
+        var options = new SessionOptions
         {
             IntraOpNumThreads = threads,
             InterOpNumThreads = 1,
             GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
+        };
+
+        // Runtime provider selection with graceful CPU fallback. The provider
+        // is picked from the DLLs actually shipped (no compile-time GpuArch).
+        switch (SelectProvider(executionProvider, OrtEnv.Instance().GetAvailableProviders()))
+        {
+            case ExecutionProviderKind.Cuda:
+                options.AppendExecutionProvider_CUDA(0);
+                break;
+            case ExecutionProviderKind.Dml:
+                options.AppendExecutionProvider_DML(0);
+                break;
+        }
+
+        return options;
+    }
+
+    internal enum ExecutionProviderKind { Cpu, Cuda, Dml }
+
+    /// <summary>
+    /// Maps a requested provider name to an available provider, falling back to
+    /// CPU when the requested one is not among <paramref name="available"/>.
+    /// </summary>
+    internal static ExecutionProviderKind SelectProvider(
+        string? requested,
+        IReadOnlyCollection<string> available)
+    {
+        var set = new HashSet<string>(available, StringComparer.OrdinalIgnoreCase);
+        return requested?.Trim().ToLowerInvariant() switch
+        {
+            "cuda" when set.Contains("CUDAExecutionProvider") => ExecutionProviderKind.Cuda,
+            "dml" when set.Contains("DmlExecutionProvider") => ExecutionProviderKind.Dml,
+            _ => ExecutionProviderKind.Cpu,
         };
     }
 

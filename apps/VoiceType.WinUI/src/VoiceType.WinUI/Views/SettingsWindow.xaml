@@ -71,6 +71,8 @@
                         <ComboBox SelectedValue="{x:Bind ViewModel.ExecutionProvider, Mode=TwoWay}" SelectedValuePath="Content"
                                   Style="{StaticResource DarkComboBox}" Margin="0,0,0,8">
                             <ComboBoxItem Content="cpu"/>
+                            <ComboBoxItem Content="cuda"/>
+                            <ComboBoxItem Content="dml"/>
                             <ComboBoxItem Content="follow_config"/>
                         </ComboBox>
 
