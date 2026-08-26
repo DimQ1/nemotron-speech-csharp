@@ -133,13 +133,20 @@ public sealed class RecognitionService : IRecognitionService
 
                 // Parakeet TDT (onnx-asr export) has a different decoder than
                 // the Nemotron GenAI export — select the matching provider.
-                IStreamingSpeechRecognizer newRecognizer =
-                    ParakeetTdtRecognizer.IsParakeetTdtModel(modelPath)
-                        ? new ParakeetTdtRecognizer(modelPath)
-                        : new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
+                bool isParakeet = ParakeetTdtRecognizer.IsParakeetTdtModel(modelPath);
+                IStreamingSpeechRecognizer newRecognizer = isParakeet
+                    ? new ParakeetTdtRecognizer(modelPath)
+                    : new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
+
+                // Universal Silero VAD gate: any recognizer that does not manage
+                // VAD natively (Parakeet today, future models without their own VAD)
+                // gets the shared gating decorator. Nemotron (ModelSession) already
+                // exposes IRuntimeConfigurable with its GenAI VAD, so it is skipped.
+                if (newRecognizer is not IRuntimeConfigurable)
+                    newRecognizer = WrapWithVad(newRecognizer, settings.UseVad);
 
                 // Wrap with metrics decorator for latency/token tracking (Nemotron only)
-                if (newRecognizer is not ParakeetTdtRecognizer)
+                if (!isParakeet)
                     newRecognizer = new MetricsRecognizerDecorator(newRecognizer, "ModelSession");
 
                 // Atomically swap recognizers
@@ -161,6 +168,34 @@ public sealed class RecognitionService : IRecognitionService
             ModelState = ModelState.Error;
             Volatile.Write(ref _loadedModelPath, null);
             _telemetry?.LogError("Recognition", $"Model load failed: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Wraps a recognizer in the shared Silero VAD gate. If the VAD model cannot
+    /// be loaded, the inner recognizer is returned unchanged so recognition still
+    /// works without voice-activity gating.
+    /// </summary>
+    private IStreamingSpeechRecognizer WrapWithVad(IStreamingSpeechRecognizer inner, bool useVad)
+    {
+        var vadPath = _appPaths.SileroVadPath;
+        if (!File.Exists(vadPath))
+        {
+            _telemetry?.LogError("Recognition", $"Silero VAD model not found at {vadPath}");
+            return inner;
+        }
+
+        try
+        {
+            var vad = new SileroVadFilter(vadPath);
+            var wrapped = new VadSpeechRecognizer(inner, vad);
+            wrapped.TrySetVad(useVad);
+            return wrapped;
+        }
+        catch (Exception ex)
+        {
+            _telemetry?.LogError("Recognition", $"Silero VAD init failed: {ex.Message}", ex);
+            return inner;
         }
     }
 

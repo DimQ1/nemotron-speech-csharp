@@ -72,6 +72,13 @@ public static class AppPaths
     /// <summary>Temporary files (e.g. in-progress MP3 encoding): <c>data/temp</c>.</summary>
     public static string TempDir => Path.Combine(DataRoot, "temp");
 
+    /// <summary>
+    /// Bundled Silero VAD model (app content shipped in the package, not user data).
+    /// Used to gate speech recognition on all models without built-in VAD.
+    /// </summary>
+    public static string SileroVadPath =>
+        Path.Combine(AppContext.BaseDirectory, "Assets", "silero_vad.onnx");
+
     /// <summary>Create the data root (and all known subfolders) if missing.</summary>
     public static string EnsureDataRoot()
     {

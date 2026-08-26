@@ -10,6 +10,13 @@
     <AssemblyName>SpeechLib</AssemblyName>
   </PropertyGroup>
 
+  <!-- Plain ONNX Runtime, used by the universal Silero VAD filter
+       (Audio/SileroVadFilter.cs). Model-specific providers (Nemotron GenAI,
+       Parakeet) keep their own ORT references in their own projects. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" />
+  </ItemGroup>
+
   <!--
     SpeechLib is the portable contract layer. Runtime/model/audio providers are
     separate projects so applications pay only for the provider they select.

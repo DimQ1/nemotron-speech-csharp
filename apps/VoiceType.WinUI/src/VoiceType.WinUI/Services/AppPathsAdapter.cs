@@ -12,6 +12,7 @@ public sealed class AppPathsAdapter : IAppPaths
     public string SettingsFile => AppPaths.SettingsFile;
     public string ErrorLogFile => AppPaths.ErrorLogFile;
     public string TempDir => AppPaths.TempDir;
+    public string SileroVadPath => AppPaths.SileroVadPath;
     public string EnsureDataRoot() => AppPaths.EnsureDataRoot();
     public string EnsureModelsDir() => AppPaths.EnsureModelsDir();
     public string EnsureTranslationModelsDir() => AppPaths.EnsureTranslationModelsDir();

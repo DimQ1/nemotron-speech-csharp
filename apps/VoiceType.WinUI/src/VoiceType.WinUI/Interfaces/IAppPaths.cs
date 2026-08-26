@@ -9,6 +9,7 @@ public interface IAppPaths
     string SettingsFile { get; }
     string ErrorLogFile { get; }
     string TempDir { get; }
+    string SileroVadPath { get; }
     string EnsureDataRoot();
     string EnsureModelsDir();
     string EnsureTranslationModelsDir();
