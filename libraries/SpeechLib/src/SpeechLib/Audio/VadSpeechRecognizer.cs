@@ -80,12 +80,16 @@ public sealed class VadSpeechRecognizer : IStreamingSpeechRecognizer, IRuntimeCo
             if (_silenceWindows < _hangoverWindows)
                 return _inner.ProcessAudio(chunk); // hangover: keep trailing words
 
-            // Long enough silence: stop forwarding and close the utterance.
+            // Long enough silence: close the utterance. Flush the inner
+            // recognizer so the buffered tail (last words) is emitted now,
+            // then reset its streaming state for a clean next utterance.
             _inSpeech = false;
             _silenceWindows = 0;
             _preSpeech.Clear();
             _vad.Reset();
-            return null;
+            var tail = _inner.Flush();
+            _inner.ResetStreamingState();
+            return tail;
         }
 
         // Between utterances: keep a short ring so the next onset has context.
@@ -103,6 +107,16 @@ public sealed class VadSpeechRecognizer : IStreamingSpeechRecognizer, IRuntimeCo
 
         // Gating: only forward if we were mid-utterance (audio reached the inner).
         return _inSpeech ? _inner.Flush() : null;
+    }
+
+    /// <inheritdoc />
+    public void ResetStreamingState()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _inSpeech = false;
+        _silenceWindows = 0;
+        _preSpeech.Clear();
+        _inner.ResetStreamingState();
     }
 
     // ---- IRuntimeConfigurable ----

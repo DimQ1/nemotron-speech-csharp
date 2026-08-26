@@ -113,6 +113,17 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         return _decodedSamples < _audio.Count ? DecodeRemaining() : null;
     }
 
+    /// <inheritdoc />
+    public void ResetStreamingState()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _audio.Clear();
+        _decodedSamples = 0;
+        _state1 = new DenseTensor<float>(new[] { 2, 1, 640 });
+        _state2 = new DenseTensor<float>(new[] { 2, 1, 640 });
+        _lastToken = _blankIdx;
+    }
+
     /// <summary>Transcribe a complete 16 kHz mono float waveform (fresh decoder state).</summary>
     public string Transcribe(float[] waveform)
     {

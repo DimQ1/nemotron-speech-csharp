@@ -30,4 +30,13 @@ public interface IStreamingSpeechRecognizer : IDisposable
     /// Returns 0 if the implementation does not track token counts.
     /// </summary>
     int LastTokenCount => 0;
+
+    /// <summary>
+    /// Reset the recognizer's streaming decode state (decoder state and audio
+    /// buffer) so a new utterance starts fresh. Default is a no-op for
+    /// recognizers that do not buffer audio between <see cref="ProcessAudio"/>
+    /// calls (e.g. streaming GenAI decoders). Buffer-based recognizers
+    /// (e.g. Parakeet TDT) override this.
+    /// </summary>
+    void ResetStreamingState() { }
 }

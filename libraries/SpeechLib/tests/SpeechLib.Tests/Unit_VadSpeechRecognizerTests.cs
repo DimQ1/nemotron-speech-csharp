@@ -25,6 +25,7 @@ public sealed class Unit_VadSpeechRecognizerTests
         public int LastTokenCount { get; private set; }
         public List<float[]> Received { get; } = new();
         public bool FlushCalled { get; private set; }
+        public bool ResetCalled { get; private set; }
         public string? FlushResult { get; set; } = "tail";
 
         public string? ProcessAudio(float[] chunk)
@@ -39,6 +40,8 @@ public sealed class Unit_VadSpeechRecognizerTests
             FlushCalled = true;
             return FlushResult;
         }
+
+        public void ResetStreamingState() => ResetCalled = true;
 
         public void Dispose() { }
     }
@@ -129,10 +132,26 @@ public sealed class Unit_VadSpeechRecognizerTests
         Assert.Single(inner.Received);
 
         vad.Speech = false;
-        rec.ProcessAudio(new float[1600]); // silence ends utterance
+        var tail = rec.ProcessAudio(new float[1600]); // silence ends utterance
 
         Assert.Single(inner.Received); // silence not forwarded
         Assert.True(vad.ResetCalled);  // VAD state reset for next utterance
+        Assert.Equal("tail", tail);    // buffered tail is flushed
+    }
+
+    [Fact]
+    public void LongSilence_FlushesInnerAndResetsStreamingState()
+    {
+        var vad = new FakeVad { Speech = true };
+        var inner = new RecordingRecognizer();
+        using var rec = new VadSpeechRecognizer(inner, vad, hangoverMs: 0);
+
+        rec.ProcessAudio(new float[1600]); // speech
+        vad.Speech = false;
+        rec.ProcessAudio(new float[1600]); // silence -> close utterance
+
+        Assert.True(inner.FlushCalled);      // tail collected
+        Assert.True(inner.ResetCalled);      // fresh state for next utterance
     }
 
     [Fact]
