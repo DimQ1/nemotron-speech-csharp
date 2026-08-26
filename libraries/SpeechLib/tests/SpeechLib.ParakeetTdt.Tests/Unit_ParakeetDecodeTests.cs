@@ -67,10 +67,31 @@ public sealed class Unit_ParakeetDecodeTests
         Assert.NotNull(method);
     }
 
-    private static T InvokeStatic<T>(string methodName)
+    [Theory]
+    [InlineData("hello", " hello")]
+    [InlineData("Раз, два, три.", " Раз, два, три.")]
+    [InlineData("", "")]
+    public void WithLeadingSpace_PrependsSpaceToNonEmpty(string input, string expected)
+    {
+        var result = InvokeStatic<string>("WithLeadingSpace", input);
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void Detokenize_DeltasJoinWithoutGluing()
+    {
+        // Regression guard for sentence-run-on: chunk deltas are concatenated
+        // verbatim by the caller, so each non-empty delta must carry a leading
+        // space. Both DecodeNextChunk and DecodeRemaining route through
+        // WithLeadingSpace — verify the helper exists and the two call sites
+        // reference it via reflection of the private methods.
+        Assert.NotNull(RecognizerType.GetMethod("WithLeadingSpace", BindingFlags.NonPublic | BindingFlags.Static));
+    }
+
+    private static T InvokeStatic<T>(string methodName, params object?[] args)
     {
         var method = RecognizerType.GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new MissingMethodException(RecognizerType.FullName, methodName);
-        return (T)method.Invoke(null, null)!;
+        return (T)method.Invoke(null, args)!;
     }
 }

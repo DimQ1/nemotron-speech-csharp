@@ -146,7 +146,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         var ids = DecodeFrames(encodings, leftFrames, chunkEnd);
         _decodedSamples += _chunkSamples;
         TrimConsumedAudio();
-        return Detokenize(ids);
+        return WithLeadingSpace(Detokenize(ids));
     }
 
     private string? DecodeRemaining()
@@ -162,8 +162,16 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         int leftFrames = (_decodedSamples - windowStart) / samplesPerFrame;
         var ids = DecodeFrames(encodings, leftFrames, encodings.Length);
         _decodedSamples = _audio.Count;
-        return Detokenize(ids);
+        return WithLeadingSpace(Detokenize(ids));
     }
+
+    /// <summary>
+    /// Prepends a space to a non-empty delta so consecutive chunk deltas do not
+    /// glue sentences together. <see cref="Detokenize"/> strips the leading
+    /// SentencePiece space (\A\s), and the caller concatenates deltas verbatim.
+    /// </summary>
+    private static string WithLeadingSpace(string text)
+        => text.Length == 0 ? text : " " + text;
 
     // ------------------------------------------------------------------ //
     // Inference pipeline                                                  //
