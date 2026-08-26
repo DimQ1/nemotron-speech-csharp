@@ -68,24 +68,26 @@ public sealed class Unit_ParakeetDecodeTests
     }
 
     [Theory]
-    [InlineData("hello", " hello")]
-    [InlineData("Раз, два, три.", " Раз, два, три.")]
-    [InlineData("", "")]
-    public void WithLeadingSpace_PrependsSpaceToNonEmpty(string input, string expected)
+    [InlineData(true, true, true)]    // new word after emission -> space (word boundary)
+    [InlineData(true, false, false)]  // first word -> no leading space
+    [InlineData(false, true, false)]  // continuation token -> no space (mid-word join)
+    [InlineData(false, false, false)] // continuation, first emission -> no space
+    public void ShouldPrefixSpace_AddsSpaceOnlyForNewWordAfterEmission(
+        bool startsWord, bool alreadyEmitted, bool expected)
     {
-        var result = InvokeStatic<string>("WithLeadingSpace", input);
+        var result = InvokeStatic<bool>("ShouldPrefixSpace", startsWord, alreadyEmitted);
         Assert.Equal(expected, result);
     }
 
     [Fact]
-    public void Detokenize_DeltasJoinWithoutGluing()
+    public void DetokenizeChunk_UsesWordStartMarker()
     {
-        // Regression guard for sentence-run-on: chunk deltas are concatenated
-        // verbatim by the caller, so each non-empty delta must carry a leading
-        // space. Both DecodeNextChunk and DecodeRemaining route through
-        // WithLeadingSpace — verify the helper exists and the two call sites
-        // reference it via reflection of the private methods.
-        Assert.NotNull(RecognizerType.GetMethod("WithLeadingSpace", BindingFlags.NonPublic | BindingFlags.Static));
+        // Regression guard for the mid-word split bug ("достаточ ный"): the
+        // chunk detokenizer must consult the SentencePiece ▁ word-start marker
+        // instead of unconditionally prefixing a space.
+        Assert.NotNull(RecognizerType.GetField("_wordStartIds", BindingFlags.NonPublic | BindingFlags.Instance));
+        Assert.NotNull(RecognizerType.GetMethod("DetokenizeChunk", BindingFlags.NonPublic | BindingFlags.Instance));
+        Assert.NotNull(RecognizerType.GetMethod("ShouldPrefixSpace", BindingFlags.NonPublic | BindingFlags.Static));
     }
 
     private static T InvokeStatic<T>(string methodName, params object?[] args)

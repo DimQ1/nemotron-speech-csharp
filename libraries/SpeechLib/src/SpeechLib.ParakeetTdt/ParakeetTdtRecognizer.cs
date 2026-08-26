@@ -35,6 +35,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     private readonly InferenceSession _decoderJoint;   // decoder_joint-model.int8.onnx
 
     private readonly Dictionary<int, string> _vocab = new();
+    private readonly HashSet<int> _wordStartIds = new();
     private readonly int _vocabSize;
     private readonly int _blankIdx;
     private readonly int _maxTokensPerStep;
@@ -49,6 +50,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     private DenseTensor<float> _state2 = new(new[] { 2, 1, 640 });
     private int _lastToken;
     private int _decodedSamples;
+    private bool _emittedAnyText;
     private bool _disposed;
 
     /// <inheritdoc />
@@ -122,6 +124,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         _state1 = new DenseTensor<float>(new[] { 2, 1, 640 });
         _state2 = new DenseTensor<float>(new[] { 2, 1, 640 });
         _lastToken = _blankIdx;
+        _emittedAnyText = false;
     }
 
     /// <summary>Transcribe a complete 16 kHz mono float waveform (fresh decoder state).</summary>
@@ -157,7 +160,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         var ids = DecodeFrames(encodings, leftFrames, chunkEnd);
         _decodedSamples += _chunkSamples;
         TrimConsumedAudio();
-        return WithLeadingSpace(Detokenize(ids));
+        return DetokenizeChunk(ids);
     }
 
     private string? DecodeRemaining()
@@ -173,16 +176,35 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         int leftFrames = (_decodedSamples - windowStart) / samplesPerFrame;
         var ids = DecodeFrames(encodings, leftFrames, encodings.Length);
         _decodedSamples = _audio.Count;
-        return WithLeadingSpace(Detokenize(ids));
+        return DetokenizeChunk(ids);
     }
 
     /// <summary>
-    /// Prepends a space to a non-empty delta so consecutive chunk deltas do not
-    /// glue sentences together. <see cref="Detokenize"/> strips the leading
-    /// SentencePiece space (\A\s), and the caller concatenates deltas verbatim.
+    /// Detokenizes a chunk's ids and decides whether it needs a leading space
+    /// when concatenated with the previous delta. A space is added only when the
+    /// chunk begins a NEW word (its first token carries the SentencePiece ▁
+    /// marker) AND text was already emitted; continuation tokens and punctuation
+    /// join the previous word without a space. This prevents both mid-word
+    /// splits ("достаточ ный") and sentence run-ons ("три.Слышал").
     /// </summary>
-    private static string WithLeadingSpace(string text)
-        => text.Length == 0 ? text : " " + text;
+    private string DetokenizeChunk(IReadOnlyList<int> ids)
+    {
+        if (ids.Count == 0) return "";
+
+        var text = Detokenize(ids);
+        if (text.Length == 0) return "";
+
+        bool startsWord = _wordStartIds.Contains(ids[0]);
+        bool first = !_emittedAnyText;
+        _emittedAnyText = true;
+
+        return ShouldPrefixSpace(startsWord, !first) ? " " + text : text;
+    }
+
+    /// <summary>True when a chunk delta needs a leading space: it starts a new word and
+    /// some text was already emitted (no leading space on the very first word).</summary>
+    private static bool ShouldPrefixSpace(bool startsWord, bool alreadyEmitted)
+        => startsWord && alreadyEmitted;
 
     // ------------------------------------------------------------------ //
     // Inference pipeline                                                  //
@@ -368,9 +390,12 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
             if (string.IsNullOrWhiteSpace(line)) continue;
             int sep = line.LastIndexOf(' ');
             if (sep <= 0) continue;
-            var token = line[..sep].Replace("\u2581", " "); // ▁ -> space
             if (!int.TryParse(line[(sep + 1)..], out int id)) continue;
-            _vocab[id] = token;
+
+            var raw = line[..sep];
+            if (raw.StartsWith('\u2581'))
+                _wordStartIds.Add(id);
+            _vocab[id] = raw.Replace("\u2581", " "); // ▁ -> space
         }
     }
 
