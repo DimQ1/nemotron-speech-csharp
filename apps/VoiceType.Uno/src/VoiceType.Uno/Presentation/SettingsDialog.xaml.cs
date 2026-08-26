@@ -119,10 +119,12 @@ public sealed partial class SettingsDialog : ContentDialog
                 onCompleted: modelPath => DispatcherQueue.TryEnqueue(() =>
                 {
                     ViewModel.SelectedModel = Path.GetFileName(modelPath);
+                    ViewModel.RefreshModels();
                     ViewModel.DownloadStatus = $"Downloaded to {modelPath}";
                     ViewModel.NotifyNativeModelChanged();
                 }),
-                repoId: ViewModel.SelectedAsrModel.RepoId);
+                repoId: ViewModel.SelectedAsrModel.RepoId,
+                quantizationFolder: ViewModel.SelectedAsrModel.QuantizationFolder);
 
             await item.Completion;
         }

@@ -2,6 +2,7 @@ using System.Text;
 using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Models;
+using SpeechLib.ParakeetTdt;
 using SpeechLib.PostProcessing;
 
 namespace VoiceType.Uno.Services;
@@ -88,6 +89,11 @@ public sealed class RecognitionService : IDisposable
 
     private static IStreamingSpeechRecognizer CreateRecognizer(AppSettings settings)
     {
+        // Parakeet TDT (onnx-asr export) has a different decoder than the
+        // Nemotron GenAI export — select the matching provider by model files.
+        if (ParakeetTdtRecognizer.IsParakeetTdtModel(settings.ModelPath))
+            return new ParakeetTdtRecognizer(settings.ModelPath);
+
         var langId = LanguageMapper.Resolve(settings.Language);
         var searchOptions = new GeneratorParamsArgs
         {

@@ -34,7 +34,7 @@
                 <TextBlock Text="Select Model" Foreground="{StaticResource FgBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                 <ComboBox ItemsSource="{x:Bind ViewModel.ModelOptions}"
                           SelectedItem="{x:Bind ViewModel.SelectedModel, Mode=TwoWay}"
-                          DisplayMemberPath="Display"
+                          DisplayMemberPath="DisplayName"
                           Style="{StaticResource DarkComboBox}" Margin="0,0,0,6"
                           IsEnabled="{x:Bind ViewModel.IsIdle, Mode=OneWay}"/>
                 <Grid>

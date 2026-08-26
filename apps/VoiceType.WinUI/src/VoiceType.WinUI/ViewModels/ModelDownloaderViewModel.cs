@@ -2,18 +2,12 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
+using SpeechLib.ModelDownload;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
 using VoiceType.WinUI.Services;
 
 namespace VoiceType.WinUI.ViewModels;
-
-public sealed class ModelOption
-{
-    public string Display { get; init; } = "";
-    public string RepoId { get; init; } = "";
-    public override string ToString() => Display;
-}
 
 public sealed partial class ModelDownloaderViewModel : ObservableObject, IDisposable
 {
@@ -58,7 +52,7 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
     private int _totalFiles;
 
     [ObservableProperty]
-    private ModelOption? _selectedModel;
+    private ModelDescriptor? _selectedModel;
 
     public bool IsIdle => !IsDownloading;
     public string FileProgressDisplay => FileProgress > 0 ? $"{FileProgress:F0}%" : "";
@@ -70,18 +64,9 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
 
     // ---- Predefined models ----
 
-    public static List<ModelOption> AvailableModels { get; } =
-    [
-        new() { Display = "CPU (INT8) -- best quality, ~1020 MB", RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int8-cpu" },
-        new() { Display = "CPU (INT4) -- best perf/quality, ~760 MB", RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-cpu" },
-        new() { Display = "CPU (FP32) -- full precision, ~2 GB",     RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-cpu" },
-        new() { Display = "CPU (INT4, opset24, 0.56s) -- fast, low latency, ~749 MB", RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu" },
-        new() { Display = "CPU (INT4, opset24, 1.12s) -- best INT4 accuracy, ~749 MB", RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c112-cpu" },
-        new() { Display = "CPU (FP32, opset24, 0.56s) -- full precision, ~2 GB", RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-opset24-c056-cpu" },
-        new() { Display = "CPU (FP32, opset24, 1.12s) -- max accuracy, ~2 GB",   RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-opset24-c112-cpu" },
-    ];
+    public static List<ModelDescriptor> AvailableModels { get; } = new(ModelCatalog.Models);
 
-    public List<ModelOption> ModelOptions => AvailableModels;
+    public List<ModelDescriptor> ModelOptions => AvailableModels;
 
     // ---- Constructor ----
 
@@ -108,11 +93,11 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
 
     // ---- Property change hooks ----
 
-    partial void OnSelectedModelChanged(ModelOption? value)
+    partial void OnSelectedModelChanged(ModelDescriptor? value)
     {
         DownloadProgress = 0;
         FileProgress = 0;
-        Status = value is not null ? $"Selected: {value.Display}" : "Ready";
+        Status = value is not null ? $"Selected: {value.DisplayName}" : "Ready";
     }
 
     // ---- Commands ----
@@ -133,12 +118,12 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
         DownloadedFiles = 0;
         TotalFiles = 0;
 
-        var subfolder = model.RepoId[(model.RepoId.LastIndexOf('/') + 1)..];
+        var subfolder = model.SubfolderName;
         _resultModelPath = Path.Combine(ModelsRootPath, subfolder);
 
         try
         {
-            await _service.DownloadModelRepo(model.RepoId, subfolder, ModelsRootPath);
+            await _service.DownloadModelRepo(model.RepoId, subfolder, ModelsRootPath, QuantizationFolder: model.QuantizationFolder);
         }
         catch (OperationCanceledException)
         {

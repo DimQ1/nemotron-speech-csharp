@@ -150,7 +150,7 @@ public sealed class ModelDownloaderService : IModelDownloaderService
 
     /// <summary>Download all files from a HuggingFace repo using Downloader library.</summary>
     public async Task DownloadModelRepo(string repoId, string subfolder, string targetRoot,
-        CancellationToken externalCt = default)
+        string? QuantizationFolder = null, CancellationToken externalCt = default)
     {
         _cts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
         IsDownloading = true;
@@ -171,10 +171,21 @@ public sealed class ModelDownloaderService : IModelDownloaderService
             {
                 var rfilename = sib.GetProperty("rfilename").GetString() ?? "";
                 if (rfilename.StartsWith(".")) continue;
+
+                string destRelative = rfilename;
+                if (QuantizationFolder is not null)
+                {
+                    // Download only the selected precision subfolder (fp32/int8/int4)
+                    // and strip its prefix so config.json lands at the model root.
+                    var prefix = QuantizationFolder + "/";
+                    if (!rfilename.StartsWith(prefix, StringComparison.Ordinal)) continue;
+                    destRelative = rfilename[prefix.Length..];
+                }
+
                 var size = sib.TryGetProperty("size", out var sz) ? sz.GetInt64() : 0;
-                var dest = Path.Combine(targetRoot, subfolder, rfilename);
+                var dest = Path.Combine(targetRoot, subfolder, destRelative);
                 var fileUrl = CreateResolveUrl(repoId, rfilename);
-                files.Add(new FileToDownload(fileUrl, dest, Path.Combine(subfolder, rfilename).Replace('\\', '/'), size));
+                files.Add(new FileToDownload(fileUrl, dest, Path.Combine(subfolder, destRelative).Replace('\\', '/'), size));
             }
         }
 

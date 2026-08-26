@@ -1,4 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using SpeechLib.ModelDownload;
+using SpeechLib.ParakeetTdt;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.Presentation;
@@ -122,12 +124,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public List<string> AvailableModels { get; } = [];
 
-    /// <summary>ASR model variants published on Hugging Face (see AsrModelCatalog).</summary>
-    public IReadOnlyList<AsrModelCatalogEntry> AsrModelOptions => AsrModelCatalog.Models;
+    /// <summary>ASR model variants published on Hugging Face (see ModelCatalog).</summary>
+    public IReadOnlyList<ModelDescriptor> AsrModelOptions => AsrModelCatalog.Models;
 
     /// <summary>The Hugging Face model variant the Download button will fetch.</summary>
     [ObservableProperty]
-    private AsrModelCatalogEntry _selectedAsrModel = AsrModelCatalog.Recommended;
+    private ModelDescriptor _selectedAsrModel = AsrModelCatalog.Recommended;
 
     public string ModelPath => !string.IsNullOrWhiteSpace(ModelsRootPath)
         && !string.IsNullOrWhiteSpace(SelectedModel)
@@ -167,6 +169,10 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnModelsRootPathChanged(string value) => ScanModels();
 
+    /// <summary>Re-scans the models root after a download completes, so the new
+    /// model appears in settings without reopening the dialog.</summary>
+    public void RefreshModels() => ScanModels();
+
     private void ScanModels()
     {
         AvailableModels.Clear();
@@ -175,8 +181,13 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         foreach (var directory in Directory.GetDirectories(ModelsRootPath).OrderBy(path => path))
         {
-            if (File.Exists(Path.Combine(directory, "genai_config.json")))
+            // Nemotron GenAI export has genai_config.json; Parakeet TDT
+            // (onnx-asr export) has config.json with model_type nemo-conformer-tdt.
+            if (File.Exists(Path.Combine(directory, "genai_config.json"))
+                || ParakeetTdtRecognizer.IsParakeetTdtModel(directory))
+            {
                 AvailableModels.Add(Path.GetFileName(directory));
+            }
         }
 
         if (string.IsNullOrWhiteSpace(SelectedModel) && AvailableModels.Count == 1)

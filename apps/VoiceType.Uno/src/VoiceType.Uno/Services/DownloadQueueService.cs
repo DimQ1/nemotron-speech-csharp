@@ -77,12 +77,12 @@ public sealed class DownloadQueueService : IDisposable
     /// <param name="onCompleted">Called with the downloaded model root path.</param>
     /// <param name="forceRedownload">Delete the existing model directory first.</param>
     /// <param name="repoId">Hugging Face repo id; defaults to the recommended model.</param>
-    public DownloadQueueItem EnqueueAsrModel(string targetRoot, Action<string> onCompleted, bool forceRedownload = false, string? repoId = null)
+    public DownloadQueueItem EnqueueAsrModel(string targetRoot, Action<string> onCompleted, bool forceRedownload = false, string? repoId = null, string? quantizationFolder = null)
     {
         repoId ??= ModelDownloadService.RecommendedRepoId;
 
         if (forceRedownload)
-            DeleteAsrModelDirectory(targetRoot, repoId);
+            DeleteAsrModelDirectory(targetRoot, repoId, quantizationFolder);
 
         var existing = FindDuplicate(ModelKind.Asr, repoId);
         if (existing is not null)
@@ -97,7 +97,7 @@ public sealed class DownloadQueueService : IDisposable
             repoId);
 
         Register(item);
-        _ = RunItemAsync(item, ct => DownloadAsrAsync(item, targetRoot, repoId, ct));
+        _ = RunItemAsync(item, ct => DownloadAsrAsync(item, targetRoot, repoId, quantizationFolder, ct));
         return item;
     }
 
@@ -235,14 +235,28 @@ public sealed class DownloadQueueService : IDisposable
 
     // ── Download implementations ───────────────────────────────────────────
 
-    private async Task<string> DownloadAsrAsync(DownloadQueueItem item, string targetRoot, string repoId, CancellationToken ct)
+    private async Task<string> DownloadAsrAsync(DownloadQueueItem item, string targetRoot, string repoId, string? quantizationFolder, CancellationToken ct)
     {
-        var subfolder = repoId[(repoId.LastIndexOf('/') + 1)..];
+        var repoName = repoId[(repoId.LastIndexOf('/') + 1)..];
+        var subfolder = quantizationFolder is null ? repoName : $"{repoName}-{quantizationFolder}";
         var modelRoot = Path.GetFullPath(Path.Combine(targetRoot, subfolder));
         Directory.CreateDirectory(modelRoot);
 
         item.SetStatus($"Fetching {repoId}...");
         var files = await FetchFilesAsync(repoId, ct).ConfigureAwait(false);
+
+        // For multi-precision repos, download only the selected quantization
+        // subfolder (fp32/int8/int4) and strip the prefix so config.json lands
+        // at the model root.
+        if (quantizationFolder is not null)
+        {
+            var prefix = quantizationFolder + "/";
+            files = files
+                .Where(f => f.RelativePath.StartsWith(prefix, StringComparison.Ordinal))
+                .Select(f => f with { RelativePath = f.RelativePath[prefix.Length..] })
+                .ToList();
+        }
+
         if (files.Count == 0)
             throw new InvalidOperationException("The model repository did not contain any files.");
 
@@ -590,11 +604,12 @@ public sealed class DownloadQueueService : IDisposable
     /// broken/partial install can be re-downloaded cleanly. Best effort — a busy
     /// or missing directory is not an error.
     /// </summary>
-    private static void DeleteAsrModelDirectory(string targetRoot, string repoId)
+    private static void DeleteAsrModelDirectory(string targetRoot, string repoId, string? quantizationFolder = null)
     {
         try
         {
-            var subfolder = repoId[(repoId.LastIndexOf('/') + 1)..];
+            var repoName = repoId[(repoId.LastIndexOf('/') + 1)..];
+            var subfolder = quantizationFolder is null ? repoName : $"{repoName}-{quantizationFolder}";
             var modelRoot = Path.GetFullPath(Path.Combine(targetRoot, subfolder));
             if (Directory.Exists(modelRoot))
                 Directory.Delete(modelRoot, recursive: true);
