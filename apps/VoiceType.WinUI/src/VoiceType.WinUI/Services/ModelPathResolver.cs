@@ -1,4 +1,4 @@
-using SpeechLib.ParakeetTdt;
+using SpeechLib.ModelDownload;
 using VoiceType.WinUI.Models;
 
 namespace VoiceType.WinUI.Services;
@@ -158,7 +158,5 @@ public static class ModelPathResolver
     }
 
     private static bool IsModelDirectory(string path)
-        => Directory.Exists(path)
-            && (File.Exists(Path.Combine(path, "genai_config.json"))
-                || ParakeetTdtRecognizer.IsParakeetTdtModel(path));
+        => ModelFolderScanner.IsModelDirectory(path);
 }

@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using SpeechLib.ModelDownload;
-using SpeechLib.ParakeetTdt;
+using SpeechLib.ModelDownload;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.Presentation;
@@ -179,16 +179,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         if (!Directory.Exists(ModelsRootPath))
             return;
 
-        foreach (var directory in Directory.GetDirectories(ModelsRootPath).OrderBy(path => path))
-        {
-            // Nemotron GenAI export has genai_config.json; Parakeet TDT
-            // (onnx-asr export) has config.json with model_type nemo-conformer-tdt.
-            if (File.Exists(Path.Combine(directory, "genai_config.json"))
-                || ParakeetTdtRecognizer.IsParakeetTdtModel(directory))
-            {
-                AvailableModels.Add(Path.GetFileName(directory));
-            }
-        }
+        foreach (var name in ModelFolderScanner.ScanModelFolderNames(ModelsRootPath))
+            AvailableModels.Add(name);
 
         if (string.IsNullOrWhiteSpace(SelectedModel) && AvailableModels.Count == 1)
             SelectedModel = AvailableModels[0];

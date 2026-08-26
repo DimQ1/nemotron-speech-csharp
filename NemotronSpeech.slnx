@@ -31,6 +31,9 @@
   <Folder Name="/libraries/SpeechLib/src/">
     <Project Path="libraries/SpeechLib/src/SpeechLib.ModelDownload/SpeechLib.ModelDownload.csproj" />
   </Folder>
+  <Folder Name="/libraries/SpeechLib/tests/">
+    <Project Path="libraries/SpeechLib/tests/SpeechLib.ModelDownload.Tests/SpeechLib.ModelDownload.Tests.csproj" />
+  </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/BenchmarkSuite1/BenchmarkSuite1.csproj" />
     <Project Path="tools/TmpInspect/TmpInspect.csproj" />
