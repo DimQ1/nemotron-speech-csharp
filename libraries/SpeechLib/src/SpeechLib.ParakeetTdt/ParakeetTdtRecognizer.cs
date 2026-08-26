@@ -70,16 +70,20 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     public ParakeetTdtRecognizer(
         string modelDir,
         double chunkSeconds = 2.0,
-        double leftContextSeconds = 10.0,
+        double leftContextSeconds = 5.0,
         double rightContextSeconds = 2.0)
     {
         var dir = Path.GetFullPath(modelDir);
         if (!Directory.Exists(dir))
             throw new DirectoryNotFoundException($"Model directory not found: {dir}");
 
-        _preprocessor = new InferenceSession(Path.Combine(dir, "nemo128.onnx"));
-        _encoder = new InferenceSession(Path.Combine(dir, "encoder-model.onnx"));
-        _decoderJoint = new InferenceSession(Path.Combine(dir, "decoder_joint-model.onnx"));
+        // Constrain ORT threads so the heavy full-window encoder does not saturate
+        // every core on each chunk (see DecodeNextChunk: a 14s window is re-encoded
+        // every 2s of audio). Half the logical cores is plenty for real-time on CPU.
+        var options = CreateSessionOptions();
+        _preprocessor = new InferenceSession(Path.Combine(dir, "nemo128.onnx"), options);
+        _encoder = new InferenceSession(Path.Combine(dir, "encoder-model.onnx"), options);
+        _decoderJoint = new InferenceSession(Path.Combine(dir, "decoder_joint-model.onnx"), options);
 
         LoadVocab(Path.Combine(dir, "vocab.txt"));
         _vocabSize = _vocab.Count;
@@ -141,6 +145,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
 
         var ids = DecodeFrames(encodings, leftFrames, chunkEnd);
         _decodedSamples += _chunkSamples;
+        TrimConsumedAudio();
         return Detokenize(ids);
     }
 
@@ -207,16 +212,43 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
                 t += duration;
                 emitted = 0;
             }
-            else
+            else if (token == _blankIdx || emitted >= _maxTokensPerStep)
             {
-                // onnx-asr advances on blank or when max tokens per step reached;
-                // a zero duration with an emitted token would stall, so advance anyway.
+                // onnx-asr: advance only on blank or when the per-frame token cap is
+                // reached; a non-blank token with zero duration stays on the SAME frame
+                // (re-decoded with updated state) so co-located tokens are not dropped.
                 t += 1;
                 emitted = 0;
             }
         }
 
         return tokens;
+    }
+
+    /// <summary>
+    /// Drop fully-consumed audio from the head of the buffer once the kept tail
+    /// exceeds twice the left context. Prevents unbounded growth of _audio (and the
+    /// GetRange copies in every chunk) during long sessions.
+    /// </summary>
+    private void TrimConsumedAudio()
+    {
+        int removable = _decodedSamples - _leftSamples;
+        if (removable > _leftSamples)
+        {
+            _audio.RemoveRange(0, removable);
+            _decodedSamples -= removable;
+        }
+    }
+
+    private static SessionOptions CreateSessionOptions()
+    {
+        int threads = Math.Max(2, Environment.ProcessorCount / 2);
+        return new SessionOptions
+        {
+            IntraOpNumThreads = threads,
+            InterOpNumThreads = 1,
+            GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
+        };
     }
 
     private (float[] features, long featuresLens) RunPreprocessor(float[] waveform)

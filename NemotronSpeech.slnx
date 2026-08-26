@@ -33,6 +33,7 @@
   </Folder>
   <Folder Name="/libraries/SpeechLib/tests/">
     <Project Path="libraries/SpeechLib/tests/SpeechLib.ModelDownload.Tests/SpeechLib.ModelDownload.Tests.csproj" />
+    <Project Path="libraries/SpeechLib/tests/SpeechLib.ParakeetTdt.Tests/SpeechLib.ParakeetTdt.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/BenchmarkSuite1/BenchmarkSuite1.csproj" />
