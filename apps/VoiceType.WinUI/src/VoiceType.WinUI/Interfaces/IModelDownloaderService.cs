@@ -9,7 +9,7 @@ public interface IModelDownloaderService : IDisposable
     bool IsDownloading { get; }
     Task<List<HfFolder>> FetchRepoFolders(string repoId, CancellationToken ct = default);
     Task DownloadFromHuggingFace(string repoId, List<HfFolder> folders, string targetRoot);
-    Task DownloadModelRepo(string repoId, string subfolder, string targetRoot, CancellationToken ct = default);
+    Task DownloadModelRepo(string repoId, string subfolder, string targetRoot, string? QuantizationFolder = null, CancellationToken ct = default);
     /// <summary>
     /// Downloads a single file from a Hugging Face repo (resolve URL) directly to
     /// <paramref name="destPath"/>. Raises <see cref="ProgressChanged"/>/<see cref="StatusChanged"/>/

@@ -119,6 +119,7 @@ public sealed partial class SettingsDialog : ContentDialog
                 onCompleted: modelPath => DispatcherQueue.TryEnqueue(() =>
                 {
                     ViewModel.SelectedModel = Path.GetFileName(modelPath);
+                    ViewModel.RefreshModels();
                     ViewModel.DownloadStatus = $"Downloaded to {modelPath}";
                     ViewModel.NotifyNativeModelChanged();
                 }),

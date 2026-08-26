@@ -60,6 +60,8 @@
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Nemotron\SpeechLib.Nemotron.csproj" />
     <!-- Parakeet TDT ASR provider (plain ONNX Runtime, onnx-asr export) -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.ParakeetTdt\SpeechLib.ParakeetTdt.csproj" />
+    <!-- Shared model catalog for the downloader (WinUI + Uno) -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.ModelDownload\SpeechLib.ModelDownload.csproj" />
     <!-- Global hotkeys: XDG GlobalShortcuts portal on Linux (Wayland + X11) -->
     <ProjectReference Include="..\..\..\..\libraries\VoiceType.Hotkeys\VoiceType.Hotkeys.csproj" />
     <!-- Live translation via LiteRT-LM server (OpenAI-compatible HTTP endpoint;

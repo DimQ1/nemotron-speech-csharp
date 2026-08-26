@@ -174,7 +174,7 @@ public sealed partial class MainViewModel : ObservableObject
     public bool ShowModelWarning => !IsModelAvailable && !_modelWarningDismissed;
 
     public static string RecommendedModelRepo => "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu";
-    public static string RecommendedModelDisplay => "CPU (INT4, opset24, 0.56s) -- fast, low latency, ~749 MB";
+    public static string RecommendedModelDisplay => "Nemotron 3.5 ASR · CPU (INT4, opset24, 0.56s) — fast, low latency, ~749 MB";
 
     // ---- Translation computed properties ----
 

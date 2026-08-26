@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using SpeechLib.ParakeetTdt;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Messages;
 using VoiceType.WinUI.Models;
@@ -187,6 +188,13 @@ public sealed partial class SettingsViewModel : ObservableObject
             }
         });
 
+        // Refresh the model list when a download completes, so a newly
+        // downloaded model appears in settings without reopening the dialog.
+        WeakReferenceMessenger.Default.Register<ModelDownloadedMessage>(this, (r, m) =>
+        {
+            ScanModels();
+        });
+
         ScanModels();
     }
 
@@ -319,9 +327,13 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         foreach (var dir in Directory.GetDirectories(root))
         {
-            var configPath = Path.Combine(dir, "genai_config.json");
-            if (File.Exists(configPath))
+            // Nemotron GenAI export has genai_config.json; Parakeet TDT
+            // (onnx-asr export) has config.json with model_type nemo-conformer-tdt.
+            if (File.Exists(Path.Combine(dir, "genai_config.json"))
+                || ParakeetTdtRecognizer.IsParakeetTdtModel(dir))
+            {
                 AvailableModels.Add(Path.GetFileName(dir));
+            }
         }
 
         if (string.IsNullOrEmpty(SelectedModel) && AvailableModels.Count == 1)
