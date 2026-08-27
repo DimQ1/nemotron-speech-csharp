@@ -71,6 +71,7 @@ public sealed class RecognitionService : IRecognitionService
 
     public event Action<string>? PartialResult;
     public event Action<string>? FinalResult;
+    public event Action<string>? UtteranceFinalized;
     public event Action? Stopped;
 
     /// <summary>Fires when audio capture fails to start (missing microphone, broken loopback, etc.).</summary>
@@ -142,7 +143,11 @@ public sealed class RecognitionService : IRecognitionService
                 // VAD natively (Parakeet today, future models without their own VAD)
                 // gets the shared gating decorator. Nemotron (ModelSession) already
                 // exposes IRuntimeConfigurable with its GenAI VAD, so it is skipped.
-                if (newRecognizer is not IRuntimeConfigurable)
+                // Utterance-segmenting recognizers (Parakeet TDT) detect
+                // end-of-utterance from blank runs themselves — skip the external
+                // Silero VAD gate so the two endpointing mechanisms don't fight.
+                if (newRecognizer is not IUtteranceStreamingRecognizer &&
+                    newRecognizer is not IRuntimeConfigurable)
                     newRecognizer = WrapWithVad(newRecognizer, settings.UseVad);
 
                 // Wrap with metrics decorator for latency/token tracking (Nemotron only)
@@ -393,18 +398,28 @@ public sealed class RecognitionService : IRecognitionService
                 if (_audioRecorder is not null)
                     await _audioRecorder.AppendAsync(batch).ConfigureAwait(false);
 
-                string? raw;
-                lock (_recognizerOperationGate)
-                    raw = _recognizer!.ProcessAudio(batch);
-                if (raw is not null)
+                if (_recognizer is IUtteranceStreamingRecognizer utteranceRecognizer)
                 {
-                    _accumulatedText.Append(raw);
-                    var processingSettings = Volatile.Read(ref _processingSettings);
-                    var processedDelta = postProc.Process(raw, processingSettings.CompiledRules);
-                    if (!string.IsNullOrEmpty(processedDelta))
-                        _partialProcessedText.Append(processedDelta);
+                    StreamingResult result;
+                    lock (_recognizerOperationGate)
+                        result = utteranceRecognizer.ProcessUtterance(batch);
+                    HandleStreamingResult(postProc, result);
+                }
+                else
+                {
+                    string? raw;
+                    lock (_recognizerOperationGate)
+                        raw = _recognizer!.ProcessAudio(batch);
+                    if (raw is not null)
+                    {
+                        _accumulatedText.Append(raw);
+                        var processingSettings = Volatile.Read(ref _processingSettings);
+                        var processedDelta = postProc.Process(raw, processingSettings.CompiledRules);
+                        if (!string.IsNullOrEmpty(processedDelta))
+                            _partialProcessedText.Append(processedDelta);
 
-                    PartialResult?.Invoke(_partialProcessedText.ToString());
+                        PartialResult?.Invoke(_partialProcessedText.ToString());
+                    }
                 }
                 gotData = true;
             }
@@ -430,10 +445,20 @@ public sealed class RecognitionService : IRecognitionService
         }
 
         // Flush
-        string? final;
-        lock (_recognizerOperationGate)
-            final = _recognizer!.Flush();
-        if (final is not null) _accumulatedText.Append(final);
+        if (_recognizer is IUtteranceStreamingRecognizer utterance)
+        {
+            StreamingResult result;
+            lock (_recognizerOperationGate)
+                result = utterance.FlushUtterance();
+            HandleStreamingResult(postProc, result);
+        }
+        else
+        {
+            string? final;
+            lock (_recognizerOperationGate)
+                final = _recognizer!.Flush();
+            if (final is not null) _accumulatedText.Append(final);
+        }
 
         var finalProcessingSettings = Volatile.Read(ref _processingSettings);
         var finalProcessed = postProc.ProcessFinal(_accumulatedText.ToString(), finalProcessingSettings.CompiledRules);
@@ -442,6 +467,40 @@ public sealed class RecognitionService : IRecognitionService
         Stopped?.Invoke();
 
         _captureThread?.Join(TimeSpan.FromSeconds(1));
+    }
+
+    /// <summary>
+    /// Handles a streaming step from an utterance-segmenting recognizer:
+    /// commits finalized text and surfaces the running partial.
+    /// </summary>
+    private void HandleStreamingResult(IPostProcessingPipeline postProc, StreamingResult result)
+    {
+        var settings = Volatile.Read(ref _processingSettings);
+
+        if (!string.IsNullOrEmpty(result.Final))
+        {
+            AppendUtterance(_accumulatedText, result.Final);
+            var processed = postProc.Process(result.Final, settings.CompiledRules);
+            if (!string.IsNullOrEmpty(processed))
+                UtteranceFinalized?.Invoke(processed);
+        }
+
+        var fullPartial = _accumulatedText.Length > 0 && result.Partial.Length > 0
+            ? _accumulatedText.ToString() + " " + result.Partial
+            : _accumulatedText.Length > 0
+                ? _accumulatedText.ToString()
+                : result.Partial;
+
+        var processedPartial = postProc.Process(fullPartial, settings.CompiledRules);
+        if (!string.IsNullOrEmpty(processedPartial))
+            PartialResult?.Invoke(processedPartial);
+    }
+
+    private static void AppendUtterance(StringBuilder target, string utterance)
+    {
+        if (string.IsNullOrEmpty(utterance)) return;
+        if (target.Length > 0) target.Append(' ');
+        target.Append(utterance);
     }
 
     public string? SaveAudio(string fileNameBase)

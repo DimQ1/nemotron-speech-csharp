@@ -26,9 +26,12 @@ namespace SpeechLib.ParakeetTdt;
 /// <see cref="ProcessAudio"/> once chunk + right seconds are available, and
 /// the tail is decoded in <see cref="Flush"/>.
 /// </summary>
-public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
+public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteranceStreamingRecognizer
 {
     private static readonly Regex DecodeSpacePattern = new(@"\A\s|\s\B|(\s)\b", RegexOptions.Compiled);
+
+    /// <summary>Audio samples per encoder frame (160 samples/mel frame × 8 subsampling).</summary>
+    private const int SamplesPerFrame = 1280;
 
     private readonly InferenceSession _preprocessor;   // nemo128.onnx
     private readonly InferenceSession _encoder;        // encoder-model.int8.onnx
@@ -44,6 +47,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     private readonly int _chunkSamples;
     private readonly int _leftSamples;
     private readonly int _rightSamples;
+    private readonly int _stopEouSamples;
 
     // TDT decoder state carried across chunks (streaming continuity).
     private DenseTensor<float> _state1 = new(new[] { 2, 1, 640 });
@@ -53,11 +57,20 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     private bool _emittedAnyText;
     private bool _disposed;
 
+    // Blank-based endpointing + partial/final output.
+    private long _lastEmitSample = -1;                    // absolute sample of the last emitted token
+    private readonly List<int> _eouSplits = new();        // token indices that start a new utterance
+    private readonly StringBuilder _partial = new();      // uncommitted text since the last EoU
+    private readonly StringBuilder _pendingFinal = new(); // utterances finalized during the current step
+
     /// <inheritdoc />
     public int SampleRate => 16000;
 
     /// <inheritdoc />
     public int ChunkSamples => 1600; // 100 ms at 16 kHz
+
+    /// <inheritdoc />
+    public double StopHistoryEouSeconds { get; }
 
     /// <summary>
     /// Loads a quantization folder (fp32 / int8 / int4) of the exported model.
@@ -69,6 +82,8 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     /// <param name="chunkSeconds">Chunk length decoded per call (seconds).</param>
     /// <param name="leftContextSeconds">Left audio context prepended to each chunk.</param>
     /// <param name="rightContextSeconds">Right audio context appended to each chunk.</param>
+    /// <param name="stopHistoryEouSeconds">Silence (seconds of consecutive blank frames)
+    /// that closes an utterance for blank-based endpointing.</param>
     /// <param name="executionProvider">Requested provider: "cpu", "cuda" or "dml".
     /// Falls back to CPU when the requested provider is unavailable.</param>
     public ParakeetTdtRecognizer(
@@ -76,6 +91,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         double chunkSeconds = 2.0,
         double leftContextSeconds = 5.0,
         double rightContextSeconds = 2.0,
+        double stopHistoryEouSeconds = 0.8,
         string executionProvider = "cpu")
     {
         var dir = Path.GetFullPath(modelDir);
@@ -100,6 +116,8 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         _chunkSamples = (int)(16000 * chunkSeconds);
         _leftSamples = (int)(16000 * leftContextSeconds);
         _rightSamples = (int)(16000 * rightContextSeconds);
+        _stopEouSamples = (int)(16000 * stopHistoryEouSeconds);
+        StopHistoryEouSeconds = stopHistoryEouSeconds;
         _lastToken = _blankIdx;
     }
 
@@ -110,14 +128,42 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         _audio.AddRange(chunk);
 
         int available = _audio.Count - _decodedSamples;
-        return available >= _chunkSamples + _rightSamples ? DecodeNextChunk() : null;
+        return available >= _chunkSamples + _rightSamples
+            ? DetokenizeChunk(DecodeNextChunkIds())
+            : null;
     }
 
     /// <inheritdoc />
     public string? Flush()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return _decodedSamples < _audio.Count ? DecodeRemaining() : null;
+        return _decodedSamples < _audio.Count
+            ? DetokenizeChunk(DecodeRemainingIds())
+            : null;
+    }
+
+    /// <inheritdoc />
+    public StreamingResult ProcessUtterance(float[] chunk)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _audio.AddRange(chunk);
+
+        int available = _audio.Count - _decodedSamples;
+        if (available >= _chunkSamples + _rightSamples)
+            AppendUtterances(DecodeNextChunkIds());
+
+        return TakeResult();
+    }
+
+    /// <inheritdoc />
+    public StreamingResult FlushUtterance()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_decodedSamples < _audio.Count)
+            AppendUtterances(DecodeRemainingIds());
+
+        FinalizeCurrentPartial();
+        return TakeResult();
     }
 
     /// <inheritdoc />
@@ -130,6 +176,10 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         _state2 = new DenseTensor<float>(new[] { 2, 1, 640 });
         _lastToken = _blankIdx;
         _emittedAnyText = false;
+        _lastEmitSample = -1;
+        _eouSplits.Clear();
+        _partial.Clear();
+        _pendingFinal.Clear();
     }
 
     /// <summary>Transcribe a complete 16 kHz mono float waveform (fresh decoder state).</summary>
@@ -140,7 +190,8 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
         _state1 = new DenseTensor<float>(new[] { 2, 1, 640 });
         _state2 = new DenseTensor<float>(new[] { 2, 1, 640 });
         _lastToken = _blankIdx;
-        var ids = DecodeFrames(encodings, 0, encodings.Length);
+        _lastEmitSample = -1;
+        var ids = DecodeFrames(encodings, 0, encodings.Length, 0);
         return Detokenize(ids);
     }
 
@@ -148,40 +199,101 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     // Buffer-based streaming                                               //
     // ------------------------------------------------------------------ //
 
-    private string? DecodeNextChunk()
+    private List<int> DecodeNextChunkIds()
     {
         int windowStart = Math.Max(0, _decodedSamples - _leftSamples);
         int windowEnd = Math.Min(_audio.Count, _decodedSamples + _chunkSamples + _rightSamples);
-        if (windowEnd <= windowStart) return null;
+        if (windowEnd <= windowStart) return new List<int>();
 
         var window = _audio.GetRange(windowStart, windowEnd - windowStart).ToArray();
         var encodings = Encode(window);
 
-        const int samplesPerFrame = 1280; // 160 samples/mel frame * 8 subsampling
-        int leftFrames = (_decodedSamples - windowStart) / samplesPerFrame;
-        int chunkFrames = _chunkSamples / samplesPerFrame;
+        int leftFrames = (_decodedSamples - windowStart) / SamplesPerFrame;
+        int chunkFrames = _chunkSamples / SamplesPerFrame;
         int chunkEnd = Math.Min(encodings.Length, leftFrames + chunkFrames);
 
-        var ids = DecodeFrames(encodings, leftFrames, chunkEnd);
+        var ids = DecodeFrames(encodings, leftFrames, chunkEnd, windowStart);
         _decodedSamples += _chunkSamples;
         TrimConsumedAudio();
-        return DetokenizeChunk(ids);
+        return ids;
     }
 
-    private string? DecodeRemaining()
+    private List<int> DecodeRemainingIds()
     {
         int windowStart = Math.Max(0, _decodedSamples - _leftSamples);
         int windowEnd = _audio.Count;
-        if (windowEnd <= windowStart) return null;
+        if (windowEnd <= windowStart) return new List<int>();
 
         var window = _audio.GetRange(windowStart, windowEnd - windowStart).ToArray();
         var encodings = Encode(window);
 
-        const int samplesPerFrame = 1280;
-        int leftFrames = (_decodedSamples - windowStart) / samplesPerFrame;
-        var ids = DecodeFrames(encodings, leftFrames, encodings.Length);
+        int leftFrames = (_decodedSamples - windowStart) / SamplesPerFrame;
+        var ids = DecodeFrames(encodings, leftFrames, encodings.Length, windowStart);
         _decodedSamples = _audio.Count;
-        return DetokenizeChunk(ids);
+        return ids;
+    }
+
+    /// <summary>
+    /// Splits a chunk's token ids at blank-detected end-of-utterance boundaries,
+    /// appending continuation text to <see cref="_partial"/> and committing
+    /// completed utterances to <see cref="_pendingFinal"/>.
+    /// </summary>
+    private void AppendUtterances(IReadOnlyList<int> ids)
+    {
+        if (ids.Count == 0) return;
+
+        // A blank run may span the chunk boundary: if the first token of this
+        // chunk already starts a new utterance, close the current partial first.
+        if (_eouSplits.Count > 0 && _eouSplits[0] == 0)
+            FinalizeCurrentPartial();
+
+        int segmentStart = 0;
+        int splitIndex = 0;
+        while (segmentStart < ids.Count)
+        {
+            int boundary = splitIndex < _eouSplits.Count ? _eouSplits[splitIndex] : ids.Count;
+            if (boundary <= segmentStart)
+            {
+                splitIndex++;
+                continue;
+            }
+
+            if (segmentStart > 0)
+                FinalizeCurrentPartial();
+
+            AppendSegment(ids, segmentStart, boundary);
+            segmentStart = boundary;
+            if (boundary < ids.Count)
+                splitIndex++;
+        }
+    }
+
+    private void AppendSegment(IReadOnlyList<int> ids, int start, int end)
+    {
+        var segment = ids.Skip(start).Take(end - start).ToList();
+        var text = Detokenize(segment);
+        if (text.Length == 0) return;
+
+        bool startsWord = _wordStartIds.Contains(segment[0]);
+        bool needSpace = _partial.Length > 0 && startsWord;
+        if (needSpace) _partial.Append(' ');
+        _partial.Append(text);
+    }
+
+    /// <summary>Commits the current partial as a finalized utterance.</summary>
+    private void FinalizeCurrentPartial()
+    {
+        if (_partial.Length == 0) return;
+        if (_pendingFinal.Length > 0) _pendingFinal.Append(' ');
+        _pendingFinal.Append(_partial);
+        _partial.Clear();
+    }
+
+    private StreamingResult TakeResult()
+    {
+        var final = _pendingFinal.Length > 0 ? _pendingFinal.ToString() : null;
+        _pendingFinal.Clear();
+        return new StreamingResult(_partial.ToString(), final);
     }
 
     /// <summary>
@@ -229,8 +341,9 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
     /// TDT greedy decode over encoder frames [startFrame, endFrame), carrying
     /// the decoder state (_state1/_state2/_lastToken) across calls.
     /// </summary>
-    private List<int> DecodeFrames(float[][] encodings, int startFrame, int endFrame)
+    private List<int> DecodeFrames(float[][] encodings, int startFrame, int endFrame, int windowStartSample)
     {
+        _eouSplits.Clear();
         var tokens = new List<int>();
         int t = startFrame;
         int emitted = 0;
@@ -246,6 +359,14 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer
 
             if (token != _blankIdx)
             {
+                // Blank-based endpointing: the silence between two emitted tokens
+                // is the run of blank frames between them. A gap longer than
+                // _stopEouSamples marks the start of a new utterance.
+                long absSample = windowStartSample + (long)t * SamplesPerFrame;
+                if (_lastEmitSample >= 0 && absSample - _lastEmitSample > _stopEouSamples)
+                    _eouSplits.Add(tokens.Count);
+                _lastEmitSample = absSample;
+
                 tokens.Add(token);
                 _state1 = nextState1;
                 _state2 = nextState2;
