@@ -39,12 +39,6 @@ public sealed class LoggingRecognitionService : IRecognitionService
         remove => _inner.FinalResult -= value;
     }
 
-    public event Action<string>? UtteranceFinalized
-    {
-        add => _inner.UtteranceFinalized += value;
-        remove => _inner.UtteranceFinalized -= value;
-    }
-
     public event Action? Stopped
     {
         add => _inner.Stopped += value;

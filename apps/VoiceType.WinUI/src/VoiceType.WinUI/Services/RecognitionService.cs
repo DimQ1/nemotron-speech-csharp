@@ -4,7 +4,6 @@ using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Decorators;
 using SpeechLib.Models;
-using SpeechLib.ParakeetTdt;
 using SpeechLib.Recognition;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Models;
@@ -71,7 +70,6 @@ public sealed class RecognitionService : IRecognitionService
 
     public event Action<string>? PartialResult;
     public event Action<string>? FinalResult;
-    public event Action<string>? UtteranceFinalized;
     public event Action? Stopped;
 
     /// <summary>Fires when audio capture fails to start (missing microphone, broken loopback, etc.).</summary>
@@ -132,27 +130,12 @@ public sealed class RecognitionService : IRecognitionService
                     repetition_penalty = settings.RepetitionPenalty
                 };
 
-                // Parakeet TDT (onnx-asr export) has a different decoder than
-                // the Nemotron GenAI export — select the matching provider.
-                bool isParakeet = ParakeetTdtRecognizer.IsParakeetTdtModel(modelPath);
-                IStreamingSpeechRecognizer newRecognizer = isParakeet
-                    ? new ParakeetTdtRecognizer(modelPath, executionProvider: settings.ExecutionProvider)
-                    : new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
-
-                // Universal Silero VAD gate: any recognizer that does not manage
-                // VAD natively (Parakeet today, future models without their own VAD)
-                // gets the shared gating decorator. Nemotron (ModelSession) already
-                // exposes IRuntimeConfigurable with its GenAI VAD, so it is skipped.
-                // Utterance-segmenting recognizers (Parakeet TDT) detect
-                // end-of-utterance from blank runs themselves — skip the external
-                // Silero VAD gate so the two endpointing mechanisms don't fight.
-                if (newRecognizer is not IUtteranceStreamingRecognizer &&
-                    newRecognizer is not IRuntimeConfigurable)
-                    newRecognizer = WrapWithVad(newRecognizer, settings.UseVad);
-
-                // Wrap with metrics decorator for latency/token tracking (Nemotron only)
-                if (!isParakeet)
-                    newRecognizer = new MetricsRecognizerDecorator(newRecognizer, "ModelSession");
+                // Nemotron ASR via ONNX Runtime GenAI. VAD is managed natively by
+                // ModelSession (GenAI use_vad), so no external gating decorator is
+                // needed.
+                IStreamingSpeechRecognizer newRecognizer =
+                    new ModelSession(modelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
+                newRecognizer = new MetricsRecognizerDecorator(newRecognizer, "ModelSession");
 
                 // Atomically swap recognizers
                 var old = Interlocked.Exchange(ref _recognizer, newRecognizer);
@@ -173,34 +156,6 @@ public sealed class RecognitionService : IRecognitionService
             ModelState = ModelState.Error;
             Volatile.Write(ref _loadedModelPath, null);
             _telemetry?.LogError("Recognition", $"Model load failed: {ex.Message}", ex);
-        }
-    }
-
-    /// <summary>
-    /// Wraps a recognizer in the shared Silero VAD gate. If the VAD model cannot
-    /// be loaded, the inner recognizer is returned unchanged so recognition still
-    /// works without voice-activity gating.
-    /// </summary>
-    private IStreamingSpeechRecognizer WrapWithVad(IStreamingSpeechRecognizer inner, bool useVad)
-    {
-        var vadPath = _appPaths.SileroVadPath;
-        if (!File.Exists(vadPath))
-        {
-            _telemetry?.LogError("Recognition", $"Silero VAD model not found at {vadPath}");
-            return inner;
-        }
-
-        try
-        {
-            var vad = new SileroVadFilter(vadPath);
-            var wrapped = new VadSpeechRecognizer(inner, vad);
-            wrapped.TrySetVad(useVad);
-            return wrapped;
-        }
-        catch (Exception ex)
-        {
-            _telemetry?.LogError("Recognition", $"Silero VAD init failed: {ex.Message}", ex);
-            return inner;
         }
     }
 
@@ -398,28 +353,18 @@ public sealed class RecognitionService : IRecognitionService
                 if (_audioRecorder is not null)
                     await _audioRecorder.AppendAsync(batch).ConfigureAwait(false);
 
-                if (_recognizer is IUtteranceStreamingRecognizer utteranceRecognizer)
+                string? raw;
+                lock (_recognizerOperationGate)
+                    raw = _recognizer!.ProcessAudio(batch);
+                if (raw is not null)
                 {
-                    StreamingResult result;
-                    lock (_recognizerOperationGate)
-                        result = utteranceRecognizer.ProcessUtterance(batch);
-                    HandleStreamingResult(postProc, result);
-                }
-                else
-                {
-                    string? raw;
-                    lock (_recognizerOperationGate)
-                        raw = _recognizer!.ProcessAudio(batch);
-                    if (raw is not null)
-                    {
-                        _accumulatedText.Append(raw);
-                        var processingSettings = Volatile.Read(ref _processingSettings);
-                        var processedDelta = postProc.Process(raw, processingSettings.CompiledRules);
-                        if (!string.IsNullOrEmpty(processedDelta))
-                            _partialProcessedText.Append(processedDelta);
+                    _accumulatedText.Append(raw);
+                    var processingSettings = Volatile.Read(ref _processingSettings);
+                    var processedDelta = postProc.Process(raw, processingSettings.CompiledRules);
+                    if (!string.IsNullOrEmpty(processedDelta))
+                        _partialProcessedText.Append(processedDelta);
 
-                        PartialResult?.Invoke(_partialProcessedText.ToString());
-                    }
+                    PartialResult?.Invoke(_partialProcessedText.ToString());
                 }
                 gotData = true;
             }
@@ -445,20 +390,10 @@ public sealed class RecognitionService : IRecognitionService
         }
 
         // Flush
-        if (_recognizer is IUtteranceStreamingRecognizer utterance)
-        {
-            StreamingResult result;
-            lock (_recognizerOperationGate)
-                result = utterance.FlushUtterance();
-            HandleStreamingResult(postProc, result);
-        }
-        else
-        {
-            string? final;
-            lock (_recognizerOperationGate)
-                final = _recognizer!.Flush();
-            if (final is not null) _accumulatedText.Append(final);
-        }
+        string? final;
+        lock (_recognizerOperationGate)
+            final = _recognizer!.Flush();
+        if (final is not null) _accumulatedText.Append(final);
 
         var finalProcessingSettings = Volatile.Read(ref _processingSettings);
         var finalProcessed = postProc.ProcessFinal(_accumulatedText.ToString(), finalProcessingSettings.CompiledRules);
@@ -467,40 +402,6 @@ public sealed class RecognitionService : IRecognitionService
         Stopped?.Invoke();
 
         _captureThread?.Join(TimeSpan.FromSeconds(1));
-    }
-
-    /// <summary>
-    /// Handles a streaming step from an utterance-segmenting recognizer:
-    /// commits finalized text and surfaces the running partial.
-    /// </summary>
-    private void HandleStreamingResult(IPostProcessingPipeline postProc, StreamingResult result)
-    {
-        var settings = Volatile.Read(ref _processingSettings);
-
-        if (!string.IsNullOrEmpty(result.Final))
-        {
-            AppendUtterance(_accumulatedText, result.Final);
-            var processed = postProc.Process(result.Final, settings.CompiledRules);
-            if (!string.IsNullOrEmpty(processed))
-                UtteranceFinalized?.Invoke(processed);
-        }
-
-        var fullPartial = _accumulatedText.Length > 0 && result.Partial.Length > 0
-            ? _accumulatedText.ToString() + " " + result.Partial
-            : _accumulatedText.Length > 0
-                ? _accumulatedText.ToString()
-                : result.Partial;
-
-        var processedPartial = postProc.Process(fullPartial, settings.CompiledRules);
-        if (!string.IsNullOrEmpty(processedPartial))
-            PartialResult?.Invoke(processedPartial);
-    }
-
-    private static void AppendUtterance(StringBuilder target, string utterance)
-    {
-        if (string.IsNullOrEmpty(utterance)) return;
-        if (target.Length > 0) target.Append(' ');
-        target.Append(utterance);
     }
 
     public string? SaveAudio(string fileNameBase)

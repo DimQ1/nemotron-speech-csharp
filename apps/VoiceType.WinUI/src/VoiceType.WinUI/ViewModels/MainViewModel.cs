@@ -246,7 +246,6 @@ public sealed partial class MainViewModel : ObservableObject
         _hook.InputDetected += OnInputDetected;
         _recognition.PartialResult += OnPartialResult;
         _recognition.FinalResult += OnFinalResult;
-        _recognition.UtteranceFinalized += OnUtteranceFinalized;
         _recognition.Stopped += OnRecognitionStopped;
         _recognition.CaptureError += OnCaptureError;
         _recognition.ModelStateChanged += OnModelStateChanged;
@@ -1253,15 +1252,6 @@ public sealed partial class MainViewModel : ObservableObject
             if (StatusText == "Finalizing...")
                 StatusText = "Ready";
         });
-    }
-
-    private void OnUtteranceFinalized(string text)
-    {
-        // A completed utterance was committed via blank-based endpointing.
-        // Flush the debounced partial immediately so the finalized text reaches
-        // the display/target at the utterance boundary instead of waiting for
-        // the 200 ms debounce timer.
-        _dispatcher.TryEnqueue(FlushPendingPartialResult);
     }
 
     private void OnCaptureError(string message)
