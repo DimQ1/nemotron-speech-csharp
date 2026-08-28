@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
@@ -52,7 +51,11 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
     private int _totalFiles;
 
     [ObservableProperty]
-    private ModelDescriptor? _selectedModel;
+    private ModelCardViewModel? _selectedModel;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FilteredModels))]
+    private ModelUseCaseOption? _selectedUseCase;
 
     public bool IsIdle => !IsDownloading;
     public string FileProgressDisplay => FileProgress > 0 ? $"{FileProgress:F0}%" : "";
@@ -64,9 +67,18 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
 
     // ---- Predefined models ----
 
-    public static List<ModelDescriptor> AvailableModels { get; } = new(ModelCatalog.Models);
+    public IReadOnlyList<ModelCardViewModel> Models { get; } =
+        ModelCatalog.Models.Select(m => new ModelCardViewModel(m)).ToList();
 
-    public List<ModelDescriptor> ModelOptions => AvailableModels;
+    public IReadOnlyList<ModelUseCaseOption> UseCaseOptions { get; } =
+    [
+        new ModelUseCaseOption("Fast dictation — type as you speak", ModelUseCase.FastDictation),
+        new ModelUseCaseOption("Higher quality — slight lag", ModelUseCase.HighQuality),
+        new ModelUseCaseOption("Multilingual — 25 languages", ModelUseCase.Multilingual),
+    ];
+
+    public IReadOnlyList<ModelCardViewModel> FilteredModels =>
+        Models.Where(m => m.Descriptor.UseCase == SelectedUseCase?.UseCase).ToList();
 
     // ---- Constructor ----
 
@@ -82,9 +94,7 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
         var settings = settingsService.Load();
         ModelsRootPath = ResolveModelsRootPath(settings);
 
-        SelectedModel = AvailableModels.FirstOrDefault(m =>
-            m.RepoId == MainViewModel.RecommendedModelRepo)
-            ?? AvailableModels.FirstOrDefault();
+        SelectedUseCase = UseCaseOptions[0];
 
         _service.StatusChanged += s => _dispatcher.TryEnqueue(() => Status = s);
         _service.ProgressChanged += OnProgress;
@@ -93,11 +103,20 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
 
     // ---- Property change hooks ----
 
-    partial void OnSelectedModelChanged(ModelDescriptor? value)
+    partial void OnSelectedModelChanged(ModelCardViewModel? value)
     {
         DownloadProgress = 0;
         FileProgress = 0;
-        Status = value is not null ? $"Selected: {value.DisplayName}" : "Ready";
+        Status = value is not null
+            ? $"Selected: {value.CommercialName} · {value.Variant}"
+            : "Ready";
+    }
+
+    partial void OnSelectedUseCaseChanged(ModelUseCaseOption? value)
+    {
+        if (value is null) return;
+        SelectedModel = Models.FirstOrDefault(m => m.Descriptor.UseCase == value.UseCase && m.Descriptor.IsRecommended)
+            ?? Models.FirstOrDefault(m => m.Descriptor.UseCase == value.UseCase);
     }
 
     // ---- Commands ----
@@ -105,7 +124,7 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
     [RelayCommand(CanExecute = nameof(CanDownload))]
     private async Task Download()
     {
-        var model = SelectedModel;
+        var model = SelectedModel?.Descriptor;
         if (model is null) return;
 
         ResultPath = ResultModelPath = null;
@@ -165,15 +184,8 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
             DownloadedFiles = p.DownloadedFiles;
             TotalFiles = p.TotalFiles;
 
-            if (p.FileProgress > 0)
-                FileRemaining = $"({100 - p.FileProgress:F0}% left)";
-            else
-                FileRemaining = "";
-
-            if (p.OverallProgress > 0)
-                FolderRemaining = $"({100 - p.OverallProgress:F0}% remaining)";
-            else
-                FolderRemaining = "";
+            FileRemaining = p.FileProgress > 0 ? $"({100 - p.FileProgress:F0}% left)" : "";
+            FolderRemaining = p.OverallProgress > 0 ? $"({100 - p.OverallProgress:F0}% remaining)" : "";
         });
     }
 
@@ -206,69 +218,7 @@ public sealed partial class ModelDownloaderViewModel : ObservableObject, IDispos
     }
 
     public void Dispose() => _service.Dispose();
-
-    // ---- Legacy helpers (test compat) ----
-
-    public static string ResolveDownloaderRepoId(AppSettings settings) =>
-        string.IsNullOrWhiteSpace(settings.DownloaderRepoId)
-            ? (AvailableModels.FirstOrDefault()?.RepoId ?? "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int8-cpu")
-            : settings.DownloaderRepoId;
-
-    public static string ResolveDownloaderModelsRootPath(AppSettings settings)
-    {
-        if (!string.IsNullOrWhiteSpace(settings.DownloaderModelsRootPath)) return settings.DownloaderModelsRootPath;
-        if (!string.IsNullOrWhiteSpace(settings.ModelsRootPath)) return settings.ModelsRootPath;
-        return Services.AppPaths.ModelsDir;
-    }
-
-    public static string ResolveDownloaderSelectedFoldersRepoId(AppSettings settings) =>
-        string.IsNullOrWhiteSpace(settings.DownloaderSelectedFoldersRepoId) ? string.Empty : settings.DownloaderSelectedFoldersRepoId;
-
-    public static HashSet<string> ResolveDownloaderSelectedFolders(AppSettings settings) =>
-        settings.DownloaderSelectedFolders
-            .Where(f => f is not null).Select(f => f.Trim())
-            .Where(f => f.Length > 0 || f == string.Empty)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-    public static void PersistDownloaderSettings(AppSettings settings, string repoId, string modelsRootPath)
-    {
-        settings.DownloaderRepoId = repoId.Trim();
-        settings.DownloaderModelsRootPath = modelsRootPath.Trim();
-    }
-
-    public static void PersistDownloaderFolderSelection(AppSettings settings, string repoId, IEnumerable<string> selectedFolderKeys)
-    {
-        settings.DownloaderSelectedFoldersRepoId = repoId.Trim();
-        settings.DownloaderSelectedFolders = selectedFolderKeys
-            .Select(f => f.Trim()).Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
-    }
-
-    public static HashSet<string> CaptureSelectedFolderKeys(IEnumerable<HfFolder> folders) =>
-        folders.Where(f => f.Selected).Select(f => f.SubfolderName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-    public static void ApplySelectedFolders(IEnumerable<HfFolder> folders, ISet<string> selectedFolderKeys)
-    {
-        foreach (var folder in folders)
-            folder.Selected = selectedFolderKeys.Contains(folder.SubfolderName);
-    }
-
-    public static string? TryResolveCustomResultModelPath(IReadOnlyList<HfFolder> folders, string repoId, string modelsRootPath)
-    {
-        var selectedFolders = folders.Where(f => f.Selected).ToList();
-        if (selectedFolders.Count != 1) return null;
-        var subfolder = string.IsNullOrEmpty(selectedFolders[0].SubfolderName)
-            ? repoId[(repoId.LastIndexOf('/') + 1)..]
-            : selectedFolders[0].SubfolderName;
-        return Path.Combine(modelsRootPath, subfolder);
-    }
-
-    public static string ParseRepoId(string input)
-    {
-        var s = input.Trim().TrimEnd('/');
-        if (s.StartsWith("https://huggingface.co/", StringComparison.OrdinalIgnoreCase)) s = s["https://huggingface.co/".Length..];
-        else if (s.StartsWith("huggingface.co/", StringComparison.OrdinalIgnoreCase)) s = s["huggingface.co/".Length..];
-        var parts = s.Split('/');
-        return parts.Length >= 2 ? $"{parts[0]}/{parts[1]}" : s;
-    }
 }
+
+/// <summary>A user-facing goal shown in the downloader's use-case selector.</summary>
+public sealed record ModelUseCaseOption(string DisplayName, ModelUseCase UseCase);

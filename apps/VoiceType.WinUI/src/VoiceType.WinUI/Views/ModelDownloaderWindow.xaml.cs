@@ -57,8 +57,8 @@ public sealed partial class ModelDownloaderWindow : Window
     {
         var hwnd = WindowNative.GetWindowHandle(this);
         var dpi = GetWindowDpi(hwnd);
-        var w = (int)(600f * dpi / 96f);
-        var h = (int)(372f * dpi / 96f);
+        var w = (int)(640f * dpi / 96f);
+        var h = (int)(760f * dpi / 96f);
 
         if (hwnd != nint.Zero)
             SetWindowPos(hwnd, 0, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
@@ -66,7 +66,7 @@ public sealed partial class ModelDownloaderWindow : Window
         if (AppWindow?.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = true;
-            presenter.IsMaximizable = false;
+            presenter.IsMaximizable = true;
         }
     }
 

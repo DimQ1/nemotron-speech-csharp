@@ -91,7 +91,7 @@ public sealed class DownloadQueueService : IDisposable
         var item = new DownloadQueueItem(
             id: Guid.NewGuid(),
             kind: ModelKind.Asr,
-            displayName: $"ASR model ({AsrModelCatalog.Models.FirstOrDefault(m => m.RepoId == repoId)?.Name ?? repoId})",
+            displayName: $"ASR model ({AsrModelCatalog.Models.FirstOrDefault(m => m.RepoId == repoId)?.CommercialName ?? repoId})",
             enqueuedAtUtc: DateTime.UtcNow,
             onCompleted,
             repoId);
