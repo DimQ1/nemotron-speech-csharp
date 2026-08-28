@@ -44,9 +44,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _useVad = true;
 
     [ObservableProperty]
-    private int _numBeams = 1;
-
-    [ObservableProperty]
     private double _repetitionPenalty = 1.1;
 
     [ObservableProperty]
@@ -148,7 +145,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         TranslationComputeBackend = NormalizeTranslationComputeBackend(settings.TranslationComputeBackend);
         _language = settings.Language;
         UseVad = settings.UseVad;
-        NumBeams = settings.NumBeams;
         RepetitionPenalty = settings.RepetitionPenalty;
 
         if (string.IsNullOrEmpty(ModelsRootPath))
@@ -347,7 +343,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         target.TranslationComputeBackend = source.TranslationComputeBackend;
         target.Language = source.Language;
         target.UseVad = source.UseVad;
-        target.NumBeams = source.NumBeams;
         target.RepetitionPenalty = source.RepetitionPenalty;
         target.AudioSource = source.AudioSource;
         target.TextInjectionMethod = source.TextInjectionMethod;
@@ -385,7 +380,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         TranslationComputeBackend = TranslationComputeBackend,
         Language = Language,
         UseVad = UseVad,
-        NumBeams = Math.Max(1, NumBeams),
         RepetitionPenalty = RepetitionPenalty,
         AudioSource = AudioSource,
         FirstRunCompleted = _original.FirstRunCompleted,

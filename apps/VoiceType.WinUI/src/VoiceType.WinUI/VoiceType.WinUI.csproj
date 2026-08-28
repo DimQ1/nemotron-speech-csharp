@@ -134,7 +134,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib\SpeechLib.csproj" />
-    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Nemotron\SpeechLib.Nemotron.csproj" />
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Providers\SpeechLib.Providers.csproj" />
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.ModelDownload\SpeechLib.ModelDownload.csproj" />
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Audio.NAudio3\SpeechLib.Audio.NAudio3.csproj" />
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.LiteRT.Native\SpeechLib.LiteRT.Native.csproj" />

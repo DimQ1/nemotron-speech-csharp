@@ -11,7 +11,9 @@ public sealed record ModelDescriptor(
     string Description,
     string SizeDisplay,
     string Precision,
-    string? QuantizationFolder = null)
+    string? QuantizationFolder = null,
+    bool IsRecommended = false,
+    double? WerPercent = null)
 {
     /// <summary>
     /// Folder name the model is downloaded into. For single-variant repos this

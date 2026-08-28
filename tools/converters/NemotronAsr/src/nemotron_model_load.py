@@ -19,17 +19,16 @@ import torch.nn.functional as F
 # ---------------------------------------------------------------------------
 # Shared streaming constants
 # ---------------------------------------------------------------------------
-# CHUNK_SIZE is hardcoded because it determines the static ONNX input shapes
-# at export time. The NeMo model supports multiple chunk sizes (0.08, 0.16,
-# 0.56, 1.12s) at runtime, but once exported to ONNX with static shapes the
-# encoder is locked to a single chunk size. 0.56s is the recommended default
-# per NVIDIA's documentation (best latency/accuracy trade-off). The value is
-# not available from a HuggingFace config — it lives inside the .nemo archive
-# as encoder.att_context_size and requires loading the full model to read.
+# CHUNK_SIZE determines the static ONNX input shapes at export time. The NeMo
+# model supports multiple chunk sizes (0.08, 0.16, 0.56, 1.12s) at runtime,
+# but once exported to ONNX with static shapes the encoder is locked to a
+# single chunk size. The value is not available from a HuggingFace config — it
+# lives inside the .nemo archive as encoder.att_context_size and requires
+# loading the full model to read.
 #
-# It can be overridden per-export via the NEMOTRON_CHUNK_SIZE environment
-# variable so that a single recipe can produce encoders tuned for different
-# accuracy/latency windows (0.08 / 0.16 / 0.56 / 1.12 seconds).
+# optimize.py sets NEMOTRON_CHUNK_SIZE before this module is imported and
+# defaults to 1.12s (max accuracy). The 0.56 fallback below only applies when
+# Olive is invoked directly on a config JSON without going through optimize.py.
 import os as _os
 
 
@@ -56,25 +55,29 @@ DECODER_LSTM_LAYERS = 2
 NUM_PROMPTS = 128  # one-hot language-ID size
 
 # Streaming config — single source of truth.
-# chunk_encoded_frames = int(CHUNK_SIZE * 100) // SUBSAMPLING_FACTOR = 7
-# last_channel_cache_size = LEFT_CHUNKS * chunk_encoded_frames = 70
-LEFT_CHUNKS = 10
+# The cache-aware encoder's attention LEFT context is fixed at 56 encoded
+# frames (the model's training-time value; supported look-aheads are
+# [[56,3],[56,0],[56,6],[56,13]]). Chunk size only changes the RIGHT context.
+# The previous LEFT_CHUNKS*chunk_encoded_frames (70 @0.56s / 140 @1.12s)
+# diverged from training and measurably raised WER.
+LEFT_CONTEXT = 56
+
+# Backward-compatible alias (older RU/EN + pruned loaders import LEFT_CHUNKS).
+LEFT_CHUNKS = LEFT_CONTEXT
 
 MODEL_NAME = "nvidia/NVIDIA-Nemotron-3.5-ASR-Streaming-Multilingual-0.6b"
 
 
-def get_att_context_size(chunk_size: float = None, left_chunks: int = LEFT_CHUNKS):
+def get_att_context_size(chunk_size: float = None, left_chunks: int = LEFT_CONTEXT):
     """Compute attention context size for the streaming encoder.
 
-    left_context = left_chunks * chunk_encoded_frames;
-    right_context is indexed by chunk_size.
+    left_context is fixed at LEFT_CONTEXT (56 encoded frames, the model's
+    training-time value); right_context is indexed by chunk_size.
     """
     if chunk_size is None:
         chunk_size = _chunk_size()
     right_context = {0.08: 0, 0.16: 1, 0.56: 6, 1.12: 13}.get(chunk_size, 13)
-    chunk_encoded_frames = int(chunk_size * 100) // SUBSAMPLING_FACTOR
-    left_context = left_chunks * chunk_encoded_frames
-    return [left_context, right_context]
+    return [LEFT_CONTEXT, right_context]
 
 
 def _get_streaming_shapes():
@@ -84,7 +87,7 @@ def _get_streaming_shapes():
     chunk_mel_frames = int(chunk_size * 100)  # 56 for 0.56s
     static_mel_frames = chunk_mel_frames + pre_encode_cache  # 65
     chunk_encoded_frames = chunk_mel_frames // SUBSAMPLING_FACTOR  # 7
-    last_channel_cache_size = LEFT_CHUNKS * chunk_encoded_frames  # 70
+    last_channel_cache_size = LEFT_CONTEXT  # 56 (fixed training-time left context)
 
     return {
         "last_channel_cache_size": last_channel_cache_size,

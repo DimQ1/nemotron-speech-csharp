@@ -9,49 +9,37 @@ public static class ModelCatalog
 {
     public static IReadOnlyList<ModelDescriptor> Models { get; } = new List<ModelDescriptor>
     {
-        // ── Nemotron 3.5 ASR (RNN-T, ONNX Runtime GenAI) ───────────────
+        // ── Nemotron 3.5 ASR (RNN-T, ONNX Runtime GenAI, left_context=56) ──
+        // WER measured on Common Voice 17 (250 ru + 250 en files) via WerEval.
         new(
-            Name: "Nemotron 3.5 ASR · INT4 opset24 · 0.56s — Recommended",
-            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu",
-            Description: "4-bit k-quant, opset 24, 0.56s window — low latency real-time dictation",
-            SizeDisplay: "749 MB",
-            Precision: "INT4"),
+            Name: "Nemotron 3.5 ASR · FP32 · 1.12s — Best accuracy",
+            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-c112-cpu",
+            Description: "Full precision, 1.12s window. WER 16.7% (ru 12.5% / en 20.6%)",
+            SizeDisplay: "2,479 MB",
+            Precision: "FP32",
+            WerPercent: 16.71),
         new(
-            Name: "Nemotron 3.5 ASR · INT4 opset24 · 1.12s — Best INT4 accuracy",
-            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c112-cpu",
-            Description: "4-bit k-quant, opset 24, 1.12s window — best accuracy for the quantized build",
-            SizeDisplay: "749 MB",
-            Precision: "INT4"),
-        new(
-            Name: "Nemotron 3.5 ASR · INT4 — Fastest",
-            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-cpu",
-            Description: "4-bit k-quant, lowest latency on CPU",
+            Name: "Nemotron 3.5 ASR · INT4 · 1.12s — Recommended",
+            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-c112-cpu",
+            Description: "4-bit k-quant, 1.12s window. WER 19.2% (ru 15.7% / en 22.4%) — best size/accuracy",
             SizeDisplay: "757 MB",
-            Precision: "INT4"),
+            Precision: "INT4",
+            IsRecommended: true,
+            WerPercent: 19.21),
         new(
-            Name: "Nemotron 3.5 ASR · INT8 — Balanced",
-            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int8-cpu",
-            Description: "8-bit k-quant, good quality/speed balance",
-            SizeDisplay: "1,021 MB",
-            Precision: "INT8"),
-        new(
-            Name: "Nemotron 3.5 ASR · FP32 — Best Quality",
-            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-cpu",
-            Description: "Full precision, maximum accuracy",
+            Name: "Nemotron 3.5 ASR · FP32 · 0.56s — Low latency",
+            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-c056-cpu",
+            Description: "Full precision, 0.56s window. WER 17.7% (ru 13.8% / en 21.2%)",
             SizeDisplay: "2,479 MB",
-            Precision: "FP32"),
+            Precision: "FP32",
+            WerPercent: 17.66),
         new(
-            Name: "Nemotron 3.5 ASR · FP32 opset24 · 0.56s — Full precision",
-            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-opset24-c056-cpu",
-            Description: "Full precision FP32, opset 24, 0.56s window",
-            SizeDisplay: "2,479 MB",
-            Precision: "FP32"),
-        new(
-            Name: "Nemotron 3.5 ASR · FP32 opset24 · 1.12s — Max accuracy",
-            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-opset24-c112-cpu",
-            Description: "Full precision FP32, opset 24, 1.12s window — maximum accuracy",
-            SizeDisplay: "2,479 MB",
-            Precision: "FP32"),
+            Name: "Nemotron 3.5 ASR · INT4 · 0.56s — Low latency",
+            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-c056-cpu",
+            Description: "4-bit k-quant, 0.56s window. WER 20.3% (ru 16.8% / en 23.4%)",
+            SizeDisplay: "757 MB",
+            Precision: "INT4",
+            WerPercent: 20.25),
 
         // ── Parakeet TDT 0.6B v3 (multilingual, 25 European languages) ─
         new(
@@ -77,6 +65,6 @@ public static class ModelCatalog
             QuantizationFolder: "fp32"),
     };
 
-    /// <summary>The default model downloaded when no selection is made.</summary>
-    public static ModelDescriptor Recommended => Models[0];
+    /// <summary>The optimal model (best size/accuracy balance, from measured WER).</summary>
+    public static ModelDescriptor Recommended => Models.First(m => m.IsRecommended);
 }

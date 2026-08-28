@@ -3,6 +3,7 @@ using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Models;
 using SpeechLib.PostProcessing;
+using SpeechLib.Providers;
 
 namespace VoiceType.Uno.Services;
 
@@ -39,6 +40,7 @@ public sealed class RecognitionService : IDisposable
 
     public event Action<string>? PartialResult;
     public event Action<string>? FinalResult;
+    public event Action<string>? UtteranceFinalized;
     public event Action? Stopped;
     public event Action<ModelLifecycleState>? ModelStateChanged;
     public event Action<Exception>? Error;
@@ -86,20 +88,15 @@ public sealed class RecognitionService : IDisposable
         }
     }
 
-    private static IStreamingSpeechRecognizer CreateRecognizer(AppSettings settings)
-    {
-        var langId = LanguageMapper.Resolve(settings.Language);
-        var searchOptions = new GeneratorParamsArgs
+    private static IStreamingSpeechRecognizer CreateRecognizer(AppSettings settings) =>
+        RecognizerFactory.Create(new RecognizerFactoryOptions
         {
-            num_beams = settings.NumBeams,
-            do_sample = false,
-            repetition_penalty = settings.RepetitionPenalty
-        };
-
-        IStreamingSpeechRecognizer recognizer =
-            new ModelSession(settings.ModelPath, settings.ExecutionProvider, langId, settings.UseVad, searchOptions);
-        return new SpeechLib.Decorators.MetricsRecognizerDecorator(recognizer, "ModelSession");
-    }
+            ModelPath = settings.ModelPath,
+            ExecutionProvider = settings.ExecutionProvider,
+            Language = settings.Language,
+            UseVad = settings.UseVad,
+            RepetitionPenalty = settings.RepetitionPenalty,
+        });
 
     public void UnloadModel()
     {
@@ -136,6 +133,11 @@ public sealed class RecognitionService : IDisposable
         _buffer = new ConcurrentQueueWrapper();
         _signal = new ManualResetEventSlim(false);
         _captureState = new CaptureState();
+
+        // Clear buffered audio/decoder state from a previous session so the new
+        // stream starts fresh (Parakeet TDT buffers audio between chunks).
+        lock (_recognizerOperationGate)
+            _recognizer.ResetStreamingState();
 
         var audioSource = _audioSource;
         var buffer = _buffer;
@@ -185,7 +187,7 @@ public sealed class RecognitionService : IDisposable
             if (_recognizer is IRuntimeConfigurable runtimeConfigurable)
             {
                 runtimeConfigurable.TrySetVad(settings.UseVad);
-                runtimeConfigurable.TrySetSearchOptions(settings.NumBeams, settings.RepetitionPenalty);
+                runtimeConfigurable.TrySetSearchOptions(1, settings.RepetitionPenalty);
             }
 
             SetLanguageCore(settings.Language);
@@ -253,15 +255,25 @@ public sealed class RecognitionService : IDisposable
                     if (_captureMuted)
                         continue;
 
-                    string? raw;
-                    lock (_recognizerOperationGate)
-                        raw = _recognizer!.ProcessAudio(batch);
-
-                    if (raw is not null)
+                    if (_recognizer is IUtteranceStreamingRecognizer utteranceRecognizer)
                     {
-                        _accumulatedText.Append(raw);
-                        // Strip <ru-RU> language tags live so the transcript reads clean.
-                        PartialResult?.Invoke(PartialPostProcessing.Execute(_accumulatedText.ToString()));
+                        StreamingResult result;
+                        lock (_recognizerOperationGate)
+                            result = utteranceRecognizer.ProcessUtterance(batch);
+                        HandleStreamingResult(result);
+                    }
+                    else
+                    {
+                        string? raw;
+                        lock (_recognizerOperationGate)
+                            raw = _recognizer!.ProcessAudio(batch);
+
+                        if (raw is not null)
+                        {
+                            _accumulatedText.Append(raw);
+                            // Strip <ru-RU> language tags live so the transcript reads clean.
+                            PartialResult?.Invoke(PartialPostProcessing.Execute(_accumulatedText.ToString()));
+                        }
                     }
                 }
 
@@ -272,11 +284,21 @@ public sealed class RecognitionService : IDisposable
                 }
             }
 
-            string? final;
-            lock (_recognizerOperationGate)
-                final = _recognizer!.Flush();
-            if (final is not null)
-                _accumulatedText.Append(final);
+            if (_recognizer is IUtteranceStreamingRecognizer utterance)
+            {
+                StreamingResult result;
+                lock (_recognizerOperationGate)
+                    result = utterance.FlushUtterance();
+                HandleStreamingResult(result);
+            }
+            else
+            {
+                string? final;
+                lock (_recognizerOperationGate)
+                    final = _recognizer!.Flush();
+                if (final is not null)
+                    _accumulatedText.Append(final);
+            }
 
             // Final pass: strip language tags AND normalize whitespace for clean output.
             FinalResult?.Invoke(FinalPostProcessing.Execute(_accumulatedText.ToString()));
@@ -299,6 +321,38 @@ public sealed class RecognitionService : IDisposable
 
     private static readonly PostProcessingChain FinalPostProcessing =
         new PostProcessingChain().Add(new LanguageTagStripper()).Add(new WhitespaceNormalizer());
+
+    /// <summary>
+    /// Handles a streaming step from an utterance-segmenting recognizer:
+    /// commits finalized text and surfaces the running partial.
+    /// </summary>
+    private void HandleStreamingResult(StreamingResult result)
+    {
+        if (!string.IsNullOrEmpty(result.Final))
+        {
+            AppendUtterance(_accumulatedText, result.Final);
+            var processed = PartialPostProcessing.Execute(result.Final);
+            if (!string.IsNullOrEmpty(processed))
+                UtteranceFinalized?.Invoke(processed);
+        }
+
+        var fullPartial = _accumulatedText.Length > 0 && result.Partial.Length > 0
+            ? _accumulatedText.ToString() + " " + result.Partial
+            : _accumulatedText.Length > 0
+                ? _accumulatedText.ToString()
+                : result.Partial;
+
+        var processedPartial = PartialPostProcessing.Execute(fullPartial);
+        if (!string.IsNullOrEmpty(processedPartial))
+            PartialResult?.Invoke(processedPartial);
+    }
+
+    private static void AppendUtterance(StringBuilder target, string utterance)
+    {
+        if (string.IsNullOrEmpty(utterance)) return;
+        if (target.Length > 0) target.Append(' ');
+        target.Append(utterance);
+    }
 
     private void CleanupCaptureResources()
     {

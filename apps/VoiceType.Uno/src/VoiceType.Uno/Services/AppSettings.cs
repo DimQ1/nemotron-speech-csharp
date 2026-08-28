@@ -15,7 +15,6 @@ public sealed class AppSettings
     public string ExecutionProvider { get; set; } = "cpu";
 
     public bool UseVad { get; set; } = true;
-    public int NumBeams { get; set; } = 1;
     public double RepetitionPenalty { get; set; } = 1.1;
 
     public bool IsTextInjectionEnabled { get; set; } = true;

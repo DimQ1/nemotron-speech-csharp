@@ -19,7 +19,6 @@ public sealed class AppSettings
     public bool UseVad { get; set; } = true;
 
     // ── Decoding quality ────────────────────────────
-    public int NumBeams { get; set; } = 1;
     public double RepetitionPenalty { get; set; } = 1.1;
 
     // ── Capture ─────────────────────────────────────

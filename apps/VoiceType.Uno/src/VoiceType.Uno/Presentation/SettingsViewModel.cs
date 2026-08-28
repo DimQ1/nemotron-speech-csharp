@@ -48,9 +48,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _useVad = true;
 
     [ObservableProperty]
-    private int _numBeams = 1;
-
-    [ObservableProperty]
     private double _repetitionPenalty = 1.1;
 
     [ObservableProperty]
@@ -147,7 +144,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         Language = settings.Language;
         AudioSource = settings.AudioSource;
         UseVad = settings.UseVad;
-        NumBeams = settings.NumBeams;
         RepetitionPenalty = settings.RepetitionPenalty;
         IsTextInjectionEnabled = settings.IsTextInjectionEnabled;
         PasteChord = string.IsNullOrWhiteSpace(settings.PasteChord) ? "Ctrl+V" : settings.PasteChord;
@@ -196,7 +192,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         settings.Language = Language;
         settings.AudioSource = AudioSource;
         settings.UseVad = UseVad;
-        settings.NumBeams = Math.Max(1, NumBeams);
         settings.RepetitionPenalty = Math.Max(1, RepetitionPenalty);
         settings.IsTextInjectionEnabled = IsTextInjectionEnabled;
         settings.PasteChord = string.IsNullOrWhiteSpace(PasteChord) ? "Ctrl+V" : PasteChord.Trim();

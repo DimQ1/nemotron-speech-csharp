@@ -39,23 +39,25 @@ DECODER_LSTM_LAYERS = 2
 NUM_PROMPTS = 128  # one-hot language-ID size
 
 # Streaming config — single source of truth.
-# chunk_encoded_frames = int(CHUNK_SIZE * 100) // SUBSAMPLING_FACTOR = 7
-# last_channel_cache_size = LEFT_CHUNKS * chunk_encoded_frames = 70
-LEFT_CHUNKS = 10
+# The cache-aware encoder's attention LEFT context is fixed at 56 encoded
+# frames (the model's training-time value; supported look-aheads are
+# [[56,3],[56,0],[56,6],[56,13]]). Chunk size only changes the RIGHT context.
+LEFT_CONTEXT = 56
+
+# Backward-compatible alias (older loaders import LEFT_CHUNKS).
+LEFT_CHUNKS = LEFT_CONTEXT
 
 MODEL_NAME = "nvidia/NVIDIA-Nemotron-3.5-ASR-Streaming-Multilingual-0.6b"
 
 
-def get_att_context_size(chunk_size: float = CHUNK_SIZE, left_chunks: int = LEFT_CHUNKS):
+def get_att_context_size(chunk_size: float = CHUNK_SIZE, left_chunks: int = LEFT_CONTEXT):
     """Compute attention context size for the streaming encoder.
 
-    left_context = left_chunks * chunk_encoded_frames;
-    right_context is indexed by chunk_size.
+    left_context is fixed at LEFT_CONTEXT (56 encoded frames, the model's
+    training-time value); right_context is indexed by chunk_size.
     """
     right_context = {0.08: 0, 0.16: 1, 0.56: 6, 1.12: 13}.get(chunk_size, 13)
-    chunk_encoded_frames = int(chunk_size * 100) // SUBSAMPLING_FACTOR
-    left_context = left_chunks * chunk_encoded_frames
-    return [left_context, right_context]
+    return [LEFT_CONTEXT, right_context]
 
 
 def _get_streaming_shapes():
@@ -64,7 +66,7 @@ def _get_streaming_shapes():
     chunk_mel_frames = int(CHUNK_SIZE * 100)  # 56 for 0.56s
     static_mel_frames = chunk_mel_frames + pre_encode_cache  # 65
     chunk_encoded_frames = chunk_mel_frames // SUBSAMPLING_FACTOR  # 7
-    last_channel_cache_size = LEFT_CHUNKS * chunk_encoded_frames  # 70
+    last_channel_cache_size = LEFT_CONTEXT  # 56 (fixed training-time left context)
 
     return {
         "last_channel_cache_size": last_channel_cache_size,

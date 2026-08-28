@@ -5,15 +5,27 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <RootNamespace>SpeechLib.Nemotron</RootNamespace>
-    <AssemblyName>SpeechLib.Nemotron</AssemblyName>
+    <RootNamespace>SpeechLib.Providers</RootNamespace>
+    <AssemblyName>SpeechLib.Providers</AssemblyName>
   </PropertyGroup>
 
+  <!--
+    Single recognition library: Nemotron (ORT GenAI) and Parakeet TDT (plain
+    ONNX Runtime) providers, plus the RecognizerFactory that selects between
+    them and applies shared decorators. Applications consume only the
+    IStreamingSpeechRecognizer interface returned by the factory.
+  -->
   <ItemGroup>
     <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
     <Compile Include="..\SpeechLib\ModelSession.cs" Link="ModelSession.cs" />
     <Compile Include="..\SpeechLib\Common.cs" Link="Common.cs" />
     <Compile Include="..\SpeechLib\LanguageMapper.cs" Link="LanguageMapper.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Plain ONNX Runtime powers Parakeet TDT and the shared Silero VAD filter. -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" GeneratePathProperty="true" />
+    <PackageReference Include="System.CommandLine" Version="2.0.1" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -36,7 +48,6 @@
       </PropertyGroup>
       <ItemGroup>
         <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.15.2" />
-        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" GeneratePathProperty="true" />
       </ItemGroup>
     </When>
 
@@ -68,9 +79,5 @@
           DestinationFolder="$(OutputPath)runtimes\win-x64\native"
           SkipUnchangedFiles="false" />
   </Target>
-
-  <ItemGroup>
-    <PackageReference Include="System.CommandLine" Version="2.0.1" />
-  </ItemGroup>
 
 </Project>

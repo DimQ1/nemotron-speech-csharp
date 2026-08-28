@@ -66,6 +66,22 @@ _TOKENIZER_SCRIPT = _RECIPE_ROOT / "scripts" / "export_tokenizer.py"
 DEFAULT_OUTPUT_DIR = "build/onnx_models_int4"
 DEFAULT_FP16_OUTPUT_DIR = "build/onnx_models_fp16_cuda"
 
+# Local source checkpoint (preferred over re-downloading the 2.2 GB .nemo).
+_PROJECT_ROOT = _RECIPE_ROOT.parents[2]
+_LOCAL_NEMO = (
+    _PROJECT_ROOT / "models" / "asr" / "nemotron-3.5" / "source"
+    / "nemotron-3.5-asr-streaming-0.6b.nemo"
+)
+
+
+def _default_model_name() -> str:
+    """Return the local .nemo checkpoint if present, else the HF repo id."""
+    if _LOCAL_NEMO.is_file():
+        return str(_LOCAL_NEMO)
+    from src.nemotron_model_load import MODEL_NAME
+
+    return MODEL_NAME
+
 
 def _resolve(path: str) -> Path:
     """Resolve a path relative to the src/ directory."""
@@ -115,14 +131,17 @@ def _to_new_run_format(config: dict) -> dict:
         new_passes[name] = [entry]
     new["passes"] = new_passes
 
-    # Unique workflow id keyed by chunk size, opset, and pass flow so that Olive
-    # does not reuse cached artifacts across different export pipelines.
+    # Unique workflow id keyed by chunk size, opset, left context, and pass
+    # flow so that Olive does not reuse cached artifacts across different
+    # export pipelines (e.g. a left_context change must re-export the encoder).
     if "workflow_id" not in new:
         try:
             from src import nemotron_model_load as _nml
             _cs = str(_nml._chunk_size()).replace(".", "p")
+            _lc = str(getattr(_nml, "LEFT_CONTEXT", "default"))
         except Exception:
             _cs = "default"
+            _lc = "default"
         _op = ""
         for p in legacy_passes.values():
             if p.get("type") == "OnnxConversion":
@@ -132,7 +151,7 @@ def _to_new_run_format(config: dict) -> dict:
             str(p.get("type", "unknown")).lower()
             for p in legacy_passes.values()
         )
-        new["workflow_id"] = f"nemotron_{_cs}{_op}_{_flow}"
+        new["workflow_id"] = f"nemotron_{_cs}{_op}_lc{_lc}_{_flow}"
 
     return new
 
@@ -497,8 +516,9 @@ def main():
     )
     parser.add_argument(
         "--model-name",
-        default=MODEL_NAME,
-        help="HuggingFace model name or path to a local .nemo file",
+        default=_default_model_name(),
+        help="HuggingFace model name or path to a local .nemo file. "
+             "Defaults to the local source checkpoint if present, else the HF repo.",
     )
     parser.add_argument(
         "--output-dir",
@@ -522,16 +542,19 @@ def main():
         type=int,
         default=None,
         help="ONNX target opset for all OnnxConversion passes (e.g. 21 or 24). "
-             "Default keeps the value from the JSON config.",
+             "Default keeps the value from the JSON config (21). NOTE: opset 24 "
+             "requires the dynamo exporter for every component; the legacy "
+             "TorchScript exporter used by decoder/joint cannot target opset 24 "
+             "in the current torch build.",
     )
     parser.add_argument(
         "--chunk-size",
         type=float,
         choices=[0.08, 0.16, 0.56, 1.12],
-        default=None,
+        default=1.12,
         help="Streaming chunk size in seconds (0.08/0.16/0.56/1.12). Larger windows "
              "give more encoder context (better WER) at higher latency. Default: "
-             "NEMOTRON_CHUNK_SIZE env var or 0.56.",
+             "1.12 (max accuracy).",
     )
     args = parser.parse_args()
 
@@ -539,8 +562,7 @@ def main():
     # nemotron_model_load reads NEMOTRON_CHUNK_SIZE at import time, and Olive
     # imports the script fresh (by path) inside each conversion pass, so the
     # env var is the single reliable way to propagate the value everywhere.
-    if args.chunk_size is not None:
-        os.environ["NEMOTRON_CHUNK_SIZE"] = str(args.chunk_size)
+    os.environ["NEMOTRON_CHUNK_SIZE"] = str(args.chunk_size)
 
     # Validate model name — the Olive configs and model_load.py constants are
     # specific to the 0.6B model architecture.

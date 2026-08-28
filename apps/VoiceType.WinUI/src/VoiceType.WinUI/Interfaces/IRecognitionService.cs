@@ -16,6 +16,10 @@ public interface IRecognitionService : IDisposable
 
     event Action<string>? PartialResult;
     event Action<string>? FinalResult;
+
+    /// <summary>Fires when a completed utterance is finalized via blank-based endpointing.</summary>
+    event Action<string>? UtteranceFinalized;
+
     event Action? Stopped;
 
     /// <summary>Fires when audio capture fails to start (missing microphone, broken loopback, etc.).</summary>

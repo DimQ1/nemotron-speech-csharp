@@ -38,6 +38,27 @@ dotnet test apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj -c Relea
 - **Naming:** `{Type}_{ClassName}Tests.cs`, methods: `MethodName_ShouldExpectedBehavior`
 - **Moq** is available (4.20.72) but not yet used in existing tests
 
+## Test Data (WER evaluation)
+
+WER/RTF is measured with the `build/WerEval` harness against Common Voice test
+audio. The audio is **not committed** — `Test-Audio/` is gitignored. Download
+it on demand:
+
+```powershell
+python tools/eval/download_cv_test.py --lang ru --count 250
+python tools/eval/download_cv_test.py --lang en --count 250
+```
+
+- **Source:** Hugging Face mirror `fixie-ai/common_voice_17_0` (`config=ru|en`,
+  `split=test`). The official `mozilla-foundation/common_voice_11_0` repo was
+  removed. Fetched via the datasets-server REST API
+  (`https://datasets-server.huggingface.co/rows`) — no `datasets`/torchcodec
+  needed; MP3 is decoded with `soundfile` and resampled to 16 kHz mono.
+- **Layout:** `Test-Audio/cv17/{ru,en}/NNNN.wav` (16 kHz PCM16 mono) +
+  `NNNN.txt` (reference transcript), one pair per utterance.
+- The WER harness expects sibling `*.wav` + `*.txt` pairs and scores
+  ru/en separately (see `build/WerEval/Program.cs`).
+
 ## Architecture
 
 > See [README.md](README.md) for full overview. Key points for agents:

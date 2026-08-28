@@ -38,7 +38,8 @@
             "use_dynamo_exporter": true
         },
         "quantization": {
-            "type": "OnnxMatMul4Quantizer",
+            "type": "OnnxKQuantQuantization",
+            "bits": 4,
             "block_size": 32,
             "accuracy_level": 4,
             "save_as_external_data": true,

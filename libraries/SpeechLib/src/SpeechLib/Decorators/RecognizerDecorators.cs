@@ -32,6 +32,8 @@ public sealed class MetricsRecognizerDecorator : IStreamingSpeechRecognizer, ILa
     public bool TrySetSearchOptions(int numBeams, double repetitionPenalty) =>
         (_inner as IRuntimeConfigurable)?.TrySetSearchOptions(numBeams, repetitionPenalty) == true;
 
+    public void ResetStreamingState() => _inner.ResetStreamingState();
+
     /// <summary>Get the inner recognizer (for unwrapping decorators).</summary>
     public IStreamingSpeechRecognizer GetInner() => _inner;
 
@@ -98,6 +100,8 @@ public sealed class LoggingRecognizerDecorator : IStreamingSpeechRecognizer, ILa
 
     public bool TrySetSearchOptions(int numBeams, double repetitionPenalty) =>
         (_inner as IRuntimeConfigurable)?.TrySetSearchOptions(numBeams, repetitionPenalty) == true;
+
+    public void ResetStreamingState() => _inner.ResetStreamingState();
 
     public string? ProcessAudio(float[] chunk)
     {

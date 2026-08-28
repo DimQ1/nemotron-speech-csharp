@@ -14,6 +14,9 @@ models/*
 build/
 converter/build/
 
+# ── Test audio (large datasets — see AGENTS.md, download separately) ───
+Test-Audio/
+
 # ── VoiceType app data (settings, sessions, models, logs) ───
 data/
 
