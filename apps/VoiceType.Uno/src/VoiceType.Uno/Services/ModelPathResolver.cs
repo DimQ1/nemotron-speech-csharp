@@ -1,3 +1,5 @@
+using SpeechLib.ModelDownload;
+
 namespace VoiceType.Uno.Services;
 
 /// <summary>Finds and normalizes installed model directories for all UNO targets.</summary>
@@ -148,6 +150,11 @@ public static class ModelPathResolver
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
             return ModelIntegrity.Missing;
+
+        if (Qwen3ModelDetector.IsQwen3AsrStreamingModel(path))
+            return Qwen3ModelDetector.IsCompleteQwen3AsrStreamingModel(path)
+                ? ModelIntegrity.Complete
+                : ModelIntegrity.Broken;
 
         var configPath = Path.Combine(path, "genai_config.json");
         if (!File.Exists(configPath))

@@ -18,9 +18,12 @@ public static class RecognizerFactory
     {
         var langId = LanguageMapper.Resolve(options.Language);
         bool isParakeet = ParakeetTdtRecognizer.IsParakeetTdtModel(options.ModelPath);
-        bool isQwen3 = Qwen3AsrRecognizer.IsQwen3AsrModel(options.ModelPath);
+        bool isQwen3Streaming = Qwen3AsrStreamingRecognizer.IsQwen3AsrStreamingModel(options.ModelPath);
+        bool isQwen3 = !isQwen3Streaming && Qwen3AsrRecognizer.IsQwen3AsrModel(options.ModelPath);
 
-        IStreamingSpeechRecognizer recognizer = isQwen3
+        IStreamingSpeechRecognizer recognizer = isQwen3Streaming
+            ? new Qwen3AsrStreamingRecognizer(options.ModelPath, executionProvider: options.ExecutionProvider)
+            : isQwen3
             ? new Qwen3AsrRecognizer(options.ModelPath, executionProvider: options.ExecutionProvider)
             : isParakeet
             ? new ParakeetTdtRecognizer(options.ModelPath, executionProvider: options.ExecutionProvider)
@@ -41,7 +44,7 @@ public static class RecognizerFactory
             recognizer is not IRuntimeConfigurable)
             recognizer = WrapWithVad(recognizer, options.UseVad, options.SileroVadPath);
 
-        if (!isParakeet && !isQwen3)
+        if (!isParakeet && !isQwen3Streaming && !isQwen3)
             recognizer = new MetricsRecognizerDecorator(recognizer, "ModelSession");
 
         return recognizer;

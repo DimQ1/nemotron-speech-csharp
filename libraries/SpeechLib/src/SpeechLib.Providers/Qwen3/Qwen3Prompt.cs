@@ -13,6 +13,7 @@ internal static class Qwen3Prompt
     public const int AudioStartTokenId = 151669; // <|audio_start|>
     public const int AudioEndTokenId = 151670;   // <|audio_end|>
     public const int AudioPadTokenId = 151676;   // <|audio_pad|> (replaced by encoder output)
+    public const int AsrTextTokenId = 151704;    // <asr_text>
 
     public const int ConvWindow = 100;
     public const int TokensPerWindow = 13;

@@ -11,17 +11,18 @@ namespace SpeechLib.Qwen3;
 /// </summary>
 internal sealed class Qwen3BpeTokenizer
 {
-    // GPT-2 pre-tokenizer pattern (as used by Qwen tokenizers).
+    // GPT-2 pre-tokenizer pattern (Qwen tokenizers). .NET regex has no
+    // possessive quantifiers, so this is the equivalent non-possessive form.
     private static readonly Regex Pattern = new(
-        @"'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}++|\p{N}{1,3}+| ?[^\s\p{L}\p{N}]++[\r\n]*+|\s++$|\s*[\r\n]|\s+(?!\S)|\s",
-        RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace);
+        @"'(?i:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+",
+        RegexOptions.Compiled);
 
     private readonly Dictionary<string, int> _tokenToId = new(StringComparer.Ordinal);
     private readonly Dictionary<int, string> _idToToken = new();
     private readonly Dictionary<(string, string), int> _mergeRanks = new();
 
-    private static readonly byte[] ByteToUtf8 = new byte[256];
     private static readonly Dictionary<byte, char> ByteToChar = new();
+    private static readonly Dictionary<char, byte> CharToByte = new();
 
     static Qwen3BpeTokenizer()
     {
@@ -33,7 +34,7 @@ internal sealed class Qwen3BpeTokenizer
             bool printable = b is >= 33 and <= 126 or >= 161 and <= 172 or >= 174;
             char c = printable ? (char)b : (char)(256 + n++);
             ByteToChar[(byte)b] = c;
-            ByteToUtf8[c] = (byte)b;
+            CharToByte[c] = (byte)b;
         }
     }
 
@@ -98,7 +99,8 @@ internal sealed class Qwen3BpeTokenizer
             if (!_idToToken.TryGetValue((int)id, out var token)) continue;
             if (token.StartsWith('<') && token.EndsWith('>')) continue; // special tokens
             foreach (char c in token)
-                bytes.Add(ByteToUtf8[c]);
+                if (CharToByte.TryGetValue(c, out var value))
+                    bytes.Add(value);
         }
         return Encoding.UTF8.GetString(bytes.ToArray());
     }

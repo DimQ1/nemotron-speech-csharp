@@ -42,6 +42,26 @@ public sealed class Unit_ModelFolderScannerTests : IDisposable
     }
 
     [Fact]
+    public void IsModelDirectory_Qwen3StreamingManifest_ReturnsTrue()
+    {
+        var dir = CreateFolder("qwen3-asr-1.7b-onnx-streaming");
+        File.WriteAllText(Path.Combine(dir, "streaming_config.json"),
+            """{"model_type":"qwen3_asr_onnx_streaming","chunk_seconds":2}""");
+
+        Assert.True(ModelFolderScanner.IsModelDirectory(dir));
+    }
+
+    [Fact]
+    public void IsModelDirectory_Qwen3StreamingManifestWithoutChunkSeconds_UsesProviderDefault()
+    {
+        var dir = CreateFolder("qwen3-default-streaming");
+        File.WriteAllText(Path.Combine(dir, "streaming_config.json"),
+            """{"model_type":"qwen3_asr_onnx_streaming"}""");
+
+        Assert.True(ModelFolderScanner.IsModelDirectory(dir));
+    }
+
+    [Fact]
     public void IsModelDirectory_ConfigWithOtherModelType_ReturnsFalse()
     {
         var dir = CreateFolder("some-other-model");
@@ -58,6 +78,42 @@ public sealed class Unit_ModelFolderScannerTests : IDisposable
         File.WriteAllText(Path.Combine(dir, "config.json"), """{"sample_rate": 16000}""");
 
         Assert.False(ModelFolderScanner.IsModelDirectory(dir));
+    }
+
+    [Fact]
+    public void IsModelDirectory_InvalidQwen3StreamingManifest_ReturnsFalse()
+    {
+        var dir = CreateFolder("qwen3-invalid-streaming");
+        File.WriteAllText(Path.Combine(dir, "streaming_config.json"),
+            """{"model_type":"qwen3_asr_onnx_streaming","chunk_seconds":0}""");
+
+        Assert.False(ModelFolderScanner.IsModelDirectory(dir));
+    }
+
+    [Fact]
+    public void Qwen3ModelDetector_CompleteManifestRequiresBaseModelFiles()
+    {
+        var streamingDir = CreateFolder("qwen3-streaming");
+        var baseDir = CreateFolder("qwen3-base");
+        File.WriteAllText(Path.Combine(streamingDir, "streaming_config.json"),
+            """{"model_type":"qwen3_asr_onnx_streaming","base_model_dir":"../qwen3-base","chunk_seconds":2}""");
+
+        Assert.False(Qwen3ModelDetector.IsCompleteQwen3AsrStreamingModel(streamingDir));
+
+        foreach (var file in new[]
+        {
+            "encoder.int4.onnx",
+            "decoder_init.int4.onnx",
+            "decoder_step.int4.onnx",
+            "decoder_weights.int4.data",
+            "embed_tokens.bin",
+            "vocab.json",
+        })
+        {
+            File.WriteAllBytes(Path.Combine(baseDir, file), [1]);
+        }
+
+        Assert.True(Qwen3ModelDetector.IsCompleteQwen3AsrStreamingModel(streamingDir));
     }
 
     [Fact]

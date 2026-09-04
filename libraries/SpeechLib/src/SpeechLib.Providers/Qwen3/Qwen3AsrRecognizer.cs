@@ -1,5 +1,6 @@
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using System.Runtime.InteropServices;
 
 namespace SpeechLib.Qwen3;
 
@@ -170,7 +171,11 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer
         while (output.Count > 0 && Qwen3Prompt.IsEos((int)output[^1]))
             output.RemoveAt(output.Count - 1);
 
-        return _tokenizer.Decode(output).Trim();
+        int asrTextIndex = output.IndexOf(Qwen3Prompt.AsrTextTokenId);
+        var transcriptTokens = asrTextIndex >= 0
+            ? output.Skip(asrTextIndex + 1)
+            : output;
+        return _tokenizer.Decode(transcriptTokens).Trim();
     }
 
     private float[] RunEncoder(float[] mel, int frames)
@@ -287,8 +292,7 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer
     private static float[] LoadEmbedTokens(string path)
     {
         var bytes = File.ReadAllBytes(path);
-        var half = new Half[bytes.Length / 2];
-        Buffer.BlockCopy(bytes, 0, half, 0, bytes.Length);
+        var half = MemoryMarshal.Cast<byte, Half>(bytes.AsSpan());
         var floats = new float[half.Length];
         for (int i = 0; i < half.Length; i++)
             floats[i] = (float)half[i];
