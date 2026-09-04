@@ -2,6 +2,7 @@ using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Decorators;
 using SpeechLib.ParakeetTdt;
+using SpeechLib.Qwen3;
 
 namespace SpeechLib.Providers;
 
@@ -17,8 +18,11 @@ public static class RecognizerFactory
     {
         var langId = LanguageMapper.Resolve(options.Language);
         bool isParakeet = ParakeetTdtRecognizer.IsParakeetTdtModel(options.ModelPath);
+        bool isQwen3 = Qwen3AsrRecognizer.IsQwen3AsrModel(options.ModelPath);
 
-        IStreamingSpeechRecognizer recognizer = isParakeet
+        IStreamingSpeechRecognizer recognizer = isQwen3
+            ? new Qwen3AsrRecognizer(options.ModelPath, executionProvider: options.ExecutionProvider)
+            : isParakeet
             ? new ParakeetTdtRecognizer(options.ModelPath, executionProvider: options.ExecutionProvider)
             : new ModelSession(
                 options.ModelPath,
@@ -37,7 +41,7 @@ public static class RecognizerFactory
             recognizer is not IRuntimeConfigurable)
             recognizer = WrapWithVad(recognizer, options.UseVad, options.SileroVadPath);
 
-        if (!isParakeet)
+        if (!isParakeet && !isQwen3)
             recognizer = new MetricsRecognizerDecorator(recognizer, "ModelSession");
 
         return recognizer;
