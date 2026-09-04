@@ -186,7 +186,14 @@ public partial class App : Application
         services.AddSingleton<IAudioSourceFactory, NAudio3AudioSourceFactory>();
         services.AddSingleton<IAudioRecorderFactory, NAudio3AudioRecorderFactory>();
         services.AddSingleton<IAudioMixer>(sp =>
-            AudioMixerRegistry.For(sp.GetRequiredService<IAudioSourceFactory>()));
+        {
+            var mixer = AudioMixerRegistry.For(sp.GetRequiredService<IAudioSourceFactory>());
+            var settings = sp.GetRequiredService<ISettingsService>().Load();
+            mixer.MicVolume = settings.MicVolume;
+            mixer.LoopbackVolume = settings.LoopbackVolume;
+            mixer.EchoCancellation = settings.EchoCancellation;
+            return mixer;
+        });
 
         // Recognition (decorated with logging)
         services.AddSingleton<RecognitionService>(sp =>

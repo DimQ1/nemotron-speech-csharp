@@ -162,6 +162,25 @@
                 </StackPanel>
             </Border>
 
+            <!-- Echo cancellation (adaptive NLMS, Mix mode only) -->
+            <Border Background="{StaticResource BgSecondaryBrush}" CornerRadius="6" Padding="14">
+                <StackPanel Spacing="4">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Echo Cancellation" Foreground="{StaticResource FgBrush}"
+                                   FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.EchoCancellation, Mode=TwoWay}"
+                                      VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock Text="Removes speaker-to-microphone echo in Mix mode: the system-audio (loopback) echo is adaptively subtracted from the microphone before mixing. Leave on for calls; it converges within a second."
+                               Foreground="{StaticResource FgSecondaryBrush}" FontSize="11"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
         </StackPanel>
 
         <!-- Bottom buttons -->

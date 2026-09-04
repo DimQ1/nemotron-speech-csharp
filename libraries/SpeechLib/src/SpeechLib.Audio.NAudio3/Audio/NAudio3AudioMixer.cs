@@ -23,6 +23,12 @@ public sealed class NAudio3AudioMixer : IAudioMixer
         set => NAudio3AudioSource.LoopbackVolume = value;
     }
 
+    public bool EchoCancellation
+    {
+        get => NAudio3AudioSource.EchoCancellation;
+        set => NAudio3AudioSource.EchoCancellation = value;
+    }
+
     public AudioLevelMeter LevelMeter => NAudio3AudioSource.AudioLevelMeter;
 
     public AudioLevelMeter MicLevelMeter => NAudio3AudioSource.MicLevelMeter;

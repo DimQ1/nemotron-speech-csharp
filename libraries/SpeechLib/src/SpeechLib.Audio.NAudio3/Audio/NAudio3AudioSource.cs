@@ -31,6 +31,13 @@ public sealed class NAudio3AudioSource : IAudioSource
     private static float _micVolume = 1.0f;
     private static float _loopbackVolume = 1.0f;
 
+    /// <summary>
+    /// Live toggle for adaptive echo cancellation (NLMS AEC) in Mix mode.
+    /// When enabled, the loopback-derived echo estimate is subtracted from the
+    /// microphone channel before mixing, removing speaker-to-mic echo.
+    /// </summary>
+    public static bool EchoCancellation { get; set; } = true;
+
     public static float MicVolume
     {
         get => _micVolume;
@@ -124,7 +131,17 @@ public sealed class NAudio3AudioSource : IAudioSource
 
             var loopbackSource = loopback?.Buffer;
             var microphoneSource = microphone?.Buffer;
-            var readBuffer = new float[4096];
+            var loopbackResampler = loopback?.Resampler;
+            var microphoneResampler = microphone?.Resampler;
+            // One AEC per capture session: filter taps converge over time and
+            // must persist across drain cycles.
+            var echoCanceller = loopback is not null && microphone is not null
+                ? new NlmsEchoCanceller()
+                : null;
+            // One aligner per session: keeps mic/loopback time-aligned so the
+            // AEC reference and the mix never drift apart (WASAPI clocks are
+            // not synchronized between capture endpoints).
+            var aligner = new ChannelAligner();
 
             try
             {
@@ -134,12 +151,12 @@ public sealed class NAudio3AudioSource : IAudioSource
                     if (!state.IsRunning)
                         break;
 
-                    DrainAndPublish(loopbackSource, microphoneSource, readBuffer, buffer, signal,
-                        loopback?.Buffer, microphone?.Buffer);
+                    DrainAndPublish(loopbackSource, microphoneSource, buffer, signal,
+                        loopbackResampler, microphoneResampler, echoCanceller, aligner);
                 }
 
-                DrainAndPublish(loopbackSource, microphoneSource, readBuffer, buffer, signal,
-                    loopback?.Buffer, microphone?.Buffer);
+                DrainAndPublish(loopbackSource, microphoneSource, buffer, signal,
+                    loopbackResampler, microphoneResampler, echoCanceller, aligner);
             }
             finally
             {
@@ -191,46 +208,82 @@ public sealed class NAudio3AudioSource : IAudioSource
 
     private CaptureHandle? CreateLoopback(CaptureState state, ManualResetEventSlim signal) =>
         _mode is CaptureMode.Loopback or CaptureMode.Mix
-            ? CaptureHandle.CreateLoopback(state, signal)
+            ? CaptureHandle.CreateLoopback(state, signal, _targetRate)
             : null;
 
     private CaptureHandle? CreateMicrophone(CaptureState state, ManualResetEventSlim signal) =>
         _mode is CaptureMode.Mic or CaptureMode.Mix
-            ? CaptureHandle.CreateMicrophone(state, signal)
+            ? CaptureHandle.CreateMicrophone(state, signal, _targetRate)
             : null;
 
     private static void DrainAndPublish(
         BufferedWaveProvider? loopback,
         BufferedWaveProvider? microphone,
-        float[] readBuffer,
         ConcurrentQueueWrapper buffer,
         ManualResetEventSlim signal,
-        BufferedWaveProvider? loopbackBuf = null,
-        BufferedWaveProvider? micBuf = null)
+        StreamingFirResampler? loopbackResampler = null,
+        StreamingFirResampler? microphoneResampler = null,
+        NlmsEchoCanceller? echoCanceller = null,
+        ChannelAligner? aligner = null)
     {
         float[]? loopbackSamples = null;
         float[]? microphoneSamples = null;
         try
         {
-            var loopbackCount = Drain(loopback, readBuffer, ref loopbackSamples);
-            var microphoneCount = Drain(microphone, readBuffer, ref microphoneSamples);
-            var count = Math.Max(loopbackCount, microphoneCount);
+            var loopbackCount = Drain(loopback, loopbackResampler, ref loopbackSamples);
+            var microphoneCount = Drain(microphone, microphoneResampler, ref microphoneSamples);
+
+            if (aligner is null)
+                return;
+
+            // Time-align both channels: the aligner emits equal-length windows,
+            // carrying over excess samples of the faster clock to the next cycle.
+            var count = aligner.Align(
+                loopbackSamples.AsSpan(0, loopbackCount),
+                microphoneSamples.AsSpan(0, microphoneCount),
+                out var loopAligned,
+                out var micAligned,
+                out var loopActive,
+                out var micActive);
             if (count == 0)
                 return;
 
+            // Adaptive echo cancellation: subtract the loopback-derived echo
+            // estimate from the mic channel BEFORE metering/mixing, so both the
+            // UI level and the recognizer see the echo-free microphone signal.
+            if (echoCanceller is not null && EchoCancellation && loopActive && micActive)
+            {
+                echoCanceller.ProcessInPlace(
+                    loopAligned.AsSpan(0, count),
+                    micAligned.AsSpan(0, count));
+            }
+
             // Per-channel levels (pre-mix gain) so the mixer UI can show each source
-            if (microphoneCount > 0)
-                MicLevelMeter.PublishIfActive(microphoneSamples.AsSpan(0, microphoneCount));
-            if (loopbackCount > 0)
-                LoopbackLevelMeter.PublishIfActive(loopbackSamples.AsSpan(0, loopbackCount));
+            if (micActive)
+                MicLevelMeter.PublishIfActive(micAligned.AsSpan(0, count));
+            if (loopActive)
+                LoopbackLevelMeter.PublishIfActive(loopAligned.AsSpan(0, count));
 
             var batch = new float[count];
             for (var index = 0; index < count; index++)
             {
-                if (index < loopbackCount)
-                    batch[index] += loopbackSamples![index] * 0.5f * LoopbackVolume;
-                if (index < microphoneCount)
-                    batch[index] += microphoneSamples![index] * 0.6f * MicVolume;
+                // Normalize by the sum of active channel weights: no clipping when both
+                // channels are loud, no attenuation when only one is present, and no
+                // level step at the boundary where the shorter buffer ends.
+                float weight = 0f;
+                if (loopActive)
+                    weight += LoopbackVolume;
+                if (micActive)
+                    weight += MicVolume;
+                if (weight <= 0f)
+                    continue;
+
+                float s = 0f;
+                if (loopActive)
+                    s += loopAligned[index] * LoopbackVolume;
+                if (micActive)
+                    s += micAligned[index] * MicVolume;
+                batch[index] = s / weight;
             }
 
             buffer.Enqueue(batch);
@@ -246,11 +299,10 @@ public sealed class NAudio3AudioSource : IAudioSource
 
     /// <summary>
     /// Drain a <see cref="BufferedWaveProvider"/> directly to mono float samples at the
-    /// target rate. Replaces the WdlResamplingSampleProvider pipeline, which stalled on the
-    /// loopback stream (48 kHz float stereo) and returned almost no samples.
-    /// Steps: raw bytes → PCM/float decode → stereo average to mono → linear downsample.
+    /// target rate. Steps: raw bytes → PCM/float decode → stereo average to mono →
+    /// streaming FIR resample (windowed-sinc low-pass, state kept across drains).
     /// </summary>
-    private static int Drain(BufferedWaveProvider? source, float[] readBuffer, ref float[]? samples)
+    private static int Drain(BufferedWaveProvider? source, StreamingFirResampler? resampler, ref float[]? samples)
     {
         if (source is null)
             return 0;
@@ -268,30 +320,37 @@ public sealed class NAudio3AudioSource : IAudioSource
         if (frames <= 0)
             return 0;
 
-        var outCount = (int)((long)frames * 16000 / fmt.SampleRate);
-        if (outCount <= 0)
-            return 0;
-
-        EnsureCapacity(ref samples, outCount, 0);
-        var dst = samples!;
-        var channels = fmt.Channels;
-        var step = (double)fmt.SampleRate / 16000.0;
-
-        for (var o = 0; o < outCount; o++)
+        // Decode to mono float.
+        var mono = ArrayPool<float>.Shared.Rent(frames);
+        try
         {
-            var srcFrame = (int)(o * step);
-            if (srcFrame >= frames)
-                srcFrame = frames - 1;
+            var channels = fmt.Channels;
+            var bytesPerSample = fmt.BitsPerSample / 8;
+            for (var f = 0; f < frames; f++)
+            {
+                var offset = f * bytesPerFrame;
+                float sum = 0f;
+                for (var c = 0; c < channels; c++)
+                    sum += ReadSample(raw, offset + c * bytesPerSample, fmt);
+                mono[f] = sum / channels;
+            }
 
-            var offset = srcFrame * bytesPerFrame;
-            float sum = 0f;
-            for (var c = 0; c < channels; c++)
-                sum += ReadSample(raw, offset + c * (fmt.BitsPerSample / 8), fmt);
+            if (resampler is null)
+            {
+                // Rates already match — pass mono through as-is.
+                EnsureCapacity(ref samples, frames, 0);
+                mono.AsSpan(0, frames).CopyTo(samples);
+                return frames;
+            }
 
-            dst[o] = sum / channels;
+            var maxOut = resampler.GetMaxOutputCount(frames);
+            EnsureCapacity(ref samples, maxOut, 0);
+            return resampler.Process(mono.AsSpan(0, frames), samples!);
         }
-
-        return outCount;
+        finally
+        {
+            ArrayPool<float>.Shared.Return(mono);
+        }
     }
 
     /// <summary>Decode a single PCM16 or IEEE-float32 sample.</summary>
@@ -326,6 +385,123 @@ public sealed class NAudio3AudioSource : IAudioSource
             ArrayPool<float>.Shared.Return(samples);
     }
 
+    /// <summary>
+    /// Streaming windowed-sinc FIR low-pass resampler for real-time speech capture.
+    /// Processes audio chunk-by-chunk with a sliding window: the filter history
+    /// (state) is carried across chunks, so there are no clicks at frame boundaries
+    /// and no aliasing in the 4-8 kHz band that corrupts ASR features.
+    /// Latency is the FIR group delay (~1 ms), independent of chunk size.
+    /// </summary>
+    public sealed class StreamingFirResampler
+    {
+        private const int Taps = 32; // 2 ms at 16 kHz — enough for ~50 dB stop-band
+        private const int Phases = 64; // fractional-delay granularity
+        private const int TotalTaps = Taps * Phases;
+
+        private readonly float[] _h;      // windowed-sinc low-pass prototype
+        private readonly float[] _state;  // sliding window of source samples
+        private readonly double _step;    // source samples consumed per output sample
+        private double _pos;              // current fractional source position
+
+        private StreamingFirResampler(int sourceRate, int targetRate)
+        {
+            _step = (double)sourceRate / targetRate;
+            _h = BuildWindowedSinc(sourceRate, targetRate);
+            _state = new float[Taps];
+            _pos = 0;
+        }
+
+        /// <summary>Returns a resampler, or null when the rates already match.</summary>
+        public static StreamingFirResampler? Create(int sourceRate, int targetRate) =>
+            sourceRate == targetRate ? null : new StreamingFirResampler(sourceRate, targetRate);
+
+        public int GetMaxOutputCount(int inputFrames) =>
+            (int)((inputFrames + _pos) / _step) + 2;
+
+        /// <summary>
+        /// Resample one chunk of mono source samples into <paramref name="dst"/>.
+        /// Filter state and the fractional position persist across calls.
+        /// </summary>
+        public int Process(ReadOnlySpan<float> src, float[] dst)
+        {
+            var outCount = 0;
+            var total = _state.Length + src.Length; // virtual buffer: history + new data
+
+            while (true)
+            {
+                var i0 = (int)Math.Floor(_pos);
+                var frac = _pos - i0;
+                // The newest sample of the window must lie inside the virtual buffer.
+                if (i0 + Taps - 1 >= total)
+                    break;
+
+                var phase = (int)(frac * Phases);
+                if (phase >= Phases) phase = Phases - 1;
+
+                float acc = 0f;
+                var hBase = phase;
+                for (var k = 0; k < Taps; k++)
+                {
+                    var vIdx = i0 + k;
+                    float v = vIdx < _state.Length
+                        ? _state[vIdx]
+                        : src[vIdx - _state.Length];
+                    acc += v * _h[hBase + k * Phases];
+                }
+                dst[outCount++] = acc;
+                _pos += _step;
+            }
+
+            // Shift the sliding window: keep the last Taps source samples as history.
+            // consumed is the number of virtual-buffer samples we can discard; since
+            // the state length is Taps, consumed == src.Length always holds, so the
+            // new history is simply the tail of (old history + new chunk).
+            var consumed = src.Length;
+            if (consumed >= Taps)
+            {
+                src.Slice(consumed - Taps).CopyTo(_state);
+            }
+            else
+            {
+                Array.Copy(_state, consumed, _state, 0, Taps - consumed);
+                src.CopyTo(_state.AsSpan(Taps - consumed));
+            }
+            _pos -= consumed;
+
+            return outCount;
+        }
+
+        private static float[] BuildWindowedSinc(int sourceRate, int targetRate)
+        {
+            // Cutoff just below min(Nyquist) of the two rates; Blackman window.
+            var nyquist = Math.Min(sourceRate, targetRate) * 0.5;
+            var fc = nyquist * 0.9 / sourceRate; // normalized to source rate
+            var h = new float[TotalTaps];
+            var mid = (Taps - 1) * 0.5;
+
+            for (var k = 0; k < Taps; k++)
+            {
+                for (var p = 0; p < Phases; p++)
+                {
+                    var n = k + (double)p / Phases - mid;
+                    double sinc = n == 0
+                        ? 2 * Math.PI * fc
+                        : Math.Sin(2 * Math.PI * fc * n) / n;
+                    var w = 0.42 - 0.5 * Math.Cos(2 * Math.PI * (k * Phases + p) / (TotalTaps - 1))
+                                  + 0.08 * Math.Cos(4 * Math.PI * (k * Phases + p) / (TotalTaps - 1));
+                    h[k * Phases + p] = (float)(sinc * w);
+                }
+            }
+
+            // Normalize the DC gain of the integer phase to 1.
+            double phase0Sum = 0;
+            for (var k = 0; k < Taps; k++) phase0Sum += h[k * Phases];
+            var scale = (float)(1.0 / phase0Sum);
+            for (var i = 0; i < h.Length; i++) h[i] *= scale;
+            return h;
+        }
+    }
+
 // CS0618: WasapiCapture/WasapiLoopbackCapture are deprecated in NAudio 3 preview in
 // favour of WasapiRecorderBuilder, but the builder API never raised DataAvailable for
 // loopback in this scenario (capture-diag.log investigation), so the proven classes stay.
@@ -335,19 +511,24 @@ public sealed class NAudio3AudioSource : IAudioSource
         private readonly WasapiCapture? _microphone;
         private readonly WasapiLoopbackCapture? _loopback;
 
-        private CaptureHandle(WasapiCapture microphone)
+        private CaptureHandle(WasapiCapture microphone, int targetRate)
         {
             _microphone = microphone;
             Buffer = CreateBuffer(microphone.WaveFormat);
+            Resampler = StreamingFirResampler.Create(microphone.WaveFormat.SampleRate, targetRate);
         }
 
-        private CaptureHandle(WasapiLoopbackCapture loopback)
+        private CaptureHandle(WasapiLoopbackCapture loopback, int targetRate)
         {
             _loopback = loopback;
             Buffer = CreateBuffer(loopback.WaveFormat);
+            Resampler = StreamingFirResampler.Create(loopback.WaveFormat.SampleRate, targetRate);
         }
 
         public BufferedWaveProvider Buffer { get; }
+
+        /// <summary>Per-channel streaming FIR resampler; null when no rate conversion is needed.</summary>
+        public StreamingFirResampler? Resampler { get; }
 
         private static BufferedWaveProvider CreateBuffer(WaveFormat format) =>
             new(format, TimeSpan.FromSeconds(2))
@@ -356,7 +537,7 @@ public sealed class NAudio3AudioSource : IAudioSource
                 ReadFully = false
             };
 
-        public static CaptureHandle CreateMicrophone(CaptureState state, ManualResetEventSlim signal)
+        public static CaptureHandle CreateMicrophone(CaptureState state, ManualResetEventSlim signal, int targetRate)
         {
             // WasapiCapture (shared mode) replaces WaveIn/WinMM so the whole
             // capture path stays portable (NAudio.Wasapi targets net9.0). It
@@ -364,7 +545,7 @@ public sealed class NAudio3AudioSource : IAudioSource
             // 16 kHz mono regardless of the device mix format.
             var device = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
             var capture = new WasapiCapture(device);
-            var handle = new CaptureHandle(capture);
+            var handle = new CaptureHandle(capture, targetRate);
             handle._microphone!.DataAvailable += (_, args) =>
             {
                 if (state.IsRunning)
@@ -378,13 +559,13 @@ public sealed class NAudio3AudioSource : IAudioSource
             return handle;
         }
 
-        public static CaptureHandle CreateLoopback(CaptureState state, ManualResetEventSlim signal)
+        public static CaptureHandle CreateLoopback(CaptureState state, ManualResetEventSlim signal, int targetRate)
         {
             // WasapiLoopbackCapture is the proven loopback path (same as the NAudio2 provider):
             // the WasapiRecorder builder API in the NAudio 3 preview never raised DataAvailable
             // in this scenario, so loopback stayed silent (see capture-diag.log investigation).
             var capture = new WasapiLoopbackCapture();
-            var handle = new CaptureHandle(capture);
+            var handle = new CaptureHandle(capture, targetRate);
             handle._loopback!.DataAvailable += (_, args) =>
             {
                 if (state.IsRunning)

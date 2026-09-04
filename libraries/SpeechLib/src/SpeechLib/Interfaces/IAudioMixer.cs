@@ -12,6 +12,13 @@ public interface IAudioMixer
     /// <summary>Loopback gain (0.0 – 1.0). Applied in real time during mixing.</summary>
     float LoopbackVolume { get; set; }
 
+    /// <summary>
+    /// Adaptive echo cancellation (NLMS AEC) toggle for Mix mode. When enabled,
+    /// the loopback-derived echo estimate is subtracted from the microphone
+    /// channel before mixing, removing speaker-to-mic echo.
+    /// </summary>
+    bool EchoCancellation { get; set; }
+
     /// <summary>Shared level meter publishing the current input level (RMS, 0–1).</summary>
     AudioLevelMeter LevelMeter { get; }
 

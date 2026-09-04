@@ -78,6 +78,8 @@ public sealed class AppSettings
     public float MicVolume { get; set; } = 1.0f;
     /// <summary>Loopback volume (0.0 - 1.0). Applied in real-time during capture.</summary>
     public float LoopbackVolume { get; set; } = 1.0f;
+    /// <summary>Adaptive echo cancellation (NLMS AEC) in Mix mode: subtract speaker-to-mic echo.</summary>
+    public bool EchoCancellation { get; set; } = true;
 
     // ── Live translation (LiteRT / Gemma 4) ─────────
     /// <summary>Translate recognized text on the fly using a local LiteRT model.</summary>

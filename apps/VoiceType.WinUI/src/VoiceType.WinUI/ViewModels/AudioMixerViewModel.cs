@@ -39,6 +39,9 @@ public sealed partial class AudioMixerViewModel : ObservableObject
     [ObservableProperty]
     private string _audioSource = "Mic";
 
+    [ObservableProperty]
+    private bool _echoCancellation = true;
+
     public string MicVolumePercent => $"{MicVolume * 100:F0}%";
     public string LoopbackVolumePercent => $"{LoopbackVolume * 100:F0}%";
 
@@ -70,10 +73,12 @@ public sealed partial class AudioMixerViewModel : ObservableObject
         MicVolume = settings.MicVolume;
         LoopbackVolume = settings.LoopbackVolume;
         _audioSource = settings.AudioSource;
+        _echoCancellation = settings.EchoCancellation;
 
         // Apply to audio pipeline
         _mixer.MicVolume = MicVolume;
         _mixer.LoopbackVolume = LoopbackVolume;
+        _mixer.EchoCancellation = _echoCancellation;
 
         // Subscribe to per-channel + combined level updates
         _masterLevelSubscription = _mixer.LevelMeter.Subscribe(new LevelObserver(this, l =>
@@ -127,6 +132,19 @@ public sealed partial class AudioMixerViewModel : ObservableObject
             });
             var saved = _settingsService.Load();
             WeakReferenceMessenger.Default.Send(new SettingsSavedMessage(saved));
+        });
+    }
+
+    partial void OnEchoCancellationChanged(bool value)
+    {
+        _mixer.EchoCancellation = value;
+        var version = Interlocked.Increment(ref _saveVersion);
+        _ = Task.Run(() =>
+        {
+            if (version != Volatile.Read(ref _saveVersion))
+                return;
+
+            _settingsService.Update(settings => settings.EchoCancellation = value);
         });
     }
 

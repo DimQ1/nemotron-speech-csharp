@@ -20,6 +20,12 @@ public sealed class NAudio2AudioMixer : IAudioMixer
         set => BufferedCaptureSource.LoopbackVolume = value;
     }
 
+    public bool EchoCancellation
+    {
+        get => BufferedCaptureSource.EchoCancellation;
+        set => BufferedCaptureSource.EchoCancellation = value;
+    }
+
     public AudioLevelMeter LevelMeter => BufferedCaptureSource.AudioLevelMeter;
 
     public AudioLevelMeter MicLevelMeter => BufferedCaptureSource.MicLevelMeter;

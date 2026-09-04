@@ -30,6 +30,13 @@ public sealed class BufferedCaptureSource : IAudioSource
     private static float _micVolume = 1.0f;
     private static float _loopbackVolume = 1.0f;
 
+    /// <summary>
+    /// Live toggle for adaptive echo cancellation (NLMS AEC) in Mix mode.
+    /// When enabled, the loopback-derived echo estimate is subtracted from the
+    /// microphone channel before mixing, removing speaker-to-mic echo.
+    /// </summary>
+    public static bool EchoCancellation { get; set; } = true;
+
     /// <summary>Mic volume (0.0 - 1.0). Applied in real-time during mixing.</summary>
     public static float MicVolume
     {
@@ -163,10 +170,20 @@ public sealed class BufferedCaptureSource : IAudioSource
             throw new InvalidOperationException(
                 "No audio source could be started. Check your microphone and system-audio settings.");
 
+        // One AEC per capture session: filter taps converge over time and
+        // must persist across drain cycles.
+        var echoCanceller = loopbackSource is not null && micSource is not null
+            ? new NlmsEchoCanceller()
+            : null;
+
+        // One aligner per session: keeps mic/loopback time-aligned (WASAPI
+        // capture clocks are not synchronized between endpoints).
+        var aligner = new ChannelAligner();
+
         // ── Main drain loop — drain all available audio each cycle ──
-        // Reads ALL buffered audio from each source independently and
-        // mixes them. A silent source is zero-filled so the other continues
-        // uninterrupted (unlike MixingSampleProvider which blocks on empty inputs).
+        // Reads ALL buffered audio from each source independently, time-aligns
+        // them via carry-over buffers, then echo-cancels and mixes. A silent
+        // source is reported inactive and the other passes through.
         var chunkBuf = new float[4096];
         while (state.IsRunning)
         {
@@ -178,22 +195,44 @@ public sealed class BufferedCaptureSource : IAudioSource
                 var loopSamples = DrainAll(loopbackSource, chunkBuf);
                 var micSamples = DrainAll(micSource, chunkBuf);
 
-                int count = Math.Max(loopSamples.Count, micSamples.Count);
+                int count = aligner.Align(
+                    System.Runtime.InteropServices.CollectionsMarshal.AsSpan(loopSamples),
+                    System.Runtime.InteropServices.CollectionsMarshal.AsSpan(micSamples),
+                    out var loopAligned,
+                    out var micAligned,
+                    out var loopActive,
+                    out var micActive);
                 if (count == 0) continue;
 
+                // Adaptive echo cancellation BEFORE metering/mixing: subtract the
+                // loopback-derived echo estimate from the mic channel.
+                if (echoCanceller is not null && EchoCancellation && loopActive && micActive)
+                {
+                    echoCanceller.ProcessInPlace(
+                        loopAligned.AsSpan(0, count),
+                        micAligned.AsSpan(0, count));
+                }
+
                 // Per-channel levels (pre-mix gain) so the mixer UI can show each source
-                if (micSamples.Count > 0)
-                    MicLevelMeter.PublishIfActive(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(micSamples));
-                if (loopSamples.Count > 0)
-                    LoopbackLevelMeter.PublishIfActive(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(loopSamples));
+                if (micActive)
+                    MicLevelMeter.PublishIfActive(micAligned.AsSpan(0, count));
+                if (loopActive)
+                    LoopbackLevelMeter.PublishIfActive(loopAligned.AsSpan(0, count));
 
                 var batch = new float[count];
                 for (int i = 0; i < count; i++)
                 {
+                    // Normalize by active channel weights: no clipping, no level
+                    // step where the shorter buffer ends.
+                    float weight = 0f;
+                    if (loopActive) weight += _loopbackVolume;
+                    if (micActive) weight += _micVolume;
+                    if (weight <= 0f) continue;
+
                     float s = 0f;
-                    if (i < loopSamples.Count) s += loopSamples[i] * _loopbackVolume;
-                    if (i < micSamples.Count) s += micSamples[i] * _micVolume;
-                    batch[i] = s;
+                    if (loopActive) s += loopAligned[i] * _loopbackVolume;
+                    if (micActive) s += micAligned[i] * _micVolume;
+                    batch[i] = s / weight;
                 }
 
                 buffer.Enqueue(batch);
@@ -212,16 +251,27 @@ public sealed class BufferedCaptureSource : IAudioSource
             var loopSamples = DrainAll(loopbackSource, chunkBuf);
             var micSamples = DrainAll(micSource, chunkBuf);
 
-            int count = Math.Max(loopSamples.Count, micSamples.Count);
+            int count = aligner.Align(
+                System.Runtime.InteropServices.CollectionsMarshal.AsSpan(loopSamples),
+                System.Runtime.InteropServices.CollectionsMarshal.AsSpan(micSamples),
+                out var loopAligned,
+                out var micAligned,
+                out var loopActive,
+                out var micActive);
             if (count > 0)
             {
                 var batch = new float[count];
                 for (int i = 0; i < count; i++)
                 {
+                    float weight = 0f;
+                    if (loopActive) weight += _loopbackVolume;
+                    if (micActive) weight += _micVolume;
+                    if (weight <= 0f) continue;
+
                     float s = 0f;
-                    if (i < loopSamples.Count) s += loopSamples[i] * _loopbackVolume;
-                    if (i < micSamples.Count) s += micSamples[i] * _micVolume;
-                    batch[i] = s;
+                    if (loopActive) s += loopAligned[i] * _loopbackVolume;
+                    if (micActive) s += micAligned[i] * _micVolume;
+                    batch[i] = s / weight;
                 }
                 buffer.Enqueue(batch);
                 signal.Set();
