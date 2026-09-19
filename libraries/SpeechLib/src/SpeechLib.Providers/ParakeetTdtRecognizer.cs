@@ -416,6 +416,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
             InterOpNumThreads = 1,
             GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
         };
+        OrtCpuTuning.DisableThreadSpinning(options);
 
         // Runtime provider selection with graceful CPU fallback. The provider
         // is picked from the libraries actually shipped.

@@ -214,9 +214,13 @@ namespace SpeechLib
 
                     // Pin intra-op threads to physical P-cores for best ONNX throughput.
                     // inter_op_num_threads = 1 avoids contention on CPU inference.
-                    // force_spinning_stop prevents busy-waiting after work is done.
+                    // allow_spinning = 0 stops the workers busy-waiting between kernels:
+                    // with the encoder and decoder sessions both alive they otherwise
+                    // starve each other and the host threads (see OrtCpuTuning).
                     sessionOptions["intra_op_num_threads"] = optimalIntraThreads;
                     sessionOptions["inter_op_num_threads"] = 1;
+                    sessionOptions["session.intra_op.allow_spinning"] = "0";
+                    sessionOptions["session.inter_op.allow_spinning"] = "0";
                     sessionOptions["session.force_spinning_stop"] = "1";
                     if (sequentialExecution.HasValue)
                     {

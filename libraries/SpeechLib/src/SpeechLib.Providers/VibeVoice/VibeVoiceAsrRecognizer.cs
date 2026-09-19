@@ -386,6 +386,7 @@ public sealed class VibeVoiceAsrRecognizer : IStreamingSpeechRecognizer, IRuntim
             InterOpNumThreads = 1,
             GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
         };
+        OrtCpuTuning.DisableThreadSpinning(options);
 
         // A persisted provider setting may name a provider that is no longer
         // shipped (for example "cuda" after a GPU build); degrade to CPU

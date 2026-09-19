@@ -98,6 +98,7 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
         bool skipSilentBlocks = true,
         int intraOpThreads = 0,
         int encoderIntraOpThreads = 0,
+        int decoderInitIntraOpThreads = 0,
         bool emitFirstBlock = false)
     {
         var dir = Path.GetFullPath(modelDir);
@@ -108,8 +109,16 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
         // the encoder is compute-bound (wants cores), the decoder is
         // memory-bandwidth bound (measured: forcing 19 threads on both sessions
         // made total RTF twice as bad). They are configured independently.
+        //
+        // decoder_init is the *prefill* half of the decoder and behaves like the
+        // encoder: it is compute-bound, so it gets the full core count by default
+        // (measured: it dominates the streaming budget). Sharing the step session's
+        // half-core setting left about a third of the prefill cost on the table.
         var encoderOptions = CreateSessionOptions(executionProvider, encoderIntraOpThreads);
         var decoderOptions = CreateSessionOptions(executionProvider, intraOpThreads);
+        var decoderInitOptions = CreateSessionOptions(
+            executionProvider,
+            decoderInitIntraOpThreads > 0 ? decoderInitIntraOpThreads : Environment.ProcessorCount);
         _blockStreaming = !string.IsNullOrWhiteSpace(streamingEncoderPath);
         _blockSamples = _blockStreaming
             ? SecondsToSamples(streamingBlockSeconds, nameof(streamingBlockSeconds))
@@ -121,7 +130,7 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
             throw new FileNotFoundException("Streaming encoder graph not found.", encoderPath);
 
         _encoder = new InferenceSession(encoderPath, encoderOptions);
-        _decoderInit = new InferenceSession(Path.Combine(dir, "decoder_init.int4.onnx"), decoderOptions);
+        _decoderInit = new InferenceSession(Path.Combine(dir, "decoder_init.int4.onnx"), decoderInitOptions);
         _decoderStep = new InferenceSession(Path.Combine(dir, "decoder_step.int4.onnx"), decoderOptions);
 
         _tokenizer = Qwen3BpeTokenizer.Load(dir);
@@ -608,6 +617,10 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
             GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
         };
 
+        // ONNX Runtime's CPU workers spin-wait by default, which starves the other
+        // sessions and the host threads; see OrtCpuTuning for the measurements.
+        OrtCpuTuning.DisableThreadSpinning(options);
+
         // A persisted provider setting may name a provider that is no longer
         // shipped (for example "cuda" after a GPU build); degrade to CPU
         // instead of failing session creation.
@@ -616,6 +629,7 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
         return options;
     }
 
+    /// <summary>
     public void Dispose()
     {
         if (_disposed) return;

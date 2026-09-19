@@ -113,13 +113,17 @@ public sealed class SileroVadFilter : IVadFilter
     }
 
     private static SessionOptions CreateOptions()
-        => new()
+    {
+        var options = new SessionOptions
         {
             // VAD is tiny and latency-sensitive; a couple of threads is plenty.
             IntraOpNumThreads = 2,
             InterOpNumThreads = 1,
             GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
         };
+        OrtCpuTuning.DisableThreadSpinning(options);
+        return options;
+    }
 
     public void Dispose()
     {
