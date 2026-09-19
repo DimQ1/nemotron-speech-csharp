@@ -110,48 +110,24 @@ public interface IAudioSource : IDisposable
 
 ---
 
-## Pattern 3: Multi-GPU Build Configuration
+## Pattern 3: CPU-only ONNX Runtime GenAI
 
-### File: `NemotronSpeech.csproj`
-
-**MSBuild `Choose/When` pattern** for conditional NuGet packages per GPU architecture:
+The repository previously selected CUDA / DirectML / Blackwell GenAI packages through
+a `GpuArch` MSBuild property. That switch was removed — every build configuration
+(CI, scripts, the desktop apps and their settings UI) already ran CPU-only:
 
 ```xml
-<PropertyGroup>
-    <GpuArch Condition="'$(GpuArch)' == ''">Standard</GpuArch>
-</PropertyGroup>
-
-<Choose>
-    <When Condition="'$(GpuArch)' == 'Blackwell'">
-        <!-- Nightly ORT GenAI + CUDA 13 for RTX 50 -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.15.0-dev-*" />
-    </When>
-    <When Condition="'$(GpuArch)' == 'CPU'">
-        <!-- CPU-only, no CUDA -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.14.1" />
-    </When>
-    <When Condition="'$(GpuArch)' == 'DML'">
-        <!-- DirectML (any GPU via DirectX) -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.DirectML" Version="0.14.1" />
-    </When>
-    <Otherwise>
-        <!-- Standard: RTX 20/30/40, CUDA 12 -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.14.1" />
-    </Otherwise>
-</Choose>
+<ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.15.2" />
+</ItemGroup>
 ```
 
-**Build commands:**
+**Build command:**
 | Command | Target |
 |---------|--------|
-| `dotnet build -c Release` | RTX 20/30/40 |
-| `dotnet build -c Release -p:GpuArch=Blackwell` | RTX 50 |
-| `dotnet build -c Release -p:GpuArch=CPU` | CPU only |
-| `dotnet build -c Release -p:GpuArch=DML` | DirectML |
+| `dotnet build -c Release` | CPU |
 
-**NuGet feeds** (`nuget.config`):
-- Standard: `api.nuget.org`
-- Nightly: `https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ORT-Nightly/nuget/v3/index.json`
+**NuGet feeds** (`nuget.config`): `api.nuget.org` only.
 
 ---
 
@@ -265,7 +241,7 @@ Key rules:
 
 ## Typical Development Workflow
 
-1. Build for target GPU: `dotnet build NemotronSpeech -c Release [-p:GpuArch=...]`
-2. Copy CUDA/cuDNN DLLs to output `runtimes\win-x64\native\`
+1. Build: `dotnet build NemotronSpeech.slnx -c Release` — CPU-only
+2. Native ONNX Runtime DLLs are copied to the output automatically
 3. Export/download ONNX model to `modules/asr/<variant>/`
 4. Run: `dotnet run --project NemotronSpeech -c Release --no-build -- "<model_path>" <mode> [ep] [--language <code>]`

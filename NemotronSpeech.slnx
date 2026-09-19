@@ -12,9 +12,6 @@
     Build it separately: dotnet build apps/VoiceType.Uno/src/VoiceType.Uno.sln -p:GpuArch=CPU
   -->
   <Folder Name="/apps/VoiceType.Uno/" />
-  <Folder Name="/build/">
-    <Project Path="build/AudioConvertProbe/AudioConvertProbe.csproj" />
-  </Folder>
   <Folder Name="/libraries/">
     <Project Path="libraries/VoiceType.Hotkeys/VoiceType.Hotkeys.csproj" />
   </Folder>
@@ -26,9 +23,6 @@
     <Project Path="libraries/SpeechLib/src/SpeechLib.ModelDownload/SpeechLib.ModelDownload.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.LiteRT/SpeechLib.LiteRT.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.LiteRT.Native/SpeechLib.LiteRT.Native.csproj" />
-  </Folder>
-  <Folder Name="/libraries/SpeechLib/src/">
-    <Project Path="libraries/SpeechLib/src/SpeechLib.ModelDownload/SpeechLib.ModelDownload.csproj" />
   </Folder>
   <Folder Name="/libraries/SpeechLib/tests/">
     <Project Path="libraries/SpeechLib/tests/SpeechLib.ModelDownload.Tests/SpeechLib.ModelDownload.Tests.csproj" />

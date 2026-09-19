@@ -1,7 +1,10 @@
 using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Decorators;
+using SpeechLib.ModelDownload;
 using SpeechLib.ParakeetTdt;
+using SpeechLib.Qwen3;
+using SpeechLib.VibeVoice;
 
 namespace SpeechLib.Providers;
 
@@ -17,8 +20,25 @@ public static class RecognizerFactory
     {
         var langId = LanguageMapper.Resolve(options.Language);
         bool isParakeet = ParakeetTdtRecognizer.IsParakeetTdtModel(options.ModelPath);
+        bool isVibeVoice = VibeVoiceModelDetector.IsVibeVoiceAsrModel(options.ModelPath);
+        bool isQwen3Streaming = Qwen3AsrStreamingRecognizer.IsQwen3AsrStreamingModel(options.ModelPath);
+        bool isQwen3 = !isQwen3Streaming && Qwen3AsrRecognizer.IsQwen3AsrModel(options.ModelPath);
 
-        IStreamingSpeechRecognizer recognizer = isParakeet
+        IStreamingSpeechRecognizer recognizer = isVibeVoice
+            ? new VibeVoiceAsrRecognizer(
+                options.ModelPath,
+                executionProvider: options.ExecutionProvider)
+            : isQwen3Streaming
+            ? new Qwen3AsrStreamingRecognizer(
+                options.ModelPath,
+                executionProvider: options.ExecutionProvider,
+                language: options.Language)
+            : isQwen3
+            ? new Qwen3AsrRecognizer(
+                options.ModelPath,
+                executionProvider: options.ExecutionProvider,
+                language: options.Language)
+            : isParakeet
             ? new ParakeetTdtRecognizer(options.ModelPath, executionProvider: options.ExecutionProvider)
             : new ModelSession(
                 options.ModelPath,
@@ -31,13 +51,16 @@ public static class RecognizerFactory
                     repetition_penalty = options.RepetitionPenalty
                 });
 
+        if (recognizer is ITranslationConfigurable translationConfigurable)
+            translationConfigurable.TrySetTranslation(options.TranslationEnabled, options.TranslationLanguage ?? "auto");
+
         // Universal Silero VAD gate: recognizers without native VAD (GenAI VAD)
         // or utterance endpointing get the shared external gate.
         if (recognizer is not IUtteranceStreamingRecognizer &&
             recognizer is not IRuntimeConfigurable)
             recognizer = WrapWithVad(recognizer, options.UseVad, options.SileroVadPath);
 
-        if (!isParakeet)
+        if (!isParakeet && !isVibeVoice && !isQwen3Streaming && !isQwen3)
             recognizer = new MetricsRecognizerDecorator(recognizer, "ModelSession");
 
         return recognizer;
@@ -74,6 +97,12 @@ public sealed record RecognizerFactoryOptions
 
     /// <summary>BCP-47 language code or numeric lang_id; null = auto-detect.</summary>
     public string? Language { get; init; }
+
+    /// <summary>Enable prompt-based translation when the selected recognizer supports it.</summary>
+    public bool TranslationEnabled { get; init; }
+
+    /// <summary>BCP-47 target language for prompt-based translation.</summary>
+    public string? TranslationLanguage { get; init; }
 
     /// <summary>Enable voice activity detection where supported.</summary>
     public bool UseVad { get; init; }

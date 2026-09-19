@@ -11,6 +11,8 @@ modules/
 work/
 models/*
 !models/README.md
+!models/qwen3-asr-1.7b-onnx-streaming/
+!models/qwen3-asr-1.7b-onnx-streaming/streaming_config.json
 build/
 converter/build/
 

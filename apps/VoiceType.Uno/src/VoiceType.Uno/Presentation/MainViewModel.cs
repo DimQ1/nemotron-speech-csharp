@@ -25,6 +25,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ITrayIndicator _tray;
     private readonly TranslationService _translation;
     private readonly DispatcherQueue _dispatcher;
+    private readonly DispatcherQueueTimer _partialResultTimer;
+    private string? _pendingPartialText;
 
     private AppSettings _settings;
     private int _toggleHotkeyId;
@@ -55,6 +57,16 @@ public sealed partial class MainViewModel : ObservableObject
         _translation = translation;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
 
+        // Partial results arrive on every decode step (the recognizer emits one per
+        // processed chunk). Coalesce them into a trailing-edge 200 ms window — the
+        // same debounce the WinUI app uses — so the transcript binding, the layout
+        // pass and the translation feed run at a bounded rate instead of once per
+        // decode step.
+        _partialResultTimer = _dispatcher.CreateTimer();
+        _partialResultTimer.Interval = TimeSpan.FromMilliseconds(200);
+        _partialResultTimer.IsRepeating = false;
+        _partialResultTimer.Tick += (_, _) => FlushPendingPartialResult();
+
         _settings = settingsService.Load();
         _selectedLanguage = _settings.Language;
         IsTextInjectionEnabled = _settings.IsTextInjectionEnabled;
@@ -66,23 +78,20 @@ public sealed partial class MainViewModel : ObservableObject
         _translation.SetAdditionalSystemPrompt(_settings.TranslationSystemPrompt);
         _translation.SetComputeBackend(_settings.TranslationComputeBackend);
 
-        _recognition.PartialResult += text => _dispatcher.TryEnqueue(() =>
-        {
-            if (IsManualInputEnabled)
-                return; // manual keyboard input owns the transcript while enabled
-
-            FloatingText = text;
-            if (IsTranslationEnabled)
-                _translation.Feed(text);
-        });
+        _recognition.PartialResult += QueuePartialResult;
         _recognition.FinalResult += text => _dispatcher.TryEnqueue(() =>
         {
             if (IsManualInputEnabled)
                 return; // manual keyboard input owns the transcript while enabled
 
+            // The final result supersedes any queued partial — drop the debounce
+            // window so a stale partial can never overwrite the committed text.
+            _partialResultTimer.Stop();
+            _pendingPartialText = null;
+
             FloatingText = text;
             if (IsTextInjectionEnabled && !string.IsNullOrEmpty(text))
-                _textInjector.Inject(text);
+                InjectOffUiThread(text);
 
             if (IsTranslationEnabled)
             {
@@ -200,6 +209,55 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Coalesces a partial recognition result into a trailing-edge debounce window
+    /// (see <see cref="_partialResultTimer"/>) so the transcript updates at a
+    /// bounded rate instead of once per decode step.
+    /// </summary>
+    private void QueuePartialResult(string text)
+    {
+        _dispatcher.TryEnqueue(() =>
+        {
+            if (IsManualInputEnabled)
+                return; // manual keyboard input owns the transcript while enabled
+
+            _pendingPartialText = text;
+            // Restart the trailing-edge window; the timer is non-repeating.
+            _partialResultTimer.Stop();
+            _partialResultTimer.Start();
+        });
+    }
+
+    private void FlushPendingPartialResult()
+    {
+        var text = _pendingPartialText;
+        _pendingPartialText = null;
+
+        if (text is null || IsManualInputEnabled)
+            return;
+
+        FloatingText = text;
+        if (IsTranslationEnabled)
+            _translation.Feed(text);
+    }
+
+    /// <summary>
+    /// Text injection can block for ~80 ms on Linux (clipboard-owner hand-off plus a
+    /// synthetic paste chord). Run it off the UI thread so the transcript stays
+    /// responsive while the keystroke is delivered.
+    /// </summary>
+    private void InjectOffUiThread(string text) => _ = Task.Run(() =>
+    {
+        try
+        {
+            _textInjector.Inject(text);
+        }
+        catch (Exception ex)
+        {
+            _dispatcher.TryEnqueue(() => StatusText = $"Injection error: {ex.Message}");
+        }
+    });
+
     private void OnHotkeyPressed(int id)
     {
         if (id > 0 && id == _toggleHotkeyId)
@@ -210,7 +268,7 @@ public sealed partial class MainViewModel : ObservableObject
             _dispatcher.TryEnqueue(() =>
             {
                 if (!string.IsNullOrEmpty(FloatingText))
-                    _textInjector.Inject(FloatingText);
+                    InjectOffUiThread(FloatingText);
             });
     }
 

@@ -90,7 +90,11 @@ public sealed class ModelSession : IStreamingSpeechRecognizer, ILanguageConfigur
         if (IsSingleLanguage) return false;
         try
         {
-            _generator.SetRuntimeOption("lang_id", language);
+            var langId = LanguageMapper.Resolve(language);
+            if (langId is null)
+                return false;
+
+            _generator.SetRuntimeOption("lang_id", langId);
             return true;
         }
         catch (Exception e)

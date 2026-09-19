@@ -32,10 +32,10 @@ applyTo: "apps/NemotronSpeech/**"
 ## Build and test
 
 ```powershell
-dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=CPU
+dotnet build NemotronSpeech.slnx -c Release
 dotnet test apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj --filter "FullyQualifiedName~Unit_"
 ```
 
-Use `GpuArch=Blackwell` only with the ORT-Nightly feed and `GpuArch=DML` for DirectML builds. Do not commit `bin`, `obj`, benchmark artifacts, downloaded models, or generated transcripts.
+Builds are CPU-only (`Microsoft.ML.OnnxRuntimeGenAI` CPU); the `GpuArch` switch and its CUDA / DirectML variants were removed. Do not commit `bin`, `obj`, benchmark artifacts, downloaded models, or generated transcripts.
 
 Preserve nullable reference types, implicit usings, file-scoped namespaces, and the existing record-based `AppOptions` parsing style.

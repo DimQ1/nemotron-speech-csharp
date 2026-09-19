@@ -10,7 +10,7 @@ namespace SpeechLib.Audio;
 /// Speech forwarding is transparent: while speech is active the inner
 /// recognizer receives the exact same stream it would without the wrapper.
 /// </summary>
-public sealed class VadSpeechRecognizer : IStreamingSpeechRecognizer, IRuntimeConfigurable
+public sealed class VadSpeechRecognizer : IStreamingSpeechRecognizer, ILanguageConfigurable, ITranslationConfigurable, IRuntimeConfigurable
 {
     private readonly IStreamingSpeechRecognizer _inner;
     private readonly IVadFilter _vad;
@@ -138,6 +138,12 @@ public sealed class VadSpeechRecognizer : IStreamingSpeechRecognizer, IRuntimeCo
     /// <inheritdoc />
     public bool TrySetSearchOptions(int numBeams, double repetitionPenalty) =>
         (_inner as IRuntimeConfigurable)?.TrySetSearchOptions(numBeams, repetitionPenalty) == true;
+
+    public bool TrySetLanguage(string language) =>
+        (_inner as ILanguageConfigurable)?.TrySetLanguage(language) == true;
+
+    public bool TrySetTranslation(bool enabled, string targetLanguage) =>
+        (_inner as ITranslationConfigurable)?.TrySetTranslation(enabled, targetLanguage) == true;
 
     private static void AppendRing(List<float> ring, float[] chunk, int capacity)
     {

@@ -235,9 +235,8 @@ public sealed class RecognitionService : IDisposable
         if (_recognizer is not ILanguageConfigurable languageConfigurable)
             return;
 
-        var languageId = LanguageMapper.Resolve(language);
-        if (languageId is not null)
-            languageConfigurable.TrySetLanguage(languageId);
+        if (!string.IsNullOrWhiteSpace(language))
+            languageConfigurable.TrySetLanguage(language);
     }
 
     private Task ProcessLoop()
@@ -269,11 +268,21 @@ public sealed class RecognitionService : IDisposable
                             raw = _recognizer!.ProcessAudio(batch);
 
                         if (raw is not null)
-                        {
                             _accumulatedText.Append(raw);
-                            // Strip <ru-RU> language tags live so the transcript reads clean.
-                            PartialResult?.Invoke(PartialPostProcessing.Execute(_accumulatedText.ToString()));
-                        }
+
+                        // The recognizer's PartialText is revisable and never committed:
+                        // show committed + provisional so live text appears early while the
+                        // commit policy stays conservative. Only the committed text is used
+                        // for the final transcript and for text injection.
+                        var provisional = _recognizer!.PartialText;
+                        var display = string.IsNullOrEmpty(provisional)
+                            ? _accumulatedText.ToString()
+                            : _accumulatedText.Length > 0
+                                ? _accumulatedText + " " + provisional
+                                : provisional;
+
+                        if (display.Length > 0)
+                            PartialResult?.Invoke(PartialPostProcessing.Execute(display));
                     }
                 }
 

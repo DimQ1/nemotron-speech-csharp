@@ -23,18 +23,22 @@ public sealed partial class MainPage : Page
         if (e.PropertyName == nameof(MainViewModel.IsTranslationVisible))
             UpdateTranslationRowHeight();
         else if (e.PropertyName == nameof(MainViewModel.FloatingText) && ViewModel.IsAutoScrollEnabled)
-            ScrollToEnd(TranscriptScroll);
+            DispatcherQueue.TryEnqueue(() => ScrollToEnd(TranscriptScroll));
         else if (e.PropertyName == nameof(MainViewModel.TranslatedText) && ViewModel.IsAutoScrollEnabled)
-            ScrollToEnd(TranslationScroll);
+            DispatcherQueue.TryEnqueue(() => ScrollToEnd(TranslationScroll));
     }
 
-    /// <summary>Auto-scroll a view to the newest text.</summary>
+    /// <summary>
+    /// Auto-scroll a view to the newest text. Deferred to the dispatcher so layout
+    /// has already grown the scrollable extent, and using double.MaxValue (which the
+    /// ScrollViewer clamps to the real maximum) so no synchronous UpdateLayout()
+    /// pass is required.
+    /// </summary>
     private static void ScrollToEnd(ScrollViewer scroll)
     {
         if (scroll is null)
             return;
-        scroll.UpdateLayout();
-        scroll.ChangeView(null, scroll.ScrollableHeight, null);
+        scroll.ChangeView(null, double.MaxValue, null);
     }
 
     /// <summary>

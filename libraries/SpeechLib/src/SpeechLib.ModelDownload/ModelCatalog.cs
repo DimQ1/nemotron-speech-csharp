@@ -60,6 +60,19 @@ public static class ModelCatalog
             UseCase: ModelUseCase.FastDictation,
             Research: new ModelResearch(new WerMetrics(17.66, 13.83, 21.17), new SpeedMetrics(0.254), Cv17, "build/wer-reports/nemotron-cpu-fp32-c056-20260828.md")),
 
+        // ── Qwen3-ASR 1.7B (hybrid INT4 decoder, block streaming) ──
+        new(
+            CommercialName: "Qwen3-ASR 1.7B",
+            RepoId: "andrewleech/qwen3-asr-1.7b-onnx",
+            Tagline: "Qwen3 quality · block streaming",
+            Description: "High-quality multilingual recognition using Qwen3's decoder with 2-second encoder blocks and a fixed 16-second feature context. Text appears sooner, with a higher CPU load than Nemotron.",
+            SizeBytes: 4_133_826_683,
+            Precision: ModelPrecision.Int4,
+            ContextWindow: "16s",
+            Latency: ModelLatencyProfile.Streaming,
+            UseCase: ModelUseCase.HighQuality,
+            Research: new ModelResearch(Dataset: Cv17)),
+
         // ── Parakeet TDT 0.6B v3 (multilingual, 25 European languages) ─
         new(
             CommercialName: "Parakeet TDT 0.6B v3",

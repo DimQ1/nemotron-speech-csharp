@@ -17,6 +17,7 @@
   -->
   <ItemGroup>
     <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
+    <ProjectReference Include="..\SpeechLib.ModelDownload\SpeechLib.ModelDownload.csproj" />
     <Compile Include="..\SpeechLib\ModelSession.cs" Link="ModelSession.cs" />
     <Compile Include="..\SpeechLib\Common.cs" Link="Common.cs" />
     <Compile Include="..\SpeechLib\LanguageMapper.cs" Link="LanguageMapper.cs" />
@@ -26,52 +27,23 @@
     <!-- Plain ONNX Runtime powers Parakeet TDT and the shared Silero VAD filter. -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" GeneratePathProperty="true" />
     <PackageReference Include="System.CommandLine" Version="2.0.1" />
+    <!-- FFT for the host-side Whisper log-mel used by the Qwen3-ASR encoder. -->
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <GpuArch Condition="'$(GpuArch)' == ''">Standard</GpuArch>
-  </PropertyGroup>
-
-  <Choose>
-    <When Condition="'$(GpuArch)' == 'Blackwell'">
-      <PropertyGroup>
-        <DefineConstants>$(DefineConstants);GPU_BLACKWELL</DefineConstants>
-      </PropertyGroup>
-      <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.15.0-dev-*" />
-      </ItemGroup>
-    </When>
-
-    <When Condition="'$(GpuArch)' == 'CPU'">
-      <PropertyGroup>
-        <DefineConstants>$(DefineConstants);GPU_NONE</DefineConstants>
-      </PropertyGroup>
-      <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.15.2" />
-      </ItemGroup>
-    </When>
-
-    <When Condition="'$(GpuArch)' == 'DML'">
-      <PropertyGroup>
-        <DefineConstants>$(DefineConstants);GPU_DML</DefineConstants>
-      </PropertyGroup>
-      <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.DirectML" Version="0.14.1" />
-      </ItemGroup>
-    </When>
-
-    <Otherwise>
-      <PropertyGroup>
-        <DefineConstants>$(DefineConstants);GPU_STANDARD</DefineConstants>
-      </PropertyGroup>
-      <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Cuda" Version="0.15.0" />
-      </ItemGroup>
-    </Otherwise>
-  </Choose>
+  <!--
+    CPU-only ONNX Runtime GenAI. The CUDA / DirectML / Blackwell variants that were
+    selected through the GpuArch property have been removed: every build
+    configuration in this repository (CI workflows, build scripts, both desktop apps
+    and their settings UI) already ran CPU-only, no source file consumed the GPU_*
+    constants, and an unqualified `dotnet build` silently pulled the CUDA flavour.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.15.2" />
+  </ItemGroup>
 
   <Target Name="CopyOrt1280NativeAssets" AfterTargets="Build"
-          Condition="'$(GpuArch)' == 'CPU' and Exists('$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\onnxruntime.dll')">
+          Condition="Exists('$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\onnxruntime.dll')">
     <ItemGroup>
       <_Ort1280Native Include="$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\*.dll" />
     </ItemGroup>

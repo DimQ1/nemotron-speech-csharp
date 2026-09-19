@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Diagnostics;
+using SpeechLib.ModelDownload;
 using VoiceType.WinUI.Interfaces;
 
 namespace VoiceType.WinUI.Services;
@@ -117,12 +118,14 @@ public sealed class ModelDownloaderService : IModelDownloaderService
 
         var selectedFolders = folders.Where(f => f.Selected).ToList();
         var files = new List<FileToDownload>();
+        var destinationSubfolders = selectedFolders
+            .Select(GetDestinationSubfolder)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         foreach (var folder in selectedFolders)
         {
-            var subfolder = string.IsNullOrEmpty(folder.SubfolderName)
-                ? repoId[(repoId.LastIndexOf('/') + 1)..]
-                : folder.SubfolderName;
+            var subfolder = GetDestinationSubfolder(folder);
 
             foreach (var file in folder.Files)
             {
@@ -145,7 +148,17 @@ public sealed class ModelDownloaderService : IModelDownloaderService
         }
 
         StatusChanged?.Invoke($"Starting download: {files.Count} file(s), {FormatSize(files.Sum(f => f.SizeBytes))}");
-        await DownloadBatchAsync(files, _cts.Token);
+        var completed = await DownloadBatchAsync(files, _cts.Token);
+
+        if (completed)
+        {
+            foreach (var subfolder in destinationSubfolders)
+            TryConfigureQwen3BlockStreamingProfile(repoId, Path.Combine(targetRoot, subfolder));
+        }
+
+        string GetDestinationSubfolder(HfFolder folder) => string.IsNullOrEmpty(folder.SubfolderName)
+            ? repoId[(repoId.LastIndexOf('/') + 1)..]
+            : folder.SubfolderName;
     }
 
     /// <summary>Download all files from a HuggingFace repo using Downloader library.</summary>
@@ -190,7 +203,8 @@ public sealed class ModelDownloaderService : IModelDownloaderService
         }
 
         StatusChanged?.Invoke($"Starting download: {files.Count} file(s), {FormatSize(files.Sum(f => f.SizeBytes))}");
-        await DownloadBatchAsync(files, _cts.Token);
+        if (await DownloadBatchAsync(files, _cts.Token))
+            TryConfigureQwen3BlockStreamingProfile(repoId, Path.Combine(targetRoot, subfolder));
     }
 
     /// <summary>Download a single file from a direct URL using Downloader library.</summary>
@@ -323,7 +337,7 @@ public sealed class ModelDownloaderService : IModelDownloaderService
 
     private readonly record struct FileToDownload(string Url, string DestPath, string DisplayPath, long SizeBytes);
 
-    private async Task DownloadBatchAsync(IReadOnlyList<FileToDownload> files, CancellationToken ct)
+    private async Task<bool> DownloadBatchAsync(IReadOnlyList<FileToDownload> files, CancellationToken ct)
     {
         int completed = 0;
 
@@ -359,14 +373,14 @@ public sealed class ModelDownloaderService : IModelDownloaderService
                 StatusChanged?.Invoke("Download cancelled");
                 IsDownloading = false;
                 Completed?.Invoke(false, "Cancelled");
-                return;
+                return false;
             }
             catch (Exception ex)
             {
                 StatusChanged?.Invoke($"Error on {file.DisplayPath}: {ex.Message}");
                 IsDownloading = false;
                 Completed?.Invoke(false, ex.Message);
-                return;
+                return false;
             }
 
             void EmitProgressIfNeeded(bool force)
@@ -406,6 +420,7 @@ public sealed class ModelDownloaderService : IModelDownloaderService
         IsDownloading = false;
         StatusChanged?.Invoke($"Download complete — {completed} file(s)");
         Completed?.Invoke(true, "");
+        return true;
     }
 
     /// <summary>Download a single file using plain HttpClient streaming.
@@ -496,6 +511,33 @@ public sealed class ModelDownloaderService : IModelDownloaderService
         >= 1_000 => $"{bytes / 1_000.0:F1} KB",
         _ => $"{bytes} B"
     };
+
+    private void TryConfigureQwen3BlockStreamingProfile(string repoId, string modelDir)
+    {
+        if (!string.Equals(repoId, "andrewleech/qwen3-asr-1.7b-onnx", StringComparison.OrdinalIgnoreCase)
+            || !Qwen3ModelDetector.IsQwen3AsrModel(modelDir))
+            return;
+
+        var encoderFile = File.Exists(Path.Combine(modelDir, "encoder_stream.onnx"))
+            ? "encoder_stream.onnx"
+            : "encoder.int4.onnx";
+        var manifest = """
+        {
+          "model_type": "qwen3_asr_onnx_streaming",
+          "base_model_dir": ".",
+          "encoder_file": "__ENCODER_FILE__",
+          "block_seconds": 2.0,
+          "chunk_seconds": 2.0,
+          "window_seconds": 16.0,
+          "streaming_mode": "block_encoder",
+          "skip_silent_blocks": true,
+          "decode_every_blocks": 1,
+          "emit_first_block": false
+        }
+        """.Replace("__ENCODER_FILE__", encoderFile, StringComparison.Ordinal);
+        File.WriteAllText(Path.Combine(modelDir, "streaming_config.json"), manifest + Environment.NewLine);
+        StatusChanged?.Invoke($"Qwen3 block-streaming profile configured ({encoderFile})");
+    }
 
     private string CreateResolveUrl(string repoId, string relativePath)
     {

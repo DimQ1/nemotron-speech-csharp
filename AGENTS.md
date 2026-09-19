@@ -3,20 +3,14 @@
 ## Build Commands
 
 ```powershell
-# CPU-only (any machine)
-dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=CPU
-
-# CUDA Standard (RTX 20/30/40)
+# CPU only — ONNX Runtime GenAI is referenced in its CPU flavour
 dotnet build NemotronSpeech.slnx -c Release
-
-# CUDA Blackwell (RTX 50, needs ORT-Nightly feed)
-dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=Blackwell
-
-# DirectML (any GPU via DirectX)
-dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=DML
 ```
 
 **Debug build:** omit `-c Release`. **Always use `NemotronSpeech.slnx`** to build the complete solution graph.
+
+> The `GpuArch` property and the CUDA / DirectML / Blackwell variants were removed.
+> Passing `-p:GpuArch=...` is now ignored.
 
 ## Test Commands
 
@@ -78,8 +72,8 @@ VoiceType.Tests (net10.0-windows, xUnit)
 ```
 
 - **VoiceType depends on NemotronSpeech** — ONNX Runtime GenAI is pulled transitively
-- **NemotronSpeech GPU builds** use MSBuild `<Choose>/<When>` with `GpuArch` property and conditional `<PackageReference>`
-- **NuGet config** at `NemotronSpeech/nuget.config` — adds ORT-Nightly feed for Blackwell
+- **CPU-only builds** — `SpeechLib.Providers` references `Microsoft.ML.OnnxRuntimeGenAI` (CPU) unconditionally; there is no `GpuArch` / GPU build configuration
+- **NuGet config** at [`nuget.config`](nuget.config) — single `nuget.org` source
 
 ## Key Conventions
 
@@ -132,6 +126,10 @@ Cannot be reassigned after construction. Use `Clear()` + `AddRange()` instead.
 ### ⚠️ `Run.Text` DataContext Inheritance
 
 `Run` elements inside a `DataTemplate` inherit DataContext from the parent. Bindings like `{Binding SizeDisplay}` resolve against the `HfFolder` item, not the ViewModel.
+
+### ⚠️ Stale GPU Execution-Provider Settings Must Degrade to CPU
+
+GPU builds are gone, but a persisted `ExecutionProvider` value of `"cuda"`/`"dml"` can still be read at startup. `SessionOptions.AppendExecutionProvider_*` throws when the native provider library is absent, which fails session creation outright. Always route provider selection through `SpeechLib.ExecutionProviderSelector.Apply(options, requestedName)` (in `libraries/SpeechLib/src/SpeechLib.Providers/ExecutionProviderSelector.cs`), which validates against `OrtEnv.Instance().GetAvailableProviders()` and falls back to CPU. All three recognizers (Parakeet TDT, VibeVoice, Qwen3) use it.
 
 ## File Map
 
