@@ -45,7 +45,7 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
     private readonly Qwen3BpeTokenizer _tokenizer;
 
     // Token embedding matrix kept in managed memory for per-token lookup.
-    private readonly float[] _embedTokens; // [VocabSize, AudioHidden]
+    private readonly Half[] _embedTokens; // [VocabSize, AudioHidden] float16, as stored on disk
 
     private readonly List<float> _audio = new();
     private readonly List<float> _blockAudio = new();
@@ -551,11 +551,16 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
         return best;
     }
 
-    /// <summary>Looks up one token embedding row from the fp16 matrix.</summary>
+    /// <summary>Looks up one token embedding row, widening the stored fp16 row to fp32.</summary>
     private float[] EmbedToken(int token)
     {
+        if ((uint)token >= VocabSize)
+            throw new InvalidDataException($"Qwen3 token id is outside the vocabulary: {token}");
+
         var row = new float[AudioHidden];
-        Array.Copy(_embedTokens, token * AudioHidden, row, 0, AudioHidden);
+        var source = _embedTokens.AsSpan(token * AudioHidden, AudioHidden);
+        for (int i = 0; i < row.Length; i++)
+            row[i] = (float)source[i];
         return row;
     }
 
@@ -595,14 +600,32 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
     // Setup                                                               //
     // ------------------------------------------------------------------ //
 
-    private static float[] LoadEmbedTokens(string path)
+    /// <summary>
+    /// Reads the fp16 token embedding matrix as stored on disk.
+    /// </summary>
+    /// <remarks>
+    /// The table stays in fp16 (594 MB) and each lookup widens the one row it needs
+    /// (2048 values, microseconds). Widening the whole matrix up front cost 637 ms of
+    /// startup, peaked at 1.78 GB of allocations and left 1.19 GB resident for the
+    /// lifetime of the recognizer, for a lookup that only ever reads ~9 rows per decode.
+    /// </remarks>
+    private static Half[] LoadEmbedTokens(string path)
     {
-        var bytes = File.ReadAllBytes(path);
-        var half = MemoryMarshal.Cast<byte, Half>(bytes.AsSpan());
-        var floats = new float[half.Length];
-        for (int i = 0; i < half.Length; i++)
-            floats[i] = (float)half[i];
-        return floats;
+        const int expectedValues = VocabSize * AudioHidden;
+        long length = new FileInfo(path).Length;
+        if (length != (long)expectedValues * sizeof(ushort))
+        {
+            throw new InvalidDataException(
+                $"Embedding table has {length} bytes, expected {expectedValues * sizeof(ushort)} " +
+                $"({VocabSize} x {AudioHidden} float16).");
+        }
+
+        // Read straight into the Half[]: going through File.ReadAllBytes added a
+        // second 594 MB buffer that served no purpose.
+        var halves = new Half[expectedValues];
+        using var stream = File.OpenRead(path);
+        stream.ReadExactly(MemoryMarshal.AsBytes(halves.AsSpan()));
+        return halves;
     }
 
     private static SessionOptions CreateSessionOptions(string executionProvider, int intraOpThreads = 0)
