@@ -41,6 +41,14 @@ public sealed class VibeVoiceAsrRecognizer : IStreamingSpeechRecognizer, IRuntim
     private readonly InferenceSession _speechFeatures;
     private readonly Qwen3BpeTokenizer _tokenizer;
     private readonly float[] _embedTokens;
+
+    // The three decoder graphs each carry their own 840 MB int4 external-data file, and
+    // opening one costs ~2 s (measured on this machine). Creating them per streaming
+    // chunk made session setup dominate the run: 9.1 s of work for 2.18 s of audio.
+    // They are created once per recognizer instead.
+    private InferenceSession? _decoderPrefillSession;
+    private InferenceSession? _decoderAudioSession;
+    private InferenceSession? _decoderStepSession;
     private readonly int _speechStartId;
     private readonly int _speechEndId;
     private readonly int _textChunkEndId;
@@ -146,7 +154,7 @@ public sealed class VibeVoiceAsrRecognizer : IStreamingSpeechRecognizer, IRuntim
         CopyEmbedding(_speechEndId, audioEmbeddings, (FeatureFrames + 1) * HiddenSize);
 
         var audioResult = RunCachedGraph(
-            "decoder_audio.int4.onnx",
+            AudioSession,
             audioEmbeddings,
             FeatureFrames + 2,
             _cache!);
@@ -154,31 +162,29 @@ public sealed class VibeVoiceAsrRecognizer : IStreamingSpeechRecognizer, IRuntim
         var nextLogits = audioResult.Logits;
         var tokenIds = new List<int>();
 
-        using (var stepSession = OpenSession(Path.Combine(_modelDirectory, "decoder_step.int4.onnx")))
+        var stepSession = StepSession;
+        for (int index = 0; index < MaxTokensPerChunk; index++)
         {
-            for (int index = 0; index < MaxTokensPerChunk; index++)
-            {
-                int nextToken = ArgMax(nextLogits);
-                if (nextToken == _textChunkEndId || nextToken == _eosId)
-                    break;
+            int nextToken = ArgMax(nextLogits);
+            if (nextToken == _textChunkEndId || nextToken == _eosId)
+                break;
 
-                tokenIds.Add(nextToken);
-                var stepResult = RunCachedGraph(
-                    stepSession,
-                    EmbedToken(nextToken),
-                    1,
-                    _cache);
-                _cache = stepResult.Cache;
-                nextLogits = stepResult.Logits;
-            }
-
-            var endResult = RunCachedGraph(
+            tokenIds.Add(nextToken);
+            var stepResult = RunCachedGraph(
                 stepSession,
-                EmbedToken(_textChunkEndId),
+                EmbedToken(nextToken),
                 1,
                 _cache);
-            _cache = endResult.Cache;
+            _cache = stepResult.Cache;
+            nextLogits = stepResult.Logits;
         }
+
+        var endResult = RunCachedGraph(
+            stepSession,
+            EmbedToken(_textChunkEndId),
+            1,
+            _cache);
+        _cache = endResult.Cache;
 
         _lastTokenCount = tokenIds.Count;
         return _tokenizer.Decode(tokenIds.Select(static id => (long)id));
@@ -196,7 +202,7 @@ public sealed class VibeVoiceAsrRecognizer : IStreamingSpeechRecognizer, IRuntim
 
     private DecoderResult RunPrefill(float[] embeddings, int sequenceLength)
     {
-        using var session = OpenSession(Path.Combine(_modelDirectory, "decoder_prefill.int4.onnx"));
+        var session = PrefillSession;
         var embedTensor = new DenseTensor<float>(embeddings, new[] { 1, sequenceLength, HiddenSize });
         var positionTensor = new DenseTensor<long>(CreatePositions(sequenceLength, 0), new[] { 1, sequenceLength });
         var maskTensor = CreateAttentionMask(0, sequenceLength);
@@ -209,16 +215,6 @@ public sealed class VibeVoiceAsrRecognizer : IStreamingSpeechRecognizer, IRuntim
 
         using var results = session.Run(inputs);
         return ReadDecoderResult(results);
-    }
-
-    private DecoderResult RunCachedGraph(
-        string graphName,
-        float[] embeddings,
-        int queryLength,
-        DecoderCache cache)
-    {
-        using var session = OpenSession(Path.Combine(_modelDirectory, graphName));
-        return RunCachedGraph(session, embeddings, queryLength, cache);
     }
 
     private static DecoderResult RunCachedGraph(
@@ -378,6 +374,15 @@ public sealed class VibeVoiceAsrRecognizer : IStreamingSpeechRecognizer, IRuntim
         return new InferenceSession(path, options);
     }
 
+    private InferenceSession PrefillSession =>
+        _decoderPrefillSession ??= OpenSession(Path.Combine(_modelDirectory, "decoder_prefill.int4.onnx"));
+
+    private InferenceSession AudioSession =>
+        _decoderAudioSession ??= OpenSession(Path.Combine(_modelDirectory, "decoder_audio.int4.onnx"));
+
+    private InferenceSession StepSession =>
+        _decoderStepSession ??= OpenSession(Path.Combine(_modelDirectory, "decoder_step.int4.onnx"));
+
     private static SessionOptions CreateSessionOptions(string executionProvider)
     {
         var options = new SessionOptions
@@ -435,6 +440,9 @@ public sealed class VibeVoiceAsrRecognizer : IStreamingSpeechRecognizer, IRuntim
 
         _disposed = true;
         _speechFeatures.Dispose();
+        _decoderPrefillSession?.Dispose();
+        _decoderAudioSession?.Dispose();
+        _decoderStepSession?.Dispose();
     }
 
     private sealed record DecoderResult(float[] Logits, DecoderCache Cache);
