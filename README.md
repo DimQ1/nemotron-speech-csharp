@@ -70,7 +70,7 @@ dotnet run --project apps/VoiceType/src/VoiceType -c Release
 
 | Command | Execution provider | ORT GenAI |
 |---------|--------------------|-----------|
-| `dotnet build -c Release` | CPU | 0.15.2 CPU |
+| `dotnet build -c Release` | CPU | 0.16.0 CPU |
 
 ## Dependencies Graph
 

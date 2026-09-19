@@ -25,7 +25,7 @@
 
   <ItemGroup>
     <!-- Plain ONNX Runtime powers Parakeet TDT and the shared Silero VAD filter. -->
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" GeneratePathProperty="true" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" GeneratePathProperty="true" />
     <PackageReference Include="System.CommandLine" Version="2.0.1" />
     <!-- FFT for the host-side Whisper log-mel used by the Qwen3-ASR encoder. -->
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
@@ -37,17 +37,26 @@
     configuration in this repository (CI workflows, build scripts, both desktop apps
     and their settings UI) already ran CPU-only, no source file consumed the GPU_*
     constants, and an unqualified `dotnet build` silently pulled the CUDA flavour.
+
+    GenAI 0.16.0 depends on ONNX Runtime 1.30.0 (see its nuspec): the GenAI and
+    plain ORT PackageReference versions above must be bumped together, otherwise
+    the managed ORT assembly and the GenAI native DLL disagree.
   -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.15.2" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.16.0" />
   </ItemGroup>
 
-  <Target Name="CopyOrt1280NativeAssets" AfterTargets="Build"
+  <!--
+    Copy the ONNX Runtime native assets next to the build output. The source path
+    comes from GeneratePathProperty on the PackageReference above, so an ORT
+    version bump only has to touch the version, never this path.
+  -->
+  <Target Name="CopyOrtNativeAssets" AfterTargets="Build"
           Condition="Exists('$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\onnxruntime.dll')">
     <ItemGroup>
-      <_Ort1280Native Include="$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\*.dll" />
+      <_OrtNative Include="$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\*.dll" />
     </ItemGroup>
-    <Copy SourceFiles="@(_Ort1280Native)"
+    <Copy SourceFiles="@(_OrtNative)"
           DestinationFolder="$(OutputPath)runtimes\win-x64\native"
           SkipUnchangedFiles="false" />
   </Target>

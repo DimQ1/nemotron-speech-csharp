@@ -293,7 +293,7 @@ dotnet publish VoiceType.WinUI\VoiceType.WinUI.csproj `
 - ✅ `PublishReadyToRun=false` — AOT отключён (CsWinRT-маршаллинг ломается при AOT)
 - ✅ `PublishTrimmed=false` — тримминг отключён (рефлексия ONNX Runtime / NAudio)
 - ✅ `SelfContained=true` — .NET Runtime включён в пакет
-- ✅ ORT 1.28.0 native DLL копируются в AppX
+- ✅ ORT 1.30.0 native DLL копируются в AppX
 
 ### Проверка пакета перед загрузкой:
 

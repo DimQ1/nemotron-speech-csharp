@@ -129,6 +129,6 @@ var text = ((IStreamingSpeechRecognizer)session).ProcessAudio(chunk);
 
 | Package | Version |
 |---------|---------|
-| Microsoft.ML.OnnxRuntimeGenAI | 0.15.2 (CPU) |
+| Microsoft.ML.OnnxRuntimeGenAI | 0.16.0 (CPU) |
 | SpeechLib | Project reference |
 | System.CommandLine | 2.0.1 |

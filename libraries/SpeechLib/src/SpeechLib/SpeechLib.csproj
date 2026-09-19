@@ -12,9 +12,11 @@
 
   <!-- Plain ONNX Runtime, used by the universal Silero VAD filter
        (Audio/SileroVadFilter.cs). Model-specific providers (Nemotron GenAI,
-       Parakeet) keep their own ORT references in their own projects. -->
+       Parakeet) keep their own ORT references in their own projects.
+       Keep this version in lockstep with SpeechLib.Providers, which pins the
+       ORT version required by ONNX Runtime GenAI. -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" />
   </ItemGroup>
 
   <!--

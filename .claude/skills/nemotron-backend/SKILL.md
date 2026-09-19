@@ -118,7 +118,7 @@ a `GpuArch` MSBuild property. That switch was removed — every build configurat
 
 ```xml
 <ItemGroup>
-    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.15.2" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.16.0" />
 </ItemGroup>
 ```
 
