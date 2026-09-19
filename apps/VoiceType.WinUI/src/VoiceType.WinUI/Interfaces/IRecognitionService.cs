@@ -13,6 +13,8 @@ public interface IRecognitionService : IDisposable
     /// <summary>Current model lifecycle state.</summary>
     ModelState ModelState { get; }
     string? LoadedModelPath { get; }
+    bool SupportsPromptTranslation { get; }
+    bool SupportsLanguageSelection { get; }
 
     event Action<string>? PartialResult;
     event Action<string>? FinalResult;

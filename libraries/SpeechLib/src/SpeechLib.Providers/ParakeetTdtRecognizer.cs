@@ -418,37 +418,10 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
         };
 
         // Runtime provider selection with graceful CPU fallback. The provider
-        // is picked from the DLLs actually shipped (no compile-time GpuArch).
-        switch (SelectProvider(executionProvider, OrtEnv.Instance().GetAvailableProviders()))
-        {
-            case ExecutionProviderKind.Cuda:
-                options.AppendExecutionProvider_CUDA(0);
-                break;
-            case ExecutionProviderKind.Dml:
-                options.AppendExecutionProvider_DML(0);
-                break;
-        }
+        // is picked from the libraries actually shipped.
+        ExecutionProviderSelector.Apply(options, executionProvider);
 
         return options;
-    }
-
-    internal enum ExecutionProviderKind { Cpu, Cuda, Dml }
-
-    /// <summary>
-    /// Maps a requested provider name to an available provider, falling back to
-    /// CPU when the requested one is not among <paramref name="available"/>.
-    /// </summary>
-    internal static ExecutionProviderKind SelectProvider(
-        string? requested,
-        IReadOnlyCollection<string> available)
-    {
-        var set = new HashSet<string>(available, StringComparer.OrdinalIgnoreCase);
-        return requested?.Trim().ToLowerInvariant() switch
-        {
-            "cuda" when set.Contains("CUDAExecutionProvider") => ExecutionProviderKind.Cuda,
-            "dml" when set.Contains("DmlExecutionProvider") => ExecutionProviderKind.Dml,
-            _ => ExecutionProviderKind.Cpu,
-        };
     }
 
     private (float[] features, long featuresLens) RunPreprocessor(float[] waveform)

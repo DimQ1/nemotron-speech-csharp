@@ -26,6 +26,8 @@ public sealed class LoggingRecognitionService : IRecognitionService
 
     public ModelState ModelState => _inner.ModelState;
     public string? LoadedModelPath => _inner.LoadedModelPath;
+    public bool SupportsPromptTranslation => _inner.SupportsPromptTranslation;
+    public bool SupportsLanguageSelection => _inner.SupportsLanguageSelection;
 
     public event Action<string>? PartialResult
     {

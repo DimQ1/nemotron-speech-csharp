@@ -6,8 +6,8 @@ namespace SpeechLib.Qwen3;
 
 /// <summary>
 /// Byte-level BPE tokenizer compatible with the Qwen (GPT-2 style) tokenizer.
-/// Loads vocab.json (token -> id) and merges.txt (merge priority) from the
-/// model folder and decodes generated token ids back to text.
+/// Loads vocab.json and tokenizer merge data from the model folder and decodes
+/// generated token ids back to text.
 /// </summary>
 internal sealed class Qwen3BpeTokenizer
 {
@@ -20,6 +20,7 @@ internal sealed class Qwen3BpeTokenizer
     private readonly Dictionary<string, int> _tokenToId = new(StringComparer.Ordinal);
     private readonly Dictionary<int, string> _idToToken = new();
     private readonly Dictionary<(string, string), int> _mergeRanks = new();
+    private readonly List<(string Content, int Id)> _specialTokens = new();
 
     private static readonly Dictionary<byte, char> ByteToChar = new();
     private static readonly Dictionary<char, byte> CharToByte = new();
@@ -67,9 +68,12 @@ internal sealed class Qwen3BpeTokenizer
                     string content = kv.Value.GetProperty("content").GetString()!;
                     t._idToToken[id] = content;
                     t._tokenToId[content] = id;
+                    t._specialTokens.Add((content, id));
                 }
             }
         }
+
+        t._specialTokens.Sort((left, right) => right.Content.Length.CompareTo(left.Content.Length));
 
         int rank = 0;
         // merges.txt is only needed for encoding (prompt building uses fixed
@@ -84,6 +88,28 @@ internal sealed class Qwen3BpeTokenizer
                 int sp = line.IndexOf(' ');
                 if (sp <= 0) continue;
                 t._mergeRanks[(line[..sp], line[(sp + 1)..])] = rank++;
+            }
+        }
+        else
+        {
+            var tokenizerJsonPath = Path.Combine(modelDir, "tokenizer.json");
+            if (File.Exists(tokenizerJsonPath))
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(tokenizerJsonPath));
+                if (doc.RootElement.TryGetProperty("model", out var model)
+                    && model.TryGetProperty("merges", out var merges))
+                {
+                    foreach (var merge in merges.EnumerateArray())
+                    {
+                        if (merge.ValueKind != JsonValueKind.Array || merge.GetArrayLength() != 2)
+                            continue;
+
+                        var first = merge[0].GetString();
+                        var second = merge[1].GetString();
+                        if (first is not null && second is not null)
+                            t._mergeRanks[(first, second)] = rank++;
+                    }
+                }
             }
         }
 
@@ -109,17 +135,55 @@ internal sealed class Qwen3BpeTokenizer
     public List<long> Encode(string text)
     {
         var ids = new List<long>();
-        foreach (Match m in Pattern.Matches(text))
+        int offset = 0;
+        while (offset < text.Length)
+        {
+            var special = FindNextSpecialToken(text, offset, out int specialOffset);
+            if (special is null)
+            {
+                EncodePlain(text[offset..], ids);
+                break;
+            }
+
+            if (specialOffset > offset)
+                EncodePlain(text[offset..specialOffset], ids);
+
+            ids.Add(special.Value.Id);
+            offset = specialOffset + special.Value.Content.Length;
+        }
+
+        return ids;
+    }
+
+    private void EncodePlain(string text, List<long> ids)
+    {
+        foreach (Match match in Pattern.Matches(text))
         {
             // Map each byte of the UTF-8 text to its GPT-2 char.
-            var sb = new StringBuilder(m.Value.Length);
-            foreach (byte b in Encoding.UTF8.GetBytes(m.Value))
+            var sb = new StringBuilder(match.Value.Length);
+            foreach (byte b in Encoding.UTF8.GetBytes(match.Value))
                 sb.Append(ByteToChar[b]);
             foreach (var tok in Bpe(sb.ToString()))
                 if (_tokenToId.TryGetValue(tok, out int id))
                     ids.Add(id);
         }
-        return ids;
+    }
+
+    private (string Content, int Id)? FindNextSpecialToken(string text, int start, out int tokenOffset)
+    {
+        tokenOffset = -1;
+        (string Content, int Id)? result = null;
+        foreach (var special in _specialTokens)
+        {
+            int index = text.IndexOf(special.Content, start, StringComparison.Ordinal);
+            if (index < 0 || (tokenOffset >= 0 && index >= tokenOffset))
+                continue;
+
+            tokenOffset = index;
+            result = special;
+        }
+
+        return result;
     }
 
     private IEnumerable<string> Bpe(string token)

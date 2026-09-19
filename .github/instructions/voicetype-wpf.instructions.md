@@ -31,7 +31,7 @@ applyTo: "VoiceType/**"
 ## Build and verify
 
 ```powershell
-dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=CPU
+dotnet build NemotronSpeech.slnx -c Release
 dotnet test VoiceType.Tests/VoiceType.Tests.csproj --filter "FullyQualifiedName~Unit_"
 ```
 

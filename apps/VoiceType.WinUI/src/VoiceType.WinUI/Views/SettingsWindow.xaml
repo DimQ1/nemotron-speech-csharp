@@ -71,8 +71,6 @@
                         <ComboBox SelectedValue="{x:Bind ViewModel.ExecutionProvider, Mode=TwoWay}" SelectedValuePath="Content"
                                   Style="{StaticResource DarkComboBox}" Margin="0,0,0,8">
                             <ComboBoxItem Content="cpu"/>
-                            <ComboBoxItem Content="cuda"/>
-                            <ComboBoxItem Content="dml"/>
                             <ComboBoxItem Content="follow_config"/>
                         </ComboBox>
 
@@ -82,27 +80,35 @@
                                   Style="{StaticResource DarkComboBox}" Margin="0,0,0,8"/>
 
                         <TextBlock Text="Language (BCP-47 code or 'auto')" Foreground="{StaticResource FgSecondaryBrush}" FontSize="12" Margin="0,0,0,2"/>
-                        <ComboBox SelectedValue="{x:Bind ViewModel.Language, Mode=TwoWay}"
-                                  SelectedValuePath="Content"
-                                  Style="{StaticResource DarkComboBox}" Margin="0,0,0,8">
-                            <ComboBoxItem Content="auto"/>
-                            <ComboBoxItem Content="en"/>
-                            <ComboBoxItem Content="ru"/>
-                            <ComboBoxItem Content="de"/>
-                            <ComboBoxItem Content="fr"/>
-                            <ComboBoxItem Content="es"/>
-                            <ComboBoxItem Content="zh"/>
-                            <ComboBoxItem Content="ja"/>
-                            <ComboBoxItem Content="ko"/>
-                            <ComboBoxItem Content="pt"/>
-                            <ComboBoxItem Content="it"/>
-                            <ComboBoxItem Content="ar"/>
-                            <ComboBoxItem Content="hi"/>
-                            <ComboBoxItem Content="tr"/>
-                            <ComboBoxItem Content="uk"/>
-                            <ComboBoxItem Content="pl"/>
-                            <ComboBoxItem Content="nl"/>
-                        </ComboBox>
+                        <StackPanel Spacing="2" Margin="0,0,0,8">
+                            <ComboBox SelectedValue="{x:Bind ViewModel.Language, Mode=TwoWay}"
+                                      SelectedValuePath="Content"
+                                      IsEnabled="{x:Bind ViewModel.IsLanguageSelectionEnabled, Mode=OneWay}"
+                                      ToolTipService.ToolTip="{x:Bind ViewModel.LanguageSelectionStatus, Mode=OneWay}"
+                                      Style="{StaticResource DarkComboBox}">
+                                <ComboBoxItem Content="auto"/>
+                                <ComboBoxItem Content="en"/>
+                                <ComboBoxItem Content="ru"/>
+                                <ComboBoxItem Content="de"/>
+                                <ComboBoxItem Content="fr"/>
+                                <ComboBoxItem Content="es"/>
+                                <ComboBoxItem Content="zh"/>
+                                <ComboBoxItem Content="ja"/>
+                                <ComboBoxItem Content="ko"/>
+                                <ComboBoxItem Content="pt"/>
+                                <ComboBoxItem Content="it"/>
+                                <ComboBoxItem Content="ar"/>
+                                <ComboBoxItem Content="hi"/>
+                                <ComboBoxItem Content="tr"/>
+                                <ComboBoxItem Content="uk"/>
+                                <ComboBoxItem Content="pl"/>
+                                <ComboBoxItem Content="nl"/>
+                            </ComboBox>
+                            <TextBlock Text="{x:Bind ViewModel.LanguageSelectionStatus, Mode=OneWay}"
+                                       Foreground="{StaticResource FgSecondaryBrush}"
+                                       FontSize="10"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
 
                         <CheckBox Content="Use Voice Activity Detection (VAD)"
                                   IsChecked="{x:Bind ViewModel.UseVad, Mode=TwoWay}" Style="{StaticResource DarkCheckBox}" Margin="0,0,0,6"/>

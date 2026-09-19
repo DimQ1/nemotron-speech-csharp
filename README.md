@@ -55,32 +55,22 @@ nemotron-speech-csharp/
 - Windows 10/11
 - Microphone
 
-### CPU only (any machine)
-```powershell
-dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=CPU
-dotnet run --project apps/VoiceType/src/VoiceType -c Release
-```
-
-### RTX 20 / 30 / 40 (CUDA)
+### CPU (any machine)
 ```powershell
 dotnet build NemotronSpeech.slnx -c Release
 dotnet run --project apps/VoiceType/src/VoiceType -c Release
 ```
 
-### RTX 50 (Blackwell)
-```powershell
-dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=Blackwell
-dotnet run --project apps/VoiceType/src/VoiceType -c Release
-```
+> The project is CPU-only: `SpeechLib.Providers` references the CPU
+> `Microsoft.ML.OnnxRuntimeGenAI` package. The former
+> `-p:GpuArch=CPU|Standard|DML|Blackwell` switch and its CUDA / DirectML packages
+> were removed.
 
 ## Build Configurations
 
-| Command | Target GPU | ORT GenAI | CUDA |
-|---------|------------|-----------|------|
-| `dotnet build -c Release` | RTX 20/30/40, GTX 16 | 0.15.0 stable | 12.x |
-| `dotnet build -c Release -p:GpuArch=Blackwell` | RTX 50 (Blackwell) | nightly | 13.x |
-| `dotnet build -c Release -p:GpuArch=CPU` | No GPU | 0.15.0 CPU | — |
-| `dotnet build -c Release -p:GpuArch=DML` | Any GPU (DirectX) | 0.14.1 DML | — |
+| Command | Execution provider | ORT GenAI |
+|---------|--------------------|-----------|
+| `dotnet build -c Release` | CPU | 0.15.2 CPU |
 
 ## Dependencies Graph
 

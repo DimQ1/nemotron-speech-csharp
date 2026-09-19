@@ -16,20 +16,17 @@ provider remains available for the CLI compatibility path.
 
 ## Build
 
-Use the full solution for a CPU build:
+The project is CPU-only. Build the full solution:
 
 ```powershell
-dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=CPU
+dotnet build NemotronSpeech.slnx -c Release
 ```
 
 For a fast local iteration build:
 
 ```powershell
-dotnet build VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU
+dotnet build VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug
 ```
-
-The project supports the same `GpuArch` values as the solution: `CPU`, `DML`,
-`Standard`, and `Blackwell`.
 
 ## Local MSIX package (dev)
 

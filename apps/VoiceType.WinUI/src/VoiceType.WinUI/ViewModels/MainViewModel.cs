@@ -127,6 +127,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowTranslation))]
+    [NotifyPropertyChangedFor(nameof(ShowTranslationControls))]
     [NotifyPropertyChangedFor(nameof(ShowTranslationDownloadPrompt))]
     private bool _translationEnabled;
 
@@ -173,13 +174,25 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool ShowModelWarning => !IsModelAvailable && !_modelWarningDismissed;
 
+    public bool IsLanguageSelectionEnabled =>
+        _recognition.ModelState != ModelState.Loaded || _recognition.SupportsLanguageSelection;
+
+    public string LanguageSelectionStatus =>
+        _recognition.ModelState == ModelState.Loaded && !_recognition.SupportsLanguageSelection
+            ? "Selected model uses automatic language detection"
+            : "";
+
     public static string RecommendedModelRepo => "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu";
     public static string RecommendedModelDisplay => "Nemotron 3.5 ASR · CPU (INT4, opset24, 0.56s) — fast, low latency, ~749 MB";
 
     // ---- Translation computed properties ----
 
-    public bool ShowTranslation => TranslationEnabled;
-    public bool ShowTranslationDownloadPrompt => TranslationEnabled && !IsTranslationModelAvailable;
+    public bool UsePromptTranslation => TranslationEnabled && _recognition.SupportsPromptTranslation;
+    public bool ShowTranslation => TranslationEnabled && !UsePromptTranslation;
+    public bool ShowTranslationControls => TranslationEnabled;
+    public bool ShowTranslationDownloadPrompt => TranslationEnabled
+        && !UsePromptTranslation
+        && !IsTranslationModelAvailable;
     public bool IsTranslationDownloadButtonEnabled => !IsTranslationModelDownloading;
     public string TranslationDownloadButtonText => IsTranslationModelDownloading
         ? $"Downloading… {TranslationDownloadProgress:F0}%"
@@ -239,9 +252,6 @@ public sealed partial class MainViewModel : ObservableObject
 
         _translation.TranslationChanged += text => _dispatcher.TryEnqueue(() => TranslatedText = text);
         _translation.StatusChanged += status => _dispatcher.TryEnqueue(() => TranslationStatus = status);
-
-        if (_translationEnabled && TranslationModelInfo.IsDownloaded)
-            _ = _translation.EnsureLoadedAsync();
 
         _hook.InputDetected += OnInputDetected;
         _recognition.PartialResult += OnPartialResult;
@@ -401,19 +411,23 @@ public sealed partial class MainViewModel : ObservableObject
 
         _settings.TranslationEnabled = value;
         SaveSettingsInBackground(settings => settings.TranslationEnabled = value);
+        ApplyRecognitionTranslationSettings();
 
         if (!value)
         {
             _translation.Reset();
             TranslatedText = "";
+            TranslationStatus = "Translation off";
             return;
         }
 
-        if (!string.IsNullOrEmpty(_currentSessionText))
+        if (!UsePromptTranslation && !string.IsNullOrEmpty(_currentSessionText))
             _translation.Feed(_currentSessionText);
 
-        if (TranslationModelInfo.IsDownloaded)
+        if (!UsePromptTranslation && TranslationModelInfo.IsDownloaded)
             _ = _translation.EnsureLoadedAsync();
+
+        UpdatePromptTranslationStatus();
     }
 
     partial void OnSelectedTranslationLanguageChanged(TranslationLanguageOption value)
@@ -425,6 +439,8 @@ public sealed partial class MainViewModel : ObservableObject
         _settings.TranslationTargetLanguage = option.Code;
         SaveSettingsInBackground(settings => settings.TranslationTargetLanguage = option.Code);
         _translation.SetTargetLanguage(option.Name);
+        ApplyRecognitionTranslationSettings();
+        UpdatePromptTranslationStatus();
     }
 
     partial void OnTranslationComputeBackendChanged(string value)
@@ -444,7 +460,32 @@ public sealed partial class MainViewModel : ObservableObject
         QueueLanguagePersistence(value);
 
         if (_recognition.ModelState == ModelState.Loaded)
+        {
+            if (!_recognition.SupportsLanguageSelection)
+            {
+                StatusText = "Selected model uses automatic language detection";
+                return;
+            }
+
             QueueRecognitionLanguageChange(value);
+        }
+    }
+
+    private void ApplyRecognitionTranslationSettings()
+    {
+        if (_recognition.ModelState != ModelState.Loaded)
+            return;
+
+        var snapshot = _settings.Clone();
+        _ = Task.Run(() => _recognition.ApplyRuntimeSettings(snapshot));
+    }
+
+    private void UpdatePromptTranslationStatus()
+    {
+        if (UsePromptTranslation)
+            TranslationStatus = $"Qwen prompt translation → {SelectedTranslationLanguage.Name}";
+        else if (!TranslationEnabled)
+            TranslationStatus = "Translation off";
     }
 
     private TranslationLanguageOption ResolveTranslationLanguage(string? code)
@@ -874,7 +915,7 @@ public sealed partial class MainViewModel : ObservableObject
             _hasPendingPartial = false;
         }
 
-        if (TranslationEnabled)
+        if (TranslationEnabled && !UsePromptTranslation)
         {
             _translation.Reset();
             TranslatedText = "";
@@ -920,6 +961,12 @@ public sealed partial class MainViewModel : ObservableObject
             };
 
             OnPropertyChanged(nameof(RecordButtonText));
+            OnPropertyChanged(nameof(UsePromptTranslation));
+            OnPropertyChanged(nameof(ShowTranslation));
+            OnPropertyChanged(nameof(ShowTranslationDownloadPrompt));
+            OnPropertyChanged(nameof(IsLanguageSelectionEnabled));
+            OnPropertyChanged(nameof(LanguageSelectionStatus));
+            UpdatePromptTranslationStatus();
         });
     }
 
@@ -1216,7 +1263,7 @@ public sealed partial class MainViewModel : ObservableObject
             _currentSessionText = text;
             UpdateDisplayedText();
 
-            if (TranslationEnabled)
+            if (TranslationEnabled && !UsePromptTranslation)
                 _ = FlushTranslationAsync();
 
             if (IsTextInjectionEnabled && _currentSessionText.Length > _lastInjectedLength && CanInjectToTargetWindow())
@@ -1294,7 +1341,7 @@ public sealed partial class MainViewModel : ObservableObject
         _currentSessionText = text;
         UpdateDisplayedText();
 
-        if (TranslationEnabled)
+        if (TranslationEnabled && !UsePromptTranslation)
             _translation.Feed(_currentSessionText);
 
         if (!IsTextInjectionEnabled)

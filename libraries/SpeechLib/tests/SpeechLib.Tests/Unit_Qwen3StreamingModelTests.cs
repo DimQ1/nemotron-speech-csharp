@@ -42,6 +42,24 @@ public sealed class Unit_Qwen3StreamingModelTests
         }
     }
 
+    [Fact]
+    public void StreamingManifest_WithUndersizedWindow_IsIgnored()
+    {
+        var directory = CreateTemporaryDirectory();
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(directory, "streaming_config.json"),
+                "{\"model_type\":\"qwen3_asr_onnx_streaming\",\"chunk_seconds\":2,\"window_seconds\":3}");
+
+            Assert.False(Qwen3AsrStreamingRecognizer.IsQwen3AsrStreamingModel(directory));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static string CreateTemporaryDirectory()
     {
         var directory = Path.Combine(Path.GetTempPath(), "qwen3-streaming-" + Guid.NewGuid().ToString("N"));

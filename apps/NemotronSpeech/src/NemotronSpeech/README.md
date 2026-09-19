@@ -31,20 +31,14 @@ SpeechLib.Nemotron/
 └── Models/                   # Nemotron-specific session options
 ```
 
-## GPU Architecture Selection
+## Execution Provider
+
+CPU-only. `SpeechLib.Providers` references `Microsoft.ML.OnnxRuntimeGenAI` (CPU)
+unconditionally; the former `GpuArch` switch and its CUDA / DirectML / Blackwell
+variants were removed.
 
 ```powershell
-# CPU only
-dotnet build -c Release -p:GpuArch=CPU
-
-# RTX 20/30/40 (default)
 dotnet build -c Release
-
-# RTX 50 (Blackwell, nightly ORT)
-dotnet build -c Release -p:GpuArch=Blackwell
-
-# DirectML (any GPU via DirectX)
-dotnet build -c Release -p:GpuArch=DML
 ```
 
 ## CPU Execution Tuning
@@ -135,9 +129,6 @@ var text = ((IStreamingSpeechRecognizer)session).ProcessAudio(chunk);
 
 | Package | Version |
 |---------|---------|
-| Microsoft.ML.OnnxRuntimeGenAI | 0.15.0 (CPU) |
-| Microsoft.ML.OnnxRuntimeGenAI.Cuda | 0.15.0 (Standard) |
-| Microsoft.ML.OnnxRuntimeGenAI.Cuda | 0.15.0-dev (Blackwell) |
-| Microsoft.ML.OnnxRuntimeGenAI.DirectML | 0.14.1 (DML) |
+| Microsoft.ML.OnnxRuntimeGenAI | 0.15.2 (CPU) |
 | SpeechLib | Project reference |
 | System.CommandLine | 2.0.1 |

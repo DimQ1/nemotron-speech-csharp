@@ -45,7 +45,7 @@ applyTo: "apps/VoiceType.WinUI/**"
 - For a fast local build, use:
 
   ```powershell
-  dotnet build apps/VoiceType.WinUI/src/VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug -p:GpuArch=CPU
+  dotnet build apps/VoiceType.WinUI/src/VoiceType.WinUI/VoiceType.WinUI.csproj -c Debug
   ```
 
 - For a release MSIX, use `apps/VoiceType.WinUI/src/VoiceType.WinUI/build-store-release.ps1`. Pass `-Sign -CertThumbprint <thumbprint>` only when a suitable certificate is available; never hard-code private keys or passwords in the repository.

@@ -14,6 +14,8 @@ namespace SpeechLib.ParakeetTdt.Tests;
 public sealed class Unit_ParakeetDecodeTests
 {
     private static readonly Type RecognizerType = typeof(ParakeetTdtRecognizer);
+    private static readonly Type ProviderSelectorType =
+        typeof(ParakeetTdtRecognizer).Assembly.GetType("SpeechLib.ExecutionProviderSelector")!;
 
     [Fact]
     public void CreateSessionOptions_LimitsIntraOpThreads_ToHalfCores()
@@ -101,14 +103,26 @@ public sealed class Unit_ParakeetDecodeTests
     public void SelectProvider_ResolvesRequestedOrFallsBackToCpu(
         string? requested, string[] available, string expected)
     {
-        var result = InvokeStatic<object>("SelectProvider", requested, available);
+        var result = InvokeStatic<object>(ProviderSelectorType, "Select", requested, available);
         Assert.Equal(expected, result.ToString());
     }
 
-    private static T InvokeStatic<T>(string methodName, params object?[] args)
+    [Fact]
+    public void CreateSessionOptions_StaleGpuSetting_FallsBackToCpuInsteadOfThrowing()
     {
-        var method = RecognizerType.GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new MissingMethodException(RecognizerType.FullName, methodName);
+        // Regression guard for the GPU	o-CPU move: a persisted provider
+        // setting that is no longer shipped must not fail session creation.
+        var options = InvokeStatic<SessionOptions>("CreateSessionOptions", "cuda");
+        Assert.NotNull(options);
+    }
+
+    private static T InvokeStatic<T>(Type type, string methodName, params object?[] args)
+    {
+        var method = type.GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new MissingMethodException(type.FullName, methodName);
         return (T)method.Invoke(null, args)!;
     }
+
+    private static T InvokeStatic<T>(string methodName, params object?[] args) =>
+        InvokeStatic<T>(RecognizerType, methodName, args);
 }

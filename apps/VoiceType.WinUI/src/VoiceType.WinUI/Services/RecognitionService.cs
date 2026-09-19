@@ -84,6 +84,8 @@ public sealed class RecognitionService : IRecognitionService
     public int SampleRate => _recognizer?.SampleRate ?? 16000;
     public string AccumulatedText => _accumulatedText.ToString();
     public string? LoadedModelPath => Volatile.Read(ref _loadedModelPath);
+    public bool SupportsPromptTranslation => _recognizer is ITranslationConfigurable;
+    public bool SupportsLanguageSelection => _recognizer is ILanguageConfigurable;
 
     public ModelState ModelState
     {
@@ -131,6 +133,8 @@ public sealed class RecognitionService : IRecognitionService
                     ModelPath = modelPath,
                     ExecutionProvider = settings.ExecutionProvider,
                     Language = settings.Language,
+                    TranslationEnabled = settings.TranslationEnabled,
+                    TranslationLanguage = settings.TranslationTargetLanguage,
                     UseVad = settings.UseVad,
                     RepetitionPenalty = settings.RepetitionPenalty,
                     SileroVadPath = _appPaths.SileroVadPath,
@@ -323,9 +327,15 @@ public sealed class RecognitionService : IRecognitionService
 
             if (_recognizer is ILanguageConfigurable languageConfigurable)
             {
-                var languageId = LanguageMapper.Resolve(settings.Language);
-                if (languageId is not null)
-                    languageConfigurable.TrySetLanguage(languageId);
+                if (!string.IsNullOrWhiteSpace(settings.Language))
+                    languageConfigurable.TrySetLanguage(settings.Language);
+            }
+
+            if (_recognizer is ITranslationConfigurable translationConfigurable)
+            {
+                translationConfigurable.TrySetTranslation(
+                    settings.TranslationEnabled,
+                    settings.TranslationTargetLanguage);
             }
         }
     }
@@ -369,16 +379,35 @@ public sealed class RecognitionService : IRecognitionService
                     string? raw;
                     lock (_recognizerOperationGate)
                         raw = _recognizer!.ProcessAudio(batch);
+
+                    var processingSettings = Volatile.Read(ref _processingSettings);
                     if (raw is not null)
                     {
                         _accumulatedText.Append(raw);
-                        var processingSettings = Volatile.Read(ref _processingSettings);
                         var processedDelta = postProc.Process(raw, processingSettings.CompiledRules);
                         if (!string.IsNullOrEmpty(processedDelta))
                             _partialProcessedText.Append(processedDelta);
-
-                        PartialResult?.Invoke(_partialProcessedText.ToString());
                     }
+
+                    // The recognizer's PartialText is revisable and never committed: show
+                    // committed + provisional so live text appears early while the commit
+                    // policy stays conservative. Only committed text feeds the final
+                    // transcript and text injection.
+                    var provisional = _recognizer!.PartialText;
+                    var provisionalTail = string.IsNullOrEmpty(provisional)
+                        ? ""
+                        : postProc.Process(provisional, processingSettings.CompiledRules);
+
+                    string display;
+                    if (_partialProcessedText.Length == 0)
+                        display = provisionalTail;
+                    else if (string.IsNullOrEmpty(provisionalTail))
+                        display = _partialProcessedText.ToString();
+                    else
+                        display = _partialProcessedText + " " + provisionalTail;
+
+                    if (!string.IsNullOrEmpty(display))
+                        PartialResult?.Invoke(display);
                 }
                 gotData = true;
             }
@@ -481,13 +510,14 @@ public sealed class RecognitionService : IRecognitionService
         {
             if (_recognizer is null) return;
 
-            var langId = LanguageMapper.Resolve(language);
-            if (langId is null) return;
-
             if (_recognizer is ILanguageConfigurable languageConfigurable &&
-                languageConfigurable.TrySetLanguage(langId))
+                languageConfigurable.TrySetLanguage(language))
             {
-                _telemetry?.LogInfo("Recognition", $"Language set to {language} (lang_id={langId})");
+                _telemetry?.LogInfo("Recognition", $"Language set to {language}");
+            }
+            else if (!string.Equals(language, "auto", StringComparison.OrdinalIgnoreCase))
+            {
+                _telemetry?.LogInfo("Recognition", "Selected recognizer does not support explicit language selection");
             }
         }
     }

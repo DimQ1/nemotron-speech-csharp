@@ -11,7 +11,7 @@ public sealed class E2E_Qwen3AsrStreamingTests
     public void StreamingProvider_EmitsChunkDeltasAndFlushesTail()
     {
         var root = FindRepositoryRoot();
-        var modelPath = Path.Combine(root, "models", "qwen3-asr-1.7b-onnx-streaming");
+        var modelPath = Path.Combine(root, "models", "qwen3-asr-1.7b-onnx-block-streaming");
         var audioPath = Path.Combine(root, "Test-Audio", "cv17", "en", "0002.wav");
 
         using var recognizer = RecognizerFactory.Create(new RecognizerFactoryOptions
@@ -47,7 +47,7 @@ public sealed class E2E_Qwen3AsrStreamingTests
     public void StreamingProvider_PreservesContextAcrossMultipleModelChunks()
     {
         var root = FindRepositoryRoot();
-        var modelPath = Path.Combine(root, "models", "qwen3-asr-1.7b-onnx-streaming");
+        var modelPath = Path.Combine(root, "models", "qwen3-asr-1.7b-onnx-block-streaming");
         var audioPath = Path.Combine(root, "Test-Audio", "cv17", "en", "0003.wav");
 
         using var recognizer = RecognizerFactory.Create(new RecognizerFactoryOptions
@@ -72,6 +72,43 @@ public sealed class E2E_Qwen3AsrStreamingTests
 
         var transcript = string.Concat(parts).Trim();
         Assert.Equal("Six.", transcript);
+    }
+
+    [Qwen3OnnxFact]
+    public void StreamingProvider_PromptTranslationUsesTargetLanguage()
+    {
+        var root = FindRepositoryRoot();
+        var modelPath = Path.Combine(root, "models", "qwen3-asr-1.7b-onnx-block-streaming");
+        var audioPath = Path.Combine(root, "Test-Audio", "cv17", "en", "0002.wav");
+
+        using var recognizer = RecognizerFactory.Create(new RecognizerFactoryOptions
+        {
+            ModelPath = modelPath,
+            ExecutionProvider = "cpu",
+            TranslationEnabled = true,
+            TranslationLanguage = "ru",
+        });
+
+        var audio = LoadPcm16MonoWave(audioPath);
+        var parts = new List<string>();
+        for (int offset = 0; offset < audio.Length; offset += recognizer.ChunkSamples)
+        {
+            int length = Math.Min(recognizer.ChunkSamples, audio.Length - offset);
+            var result = recognizer.ProcessAudio(audio[offset..(offset + length)]);
+            if (!string.IsNullOrEmpty(result))
+                parts.Add(result);
+        }
+
+        var flush = recognizer.Flush();
+        if (!string.IsNullOrEmpty(flush))
+            parts.Add(flush);
+
+        var translation = string.Concat(parts).Trim();
+        Assert.NotEmpty(translation);
+        Assert.True(translation.Any(character => character is >= '\u0400' and <= '\u04FF'), translation);
+        Assert.DoesNotContain("language", translation, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("asr_text", translation, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("She'll be all right.", translation, StringComparison.OrdinalIgnoreCase);
     }
 
     private static int CountOccurrences(string text, string value)

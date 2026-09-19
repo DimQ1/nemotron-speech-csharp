@@ -4,9 +4,9 @@ namespace SpeechLib.ModelDownload;
 /// Scans a models root folder for usable ASR model directories.
 /// Recognizes Nemotron GenAI exports (<c>genai_config.json</c>) and
 /// Parakeet TDT exports (<c>config.json</c> with <c>model_type:
-/// "nemo-conformer-tdt"</c>), plus the manifest-based Qwen3-ASR ONNX
-/// streaming profile. Shared by the WinUI and Uno settings screens and the
-/// model path resolver so all of them detect the same folders.
+/// "nemo-conformer-tdt"</c>), plus regular and manifest-based Qwen3-ASR ONNX
+/// packages. Shared by the WinUI and Uno settings screens and the model path
+/// resolver so all of them detect the same folders.
 /// </summary>
 public static class ModelFolderScanner
 {
@@ -18,6 +18,8 @@ public static class ModelFolderScanner
 
         return File.Exists(Path.Combine(modelDir, "genai_config.json"))
             || ParakeetModelDetector.IsParakeetTdtModel(modelDir)
+            || VibeVoiceModelDetector.IsVibeVoiceAsrModel(modelDir)
+            || Qwen3ModelDetector.IsQwen3AsrModel(modelDir)
             || Qwen3ModelDetector.IsQwen3AsrStreamingModel(modelDir);
     }
 

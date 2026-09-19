@@ -126,6 +126,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         ? Path.Combine(ModelsRootPath, SelectedModel)
         : "";
 
+    public bool IsLanguageSelectionEnabled => !VibeVoiceModelDetector.IsVibeVoiceAsrModel(ModelPath);
+
+    public string LanguageSelectionStatus =>
+        IsLanguageSelectionEnabled ? "" : "Selected model uses automatic language detection";
+
     public ObservableCollection<string> AvailableModels { get; } = new();
     public ObservableCollection<PostProcessingRule> Rules { get; } = new();
 
@@ -198,12 +203,17 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnModelsRootPathChanged(string value)
     {
+        OnPropertyChanged(nameof(ModelPath));
+        OnPropertyChanged(nameof(IsLanguageSelectionEnabled));
+        OnPropertyChanged(nameof(LanguageSelectionStatus));
         ScanModels();
     }
 
     partial void OnSelectedModelChanged(string value)
     {
         OnPropertyChanged(nameof(ModelPath));
+        OnPropertyChanged(nameof(IsLanguageSelectionEnabled));
+        OnPropertyChanged(nameof(LanguageSelectionStatus));
     }
 
     partial void OnLanguageChanged(string value)

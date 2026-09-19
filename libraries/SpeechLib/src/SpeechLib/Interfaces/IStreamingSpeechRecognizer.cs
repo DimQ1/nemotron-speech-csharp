@@ -32,6 +32,15 @@ public interface IStreamingSpeechRecognizer : IDisposable
     int LastTokenCount => 0;
 
     /// <summary>
+    /// Provisional text for the audio received so far, or null when the
+    /// implementation does not separate partial from final text.
+    /// It is revisable: callers should show it after the committed text and
+    /// replace it on the next call, never append it to the transcript. Only
+    /// <see cref="ProcessAudio"/> deltas and <see cref="Flush"/> output are final.
+    /// </summary>
+    string? PartialText => null;
+
+    /// <summary>
     /// Reset the recognizer's streaming decode state (decoder state and audio
     /// buffer) so a new utterance starts fresh. Default is a no-op for
     /// recognizers that do not buffer audio between <see cref="ProcessAudio"/>
