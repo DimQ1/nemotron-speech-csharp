@@ -47,6 +47,10 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
     // Token embedding matrix kept in managed memory for per-token lookup.
     private readonly Half[] _embedTokens; // [VocabSize, AudioHidden] float16, as stored on disk
 
+    // Reused across decode steps: the last logits row is the only part of the
+    // [1, seq, 151936] decoder output that is ever read.
+    private readonly float[] _logitsRow = new float[VocabSize];
+
     private readonly List<float> _audio = new();
     private readonly List<float> _blockAudio = new();
     private readonly List<float> _streamFeatures = new();
@@ -114,7 +118,12 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
         // encoder: it is compute-bound, so it gets the full core count by default
         // (measured: it dominates the streaming budget). Sharing the step session's
         // half-core setting left about a third of the prefill cost on the table.
-        var encoderOptions = CreateSessionOptions(executionProvider, encoderIntraOpThreads);
+        // The same applies to the streaming encoder: full cores measured ~2.4%
+        // faster end to end, while the step decoder keeps half (5/10/20 threads
+        // measured 0.608/0.597/0.601 RTF).
+        var encoderOptions = CreateSessionOptions(
+            executionProvider,
+            encoderIntraOpThreads > 0 ? encoderIntraOpThreads : Environment.ProcessorCount);
         var decoderOptions = CreateSessionOptions(executionProvider, intraOpThreads);
         var decoderInitOptions = CreateSessionOptions(
             executionProvider,
@@ -321,7 +330,7 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
             out int audioOffset);
 
         var (logits, keys, values) = RunDecoderInit(promptIds, audioFeatures, audioTokens, audioOffset);
-        int next = ArgMaxLastLogit(logits, promptIds.Length);
+        int next = ArgMaxRow(logits);
         if (Qwen3Prompt.IsEos(next))
             return "";
 
@@ -332,7 +341,7 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
         {
             var embed = EmbedToken(next);
             (logits, keys, values) = RunDecoderStep(embed, pos, keys, values);
-            next = ArgMaxLastLogit(logits, 1);
+            next = ArgMaxRow(logits);
             output.Add(next);
             pos++;
             if (Qwen3Prompt.IsEos(next)) break;
@@ -503,7 +512,7 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
         };
 
         using var results = _decoderInit.Run(inputs);
-        return ExtractOutputs(results);
+        return ExtractOutputs(results, promptIds.Length);
     }
 
     private (float[] logits, float[] keys, float[] values) RunDecoderStep(
@@ -525,27 +534,36 @@ public sealed class Qwen3AsrRecognizer : IStreamingSpeechRecognizer, ILanguageCo
         };
 
         using var results = _decoderStep.Run(inputs);
-        return ExtractOutputs(results);
+        return ExtractOutputs(results, 1);
     }
 
-    private static (float[] logits, float[] keys, float[] values) ExtractOutputs(
-        IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results)
+    private (float[] logits, float[] keys, float[] values) ExtractOutputs(
+        IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results,
+        int logitsSequenceLength)
     {
-        float[] logits = results[0].AsTensor<float>().ToArray();
+        // Only the last position's logits row is ever read (see ArgMaxRow), but the
+        // decoder_init tensor is [1, prompt_len, 151936], so copying it whole moved
+        // tens of MB per decode for nothing. Read that one row out of the ORT buffer.
+        var logits = results[0].AsTensor<float>();
+        int rowOffset = (logitsSequenceLength - 1) * VocabSize;
+        if (logits is DenseTensor<float> dense)
+            dense.Buffer.Span.Slice(rowOffset, VocabSize).CopyTo(_logitsRow);
+        else
+            logits.ToArray().AsSpan(rowOffset, VocabSize).CopyTo(_logitsRow);
+
         float[] keys = results[1].AsTensor<float>().ToArray();
         float[] values = results[2].AsTensor<float>().ToArray();
-        return (logits, keys, values);
+        return (_logitsRow, keys, values);
     }
 
-    /// <summary>ArgMax over the last position's vocab logits.</summary>
-    private static int ArgMaxLastLogit(float[] logits, int seqLen)
+    /// <summary>ArgMax over a single logits row.</summary>
+    private static int ArgMaxRow(float[] logitsRow)
     {
-        int offset = (seqLen - 1) * VocabSize;
         int best = 0;
         float bestVal = float.NegativeInfinity;
         for (int i = 0; i < VocabSize; i++)
         {
-            float v = logits[offset + i];
+            float v = logitsRow[i];
             if (v > bestVal) { bestVal = v; best = i; }
         }
         return best;
