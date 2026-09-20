@@ -18,12 +18,13 @@ public sealed class Unit_ParakeetDecodeTests
         typeof(ParakeetTdtRecognizer).Assembly.GetType("SpeechLib.ExecutionProviderSelector")!;
 
     [Fact]
-    public void CreateSessionOptions_LimitsIntraOpThreads_ToHalfCores()
+    public void CreateSessionOptions_UsesEveryCore()
     {
+        // Half the cores used to be the policy because ORT's spinning workers saturated
+        // the box; with spinning disabled all cores measure faster (RTF 0.074 -> 0.067).
         var options = InvokeStatic<SessionOptions>("CreateSessionOptions", "cpu");
 
-        int expected = Math.Max(2, Environment.ProcessorCount / 2);
-        Assert.Equal(expected, options.IntraOpNumThreads);
+        Assert.Equal(Math.Max(2, Environment.ProcessorCount), options.IntraOpNumThreads);
         Assert.Equal(1, options.InterOpNumThreads);
         Assert.Equal(GraphOptimizationLevel.ORT_ENABLE_ALL, options.GraphOptimizationLevel);
     }

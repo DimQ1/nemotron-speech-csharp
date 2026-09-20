@@ -44,6 +44,10 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
     private readonly int _maxTokensPerStep;
 
     private readonly List<float> _audio = new();
+
+    // Decoded tokens waiting for the word they belong to to finish (streaming output
+    // must not commit half a word at a chunk boundary).
+    private readonly List<int> _heldIds = new();
     private readonly int _chunkSamples;
     private readonly int _leftSamples;
     private readonly int _rightSamples;
@@ -129,7 +133,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
 
         int available = _audio.Count - _decodedSamples;
         return available >= _chunkSamples + _rightSamples
-            ? DetokenizeChunk(DecodeNextChunkIds())
+            ? DetokenizeCompleteWords(DecodeNextChunkIds(), flush: false)
             : null;
     }
 
@@ -138,8 +142,8 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         return _decodedSamples < _audio.Count
-            ? DetokenizeChunk(DecodeRemainingIds())
-            : null;
+            ? DetokenizeCompleteWords(DecodeRemainingIds(), flush: true)
+            : DetokenizeCompleteWords([], flush: true);
     }
 
     /// <inheritdoc />
@@ -178,6 +182,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
         _emittedAnyText = false;
         _lastEmitSample = -1;
         _eouSplits.Clear();
+        _heldIds.Clear();
         _partial.Clear();
         _pendingFinal.Clear();
     }
@@ -191,6 +196,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
         _state2 = new DenseTensor<float>(new[] { 2, 1, 640 });
         _lastToken = _blankIdx;
         _lastEmitSample = -1;
+        _heldIds.Clear();
         var ids = DecodeFrames(encodings, 0, encodings.Length, 0);
         return Detokenize(ids);
     }
@@ -294,6 +300,51 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
         var final = _pendingFinal.Length > 0 ? _pendingFinal.ToString() : null;
         _pendingFinal.Clear();
         return new StreamingResult(_partial.ToString(), final);
+    }
+
+    /// <summary>
+    /// Emits only the decoded ids that form complete words and holds the trailing word
+    /// back until a later chunk (or <see cref="Flush"/>) confirms it.
+    /// </summary>
+    /// <remarks>
+    /// Chunk boundaries fall wherever the audio happens to be, so committing the raw
+    /// chunk detokenization split words in half: a trace showed "disappro" followed by
+    /// "ved". Holding the growing word changes only *when* text appears, never the final
+    /// transcript. An end-of-utterance split (a blank gap) proves everything before it is
+    /// complete, so that part is released immediately.
+    /// </remarks>
+    private string? DetokenizeCompleteWords(IReadOnlyList<int> ids, bool flush)
+    {
+        int heldBefore = _heldIds.Count;
+        _heldIds.AddRange(ids);
+
+        int releaseEnd;
+        if (flush)
+        {
+            releaseEnd = _heldIds.Count;
+        }
+        else
+        {
+            int lastSplit = _eouSplits.Count > 0 ? heldBefore + _eouSplits[^1] : -1;
+            int lastWordStart = -1;
+            for (int i = _heldIds.Count - 1; i > 0; i--)
+            {
+                if (_wordStartIds.Contains(_heldIds[i]))
+                {
+                    lastWordStart = i;
+                    break;
+                }
+            }
+
+            releaseEnd = lastSplit >= lastWordStart ? _heldIds.Count : lastWordStart;
+        }
+
+        if (releaseEnd <= 0)
+            return null;
+
+        var complete = _heldIds.GetRange(0, releaseEnd);
+        _heldIds.RemoveRange(0, releaseEnd);
+        return DetokenizeChunk(complete);
     }
 
     /// <summary>
@@ -409,7 +460,13 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
 
     private static SessionOptions CreateSessionOptions(string executionProvider)
     {
-        int threads = Math.Max(2, Environment.ProcessorCount / 2);
+        // The encoder re-encodes the whole left+chunk+right window on every chunk and is
+        // compute-bound, so it uses every core. It used to be pinned to half the cores to
+        // stop the heavy window from saturating the machine, but that was a symptom of
+        // ONNX Runtime's worker spinning, which is now disabled (see OrtCpuTuning):
+        // measured on 20 logical cores, streaming RTF improved from 0.074 at half the
+        // cores to 0.067 at all of them, with an identical transcript.
+        int threads = Math.Max(2, Environment.ProcessorCount);
         var options = new SessionOptions
         {
             IntraOpNumThreads = threads,
