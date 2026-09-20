@@ -259,17 +259,26 @@ namespace SpeechLib
 
         /// <summary>
         /// Heuristic to pick the best intra_op_num_threads for ONNX CPU inference.
-        /// LLM inference scales poorly beyond ~8 threads; on hybrid Intel CPUs
-        /// (P-cores + E-cores) dividing by 2 targets physical P-cores only.
+        /// On hybrid Intel CPUs (P-cores + E-cores) dividing by 2 targets physical
+        /// P-cores only; on high-core parts threads are capped with headroom left for
+        /// the other session and the host threads.
         /// </summary>
+        /// <remarks>
+        /// The upper branch used to cap at 8 threads on the assumption that LLM
+        /// inference stops scaling there. That ceiling was measured with ONNX Runtime's
+        /// worker spinning left on, which is what actually made extra threads harmful
+        /// (see OrtCpuTuning). With spinning disabled, 12, 16 and 20 threads are all
+        /// within noise of each other and about 2% faster than 8 on a 20-thread part,
+        /// so the cap now leaves 8 threads of headroom instead of pinning to 8.
+        /// </remarks>
         private static int ComputeOptimalIntraThreads(int logicalCores)
         {
             return logicalCores switch
             {
                 <= 4  => Math.Max(1, logicalCores - 1),   // Low-end: leave 1 thread for OS
                 <= 16 => logicalCores / 2,                 // Mid-range / hybrid: target P-cores
-                <= 32 => 8,                                // High-end: LLM scaling ceiling
-                _     => Math.Min(12, logicalCores / 4)    // 32+: slightly more, but capped
+                <= 32 => Math.Max(8, logicalCores - 8),    // High-end: plateau, keep headroom
+                _     => Math.Min(24, logicalCores - 8)    // 32+: scale with cores, capped
             };
         }
 
