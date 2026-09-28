@@ -73,7 +73,7 @@ NemotronSpeech <model_path> <audio_file|--mic|--loopback|--mix> [ep] [--language
 
 | Argument | Description |
 |----------|-------------|
-| `model_path` | Path to ONNX model folder (`modules/asr/cpu`) |
+| `model_path` | Path to the model folder: a Nemotron GenAI export (`genai_config.json`) or a Parakeet TDT ONNX export (`config.json`, e.g. `.../parakeet-tdt-0.6b-v3-onnx/fp32`) |
 | `audio_file` | WAV/MP3 file to transcribe |
 | `--mic` | Live microphone capture |
 | `--loopback` | System audio loopback capture |

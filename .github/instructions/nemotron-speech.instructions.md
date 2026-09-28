@@ -11,6 +11,7 @@ applyTo: "apps/NemotronSpeech/**"
 - Keep `NemotronSpeech` focused on command-line parsing and application orchestration.
 - Keep ONNX Runtime GenAI lifecycle and execution-provider configuration in `SpeechLib.Nemotron`.
 - Keep provider-neutral contracts and streaming orchestration in `SpeechLib`.
+- The CLI picks the engine from the model folder: `config.json` with `model_type: nemo-conformer-tdt` → `ParakeetTdtRecognizer` (real streaming, see `Program.CreateParakeet`), otherwise `ModelSession` (Nemotron GenAI). Keep that switch in `Program.cs`; the engines themselves live in `SpeechLib.Providers`.
 - The CLI uses `SpeechLib.Audio.NAudio3` (the only capture provider); NAudio 2 was removed — do not reintroduce it.
 
 ## CLI behavior

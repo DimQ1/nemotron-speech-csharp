@@ -15,7 +15,7 @@ process-wide `OrtEnv`. Ядро ONNX Runtime остаётся обычным CPU
 | `libraries/SpeechLib/src/SpeechLib.Providers/ExecutionProviderSelector.cs` | `ProviderKind.WebGpu`; разбор `webgpu[...]`; деградация к CPU при недоступности |
 | `libraries/SpeechLib/src/SpeechLib/Common.cs` | GenAI-путь: регистрация плагина + `AppendProvider("WebGPU")` с provider options |
 | `libraries/SpeechLib/src/SpeechLib.Providers/SpeechLib.Providers.csproj` | `Microsoft.ML.OnnxRuntime.EP.WebGpu` 0.4.0 + копирование плагина, `dxcompiler.dll`, `dxil.dll` в `runtimes/win-x64/native` |
-| `build/WerEval/Program.cs` | `--ep <spec>` и `--list-gpus` |
+| `tools/WerEval/Program.cs` | `--ep <spec>` и `--list-gpus` |
 | `build/bench-webgpu.ps1` | Матрица замеров CPU vs WebGPU |
 
 ## Использование
@@ -109,7 +109,7 @@ hardware device** в `WebGpuProviderFactoryCreator::Create`; провайдер 
 ### Почему VibeVoice не измерен
 
 VibeVoice ожидает 24 кГц, а корпус CV17 — 16 кГц, поэтому у него нет записи в
-`build/WerEval` (см. `/memories/repo/vibevoice-session-caching.md`): качество
+`tools/WerEval` (см. `/memories/repo/vibevoice-session-caching.md`): качество
 проверяется равенством транскриптов, а не WER. Дополнительный риск для WebGPU —
 три int4-графа с внешними данными по 840 МБ, что упирается в лимит
 `maxStorageBufferBindingSize` адаптера. Нужен отдельный harness.

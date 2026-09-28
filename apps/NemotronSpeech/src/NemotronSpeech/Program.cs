@@ -9,6 +9,7 @@ using SpeechLib.Decorators;
 using SpeechLib.LiteRT;
 using SpeechLib.LiteRT.Native;
 using SpeechLib.Models;
+using SpeechLib.ParakeetTdt;
 using SpeechLib.Translation;
 
 namespace NemotronSpeech;
@@ -36,10 +37,11 @@ internal static class Program
             if (langId is not null)
                 Console.WriteLine($"  Language: {opts.LanguageArg} -> lang_id={langId}");
 
-            using var session = new ModelSession(opts.ModelPath, opts.ExecutionProvider, langId, opts.UseVad);
-            if (session.IsSingleLanguage)
-                Console.WriteLine("  Model: single-language (no lang_id needed)");
-            Console.WriteLine("  Use VAD: " + session.VadStatus);
+            // The model folder selects the engine: a Parakeet TDT ONNX export (config.json)
+            // streams through ParakeetTdtRecognizer, anything else is a Nemotron GenAI model.
+            using IStreamingSpeechRecognizer session = ParakeetTdtRecognizer.IsParakeetTdtModel(opts.ModelPath)
+                ? CreateParakeet(opts)
+                : CreateNemotron(opts, langId);
 
             // Wrap with decorators for metrics and logging
             using ITextTranslator? translator = CreateTranslator(opts);
@@ -48,7 +50,7 @@ internal static class Program
                 : null;
 
             IStreamingSpeechRecognizer recognizer = session;
-            recognizer = new MetricsRecognizerDecorator(recognizer, "ModelSession");
+            recognizer = new MetricsRecognizerDecorator(recognizer, session.GetType().Name);
             recognizer = new LoggingRecognizerDecorator(
                 recognizer,
                 coordinator is not null ? coordinator.LogRecognized : null);
@@ -109,6 +111,27 @@ internal static class Program
             Console.WriteLine(AppOptions.Usage);
             return 1;
         }
+    }
+
+    private static ModelSession CreateNemotron(AppOptions opts, string? langId)
+    {
+        var session = new ModelSession(opts.ModelPath, opts.ExecutionProvider, langId, opts.UseVad);
+        if (session.IsSingleLanguage)
+            Console.WriteLine("  Model: single-language (no lang_id needed)");
+        Console.WriteLine("  Use VAD: " + session.VadStatus);
+        return session;
+    }
+
+    private static ParakeetTdtRecognizer CreateParakeet(AppOptions opts)
+    {
+        var recognizer = new ParakeetTdtRecognizer(opts.ModelPath, executionProvider: opts.ExecutionProvider);
+        Console.WriteLine("  Model: Parakeet TDT (language auto-detected, blank-based endpointing)");
+        Console.WriteLine(
+            $"  Streaming: step {recognizer.ChunkSeconds:F2}s, commit after {recognizer.RightContextSeconds:F2}s, " +
+            $"left context {recognizer.LeftContextSeconds:F2}s, preview={recognizer.PreviewEnabled}");
+        if (opts.UseVad)
+            Console.WriteLine("  Use VAD: not needed (Parakeet endpoints on blank frames)");
+        return recognizer;
     }
 
     private static ITextTranslator? CreateTranslator(AppOptions opts)

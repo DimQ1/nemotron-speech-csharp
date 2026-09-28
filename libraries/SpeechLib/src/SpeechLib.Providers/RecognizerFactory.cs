@@ -50,7 +50,14 @@ public static class RecognizerFactory
                 executionProvider: executionProvider,
                 language: options.Language)
             : isParakeet
-            ? new ParakeetTdtRecognizer(options.ModelPath, executionProvider: executionProvider)
+            ? new ParakeetTdtRecognizer(
+                options.ModelPath,
+                chunkSeconds: options.StreamingChunkSeconds ?? ParakeetTdtRecognizer.DefaultChunkSeconds,
+                leftContextSeconds: options.StreamingLeftContextSeconds ?? ParakeetTdtRecognizer.DefaultLeftContextSeconds,
+                rightContextSeconds: options.StreamingRightContextSeconds ?? ParakeetTdtRecognizer.DefaultRightContextSeconds,
+                executionProvider: executionProvider,
+                previewPartials: options.StreamingPreview,
+                silenceContextSeconds: options.StreamingSilenceContextSeconds ?? ParakeetTdtRecognizer.DefaultSilenceContextSeconds)
             : new ModelSession(
                 options.ModelPath,
                 executionProvider,
@@ -123,4 +130,39 @@ public sealed record RecognizerFactoryOptions
 
     /// <summary>Path to the shared Silero VAD model, used when the provider has no native VAD.</summary>
     public string? SileroVadPath { get; init; }
+
+    /// <summary>
+    /// Buffer-streaming step in seconds (Parakeet TDT; other providers ignore it).
+    /// Null = provider default (0.32 s). Smaller = text appears sooner, more encoder
+    /// passes per second; the recognizer lengthens the step by itself when a step takes
+    /// longer to compute than the audio it covers.
+    /// </summary>
+    public double? StreamingChunkSeconds { get; init; }
+
+    /// <summary>
+    /// Future audio a frame needs before it is committed, in seconds (Parakeet TDT).
+    /// Null = provider default (1.0 s). Larger = more accurate commits, higher latency.
+    /// </summary>
+    public double? StreamingRightContextSeconds { get; init; }
+
+    /// <summary>
+    /// Audio prepended to every encoder window, in seconds (Parakeet TDT).
+    /// Null = provider default (5.0 s). This is the main CPU knob: each step encodes
+    /// left context + uncommitted audio.
+    /// </summary>
+    public double? StreamingLeftContextSeconds { get; init; }
+
+    /// <summary>
+    /// Decode the uncommitted tail into revisable partial text on every step
+    /// (Parakeet TDT). Off = only committed text is reported.
+    /// </summary>
+    public bool StreamingPreview { get; init; } = true;
+
+    /// <summary>
+    /// Future audio a token-free stretch needs before the committed boundary moves past
+    /// it, in seconds (Parakeet TDT). Null = provider default (2.0 s). Bounds the encoder
+    /// window during pauses; sentence onsets after a pause are re-decoded with up to this
+    /// much right context.
+    /// </summary>
+    public double? StreamingSilenceContextSeconds { get; init; }
 }

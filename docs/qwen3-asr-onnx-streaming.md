@@ -217,7 +217,7 @@ effect. The remaining floor is the 1.27 GB block encoder, which must run once pe
 Measurement protocol for all of the above:
 
 ```powershell
-dotnet build build/WerEval/WerEval.csproj -c Release
+dotnet build tools/WerEval/WerEval.csproj -c Release
 WerEval qwen3-streaming <modelDir> Test-Audio/cv17/en --max 50 --save <report>.md
 WerEval qwen3-streaming <modelDir> Test-Audio/cv17/ru --max 50 --save <report>.md
 WerEval qwen3-streaming <modelDir> Test-Audio/cv17/en --max 3 --trace   # latency/stability

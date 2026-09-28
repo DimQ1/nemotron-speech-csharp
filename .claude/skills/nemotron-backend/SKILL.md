@@ -247,3 +247,31 @@ Key rules:
 2. Native ONNX Runtime DLLs are copied to the output automatically
 3. Export/download ONNX model to `modules/asr/<variant>/`
 4. Run: `dotnet run --project NemotronSpeech -c Release --no-build -- "<model_path>" <mode> [ep] [--language <code>]`
+
+---
+
+## Pattern 8: Real streaming on an offline TDT model (Parakeet)
+
+### File: `SpeechLib.Providers/ParakeetTdtRecognizer.cs` (`Step`)
+
+Parakeet TDT has full-context attention (no cache-aware export), so streaming is
+buffer-based, but tuned so text shows within a third of a second:
+
+- Every 0.32 s of new audio: **one encoder pass** over `[5 s left context | open region]`,
+  then two TDT decoder passes on a *copy* of the committed state — frames with full right
+  context are **committed**, the tail is the revisable **preview** (`PartialText` /
+  `StreamingResult.Partial`).
+- Right context: 1 s mid-utterance, **2 s for the first word** of an utterance; nothing is
+  committed from a window shorter than 3.84 s.
+- The committed boundary moves only past emitted tokens. Greedy TDT says "blank, skip 4
+  frames" through pauses and swallows the next onset — offline decoding loses whole
+  sentences this way — so token-free audio stays open (re-decoded with more context) up to
+  `silenceContext` (2 s), and the decoder state is **reset after each ≥ 0.8 s pause**.
+- End of utterance: blank frames with full right context, or near-silent audio for 0.8 s.
+  Never use "preview came back empty" as evidence — the tail is blank-biased.
+- Silence gate (peak < 1 % of the session max, ≤ −54 dBFS) skips encoder work in pauses;
+  the step lengthens automatically when compute is slower than real time.
+
+Measure with `tools/WerEval ... --streaming` (preview WER, first-text latency) on
+`Test-Audio/cv17` **and** on a long multi-sentence fixture — single clips never exercise
+pauses. `SPEECHLIB_PARAKEET_TRACE=1` dumps per-step window arithmetic and decoder decisions.

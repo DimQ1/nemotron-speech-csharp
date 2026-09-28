@@ -34,7 +34,7 @@ dotnet test apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj -c Relea
 
 ## Test Data (WER evaluation)
 
-WER/RTF is measured with the `build/WerEval` harness against Common Voice test
+WER/RTF is measured with the `tools/WerEval` harness against Common Voice test
 audio. The audio is **not committed** — `Test-Audio/` is gitignored. Download
 it on demand:
 
@@ -51,7 +51,7 @@ python tools/eval/download_cv_test.py --lang en --count 250
 - **Layout:** `Test-Audio/cv17/{ru,en}/NNNN.wav` (16 kHz PCM16 mono) +
   `NNNN.txt` (reference transcript), one pair per utterance.
 - The WER harness expects sibling `*.wav` + `*.txt` pairs and scores
-  ru/en separately (see `build/WerEval/Program.cs`).
+  ru/en separately (see `tools/WerEval/Program.cs`).
 
 ## Architecture
 
@@ -136,6 +136,7 @@ GPU builds are gone, but a persisted `ExecutionProvider` value of `"cuda"`/`"dml
 | Area | Key Files |
 |---|---|
 | **Audio pipeline** | `libraries/SpeechLib/src/SpeechLib/Audio/ConcurrentQueueWrapper.cs`, `libraries/SpeechLib/src/SpeechLib/LiveTranscriber.cs` |
+| **Parakeet streaming** | `libraries/SpeechLib/src/SpeechLib.Providers/ParakeetTdtRecognizer.cs` (`Step`: one encoder pass per 0.32 s, commit + preview from a state copy, boundary moves only past emitted tokens, 2 s onset context for the first word, fresh decoder state after each pause, silence gate skips encoder work in pauses; `SPEECHLIB_PARAKEET_TRACE=1` dumps per-step diagnostics), `tools/WerEval` (`--streaming --chunk --right --left --silence --onset --no-preview`, preview WER + first-text latency) |
 | **Live capture (Windows)** | `libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/Audio/NAudio3AudioSource.cs` (WASAPI mic/loopback/mix), `libraries/SpeechLib/src/SpeechLib/Audio/StreamingResampler.cs` (anti-aliased rate conversion), `PcmSampleDecoder.cs`, `CaptureMixer.cs` |
 | **CLI entry** | `apps/NemotronSpeech/src/NemotronSpeech/Program.cs`, `apps/NemotronSpeech/src/NemotronSpeech/AppOptions.cs` |
 | **ONNX GenAI** | `libraries/SpeechLib/src/SpeechLib/ModelSession.cs` |
