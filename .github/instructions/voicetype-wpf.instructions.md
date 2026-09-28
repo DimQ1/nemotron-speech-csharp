@@ -9,7 +9,7 @@ applyTo: "VoiceType/**"
 ## Architecture
 
 - Keep WPF views thin. Recognition, capture, text injection, global hooks, persistence, and post-processing belong in services or ViewModels.
-- Preserve the provider split: `VoiceType` uses `SpeechLib.Audio.NAudio3`, while the CLI compatibility path uses `SpeechLib.Audio.NAudio2`.
+- `SpeechLib.Audio.NAudio3` is the single capture provider for VoiceType and the CLI; the NAudio 2 provider was removed.
 - Use `IAudioSourceFactory` for capture selection instead of constructing NAudio sources inside the recognition loop.
 - Keep model lifecycle separate from capture lifecycle so a loaded model can be reused across recognition sessions.
 

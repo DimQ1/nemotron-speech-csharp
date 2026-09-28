@@ -17,9 +17,6 @@
     <PackageReference Include="NAudio.Core" Version="3.0.1" />
     <PackageReference Include="NAudio.Wasapi" Version="3.0.1" />
     <PackageReference Include="NAudio.Lame" Version="2.1.0" />
-    <Compile Include="..\SpeechLib\Audio\AudioMixerRegistry.cs" Link="AudioMixerRegistry.cs" />
-    <Compile Include="..\SpeechLib\Audio\BufferedAudioRecorder.cs" Link="BufferedAudioRecorder.cs" />
-    <Compile Include="..\SpeechLib\Transcriber.cs" Link="Transcriber.cs" />
   </ItemGroup>
 
 </Project>

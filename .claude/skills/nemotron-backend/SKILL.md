@@ -19,10 +19,11 @@ CLI (Program.cs)
               └─► Transcriber (orchestrator)
                     ├── RunFile()  — batch file transcription
                     └── RunLive()  — streaming capture + inference
-                          └─► IAudioSource implementations
-                                ├── MicAudioSource      (WaveInEvent, 16kHz mono)
-                                ├── LoopbackAudioSource  (WasapiLoopbackCapture + resample)
-                                └── MixAudioSource       (mic + loopback threads)
+                          └─► IAudioSource: NAudio3AudioSource (SpeechLib.Audio.NAudio3)
+                                ├── Mic       — WasapiCapture, event-driven, native mix format
+                                ├── Loopback  — WasapiLoopbackCapture (polling; loopback never signals the event)
+                                └── Mix       — both, summed by CaptureMixer with user gains
+                                Drain every 50 ms: PcmSampleDecoder → StreamingResampler → float[] batch
 ```
 
 ---
@@ -77,7 +78,7 @@ _generator → _genParams → _tokenizerStream → _tokenizer → _processor →
 
 ## Pattern 2: Streaming Audio Pipeline (Lock-Free)
 
-### File: `Transcriber.cs`, `AudioSource.cs`
+### File: `LiveTranscriber.cs`, `Interfaces/IAudioSource.cs`, `Audio/ConcurrentQueueWrapper.cs`
 
 **ConcurrentQueue batching pattern** — avoids per-sample atomic operations:
 
@@ -96,7 +97,7 @@ public sealed class ConcurrentQueueWrapper
 **Producer-consumer with signal:**
 - Producer thread captures audio → batches `float[]` → `Enqueue()` → `ManualResetEventSlim.Set()`
 - Consumer loop: `TryDequeue()` each batch → `ProcessAudio()` → optional `DecodeTokens()`
-- 1.5s silence timeout after last audio to auto-stop
+- The queue is bounded (64 batches); when the consumer falls behind the oldest batches are dropped and counted in `DroppedBatches`
 - Warmup: feed silent chunk to prime the processor/JIT
 
 **IAudioSource interface:**
@@ -104,9 +105,10 @@ public sealed class ConcurrentQueueWrapper
 public interface IAudioSource : IDisposable
 {
     int SourceSampleRate { get; }
-    void Start(ConcurrentQueueWrapper buffer, ManualResetEventSlim signal, ref bool isRunning);
+    void Start(ConcurrentQueueWrapper buffer, ManualResetEventSlim signal, CaptureState state);
 }
 ```
+`CaptureState` carries the running flag; `state.Wait(ms)` is an interruptible sleep and `state.Stop()` ends capture.
 
 ---
 
@@ -204,14 +206,14 @@ Key rules:
 
 ## Pattern 7: Audio Format Conversion
 
-### File: `AudioUtils.cs`
+### Files: `SpeechLib/Audio/PcmSampleDecoder.cs`, `SpeechLib/Audio/StreamingResampler.cs`, `SpeechLib.Audio.NAudio3/Audio/AudioUtils.cs`
 
-**Three-stage pipeline:**
-1. **Raw bytes → float[]** — handle 8/16/32-bit, stereo→mono downmix
-2. **Resample** — linear interpolation with optional gain
-3. **File load** — NAudio `AudioFileReader` → `StereoToMonoSampleProvider` → `WdlResamplingSampleProvider`
+**Three-stage pipeline (shared by live capture and file loading):**
+1. **Raw bytes → float[]** — `PcmSampleDecoder.DecodeToMono` handles 8/16/24/32-bit PCM and float32, averages channels to mono
+2. **Resample** — `StreamingResampler` (windowed-sinc, Kaiser β=7, 32 zero-crossings): anti-aliased, stateful across calls, exact rational stepping (no drift). Never use nearest-neighbour or linear decimation for 48→16 kHz — it aliases 8–24 kHz into the speech band.
+3. **File load** — `AudioUtils.LoadFile`: portable WAV parser, Media Foundation fallback for MP3/M4A on Windows
 
-**Stereo→mono:** `(L + R) * 0.5` (average, not sum)
+**Stereo→mono:** `(L + R) * 0.5` (average, not sum). **Mixing:** `CaptureMixer.Mix` — unity per-source gain, hard clamp to ±1.
 
 ---
 

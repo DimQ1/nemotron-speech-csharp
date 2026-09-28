@@ -11,7 +11,7 @@ applyTo: "apps/NemotronSpeech/**"
 - Keep `NemotronSpeech` focused on command-line parsing and application orchestration.
 - Keep ONNX Runtime GenAI lifecycle and execution-provider configuration in `SpeechLib.Nemotron`.
 - Keep provider-neutral contracts and streaming orchestration in `SpeechLib`.
-- The CLI uses `SpeechLib.Audio.NAudio2`; do not mix NAudio 2 and NAudio 3 references in one project.
+- The CLI uses `SpeechLib.Audio.NAudio3` (the only capture provider); NAudio 2 was removed — do not reintroduce it.
 
 ## CLI behavior
 

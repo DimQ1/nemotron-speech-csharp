@@ -1,21 +1,33 @@
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
 using SpeechLib.Models;
-using System.Buffers;
 using System.Runtime.Versioning;
 
 namespace SpeechLib.Audio;
 
 /// <summary>
-/// Windows capture provider built against NAudio 3 preview.
+/// Windows capture provider built against NAudio 3.
 /// The provider keeps the same batched float contract as the stable NAudio provider,
 /// so switching providers does not change recognizer allocation behavior.
+/// <para>
+/// Each device is captured in its native shared-mode mix format (typically 48 kHz float
+/// stereo), decoded to mono and converted to the recognizer rate with a stateful
+/// anti-aliased <see cref="StreamingResampler"/>. Mic and loopback are then summed with
+/// their user gains and published as one batch every <see cref="DrainIntervalMilliseconds"/>.
+/// </para>
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class NAudio3AudioSource : IAudioSource
 {
-    private const int DrainIntervalMilliseconds = 100;
+    /// <summary>How often buffered device audio is drained, mixed and published.</summary>
+    private const int DrainIntervalMilliseconds = 50;
+
+    /// <summary>WASAPI buffer length for the microphone; data still arrives per 10 ms period in event mode.</summary>
+    private const int MicrophoneBufferMilliseconds = 100;
+
+    /// <summary>Ring capacity per device; drains happen every 50 ms so this only absorbs scheduling hiccups.</summary>
+    private static readonly TimeSpan DeviceRingDuration = TimeSpan.FromSeconds(2);
+
     private readonly CaptureMode _mode;
     private readonly int _targetRate;
     private CaptureState? _activeState;
@@ -70,61 +82,20 @@ public sealed class NAudio3AudioSource : IAudioSource
         try
         {
             if (_mode is CaptureMode.Loopback or CaptureMode.Mix)
-            {
-                try
-                {
-                    loopback = CreateLoopback(state, signal);
-                }
-                catch (Exception ex)
-                {
-                    if (_mode == CaptureMode.Mix)
-                    {
-                        // Missing render device is not fatal in Mix mode — degrade to mic-only.
-                        Console.Error.WriteLine($"[capture] Loopback unavailable — continuing with microphone only: {ex.Message}");
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException(
-                            "No audio render device is available for system-audio (loopback) capture. " +
-                            "Start playing audio, or run with a microphone instead.", ex);
-                    }
-                }
-            }
+                loopback = TryCreate("Loopback", () => CaptureHandle.CreateLoopback(state, _targetRate),
+                    "No audio render device is available for system-audio (loopback) capture. " +
+                    "Start playing audio, or run with a microphone instead.");
 
             if (_mode is CaptureMode.Mic or CaptureMode.Mix)
-            {
-                try
-                {
-                    microphone = CreateMicrophone(state, signal);
-                }
-                catch (Exception ex)
-                {
-                    if (_mode == CaptureMode.Mix)
-                    {
-                        Console.Error.WriteLine($"[capture] Microphone unavailable — continuing with system audio only: {ex.Message}");
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException(
-                            "The microphone could not be started. It may be in use by another application or disabled.", ex);
-                    }
-                }
-            }
+                microphone = TryCreate("Microphone", () => CaptureHandle.CreateMicrophone(state, _targetRate),
+                    "The microphone could not be started. It may be in use by another application or disabled.");
+
+            loopback = TryStart(loopback, "Loopback");
+            microphone = TryStart(microphone, "Microphone");
 
             if (loopback is null && microphone is null)
                 throw new InvalidOperationException(
                     "No audio source could be started. Check your microphone and system-audio settings.");
-
-            TryStart(loopback, "Loopback", signal, ref loopback);
-            TryStart(microphone, "Microphone", signal, ref microphone);
-
-            if (loopback is null && microphone is null)
-                throw new InvalidOperationException(
-                    "No audio source could be started. Check your microphone and system-audio settings.");
-
-            var loopbackSource = loopback?.Buffer;
-            var microphoneSource = microphone?.Buffer;
-            var readBuffer = new float[4096];
 
             try
             {
@@ -134,12 +105,15 @@ public sealed class NAudio3AudioSource : IAudioSource
                     if (!state.IsRunning)
                         break;
 
-                    DrainAndPublish(loopbackSource, microphoneSource, readBuffer, buffer, signal,
-                        loopback?.Buffer, microphone?.Buffer);
+                    DrainAndPublish(loopback, microphone, buffer, signal);
+
+                    // A device that stopped on its own (unplugged, format change, driver error)
+                    // must not silently end the session: degrade in Mix mode, fail otherwise.
+                    loopback = CheckFault(loopback, "Loopback", otherAlive: microphone is not null);
+                    microphone = CheckFault(microphone, "Microphone", otherAlive: loopback is not null);
                 }
 
-                DrainAndPublish(loopbackSource, microphoneSource, readBuffer, buffer, signal,
-                    loopback?.Buffer, microphone?.Buffer);
+                DrainAndPublish(loopback, microphone, buffer, signal);
             }
             finally
             {
@@ -156,264 +130,268 @@ public sealed class NAudio3AudioSource : IAudioSource
         }
     }
 
-    /// <summary>
-    /// Starts one capture handle, degrading Mix mode to the other source when the
-    /// start call fails. Non-Mix failures are rethrown with an actionable message.
-    /// </summary>
-    private void TryStart(CaptureHandle? handle, string what, ManualResetEventSlim signal, ref CaptureHandle? target)
-    {
-        if (handle is null)
-            return;
-
-        try
-        {
-            handle.StartRecording();
-        }
-        catch (Exception ex)
-        {
-            if (_mode == CaptureMode.Mix)
-            {
-                Console.Error.WriteLine($"[capture] {what} failed to start — continuing with the other source: {ex.Message}");
-                handle.Dispose();
-                target = null;
-            }
-            else
-            {
-                throw new InvalidOperationException($"{what} capture could not start.", ex);
-            }
-        }
-    }
-
     public void Dispose()
     {
         _activeState?.Stop();
     }
 
-    private CaptureHandle? CreateLoopback(CaptureState state, ManualResetEventSlim signal) =>
-        _mode is CaptureMode.Loopback or CaptureMode.Mix
-            ? CaptureHandle.CreateLoopback(state, signal)
-            : null;
-
-    private CaptureHandle? CreateMicrophone(CaptureState state, ManualResetEventSlim signal) =>
-        _mode is CaptureMode.Mic or CaptureMode.Mix
-            ? CaptureHandle.CreateMicrophone(state, signal)
-            : null;
-
-    private static void DrainAndPublish(
-        BufferedWaveProvider? loopback,
-        BufferedWaveProvider? microphone,
-        float[] readBuffer,
-        ConcurrentQueueWrapper buffer,
-        ManualResetEventSlim signal,
-        BufferedWaveProvider? loopbackBuf = null,
-        BufferedWaveProvider? micBuf = null)
+    /// <summary>Create a handle; a missing device is fatal unless Mix mode still has the other source.</summary>
+    private CaptureHandle? TryCreate(string what, Func<CaptureHandle> create, string failureMessage)
     {
-        float[]? loopbackSamples = null;
-        float[]? microphoneSamples = null;
         try
         {
-            var loopbackCount = Drain(loopback, readBuffer, ref loopbackSamples);
-            var microphoneCount = Drain(microphone, readBuffer, ref microphoneSamples);
-            var count = Math.Max(loopbackCount, microphoneCount);
-            if (count == 0)
-                return;
-
-            // Per-channel levels (pre-mix gain) so the mixer UI can show each source
-            if (microphoneCount > 0)
-                MicLevelMeter.PublishIfActive(microphoneSamples.AsSpan(0, microphoneCount));
-            if (loopbackCount > 0)
-                LoopbackLevelMeter.PublishIfActive(loopbackSamples.AsSpan(0, loopbackCount));
-
-            var batch = new float[count];
-            for (var index = 0; index < count; index++)
-            {
-                if (index < loopbackCount)
-                    batch[index] += loopbackSamples![index] * 0.5f * LoopbackVolume;
-                if (index < microphoneCount)
-                    batch[index] += microphoneSamples![index] * 0.6f * MicVolume;
-            }
-
-            buffer.Enqueue(batch);
-            AudioLevelMeter.Publish(batch);
-            signal.Set();
+            return create();
         }
-        finally
+        catch (Exception ex)
         {
-            Return(loopbackSamples);
-            Return(microphoneSamples);
+            if (_mode != CaptureMode.Mix)
+                throw new InvalidOperationException(failureMessage, ex);
+
+            Console.Error.WriteLine($"[capture] {what} unavailable — continuing with the other source: {ex.Message}");
+            return null;
         }
     }
 
     /// <summary>
-    /// Drain a <see cref="BufferedWaveProvider"/> directly to mono float samples at the
-    /// target rate. Replaces the WdlResamplingSampleProvider pipeline, which stalled on the
-    /// loopback stream (48 kHz float stereo) and returned almost no samples.
-    /// Steps: raw bytes → PCM/float decode → stereo average to mono → linear downsample.
+    /// Starts one capture handle, degrading Mix mode to the other source when the
+    /// start call fails. Non-Mix failures are rethrown with an actionable message.
     /// </summary>
-    private static int Drain(BufferedWaveProvider? source, float[] readBuffer, ref float[]? samples)
+    private CaptureHandle? TryStart(CaptureHandle? handle, string what)
     {
-        if (source is null)
-            return 0;
+        if (handle is null)
+            return null;
 
-        var fmt = source.WaveFormat;
-        var bytes = source.BufferedBytes;
-        var bytesPerFrame = fmt.BlockAlign;
-        var frames = bytes / bytesPerFrame;
-        if (frames <= 0)
-            return 0;
-
-        var raw = new byte[frames * bytesPerFrame];
-        var read = source.Read(raw.AsSpan(0, raw.Length));
-        frames = read / bytesPerFrame;
-        if (frames <= 0)
-            return 0;
-
-        var outCount = (int)((long)frames * 16000 / fmt.SampleRate);
-        if (outCount <= 0)
-            return 0;
-
-        EnsureCapacity(ref samples, outCount, 0);
-        var dst = samples!;
-        var channels = fmt.Channels;
-        var step = (double)fmt.SampleRate / 16000.0;
-
-        for (var o = 0; o < outCount; o++)
+        try
         {
-            var srcFrame = (int)(o * step);
-            if (srcFrame >= frames)
-                srcFrame = frames - 1;
+            handle.StartRecording();
+            return handle;
+        }
+        catch (Exception ex)
+        {
+            handle.Dispose();
+            if (_mode != CaptureMode.Mix)
+                throw new InvalidOperationException($"{what} capture could not start.", ex);
 
-            var offset = srcFrame * bytesPerFrame;
-            float sum = 0f;
-            for (var c = 0; c < channels; c++)
-                sum += ReadSample(raw, offset + c * (fmt.BitsPerSample / 8), fmt);
+            Console.Error.WriteLine($"[capture] {what} failed to start — continuing with the other source: {ex.Message}");
+            return null;
+        }
+    }
 
-            dst[o] = sum / channels;
+    /// <summary>Handle a device that stopped by itself. Returns the handle to keep using (or null).</summary>
+    private CaptureHandle? CheckFault(CaptureHandle? handle, string what, bool otherAlive)
+    {
+        if (handle is null || !handle.HasStopped)
+            return handle;
+
+        var fault = handle.Fault;
+        if (_mode == CaptureMode.Mix && otherAlive)
+        {
+            Console.Error.WriteLine($"[capture] {what} stopped — continuing with the other source: {fault?.Message ?? "device stopped"}");
+            handle.Dispose();
+            return null;
         }
 
-        return outCount;
+        throw new InvalidOperationException(
+            $"{what} capture stopped unexpectedly. The device may have been disconnected or its format changed.",
+            fault);
     }
 
-    /// <summary>Decode a single PCM16 or IEEE-float32 sample.</summary>
-    private static float ReadSample(byte[] raw, int offset, WaveFormat fmt)
+    private static void DrainAndPublish(
+        CaptureHandle? loopback,
+        CaptureHandle? microphone,
+        ConcurrentQueueWrapper buffer,
+        ManualResetEventSlim signal)
     {
-        if (fmt.Encoding == WaveFormatEncoding.IeeeFloat)
-            return BitConverter.ToSingle(raw, offset);
+        var loopbackSamples = loopback is null ? ReadOnlySpan<float>.Empty : loopback.Drain();
+        var microphoneSamples = microphone is null ? ReadOnlySpan<float>.Empty : microphone.Drain();
 
-        // 16-bit PCM (both mic WaveIn and typical capture formats)
-        return BitConverter.ToInt16(raw, offset) / 32768f;
-    }
-
-    private static void EnsureCapacity(ref float[]? samples, int required, int count)
-    {
-        if (samples is not null && samples.Length >= required)
+        var count = CaptureMixer.OutputLength(loopbackSamples.Length, microphoneSamples.Length);
+        if (count == 0)
             return;
 
-        var capacity = samples is null ? required : Math.Max(required, samples.Length * 2);
-        var replacement = ArrayPool<float>.Shared.Rent(capacity);
-        if (samples is not null)
-        {
-            samples.AsSpan(0, count).CopyTo(replacement);
-            ArrayPool<float>.Shared.Return(samples);
-        }
+        // Per-channel levels (pre-mix gain) so the mixer UI can show each source.
+        if (microphoneSamples.Length > 0)
+            MicLevelMeter.PublishIfActive(microphoneSamples);
+        if (loopbackSamples.Length > 0)
+            LoopbackLevelMeter.PublishIfActive(loopbackSamples);
 
-        samples = replacement;
-    }
+        // The batch is handed to the consumer, so it must be a fresh array.
+        var batch = new float[count];
+        CaptureMixer.Mix(loopbackSamples, LoopbackVolume, microphoneSamples, MicVolume, batch);
 
-    private static void Return(float[]? samples)
-    {
-        if (samples is not null)
-            ArrayPool<float>.Shared.Return(samples);
+        buffer.Enqueue(batch);
+        AudioLevelMeter.Publish(batch);
+        signal.Set();
     }
 
 // CS0618: WasapiCapture/WasapiLoopbackCapture are deprecated in NAudio 3 preview in
 // favour of WasapiRecorderBuilder, but the builder API never raised DataAvailable for
 // loopback in this scenario (capture-diag.log investigation), so the proven classes stay.
 #pragma warning disable CS0618
+    /// <summary>
+    /// One captured device: WASAPI stream → thread-safe byte ring (filled on the WASAPI
+    /// thread) → decode/downmix/resample on the drain thread into a reusable float buffer.
+    /// </summary>
     private sealed class CaptureHandle : IDisposable
     {
-        private readonly WasapiCapture? _microphone;
-        private readonly WasapiLoopbackCapture? _loopback;
+        private static readonly Guid IeeeFloatSubtype = new("00000003-0000-0010-8000-00aa00389b71");
 
-        private CaptureHandle(WasapiCapture microphone)
+        private readonly WasapiCapture _capture;
+        private readonly MMDevice? _device;
+        private readonly MMDeviceEnumerator? _enumerator;
+        private readonly BufferedWaveProvider _ring;
+        private readonly PcmSampleFormat _sampleFormat;
+        private readonly int _channels;
+        private readonly int _blockAlign;
+        private readonly StreamingResampler _resampler;
+        private byte[] _raw = Array.Empty<byte>();
+        private float[] _mono = Array.Empty<float>();
+        private float[] _resampled = Array.Empty<float>();
+        private volatile bool _stopRequested;
+        private volatile bool _stopped;
+        private Exception? _fault;
+
+        private CaptureHandle(WasapiCapture capture, MMDevice? device, MMDeviceEnumerator? enumerator,
+            CaptureState state, int targetRate)
         {
-            _microphone = microphone;
-            Buffer = CreateBuffer(microphone.WaveFormat);
-        }
+            _capture = capture;
+            _device = device;
+            _enumerator = enumerator;
 
-        private CaptureHandle(WasapiLoopbackCapture loopback)
-        {
-            _loopback = loopback;
-            Buffer = CreateBuffer(loopback.WaveFormat);
-        }
-
-        public BufferedWaveProvider Buffer { get; }
-
-        private static BufferedWaveProvider CreateBuffer(WaveFormat format) =>
-            new(format, TimeSpan.FromSeconds(2))
+            var format = capture.WaveFormat;
+            _sampleFormat = ToSampleFormat(format);
+            _channels = format.Channels;
+            _blockAlign = format.BlockAlign;
+            _resampler = new StreamingResampler(format.SampleRate, targetRate);
+            _ring = new BufferedWaveProvider(format, DeviceRingDuration)
             {
                 DiscardOnBufferOverflow = true,
                 ReadFully = false
             };
 
-        public static CaptureHandle CreateMicrophone(CaptureState state, ManualResetEventSlim signal)
-        {
-            // WasapiCapture (shared mode) replaces WaveIn/WinMM so the whole
-            // capture path stays portable (NAudio.Wasapi targets net9.0). It
-            // records the default capture endpoint; the Drain step resamples to
-            // 16 kHz mono regardless of the device mix format.
-            var device = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
-            var capture = new WasapiCapture(device);
-            var handle = new CaptureHandle(capture);
-            handle._microphone!.DataAvailable += (_, args) =>
+            _capture.DataAvailable += (_, args) =>
             {
                 if (state.IsRunning)
-                    handle.Buffer.AddSamples(args.Buffer, 0, args.BytesRecorded);
+                    _ring.AddSamples(args.Buffer, 0, args.BytesRecorded);
             };
-            handle._microphone.RecordingStopped += (_, _) =>
+            _capture.RecordingStopped += (_, args) =>
             {
-                state.Stop();
-                signal.Set();
+                // Our own StopRecording() also lands here (Exception == null) — only an
+                // unsolicited stop counts as a fault. The drain loop polls HasStopped.
+                if (!_stopRequested)
+                    _fault = args.Exception ?? new InvalidOperationException("The capture device stopped delivering audio.");
+                _stopped = true;
             };
-            return handle;
         }
 
-        public static CaptureHandle CreateLoopback(CaptureState state, ManualResetEventSlim signal)
+        /// <summary>True once the WASAPI capture thread has exited without us asking for it.</summary>
+        public bool HasStopped => _stopped && !_stopRequested;
+
+        /// <summary>Exception reported by the device when <see cref="HasStopped"/> is true.</summary>
+        public Exception? Fault => _fault;
+
+        public static CaptureHandle CreateMicrophone(CaptureState state, int targetRate)
         {
-            // WasapiLoopbackCapture is the proven loopback path (same as the NAudio2 provider):
+            // WasapiCapture (shared mode) replaces WaveIn/WinMM so the whole capture path
+            // stays portable (NAudio.Wasapi targets net9.0). Event-driven mode delivers
+            // packets every engine period (10 ms) instead of after a half-buffer sleep.
+            var enumerator = new MMDeviceEnumerator();
+            MMDevice? device = null;
+            try
+            {
+                device = enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
+                var capture = new WasapiCapture(device, useEventSync: true, MicrophoneBufferMilliseconds);
+                return new CaptureHandle(capture, device, enumerator, state, targetRate);
+            }
+            catch
+            {
+                device?.Dispose();
+                enumerator.Dispose();
+                throw;
+            }
+        }
+
+        public static CaptureHandle CreateLoopback(CaptureState state, int targetRate)
+        {
+            // WasapiLoopbackCapture is the proven loopback path (kept from the previous provider):
             // the WasapiRecorder builder API in the NAudio 3 preview never raised DataAvailable
             // in this scenario, so loopback stayed silent (see capture-diag.log investigation).
+            // Loopback streams do not signal the WASAPI event, so this one stays in polling mode.
             var capture = new WasapiLoopbackCapture();
-            var handle = new CaptureHandle(capture);
-            handle._loopback!.DataAvailable += (_, args) =>
-            {
-                if (state.IsRunning)
-                    handle.Buffer.AddSamples(args.Buffer, 0, args.BytesRecorded);
-            };
-            handle._loopback.RecordingStopped += (_, _) =>
-            {
-                state.Stop();
-                signal.Set();
-            };
-            return handle;
+            return new CaptureHandle(capture, null, null, state, targetRate);
         }
 
-        public void StartRecording()
-        {
-            _microphone?.StartRecording();
-            _loopback?.StartRecording();
-        }
+        public void StartRecording() => _capture.StartRecording();
 
         public void StopRecording()
         {
-            _microphone?.StopRecording();
-            _loopback?.StopRecording();
+            _stopRequested = true;
+            _capture.StopRecording();
+        }
+
+        /// <summary>
+        /// Drain everything the device delivered since the last call and return it as mono
+        /// samples at the target rate. The returned span aliases an internal buffer that is
+        /// overwritten by the next call.
+        /// </summary>
+        public ReadOnlySpan<float> Drain()
+        {
+            var frames = _ring.BufferedBytes / _blockAlign;
+            if (frames <= 0)
+                return ReadOnlySpan<float>.Empty;
+
+            var bytes = frames * _blockAlign;
+            EnsureCapacity(ref _raw, bytes);
+            var read = _ring.Read(_raw.AsSpan(0, bytes));
+            frames = read / _blockAlign;
+            if (frames <= 0)
+                return ReadOnlySpan<float>.Empty;
+
+            EnsureCapacity(ref _mono, frames);
+            frames = PcmSampleDecoder.DecodeToMono(_raw.AsSpan(0, frames * _blockAlign), _sampleFormat, _channels, _mono);
+            if (_resampler.IsPassThrough)
+                return _mono.AsSpan(0, frames);
+
+            EnsureCapacity(ref _resampled, _resampler.MaxOutputCount(frames));
+            var produced = _resampler.Process(_mono.AsSpan(0, frames), _resampled);
+            return _resampled.AsSpan(0, produced);
         }
 
         public void Dispose()
         {
-            _microphone?.Dispose();
-            _loopback?.Dispose();
+            _stopRequested = true;
+            _capture.Dispose();
+            _device?.Dispose();
+            _enumerator?.Dispose();
+        }
+
+        private static PcmSampleFormat ToSampleFormat(WaveFormat format)
+        {
+            var isFloat = format.Encoding == WaveFormatEncoding.IeeeFloat
+                          || (format is WaveFormatExtensible extensible && extensible.SubFormat == IeeeFloatSubtype);
+
+            if (isFloat)
+            {
+                return format.BitsPerSample == 32
+                    ? PcmSampleFormat.Float32
+                    : throw new NotSupportedException($"Unsupported float sample width: {format.BitsPerSample} bit.");
+            }
+
+            return format.BitsPerSample switch
+            {
+                8 => PcmSampleFormat.Pcm8,
+                16 => PcmSampleFormat.Pcm16,
+                24 => PcmSampleFormat.Pcm24,
+                32 => PcmSampleFormat.Pcm32,
+                _ => throw new NotSupportedException($"Unsupported PCM sample width: {format.BitsPerSample} bit.")
+            };
+        }
+
+        private static void EnsureCapacity<T>(ref T[] array, int required)
+        {
+            if (array.Length >= required)
+                return;
+            array = new T[Math.Max(required, array.Length * 2)];
         }
     }
 #pragma warning restore CS0618

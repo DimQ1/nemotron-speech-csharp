@@ -419,6 +419,12 @@ public sealed class RecognitionService : IRecognitionService
             }
         }
 
+        // The capture queue drops the oldest batches when recognition falls behind; make
+        // that visible instead of letting words silently disappear from the transcript.
+        var dropped = _buffer?.DroppedBatches ?? 0;
+        if (dropped > 0)
+            _telemetry?.LogWarning("Recognition", $"Audio capture dropped {dropped} batches — recognition could not keep up with real time");
+
         // If the capture source failed (missing mic, broken loopback, ...) there is no
         // audio to flush — surface the error and stop cleanly instead of firing an
         // empty FinalResult that would wipe the previously displayed text.

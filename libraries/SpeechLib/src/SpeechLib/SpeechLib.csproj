@@ -24,19 +24,11 @@
     separate projects so applications pay only for the provider they select.
   -->
   <ItemGroup>
-    <Compile Remove="Audio\AudioMixerRegistry.cs" />
-    <Compile Remove="Audio\AudioUtils.cs" />
-    <Compile Remove="Audio\BufferedAudioRecorder.cs" />
-    <Compile Remove="Audio\BufferedCaptureSource.cs" />
-    <Compile Remove="Audio\LoopbackAudioSource.cs" />
-    <Compile Remove="Audio\MicAudioSource.cs" />
-    <Compile Remove="Audio\MixAudioSource.cs" />
     <Compile Remove="Common.cs" />
     <Compile Remove="LanguageMapper.cs" />
     <Compile Remove="ModelSession.cs" />
     <Compile Remove="Models\SpeechRecognitionOptions.cs" />
     <Compile Remove="Models\SpeechRecognitionOptionsBuilder.cs" />
-    <Compile Remove="Transcriber.cs" />
   </ItemGroup>
 
 </Project>

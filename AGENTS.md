@@ -135,10 +135,11 @@ GPU builds are gone, but a persisted `ExecutionProvider` value of `"cuda"`/`"dml
 
 | Area | Key Files |
 |---|---|
-| **Audio pipeline** | `libraries/SpeechLib/src/SpeechLib/Audio/ConcurrentQueueWrapper.cs`, `libraries/SpeechLib/src/SpeechLib/Transcriber.cs` |
+| **Audio pipeline** | `libraries/SpeechLib/src/SpeechLib/Audio/ConcurrentQueueWrapper.cs`, `libraries/SpeechLib/src/SpeechLib/LiveTranscriber.cs` |
+| **Live capture (Windows)** | `libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/Audio/NAudio3AudioSource.cs` (WASAPI mic/loopback/mix), `libraries/SpeechLib/src/SpeechLib/Audio/StreamingResampler.cs` (anti-aliased rate conversion), `PcmSampleDecoder.cs`, `CaptureMixer.cs` |
 | **CLI entry** | `apps/NemotronSpeech/src/NemotronSpeech/Program.cs`, `apps/NemotronSpeech/src/NemotronSpeech/AppOptions.cs` |
 | **ONNX GenAI** | `libraries/SpeechLib/src/SpeechLib/ModelSession.cs` |
-| **Word timestamps** | `libraries/SpeechLib/src/SpeechLib/Models/WordTiming.cs`, `libraries/SpeechLib/src/SpeechLib/Transcriber.cs` (AddWordTimings) |
+| **Word timestamps** | `libraries/SpeechLib/src/SpeechLib/Models/WordTiming.cs`, `libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/Transcriber.cs` (AddWordTimings) |
 | **WPF main VM** | `apps/VoiceType/src/VoiceType/ViewModels/MainViewModel.cs` |
 | **Downloader** | `apps/VoiceType/src/VoiceType/Services/ModelDownloaderService.cs`, `apps/VoiceType/src/VoiceType/ViewModels/ModelDownloaderViewModel.cs` |
 | **Text injection** | `apps/VoiceType/src/VoiceType/Services/TextInjector.cs` |

@@ -11,8 +11,8 @@ session persistence, and microphone, loopback, or mixed audio capture.
 - `SpeechLib.Audio.NAudio3` owns the NAudio 3 preview capture implementation.
 - `VoiceType.WinUI` owns WinUI views, MVVM state, settings, text injection, and MSIX packaging.
 
-The WinUI application intentionally uses `NAudio 3.0.0-preview.19`. The stable NAudio 2
-provider remains available for the CLI compatibility path.
+The application uses `NAudio 3.0.1` through `SpeechLib.Audio.NAudio3`, which is the only
+capture provider in the repository (the NAudio 2 provider was removed).
 
 ## Build
 

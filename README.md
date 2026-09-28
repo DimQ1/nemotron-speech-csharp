@@ -41,8 +41,7 @@ nemotron-speech-csharp/
 |---------|------|-------------|
 | [**SpeechLib**](libraries/SpeechLib/src/SpeechLib/README.md) | .NET 10 Library | Provider-neutral interfaces, bounded audio queues, capture lifecycle, and `LiveTranscriber` |
 | **SpeechLib.Nemotron** | .NET 10 Library | NVIDIA Nemotron ONNX Runtime GenAI recognizer provider |
-| **SpeechLib.Audio.NAudio2** | .NET 10 Library | Stable NAudio 2.3.0 provider used by the CLI compatibility path |
-| **SpeechLib.Audio.NAudio3** | .NET 10 Windows Library | NAudio 3.0.0-preview.19 provider used by VoiceType |
+| **SpeechLib.Audio.NAudio3** | .NET 10 Library | NAudio 3.0.1 WASAPI capture provider used by the CLI, VoiceType.WinUI and VoiceType.Uno (Windows) |
 | [**NemotronSpeech**](apps/NemotronSpeech/src/NemotronSpeech/README.md) | .NET 10 Console App | ONNX Runtime GenAI implementation of `IStreamingSpeechRecognizer` for NVIDIA Nemotron 3.5 ASR. Supports CUDA / CPU / DirectML. |
 | [**VoiceType**](apps/VoiceType/src/VoiceType/README.md) | .NET 10 WPF App | Desktop speech-to-text with global hotkeys, text injection into any app, session recording, post-processing pipeline, MP3 audio saving |
 | [**VoiceType.WinUI**](apps/VoiceType.WinUI/src/VoiceType.WinUI/README.md) | .NET 10 WinUI 3 MSIX App | Packaged dictation app using NAudio 3, model setup, text injection, session persistence, and local MSIX installation |
@@ -77,12 +76,11 @@ dotnet run --project apps/VoiceType/src/VoiceType -c Release
 ```mermaid
 graph TD
   SL[SpeechLib core] --> |contracts| APP[Applications]
-  NA2[SpeechLib.Audio.NAudio2] --> |NAudio 2.3.0| SL
-  NA3[SpeechLib.Audio.NAudio3] --> |NAudio 3 preview| SL
+  NA3[SpeechLib.Audio.NAudio3] --> |NAudio 3.0.1| SL
   NM[SpeechLib.Nemotron] --> |ONNX GenAI| ORT[Microsoft.ML.OnnxRuntimeGenAI]
   NM --> SL
   CLI[NemotronSpeech] --> NM
-  CLI --> NA2
+  CLI --> NA3
   VT[VoiceType WPF] --> NM
   VT --> NA3
   VU[VoiceType WinUI] --> NM
@@ -92,9 +90,9 @@ graph TD
 
 The core assembly does not reference NAudio or ONNX Runtime. Audio providers are Windows-specific; the core contracts can be used on other platforms with an application-supplied `IAudioSource`.
 
-### NAudio 3 preview
+### Audio capture
 
-VoiceType WPF and WinUI use the preview provider through `NAudio3AudioSourceFactory`. The CLI keeps the stable NAudio 2 provider for its existing compatibility path. To use NAudio 3 in another application, reference `SpeechLib.Audio.NAudio3`, create an `NAudio3AudioSourceFactory`, and pass its source to `LiveTranscriber.Run`. See [SpeechLib.Audio.NAudio3 README](libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/README.md).
+All Windows heads (CLI, VoiceType.WinUI, VoiceType.Uno) capture through `NAudio3AudioSourceFactory`; the former NAudio 2 provider was removed. Devices are opened in their native WASAPI mix format and converted to the recognizer rate with the anti-aliased `StreamingResampler` from the core library. To use the provider in another application, reference `SpeechLib.Audio.NAudio3`, create an `NAudio3AudioSourceFactory`, and pass its source to `LiveTranscriber.Run`. See [SpeechLib.Audio.NAudio3 README](libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/README.md).
 
 ### CPU execution mode
 

@@ -17,7 +17,6 @@
   </Folder>
   <Folder Name="/libraries/SpeechLib/">
     <Project Path="libraries/SpeechLib/src/SpeechLib/SpeechLib.csproj" />
-    <Project Path="libraries/SpeechLib/src/SpeechLib.Audio.NAudio2/SpeechLib.Audio.NAudio2.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/SpeechLib.Audio.NAudio3.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.Providers/SpeechLib.Providers.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.ModelDownload/SpeechLib.ModelDownload.csproj" />
