@@ -517,7 +517,11 @@ public sealed class LiveTranslationSession : IAsyncDisposable
         string? promoted = null;
         lock (_stateLock)
         {
-            if (_memo.TryGetValue(MemoKey(request.TargetLanguage, sentence), out var cached))
+            if (TranslationGuards.IsAlreadyInTarget(sentence, request.TargetLanguage))
+            {
+                promoted = sentence; // already in the target language: pass through
+            }
+            else if (_memo.TryGetValue(MemoKey(request.TargetLanguage, sentence), out var cached))
             {
                 promoted = cached;
             }
@@ -596,15 +600,28 @@ public sealed class LiveTranslationSession : IAsyncDisposable
                     return; // session reset mid-decode; bail without committing
 
                 partial.Append(token);
+                var shown = TranslationGuards.StripContextEcho(partial.ToString(), request, final: false);
                 lock (_stateLock)
-                    _streaming = MergeProvisional(previous, partial.ToString());
+                    _streaming = MergeProvisional(previous, shown);
                 RaiseTranslationChanged();
             }
 
             if (Interlocked.Read(ref _generation) != generation)
                 return;
 
-            var result = TranslationOutputCleaner.Clean(partial.ToString());
+            var result = TranslationGuards.StripContextEcho(
+                TranslationOutputCleaner.Clean(partial.ToString()), request, final: true);
+
+            // A decode that ran away (usually by continuing the context) is retried once
+            // without context; context is a quality aid, never worth a wrong line.
+            if (TranslationGuards.IsRunaway(result, sentence) && request.HasContext)
+            {
+                var plain = request with { PreviousSource = null, PreviousTranslation = null };
+                result = TranslationOutputCleaner.Clean(await translator.TranslateAsync(plain).ConfigureAwait(false));
+                if (Interlocked.Read(ref _generation) != generation)
+                    return;
+            }
+
             if (result.Length > 0)
                 Commit(sentence, result);
 
@@ -808,19 +825,31 @@ public sealed class LiveTranslationSession : IAsyncDisposable
             _streaming = previous;
         }
 
-        var partial = new StringBuilder();
-        await foreach (var token in translator.TranslateStreamAsync(BuildRequest(source), ct).ConfigureAwait(false))
+        var request = BuildRequest(source);
+        string full;
+        if (TranslationGuards.IsAlreadyInTarget(source, request.TargetLanguage))
         {
-            partial.Append(token);
-            if (ct.IsCancellationRequested)
-                return false;
-
-            lock (_stateLock)
-                _streaming = MergeProvisional(previous, partial.ToString());
-            RaiseTranslationChanged();
+            full = source; // already in the target language: no decode
         }
+        else
+        {
+            var partial = new StringBuilder();
+            await foreach (var token in translator.TranslateStreamAsync(request, ct).ConfigureAwait(false))
+            {
+                partial.Append(token);
+                if (ct.IsCancellationRequested)
+                    return false;
 
-        var full = TranslationOutputCleaner.Clean(partial.ToString());
+                var shown = TranslationGuards.StripContextEcho(partial.ToString(), request, final: false);
+                lock (_stateLock)
+                    _streaming = MergeProvisional(previous, shown);
+                RaiseTranslationChanged();
+            }
+
+            full = TranslationGuards.StripContextEcho(TranslationOutputCleaner.Clean(partial.ToString()), request, final: true);
+            if (TranslationGuards.IsRunaway(full, source))
+                full = ""; // drafts are disposable; the final pass decides
+        }
         var current = false;
         lock (_stateLock)
         {
