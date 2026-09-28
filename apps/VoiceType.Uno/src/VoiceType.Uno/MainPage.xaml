@@ -55,6 +55,9 @@
           AutomationProperties.Name="Translation target language"
           ItemsSource="{x:Bind ViewModel.TranslationLanguageOptions}"
           SelectedItem="{x:Bind ViewModel.TranslationTargetLanguage, Mode=TwoWay}" />
+        <Button Content="Translate all"
+          ToolTipService.ToolTip="Translate the whole transcript (live translation starts from the moment it is switched on)"
+          Command="{x:Bind ViewModel.TranslateAllCommand}" />
       </StackPanel>
       <Button Grid.Column="3" Content="Downloads" Click="Downloads_Click" Margin="10,0,0,0" />
       <Button Grid.Column="4" Content="Help" Click="Help_Click" Margin="10,0,0,0" />

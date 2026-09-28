@@ -498,6 +498,9 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
+        // Translate from now on only; "Translate all" covers the text already on screen.
+        _translation.StartFrom(FloatingText ?? "");
+
         // Warm up the translation engine in the background as soon as it's enabled.
         _ = _translation.EnsureConnectedAsync();
     }
@@ -584,6 +587,23 @@ public sealed partial class MainViewModel : ObservableObject
         IsCaptureMuted = muted;
         StatusText = muted ? "Muted (audio discarded)" : "Listening...";
         OnPropertyChanged(nameof(RecordingIndicator));
+    }
+
+    /// <summary>Translates the whole current transcript (live translation otherwise starts when it is switched on).</summary>
+    [RelayCommand]
+    private async Task TranslateAll()
+    {
+        if (!IsTranslationEnabled || string.IsNullOrWhiteSpace(FloatingText))
+            return;
+
+        try
+        {
+            await _translation.TranslateAllAsync(FloatingText);
+        }
+        catch (Exception ex)
+        {
+            TranslationStatusText = $"Translation error: {ex.Message}";
+        }
     }
 
     [RelayCommand]

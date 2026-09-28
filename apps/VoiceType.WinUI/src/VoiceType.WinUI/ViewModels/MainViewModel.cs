@@ -422,8 +422,10 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        if (!UsePromptTranslation && !string.IsNullOrEmpty(_currentSessionText))
-            _translation.Feed(_currentSessionText);
+        // Translate from now on only; the text already on screen is translated by the
+        // explicit "Translate all" command.
+        if (!UsePromptTranslation)
+            _translation.StartFrom(_currentSessionText);
 
         if (!UsePromptTranslation && TranslationModelInfo.IsDownloaded)
             _ = _translation.EnsureLoadedAsync();
@@ -558,6 +560,23 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (!string.IsNullOrEmpty(FloatingText))
             _textInjector.CopyToClipboard(FloatingText);
+    }
+
+    /// <summary>Translates the whole current transcript (live translation otherwise starts when it is switched on).</summary>
+    [RelayCommand]
+    private async Task TranslateAll()
+    {
+        if (!TranslationEnabled || UsePromptTranslation || string.IsNullOrWhiteSpace(_currentSessionText))
+            return;
+
+        try
+        {
+            await _translation.TranslateAllAsync(_currentSessionText);
+        }
+        catch (Exception ex)
+        {
+            TranslationStatus = $"Translation error: {ex.Message}";
+        }
     }
 
     [RelayCommand]

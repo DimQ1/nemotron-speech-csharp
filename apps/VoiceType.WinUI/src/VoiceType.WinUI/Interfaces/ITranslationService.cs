@@ -38,6 +38,12 @@ public interface ITranslationService : IAsyncDisposable
     /// <summary>Feeds the current full recognized text; only the new suffix is processed.</summary>
     void Feed(string fullText);
 
+    /// <summary>Skips the text already in the transcript: only speech after this point is translated.</summary>
+    void StartFrom(string fullText);
+
+    /// <summary>Clears the translation and translates the whole transcript, then keeps following it.</summary>
+    Task TranslateAllAsync(string fullText, CancellationToken cancellationToken = default);
+
     /// <summary>Translates the remaining tail and waits for all in-flight translations.</summary>
     Task FlushAsync(CancellationToken cancellationToken = default);
 

@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 
 namespace SpeechLib.Translation;
 
@@ -53,7 +53,6 @@ public sealed class LiveTranslationSession : IAsyncDisposable
 
     private readonly object _stateLock = new();
     private readonly object _bufferLock = new();
-    private readonly StringBuilder _buffer = new();
     private readonly StringBuilder _completed = new();
     private readonly SemaphoreSlim _translateGate = new(1, 1);
     private readonly SemaphoreSlim _loadGate = new(1, 1);
@@ -84,11 +83,14 @@ public sealed class LiveTranslationSession : IAsyncDisposable
     private CancellationTokenSource? _draftCts;
     private Task? _draftTask;
 
-    // Sentence buffer state (guarded by _bufferLock). `_buffer` mirrors the fed text
-    // from `_bufferStart` on; `_consumed` marks the finalized prefix of the buffer.
+    // Transcript state (guarded by _bufferLock). Positions are counted in WORDS, not
+    // characters: streaming recognizers rewrite their tail (casing, punctuation, a
+    // revised word), and a word anchor survives those rewrites where a character
+    // offset would split the transcript in the wrong place and re-translate it.
     private string _fedText = "";
-    private int _bufferStart;
-    private int _consumed;
+    private int _anchorWords;                        // words already handled (finalized or skipped)
+    private string _tail = "";                       // text after the anchor (the draft source)
+    private List<string> _pendingSentences = new();  // complete sentences seen in the previous feed
 
     // Context for the backend: the last finalized sentence and its translation.
     private string _lastFinalSource = "";
@@ -145,105 +147,174 @@ public sealed class LiveTranslationSession : IAsyncDisposable
         }
     }
 
-    /// <summary>Feeds the current full transcript; new and revised text is processed.</summary>
+    /// <summary>
+    /// Feeds the current full transcript. Only text after the anchor is translated;
+    /// see <see cref="StartFrom"/> to skip what is already on screen.
+    /// </summary>
+    /// <remarks>
+    /// A sentence is finalized only when (a) a word follows it and (b) it came out
+    /// identically in the previous feed. Streaming recognizers end their revisable
+    /// preview with a period ("…the first time.") and rewrite it a moment later;
+    /// finalizing on the first period made every revision a new sentence and the
+    /// translation repeated itself. The tail stays a revisable draft until it settles.
+    /// </remarks>
     public void Feed(string fullText)
     {
         fullText ??= "";
 
-        List<string> sentences;
+        var finals = new List<string>();
         bool tailChanged;
         lock (_bufferLock)
         {
             if (fullText == _fedText)
                 return;
-
-            if (fullText.Length < _bufferStart)
-                _bufferStart = fullText.Length;
-
-            var previous = _buffer.ToString();
-            var current = fullText[_bufferStart..];
-            var common = CommonPrefixLength(previous, current);
-
-            if (common < previous.Length)
-            {
-                // Revision inside the buffer. Sentences already finalized stay as they
-                // were; the tail is rebuilt from the changed position.
-                _buffer.Clear();
-                _buffer.Append(current);
-                _consumed = Math.Min(_consumed, current.Length);
-                tailChanged = true;
-            }
-            else
-            {
-                _buffer.Append(current, common, current.Length - common);
-                tailChanged = current.Length > common;
-            }
-
             _fedText = fullText;
-            sentences = SentenceSplitter.ExtractCompleteSentences(_buffer, ref _consumed);
 
-            // When the recognizer omits punctuation for a long stretch, force-finalize
-            // bounded chunks so translation keeps progressing instead of stalling.
-            while (_buffer.Length - _consumed > _options.MaxTailChars)
+            var words = WordSpans(fullText);
+            if (_anchorWords > words.Count)
+                _anchorWords = words.Count;
+
+            // Complete sentences after the anchor that already appeared, unchanged, in
+            // the previous feed are stable: finalize them.
+            var sentences = CompleteSentences(fullText, words, _anchorWords, requireFollowingWord: true);
+            var stable = 0;
+            while (stable < sentences.Count && stable < _pendingSentences.Count
+                   && sentences[stable].Text == _pendingSentences[stable])
             {
-                var chunk = CutForceChunkLocked();
-                if (chunk.Length == 0)
-                    break;
-                sentences.Add(chunk);
+                finals.Add(sentences[stable].Text);
+                _anchorWords = sentences[stable].EndWord;
+                stable++;
             }
+            _pendingSentences = sentences.Skip(stable).Select(s => s.Text).ToList();
+
+            // When the recognizer omits punctuation for a long stretch, finalize bounded
+            // word-aligned chunks so translation keeps progressing. The newest words
+            // stay out of the chunk: they are the ones a recognizer still revises.
+            while (SpanLength(words, _anchorWords, words.Count) > _options.MaxTailChars
+                   && words.Count - _anchorWords > ForceChunkKeepWords)
+            {
+                var end = _anchorWords + 1;
+                while (end < words.Count - ForceChunkKeepWords
+                       && SpanLength(words, _anchorWords, end + 1) <= _options.MaxTailChars)
+                    end++;
+
+                finals.Add(Slice(fullText, words, _anchorWords, end));
+                _anchorWords = end;
+                _pendingSentences.Clear();
+            }
+
+            var tail = Slice(fullText, words, _anchorWords, words.Count);
+            tailChanged = tail != _tail;
+            _tail = tail;
         }
 
-        if (!tailChanged && sentences.Count == 0)
+        if (!tailChanged && finals.Count == 0)
             return;
 
         // A completed sentence supersedes the in-flight draft for the old tail:
         // cancel it synchronously so the final translation grabs the gate promptly.
-        if (sentences.Count > 0)
+        if (finals.Count > 0)
         {
             _draftCts?.Cancel();
             _draftSource = "";
         }
 
-        foreach (var sentence in sentences)
+        foreach (var sentence in finals)
             EnqueueFinal(sentence);
 
         ScheduleDraft();
     }
 
-    private static int CommonPrefixLength(string a, string b)
+    /// <summary>
+    /// Starts translating from the end of <paramref name="fullText"/>: what is already
+    /// in the transcript is skipped, later speech is translated. Used when translation
+    /// is switched on mid-session; <see cref="TranslateAllAsync"/> translates everything.
+    /// </summary>
+    public void StartFrom(string fullText)
     {
-        var max = Math.Min(a.Length, b.Length);
+        fullText ??= "";
+        _draftCts?.Cancel();
+        _draftSource = "";
+        lock (_bufferLock)
+        {
+            _fedText = fullText;
+            _anchorWords = WordSpans(fullText).Count;
+            _pendingSentences.Clear();
+            _tail = "";
+        }
+    }
+
+    /// <summary>Clears the output and translates the whole of <paramref name="fullText"/>, then keeps following it.</summary>
+    public async Task TranslateAllAsync(string fullText, CancellationToken cancellationToken = default)
+    {
+        Reset();
+        Feed(fullText ?? "");
+        await FlushAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Words kept out of a force-finalized chunk (still subject to revision).</summary>
+    private const int ForceChunkKeepWords = 4;
+
+    private readonly record struct WordSpan(int Start, int End);
+
+    private readonly record struct Sentence(string Text, int EndWord);
+
+    private static List<WordSpan> WordSpans(string text)
+    {
+        var spans = new List<WordSpan>();
         var i = 0;
-        while (i < max && a[i] == b[i])
-            i++;
-        return i;
+        while (i < text.Length)
+        {
+            while (i < text.Length && char.IsWhiteSpace(text[i]))
+                i++;
+            if (i >= text.Length)
+                break;
+            var start = i;
+            while (i < text.Length && !char.IsWhiteSpace(text[i]))
+                i++;
+            spans.Add(new WordSpan(start, i));
+        }
+        return spans;
+    }
+
+    private static string Slice(string text, List<WordSpan> words, int from, int to) =>
+        from >= to ? "" : text[words[from].Start..words[to - 1].End];
+
+    private static int SpanLength(List<WordSpan> words, int from, int to) =>
+        from >= to ? 0 : words[to - 1].End - words[from].Start;
+
+    /// <summary>True when the word closes a sentence ("medium.", "right?"", "done…").</summary>
+    private static bool EndsSentence(string text, WordSpan word)
+    {
+        var end = word.End;
+        while (end > word.Start && text[end - 1] is '"' or '\'' or ')' or ']' or '»' or '”')
+            end--;
+        return end > word.Start && text[end - 1] is '.' or '!' or '?' or '…' or '。' or '！' or '？';
     }
 
     /// <summary>
-    /// Splits an oversized unpunctuated tail at the last word boundary before
-    /// <see cref="LiveTranslationOptions.MaxTailChars"/> and advances the consumed mark.
-    /// Must be called under <c>_bufferLock</c>.
+    /// Sentences starting at word <paramref name="from"/>. With <paramref name="requireFollowingWord"/>
+    /// the last sentence counts only when another word follows it; otherwise the
+    /// unterminated remainder is returned as a final sentence too (flush).
     /// </summary>
-    private string CutForceChunkLocked()
+    private static List<Sentence> CompleteSentences(string text, List<WordSpan> words, int from, bool requireFollowingWord)
     {
-        var tailStart = _consumed;
-        var tailLen = _buffer.Length - tailStart;
-        if (tailLen <= _options.MaxTailChars)
-            return "";
+        var sentences = new List<Sentence>();
+        var start = from;
+        for (var i = from; i < words.Count; i++)
+        {
+            if (!EndsSentence(text, words[i]))
+                continue;
+            if (requireFollowingWord && i + 1 >= words.Count)
+                break;
+            sentences.Add(new Sentence(Slice(text, words, start, i + 1), i + 1));
+            start = i + 1;
+        }
 
-        var splitAt = tailStart + _options.MaxTailChars;
-        while (splitAt > tailStart && !char.IsWhiteSpace(_buffer[splitAt - 1]))
-            splitAt--;
+        if (!requireFollowingWord && start < words.Count)
+            sentences.Add(new Sentence(Slice(text, words, start, words.Count), words.Count));
 
-        if (splitAt - tailStart < _options.MinForceChunkChars)
-            splitAt = tailStart + _options.MaxTailChars; // no usable word boundary — cut hard
-
-        var chunk = _buffer.ToString(tailStart, splitAt - tailStart).Trim();
-        var k = splitAt;
-        while (k < _buffer.Length && char.IsWhiteSpace(_buffer[k]))
-            k++;
-        _consumed = k;
-        return chunk;
+        return sentences;
     }
 
     /// <summary>Translates the remaining tail as final and waits for all in-flight work.</summary>
@@ -253,17 +324,18 @@ public sealed class LiveTranslationSession : IAsyncDisposable
         _draftSource = "";
         _draftDecodedSource = "";
 
-        string tail;
+        List<Sentence> remaining;
         lock (_bufferLock)
         {
-            tail = _buffer.ToString(_consumed, _buffer.Length - _consumed).Trim();
-            _buffer.Clear();
-            _consumed = 0;
-            _bufferStart = _fedText.Length;
+            var words = WordSpans(_fedText);
+            remaining = CompleteSentences(_fedText, words, Math.Min(_anchorWords, words.Count), requireFollowingWord: false);
+            _anchorWords = words.Count;
+            _pendingSentences.Clear();
+            _tail = "";
         }
 
-        if (tail.Length > 0)
-            EnqueueFinal(tail);
+        foreach (var sentence in remaining)
+            EnqueueFinal(sentence.Text);
 
         await WaitForInflightAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -277,10 +349,10 @@ public sealed class LiveTranslationSession : IAsyncDisposable
 
         lock (_bufferLock)
         {
-            _buffer.Clear();
-            _consumed = 0;
             _fedText = "";
-            _bufferStart = 0;
+            _anchorWords = 0;
+            _pendingSentences.Clear();
+            _tail = "";
         }
 
         lock (_stateLock)
@@ -626,7 +698,7 @@ public sealed class LiveTranslationSession : IAsyncDisposable
     {
         string tail;
         lock (_bufferLock)
-            tail = _buffer.ToString(_consumed, _buffer.Length - _consumed).Trim();
+            tail = _tail.Trim();
 
         if (tail.Length == 0)
         {
@@ -820,7 +892,10 @@ public sealed class LiveTranslationSession : IAsyncDisposable
         if (previous.Length == 0)
             return current;
 
-        var common = CommonPrefixLength(previous, current);
+        var max = Math.Min(previous.Length, current.Length);
+        var common = 0;
+        while (common < max && previous[common] == current[common])
+            common++;
         if (common == previous.Length || common == current.Length)
             return current.Length >= previous.Length ? current : previous;
 

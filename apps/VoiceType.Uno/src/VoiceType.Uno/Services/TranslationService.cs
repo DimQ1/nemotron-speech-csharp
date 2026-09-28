@@ -169,6 +169,13 @@ public sealed class TranslationService : IDisposable
 
     public void Feed(string fullText) => _session.Feed(fullText);
 
+    /// <summary>Skips the text already in the transcript: only speech after this point is translated.</summary>
+    public void StartFrom(string fullText) => _session.StartFrom(fullText);
+
+    /// <summary>Clears the translation and translates the whole transcript, then keeps following it.</summary>
+    public Task TranslateAllAsync(string fullText, CancellationToken cancellationToken = default) =>
+        _session.TranslateAllAsync(fullText, cancellationToken);
+
     public Task FlushAsync(CancellationToken cancellationToken = default) => _session.FlushAsync(cancellationToken);
 
     public void Reset() => _session.Reset();

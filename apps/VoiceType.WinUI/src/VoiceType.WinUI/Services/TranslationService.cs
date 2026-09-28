@@ -75,6 +75,11 @@ public sealed class TranslationService : ITranslationService
 
     public void Feed(string fullText) => _session.Feed(fullText);
 
+    public void StartFrom(string fullText) => _session.StartFrom(fullText);
+
+    public Task TranslateAllAsync(string fullText, CancellationToken cancellationToken = default) =>
+        _session.TranslateAllAsync(fullText, cancellationToken);
+
     public Task FlushAsync(CancellationToken cancellationToken = default) => _session.FlushAsync(cancellationToken);
 
     public void Reset() => _session.Reset();

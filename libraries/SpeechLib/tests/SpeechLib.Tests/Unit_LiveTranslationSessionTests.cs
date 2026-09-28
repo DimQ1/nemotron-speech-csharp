@@ -183,6 +183,58 @@ public sealed class Unit_LiveTranslationSessionTests
     }
 
     [Fact]
+    public async Task RevisedPreviewEndingInPeriod_IsNotFinalizedRepeatedly()
+    {
+        var (session, translator) = Create();
+        await using (session)
+        {
+            // Parakeet-style previews: each revision ends with a period.
+            session.Feed("Joe Keaton the first time.");
+            session.Feed("Joe Keaton disapproved of film.");
+            session.Feed("Joe Keaton disapproved of films. Buster");
+            session.Feed("Joe Keaton disapproved of films. Buster also had");
+            session.Feed("Joe Keaton disapproved of films. Buster also had reservations.");
+            await session.FlushAsync();
+
+            Assert.Equal(
+                "JOE KEATON DISAPPROVED OF FILMS." + Environment.NewLine + "BUSTER ALSO HAD RESERVATIONS.",
+                session.DisplayText);
+            Assert.DoesNotContain(translator.Requests, r => r.Text.Contains("first time", StringComparison.Ordinal) && r.PreviousSource is not null);
+        }
+    }
+
+    [Fact]
+    public async Task StartFrom_SkipsExistingTranscript()
+    {
+        var (session, translator) = Create();
+        await using (session)
+        {
+            session.StartFrom("Old sentence. Another old one.");
+            session.Feed("Old sentence. Another old one. New words here.");
+            await session.FlushAsync();
+
+            Assert.Equal("NEW WORDS HERE.", session.DisplayText);
+            Assert.DoesNotContain(translator.Requests, r => r.Text.Contains("Old", StringComparison.Ordinal));
+        }
+    }
+
+    [Fact]
+    public async Task TranslateAll_TranslatesWholeTranscriptThenFollows()
+    {
+        var (session, _) = Create();
+        await using (session)
+        {
+            session.StartFrom("First one. Second one.");
+            await session.TranslateAllAsync("First one. Second one.");
+            Assert.Equal("FIRST ONE." + Environment.NewLine + "SECOND ONE.", session.DisplayText);
+
+            session.Feed("First one. Second one. Third one.");
+            await session.FlushAsync();
+            Assert.EndsWith("THIRD ONE.", session.DisplayText);
+        }
+    }
+
+    [Fact]
     public async Task ReplaceTranslator_ReloadsLazily()
     {
         var first = new FakeTranslator();
