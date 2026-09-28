@@ -53,7 +53,7 @@
         <TextBlock Text="Translate to" Opacity="0.7" VerticalAlignment="Center" />
         <ComboBox Width="112"
           AutomationProperties.Name="Translation target language"
-          ItemsSource="{x:Bind ViewModel.LanguageOptions}"
+          ItemsSource="{x:Bind ViewModel.TranslationLanguageOptions}"
           SelectedItem="{x:Bind ViewModel.TranslationTargetLanguage, Mode=TwoWay}" />
       </StackPanel>
       <Button Grid.Column="3" Content="Downloads" Click="Downloads_Click" Margin="10,0,0,0" />

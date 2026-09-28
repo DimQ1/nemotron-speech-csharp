@@ -243,6 +243,7 @@ public sealed partial class MainViewModel : ObservableObject
         _translationEnabled = _settings.TranslationEnabled;
         _selectedTranslationLanguage = ResolveTranslationLanguage(_settings.TranslationTargetLanguage);
         _translation.SetTargetLanguage(_selectedTranslationLanguage.Name);
+        _translation.SetSourceLanguage(_settings.Language);
         _translationComputeBackend = string.IsNullOrWhiteSpace(_settings.TranslationComputeBackend)
             ? "cpu"
             : _settings.TranslationComputeBackend;
@@ -458,6 +459,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         _settings.Language = value;
         QueueLanguagePersistence(value);
+        _translation.SetSourceLanguage(value);
 
         if (_recognition.ModelState == ModelState.Loaded)
         {
@@ -1264,7 +1266,12 @@ public sealed partial class MainViewModel : ObservableObject
             UpdateDisplayedText();
 
             if (TranslationEnabled && !UsePromptTranslation)
+            {
+                // The final transcript may revise the last partial; feed it before
+                // flushing so the correction, not the stale draft, gets translated.
+                _translation.Feed(_currentSessionText);
                 _ = FlushTranslationAsync();
+            }
 
             if (IsTextInjectionEnabled && _currentSessionText.Length > _lastInjectedLength && CanInjectToTargetWindow())
             {

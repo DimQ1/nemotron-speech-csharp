@@ -1,61 +1,67 @@
 # SpeechLib.LiteRT.Native
 
-In-process translation for the NemotronSpeech pipeline: loads a Gemma 4 model in
-`.litertlm` format directly through the LiteRT-LM C API — **no HTTP server** is
-required.
-
-## Engine
-
-The wrapper is built on [LiteRtLmSharp](https://github.com/OrihuelaConde/LiteRtLmSharp),
-which pins the LiteRT-LM C API to **native v0.14.0**.
-
-> **Why not the upstream prebuilt?** The official LiteRT-LM v0.16.0 C API
-> prebuilt heap-corrupts (`0xC0000374`) on plain-chat CPU decode with Gemma 4
-> (upstream issue **#2149**). LiteRtLmSharp's self-built v0.14.0 natives are
-> validated on Windows x64 CPU/GPU and ship via NuGet
-> (`LiteRtLmSharp.runtime.win-x64`), so no DLLs are vendored in this repo.
+In-process translation with a Gemma 4 model in `.litertlm` format, loaded through
+LiteRT-LM via the [LiteRtLmSharp](https://github.com/OrihuelaConde/LiteRtLmSharp)
+binding (1.2.0, native LiteRT-LM v0.16.0). No sidecar server: the model runs inside
+the application process.
 
 ## Model
 
-Use the LiteRT-LM CPU variant of Gemma 4 E2B:
+- Hugging Face: `litert-community/gemma-4-E2B-it-litert-lm`, file `gemma-4-E2B-it.litertlm`
+  (≈2.6 GB). The apps download it into their `Models/Translation` folder.
+- The repo also carries `gemma-4-E2B-it-gpu.litertlm` (GPU-tuned weights) and device
+  variants; the apps use the plain file for both `cpu` and `gpu` backends.
+- Larger Gemma 4 LiteRT-LM bundles exist (E4B, 12B, 26B-A4B, 31B) but are impractical on
+  CPU for live translation.
 
-- Hugging Face: [`litert-community/gemma-4-E2B-it-litert-lm`](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm)
-- Local file (this repo convention): `models/gemma-4-E2B-it.litertlm` (~2.6 GB)
+## How a sentence is translated
 
-The C API has no NVIDIA CUDA support; the `gpu` backend refers to the WebGPU
-delegate, which is not available on most desktops. **Use `cpu`.**
+`LiteRTLmNativeTranslator` keeps one engine and opens a fresh conversation per request:
+
+- system prompt from `SpeechLib.Translation.TranslationPrompt` (shared with the HTTP backend):
+  translate a live speech transcript as-is, reply with the translation only;
+- **greedy decoding** (`LiteRTLmNativeOptions.Greedy`, default on): the model file's own
+  sampler (top-k 40, top-p 0.95, temperature 1.0) made every draft pass differ and cost
+  about twice the decode time;
+- **no-repeat n-gram** of 8 tokens on the reply (`NoRepeatNgramSize`) stops decode loops;
+- when the request carries the previous sentence and its translation
+  (`TranslationRequest.PreviousSource/PreviousTranslation`, supplied by
+  `LiveTranslationSession`), they are replayed as a prior user/model turn so pronouns,
+  terminology and register stay consistent across sentences.
+
+Sample timing on a 20-core laptop CPU, one 15-word English sentence into Russian:
+about 1.2 s with greedy decoding, 2.5 s with the default sampler.
 
 ## Usage
 
 ```csharp
-using SpeechLib;
 using SpeechLib.LiteRT.Native;
+using SpeechLib.Translation;
 
-using ITextTranslator translator = new LiteRTLmNativeTranslator(new LiteRTLmNativeOptions
+using var translator = new LiteRTLmNativeTranslator(new LiteRTLmNativeOptions
 {
-    ModelPath = @"models\gemma-4-E2B-it.litertlm",
-    Backend = "cpu",        // "cpu" | "gpu"
-    NumThreads = 4,         // 0 = library default
-    MaxTokens = 256,
-    LogLevel = LiteRTLmLogLevel.Warning,
+    ModelPath = @"C:\models\gemma-4-E2B-it.litertlm",
+    Backend = "cpu",            // or "gpu" (WebGPU delegate)
 });
 
-// Blocking
-string? ru = await translator.TranslateAsync("Hello world", "ru");
+var text = await translator.TranslateAsync(new TranslationRequest("Hello world.", "Russian"));
 
-// Streaming (yields token deltas as they are decoded)
-await foreach (var token in translator.TranslateStreamAsync("Hello world", "ru"))
-    Console.Write(token);
+// Live transcripts: let the shared session handle sentence splitting, drafts and context.
+await using var session = new LiveTranslationSession(_ => Task.FromResult<ITextTranslator>(translator))
+{
+    TargetLanguage = "Russian",
+};
+session.TranslationChanged += display => Console.WriteLine(display);
+session.Feed("hello world this is a live");
 ```
 
-## CLI
+CLI: `NemotronSpeech <model> --mic --translate ru --translate-backend native --litert-model-path <gemma.litertlm>`.
 
-From the repo root:
+## Platform notes
 
-```powershell
-dotnet build NemotronSpeech.slnx -c Release -p:GpuArch=CPU
-dotnet apps\NemotronSpeech\src\NemotronSpeech\bin\Release\net10.0\NemotronSpeech.dll `
-  <asr-model> <audio.wav> cpu `
-  --translate ru --translate-backend native `
-  --litert-model-path models\gemma-4-E2B-it.litertlm
-```
+- Windows x64: no VC++ Redistributable needed since LiteRtLmSharp 1.2.0 (static CRT).
+- Linux x64: the runtime needs the system Vulkan loader (`libvulkan1`), even for the CPU
+  backend; the Debian package declares the dependency.
+- Android arm64: native package available; not validated in this repository.
+- Only one engine may be alive per process; the session replaces the engine under its
+  decode gate when the backend or prompt changes.

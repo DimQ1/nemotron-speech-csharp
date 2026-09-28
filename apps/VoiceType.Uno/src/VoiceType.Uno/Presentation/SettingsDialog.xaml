@@ -69,7 +69,7 @@
                     SelectedItem="{x:Bind ViewModel.TranslationComputeBackend, Mode=TwoWay}" />
           <TextBlock Text="cpu = XNNPACK (stable, default). gpu = WebGPU delegate (needs a working GPU driver)."
                      Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
-          <TextBlock Text="Target language (BCP-47 code, e.g. ru, en, de)" Opacity="0.7" FontSize="12" />
+          <TextBlock Text="Target language (code such as ru, en, de, or a name such as Belarusian)" Opacity="0.7" FontSize="12" />
           <TextBox Text="{x:Bind ViewModel.TranslationTargetLanguage, Mode=TwoWay}"
                    PlaceholderText="ru" />
           <TextBlock Text="Native model (.litertlm)" Opacity="0.7" FontSize="12" />

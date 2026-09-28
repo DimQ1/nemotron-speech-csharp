@@ -26,8 +26,11 @@ public interface ITranslationService : IAsyncDisposable
     /// <summary>Latest human-readable status (e.g. "Model ready", "Loading model...").</summary>
     string StatusText { get; }
 
-    /// <summary>Sets the target language for subsequently-enqueued sentences.</summary>
+    /// <summary>Sets the target language (code or name) for subsequently-enqueued sentences.</summary>
     void SetTargetLanguage(string language);
+
+    /// <summary>Tells the translator which language the recognizer is set to ("auto"/null = let the model detect).</summary>
+    void SetSourceLanguage(string? languageCode);
 
     /// <summary>Selects the compute backend ("cpu" or "gpu") for the native engine.</summary>
     void SetComputeBackend(string backend);

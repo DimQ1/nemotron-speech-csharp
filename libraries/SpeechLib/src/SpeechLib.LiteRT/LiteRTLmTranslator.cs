@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SpeechLib.Translation;
 
 namespace SpeechLib.LiteRT;
 
@@ -38,19 +39,32 @@ public sealed class LiteRTLmTranslator : ITextTranslator
     }
 
     /// <inheritdoc />
-    public async Task<string?> TranslateAsync(
+    public Task<string?> TranslateAsync(
         string text,
         string targetLang,
         string? sourceLang = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        TranslateAsync(new TranslationRequest(text, targetLang) { SourceLanguage = sourceLang }, cancellationToken);
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<string> TranslateStreamAsync(
+        string text,
+        string targetLang,
+        string? sourceLang = null,
+        CancellationToken cancellationToken = default) =>
+        TranslateStreamAsync(new TranslationRequest(text, targetLang) { SourceLanguage = sourceLang }, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<string?> TranslateAsync(TranslationRequest request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(text))
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.Text))
             return null;
 
         using var response = await _http
             .PostAsync(
                 _options.Endpoint,
-                CreateJsonContent(BuildRequest(text, targetLang, sourceLang, stream: false)),
+                CreateJsonContent(BuildRequest(request, stream: false)),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -66,21 +80,20 @@ public sealed class LiteRTLmTranslator : ITextTranslator
 
     /// <inheritdoc />
     public async IAsyncEnumerable<string> TranslateStreamAsync(
-        string text,
-        string targetLang,
-        string? sourceLang = null,
+        TranslationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(text))
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.Text))
             yield break;
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, _options.Endpoint)
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _options.Endpoint)
         {
-            Content = CreateJsonContent(BuildRequest(text, targetLang, sourceLang, stream: true)),
+            Content = CreateJsonContent(BuildRequest(request, stream: true)),
         };
 
         using var response = await _http
-            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
 
         response.EnsureSuccessStatusCode();
@@ -137,23 +150,34 @@ public sealed class LiteRTLmTranslator : ITextTranslator
         return new StringContent(json, Encoding.UTF8, "application/json");
     }
 
-    private ChatCompletionRequest BuildRequest(
-        string text,
-        string targetLang,
-        string? sourceLang,
-        bool stream) =>
-        new()
+    /// <summary>
+    /// The previous sentence pair, when the request carries one, is sent as a prior
+    /// user/assistant exchange so the model keeps consecutive sentences consistent.
+    /// </summary>
+    private ChatCompletionRequest BuildRequest(TranslationRequest request, bool stream)
+    {
+        var messages = new List<ChatMessage>
+        {
+            new("system", _options.BuildSystemPrompt(request.TargetLanguage, request.SourceLanguage)),
+        };
+
+        if (request.HasContext)
+        {
+            messages.Add(new ChatMessage("user", request.PreviousSource!));
+            messages.Add(new ChatMessage("assistant", request.PreviousTranslation!));
+        }
+
+        messages.Add(new ChatMessage("user", request.Text));
+
+        return new ChatCompletionRequest
         {
             Model = _options.Model,
-            Messages =
-            [
-                new ChatMessage("system", _options.BuildSystemPrompt(targetLang, sourceLang)),
-                new ChatMessage("user", text),
-            ],
+            Messages = messages.ToArray(),
             Temperature = _options.Temperature,
             MaxTokens = _options.MaxTokens,
             Stream = stream,
         };
+    }
 
     private static string? ExtractStreamDelta(string data)
     {

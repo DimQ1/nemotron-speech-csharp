@@ -1,5 +1,5 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
-using SpeechLib.ModelDownload;
 using SpeechLib.ModelDownload;
 using VoiceType.Uno.Services;
 
@@ -126,7 +126,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnIsDownloadingModelChanged(bool value) => OnPropertyChanged(nameof(CanDownloadModel));
 
-    public List<string> AvailableModels { get; } = [];
+    /// <summary>Model folders under <see cref="ModelsRootPath"/>. Observable so the ComboBox follows rescans.</summary>
+    public ObservableCollection<string> AvailableModels { get; } = [];
 
     /// <summary>ASR model variants published on Hugging Face (see ModelCatalog).</summary>
     public IReadOnlyList<ModelDescriptor> AsrModelOptions => AsrModelCatalog.Models;
@@ -178,22 +179,29 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private void ScanModels()
     {
+        // Clearing the bound collection drops the ComboBox selection (TwoWay binding
+        // writes null back), so remember the choice and restore it after the rescan.
+        var selected = SelectedModel;
         AvailableModels.Clear();
-        if (!Directory.Exists(ModelsRootPath))
-            return;
+        if (Directory.Exists(ModelsRootPath))
+        {
+            foreach (var name in ModelFolderScanner.ScanModelFolderNames(ModelsRootPath))
+                AvailableModels.Add(name);
+        }
 
-        foreach (var name in ModelFolderScanner.ScanModelFolderNames(ModelsRootPath))
-            AvailableModels.Add(name);
-
-        if (string.IsNullOrWhiteSpace(SelectedModel) && AvailableModels.Count == 1)
+        if (!string.IsNullOrWhiteSpace(selected) && AvailableModels.Contains(selected))
+            SelectedModel = selected;
+        else if (AvailableModels.Count == 1)
             SelectedModel = AvailableModels[0];
+        else
+            SelectedModel = "";
     }
 
     public AppSettings BuildSettings()
     {
         var settings = _original.Clone();
         settings.ModelsRootPath = ModelsRootPath.Trim();
-        settings.SelectedModel = SelectedModel.Trim();
+        settings.SelectedModel = (SelectedModel ?? "").Trim();
         settings.ModelPath = ModelPath;
         settings.ExecutionProvider = ExecutionProvider;
         settings.Language = Language;

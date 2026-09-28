@@ -251,14 +251,14 @@
   </Target>
 
   <!--
-    Copy LiteRT-LM native DLLs (LiteRtLmSharp.runtime.win-x64 v1.1.1) into the
+    Copy LiteRT-LM native DLLs (LiteRtLmSharp.runtime.win-x64 v1.2.0) into the
     build output and the MSIX AppX staging folder. The runtime package normally
     flows these assets for framework-dependent builds, but the single-project
     MSIX tooling packages from $(OutputPath)AppX, so they must be copied there
     explicitly — same pattern as ORT above.
   -->
   <PropertyGroup>
-    <_LiteRtNativeDir>$(USERPROFILE)\.nuget\packages\litertlmsharp.runtime.win-x64\1.1.1\runtimes\win-x64\native\</_LiteRtNativeDir>
+    <_LiteRtNativeDir>$(USERPROFILE)\.nuget\packages\litertlmsharp.runtime.win-x64\1.2.0\runtimes\win-x64\native\</_LiteRtNativeDir>
   </PropertyGroup>
 
   <Target Name="CopyLiteRtNativeAssetsToAppX" AfterTargets="Build">

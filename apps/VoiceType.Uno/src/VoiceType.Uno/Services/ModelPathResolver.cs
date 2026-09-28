@@ -11,16 +11,19 @@ public static class ModelPathResolver
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var configuredRoot = NormalizePath(settings.ModelsRootPath);
 
+        if (configuredRoot is not null && !string.IsNullOrWhiteSpace(settings.SelectedModel))
+            AddCandidate(candidates, seen, Path.Combine(configuredRoot, settings.SelectedModel));
+
+        // A concrete ModelPath is more authoritative than directory scanning, but only
+        // after the current root/selection pair has had a chance to resolve (same order
+        // as VoiceType.WinUI).
+        AddCandidate(candidates, seen, settings.ModelPath);
+
         if (configuredRoot is not null)
         {
-            if (!string.IsNullOrWhiteSpace(settings.SelectedModel))
-                AddCandidate(candidates, seen, Path.Combine(configuredRoot, settings.SelectedModel));
-
             AddCandidate(candidates, seen, configuredRoot);
             AddModelDirectories(candidates, seen, configuredRoot);
         }
-
-        AddCandidate(candidates, seen, settings.ModelPath);
 
         var defaultRoot = NormalizePath(AppPaths.ModelsDir);
         if (defaultRoot is not null)
@@ -70,7 +73,7 @@ public static class ModelPathResolver
             if (!Directory.Exists(root))
                 return;
 
-            foreach (var directory in Directory.GetDirectories(root))
+            foreach (var directory in Directory.GetDirectories(root).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
                 AddCandidate(candidates, seen, directory);
         }
         catch (IOException)
@@ -122,8 +125,10 @@ public static class ModelPathResolver
     }
 
     /// <summary>
-    /// A model directory is considered usable only when it is complete: the
-    /// config parses AND every model file it references is present and non-empty.
+    /// A model directory is usable when the shared scanner recognises it (Nemotron
+    /// GenAI, Parakeet TDT, VibeVoice, Qwen3) and it is not broken. Earlier this
+    /// accepted only Nemotron/Qwen3-streaming folders, so a Parakeet or VibeVoice
+    /// model picked in Settings was silently replaced by the first Nemotron folder.
     /// </summary>
     private static bool IsModelDirectory(string path) =>
         CheckIntegrity(path) == ModelIntegrity.Complete;
@@ -151,10 +156,29 @@ public static class ModelPathResolver
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
             return ModelIntegrity.Missing;
 
+        try
+        {
+            // Stale partial-download artifact → incomplete, whatever the model kind.
+            if (Directory.EnumerateFiles(path, "*.part", SearchOption.AllDirectories).Any())
+                return ModelIntegrity.Broken;
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+
         if (Qwen3ModelDetector.IsQwen3AsrStreamingModel(path))
             return Qwen3ModelDetector.IsCompleteQwen3AsrStreamingModel(path)
                 ? ModelIntegrity.Complete
                 : ModelIntegrity.Broken;
+
+        if (ParakeetModelDetector.IsParakeetTdtModel(path))
+            return HasNonEmptyFiles(path, "encoder-model.onnx", "decoder_joint-model.onnx", "nemo128.onnx", "vocab.txt")
+                ? ModelIntegrity.Complete
+                : ModelIntegrity.Broken;
+
+        // VibeVoice and plain Qwen3 exports are validated by their detectors' own
+        // file checks; a recognised folder is usable.
+        if (VibeVoiceModelDetector.IsVibeVoiceAsrModel(path) || Qwen3ModelDetector.IsQwen3AsrModel(path))
+            return ModelIntegrity.Complete;
 
         var configPath = Path.Combine(path, "genai_config.json");
         if (!File.Exists(configPath))
@@ -162,10 +186,6 @@ public static class ModelPathResolver
 
         try
         {
-            // Stale partial-download artifact → incomplete.
-            if (System.IO.Directory.EnumerateFiles(path, "*.part", SearchOption.AllDirectories).Any())
-                return ModelIntegrity.Broken;
-
             using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(configPath));
             var required = new List<string>();
             CollectFilenames(document.RootElement, required);
@@ -186,6 +206,17 @@ public static class ModelPathResolver
             // Unparseable/corrupt config counts as broken.
             return ModelIntegrity.Broken;
         }
+    }
+
+    private static bool HasNonEmptyFiles(string directory, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            var file = Path.Combine(directory, name);
+            if (!File.Exists(file) || new FileInfo(file).Length == 0)
+                return false;
+        }
+        return true;
     }
 
     /// <summary>Recursively collects every <c>filename</c> value from the model config.</summary>

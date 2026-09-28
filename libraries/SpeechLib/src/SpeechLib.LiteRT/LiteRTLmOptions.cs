@@ -1,3 +1,5 @@
+using SpeechLib.Translation;
+
 namespace SpeechLib.LiteRT;
 
 /// <summary>
@@ -27,26 +29,7 @@ public sealed class LiteRTLmOptions
     /// </summary>
     public string AdditionalSystemPrompt { get; init; } = "";
 
-    /// <summary>
-    /// Builds the system prompt. A plain instruction to translate the source text
-    /// into the target language, preserving meaning/tone/formatting and replying
-    /// with only the translation. <c>AdditionalSystemPrompt</c> is appended so
-    /// users can add their own rules.
-    /// </summary>
-    public string BuildSystemPrompt(string targetLang, string? sourceLang)
-    {
-        var source = string.IsNullOrWhiteSpace(sourceLang)
-            ? "the source language"
-            : sourceLang;
-
-        var prompt =
-            "You are a professional translation engine. " +
-            $"Translate the user's message from {source} into {targetLang}. " +
-            "Preserve meaning, tone, and formatting. " +
-            "Reply with only the translation, with no preamble, no explanation, and no JSON.";
-
-        return string.IsNullOrWhiteSpace(AdditionalSystemPrompt)
-            ? prompt
-            : prompt + "\n\nAdditional instructions:\n" + AdditionalSystemPrompt;
-    }
+    /// <summary>Builds the system prompt (see <see cref="TranslationPrompt"/>).</summary>
+    public string BuildSystemPrompt(string targetLang, string? sourceLang) =>
+        TranslationPrompt.BuildSystemPrompt(targetLang, sourceLang, AdditionalSystemPrompt);
 }

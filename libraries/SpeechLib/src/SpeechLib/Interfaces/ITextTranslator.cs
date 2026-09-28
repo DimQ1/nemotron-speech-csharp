@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using SpeechLib.Translation;
 
 namespace SpeechLib;
 
@@ -41,4 +42,15 @@ public interface ITextTranslator : IDisposable
         if (result is not null)
             yield return result;
     }
+
+    /// <summary>
+    /// Translates a <see cref="TranslationRequest"/>. Backends that can exploit the
+    /// request's context (previous sentence pair) override this; the default ignores it.
+    /// </summary>
+    Task<string?> TranslateAsync(TranslationRequest request, CancellationToken cancellationToken = default) =>
+        TranslateAsync(request.Text, request.TargetLanguage, request.SourceLanguage, cancellationToken);
+
+    /// <summary>Streaming form of <see cref="TranslateAsync(TranslationRequest, CancellationToken)"/>.</summary>
+    IAsyncEnumerable<string> TranslateStreamAsync(TranslationRequest request, CancellationToken cancellationToken = default) =>
+        TranslateStreamAsync(request.Text, request.TargetLanguage, request.SourceLanguage, cancellationToken);
 }

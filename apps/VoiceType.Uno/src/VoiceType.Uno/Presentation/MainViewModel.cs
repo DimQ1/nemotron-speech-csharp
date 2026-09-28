@@ -77,6 +77,7 @@ public sealed partial class MainViewModel : ObservableObject
         _translation.SetTargetLanguage(_settings.TranslationTargetLanguage);
         _translation.SetAdditionalSystemPrompt(_settings.TranslationSystemPrompt);
         _translation.SetComputeBackend(_settings.TranslationComputeBackend);
+        _translation.SetSourceLanguage(_settings.Language);
 
         _recognition.PartialResult += QueuePartialResult;
         _recognition.FinalResult += text => _dispatcher.TryEnqueue(() =>
@@ -513,6 +514,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     public IReadOnlyList<string> LanguageOptions => SettingsViewModel.DefaultLanguageOptions;
 
+    /// <summary>Translation targets: real languages only ("auto" is a recognition option, not a target).</summary>
+    public IReadOnlyList<string> TranslationLanguageOptions { get; } =
+        SpeechLib.Translation.TranslationLanguages.All.Select(l => l.Code).ToList();
+
     public string RecordButtonText => IsModelDownloading
         ? "Downloading model..."
         : IsModelLoading
@@ -619,6 +624,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         _settings.Language = value;
         _ = Task.Run(() => _settingsService.Update(s => s.Language = value));
+        _translation.SetSourceLanguage(value);
         if (_recognition.ModelState == ModelLifecycleState.Loaded)
             _ = Task.Run(() => _recognition.SetLanguage(value));
     }
@@ -803,6 +809,7 @@ public sealed partial class MainViewModel : ObservableObject
             IsTranslationEnabled = settings.TranslationEnabled;
             TranslationTargetLanguage = settings.TranslationTargetLanguage;
             _translation.SetTargetLanguage(settings.TranslationTargetLanguage);
+            _translation.SetSourceLanguage(settings.Language);
             _translation.SetAdditionalSystemPrompt(settings.TranslationSystemPrompt);
             _translation.UpdateServerUrl(settings.TranslationServerUrl);
             _translation.UpdateBackend(string.Equals(settings.TranslationBackend, "http", StringComparison.OrdinalIgnoreCase)
