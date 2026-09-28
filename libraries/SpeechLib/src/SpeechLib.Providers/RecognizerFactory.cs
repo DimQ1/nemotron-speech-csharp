@@ -24,25 +24,36 @@ public static class RecognizerFactory
         bool isQwen3Streaming = Qwen3AsrStreamingRecognizer.IsQwen3AsrStreamingModel(options.ModelPath);
         bool isQwen3 = !isQwen3Streaming && Qwen3AsrRecognizer.IsQwen3AsrModel(options.ModelPath);
 
+        // The WebGPU EP hard-crashes the process (0xC0000409, fail-fast in native
+        // code) on the Qwen3 graphs, verified for both the streaming and the plain
+        // model. A persisted setting must never take the app down, so the request
+        // is downgraded to CPU here, where the model family is known.
+        var executionProvider = options.ExecutionProvider;
+        if (WebGpuRequest.IsWebGpuRequest(executionProvider) && (isQwen3 || isQwen3Streaming))
+        {
+            Console.WriteLine($"  Warning: WebGPU is not supported by the Qwen3 graphs (crash); using CPU for {options.ModelPath}.");
+            executionProvider = "cpu";
+        }
+
         IStreamingSpeechRecognizer recognizer = isVibeVoice
             ? new VibeVoiceAsrRecognizer(
                 options.ModelPath,
-                executionProvider: options.ExecutionProvider)
+                executionProvider: executionProvider)
             : isQwen3Streaming
             ? new Qwen3AsrStreamingRecognizer(
                 options.ModelPath,
-                executionProvider: options.ExecutionProvider,
+                executionProvider: executionProvider,
                 language: options.Language)
             : isQwen3
             ? new Qwen3AsrRecognizer(
                 options.ModelPath,
-                executionProvider: options.ExecutionProvider,
+                executionProvider: executionProvider,
                 language: options.Language)
             : isParakeet
-            ? new ParakeetTdtRecognizer(options.ModelPath, executionProvider: options.ExecutionProvider)
+            ? new ParakeetTdtRecognizer(options.ModelPath, executionProvider: executionProvider)
             : new ModelSession(
                 options.ModelPath,
-                options.ExecutionProvider,
+                executionProvider,
                 langId,
                 options.UseVad,
                 new GeneratorParamsArgs

@@ -17,7 +17,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     ];
 
     public static IReadOnlyList<string> DefaultAudioSourceOptions { get; } = ["Mic", "Loopback", "Mix"];
-    public static IReadOnlyList<string> DefaultExecutionProviderOptions { get; } = ["cpu", "follow_config"];
+
+    /// <summary>
+    /// Compute providers offered in the settings dialog. The two WebGPU entries differ
+    /// by Dawn power preference, which is the supported way to pick the physical
+    /// adapter ("hp" = discrete GPU, "lp" = integrated GPU); see
+    /// docs/research/onnx/webgpu-ep-evaluation.md.
+    /// </summary>
+    public static IReadOnlyList<string> DefaultExecutionProviderOptions { get; } = ["cpu", "webgpu:hp", "webgpu:lp", "follow_config"];
     public static IReadOnlyList<string> DefaultTranslationBackendOptions { get; } = ["native", "http"];
     public static IReadOnlyList<string> DefaultTranslationComputeBackendOptions { get; } = ["cpu", "gpu"];
 

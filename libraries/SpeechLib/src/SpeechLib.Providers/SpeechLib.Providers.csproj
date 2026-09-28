@@ -26,6 +26,13 @@
   <ItemGroup>
     <!-- Plain ONNX Runtime powers Parakeet TDT and the shared Silero VAD filter. -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" GeneratePathProperty="true" />
+    <!--
+      WebGPU execution provider, shipped as a plugin EP: a standalone native library
+      registered at runtime against the same OrtEnv, so no special ORT build is needed.
+      Plugin versions are independent of the core ORT version (WebGPU 0.4.0 pairs with
+      ONNX Runtime 1.30.0). Re-pick the plugin version when ORT is bumped.
+    -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.EP.WebGpu" Version="0.4.0" GeneratePathProperty="true" />
     <PackageReference Include="System.CommandLine" Version="2.0.1" />
     <!-- FFT for the host-side Whisper log-mel used by the Qwen3-ASR encoder. -->
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
@@ -57,6 +64,25 @@
       <_OrtNative Include="$(PkgMicrosoft_ML_OnnxRuntime)\runtimes\win-x64\native\*.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(_OrtNative)"
+          DestinationFolder="$(OutputPath)runtimes\win-x64\native"
+          SkipUnchangedFiles="false" />
+  </Target>
+
+  <!--
+    Copy the WebGPU plugin EP next to the ORT native assets so it can be registered
+    at runtime by name. dxcompiler.dll / dxil.dll come along: Dawn compiles WGSL
+    through DXC, and the plugin fails to create a device without them.
+    Uses the GeneratePathProperty-based package path for the same reason as
+    CopyOrtNativeAssets above.
+  -->
+  <Target Name="CopyWebGpuPluginNativeAssets" AfterTargets="Build"
+          Condition="Exists('$(PkgMicrosoft_ML_OnnxRuntime_EP_WebGpu)\runtimes\win-x64\native\onnxruntime_providers_webgpu.dll')">
+    <ItemGroup>
+      <_WebGpuNative Include="$(PkgMicrosoft_ML_OnnxRuntime_EP_WebGpu)\runtimes\win-x64\native\onnxruntime_providers_webgpu*.dll" />
+      <_WebGpuNative Include="$(PkgMicrosoft_ML_OnnxRuntime_EP_WebGpu)\runtimes\win-x64\native\dxcompiler.dll" />
+      <_WebGpuNative Include="$(PkgMicrosoft_ML_OnnxRuntime_EP_WebGpu)\runtimes\win-x64\native\dxil.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_WebGpuNative)"
           DestinationFolder="$(OutputPath)runtimes\win-x64\native"
           SkipUnchangedFiles="false" />
   </Target>

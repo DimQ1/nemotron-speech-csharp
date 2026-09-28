@@ -82,6 +82,18 @@ namespace SpeechLib
         {
             var config = new Config(path);
 
+            // WebGPU is a plugin EP: register it and select it by name. A request
+            // for a GPU that is not present degrades to the CPU path below instead
+            // of failing session creation (a persisted setting must never break
+            // recognition).
+            var webGpu = WebGpuRequest.TryParse(ep);
+            if (webGpu is not null && !WebGpuExecutionProvider.TryApplyToGenAi(config, webGpu, out var webGpuError))
+            {
+                Console.WriteLine($"  Warning: WebGPU not applied ({webGpuError}); falling back to CPU.");
+                webGpu = null;
+                ep = "cpu";
+            }
+
             if (ep == "cpu")
             {
                 int threads = ResolveCpuThreads(cpuThreads);
@@ -108,7 +120,7 @@ namespace SpeechLib
                 }
             }
 
-            if (ep != "follow_config")
+            if (webGpu is null && ep != "follow_config")
             {
                 // DML: don't clear default providers (keep CPU fallback), just append DML
                 if (ep == "dml")
