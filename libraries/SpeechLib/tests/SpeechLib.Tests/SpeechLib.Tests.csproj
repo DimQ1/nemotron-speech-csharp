@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SpeechLib\SpeechLib.csproj" />
     <ProjectReference Include="..\..\src\SpeechLib.Providers\SpeechLib.Providers.csproj" />
+    <ProjectReference Include="..\..\src\SpeechLib.ModelDownload\SpeechLib.ModelDownload.csproj" />
   </ItemGroup>
 
 </Project>

@@ -39,7 +39,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string _modelsRootPath = "";
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ModelPath))]
+    [NotifyPropertyChangedFor(nameof(ModelPath), nameof(ActiveModelSummary))]
     private string _selectedModel = "";
 
     [ObservableProperty]
@@ -129,12 +129,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Model folders under <see cref="ModelsRootPath"/>. Observable so the ComboBox follows rescans.</summary>
     public ObservableCollection<string> AvailableModels { get; } = [];
 
-    /// <summary>ASR model variants published on Hugging Face (see ModelCatalog).</summary>
-    public IReadOnlyList<ModelDescriptor> AsrModelOptions => AsrModelCatalog.Models;
-
-    /// <summary>The Hugging Face model variant the Download button will fetch.</summary>
-    [ObservableProperty]
-    private ModelDescriptor _selectedAsrModel = AsrModelCatalog.Recommended;
+    /// <summary>
+    /// Friendly description of the model the app will use: the catalog title for
+    /// known variants, the raw folder name for custom models.
+    /// </summary>
+    public string ActiveModelSummary => string.IsNullOrWhiteSpace(SelectedModel)
+        ? "No model selected — open the model manager to download one."
+        : $"{ModelCatalog.DescribeFolder(SelectedModel)} ({SelectedModel})";
 
     public string ModelPath => !string.IsNullOrWhiteSpace(ModelsRootPath)
         && !string.IsNullOrWhiteSpace(SelectedModel)

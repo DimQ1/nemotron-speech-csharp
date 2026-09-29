@@ -1,3 +1,4 @@
+using SpeechLib.ModelDownload;
 using SpeechLib.TextOutput;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -123,7 +124,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 ModelLifecycleState.Unloaded => "No model loaded",
                 ModelLifecycleState.Loading => "Loading model...",
-                ModelLifecycleState.Loaded => "Model ready",
+                ModelLifecycleState.Loaded => $"Model ready — {ModelDisplayName}",
                 ModelLifecycleState.Error => "Model load error",
                 _ => ""
             };
@@ -371,6 +372,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string _modelStatusText = "No model loaded";
+
+    /// <summary>
+    /// Friendly name of the model the app is configured with: the catalog title
+    /// ("Parakeet TDT 0.6B v3 — 4-bit (INT4)") when the folder is a known variant,
+    /// otherwise the raw folder name.
+    /// </summary>
+    public string ModelDisplayName => ModelCatalog.DescribeFolder(_settings.SelectedModel);
 
     [ObservableProperty]
     private double _downloadProgress;
@@ -723,6 +731,11 @@ public sealed partial class MainViewModel : ObservableObject
             _settings = newSettings;
             ApplySettingsSnapshot(newSettings);
             _ = ReregisterHotkeysAsync();
+            _dispatcher.TryEnqueue(() =>
+            {
+                RefreshModelBanners();
+                OnPropertyChanged(nameof(ModelDisplayName));
+            });
 
             var previousModelPath = _recognition.LoadedModelPath;
             var newModelPath = ModelPathResolver.FindExistingModelPath(newSettings) ?? newSettings.ModelPath;

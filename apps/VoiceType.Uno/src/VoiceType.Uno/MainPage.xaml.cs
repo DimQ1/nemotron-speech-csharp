@@ -18,7 +18,24 @@ public sealed partial class MainPage : Page
         // The row is only resized on visibility changes; apply the initial state too,
         // or with translation off the transcript loses the row's 200 px at startup.
         UpdateTranslationRowHeight();
+
+#if DEBUG
+        // Smoke-test hook: opens the model manager right away so the dialog can be
+        // verified on a headless-ish Linux/WSLg session (VOICETYPE_OPEN_MODEL_MANAGER=1).
+        // Deferred to Loaded — a ContentDialog needs the page's XamlRoot.
+        if (Environment.GetEnvironmentVariable("VOICETYPE_OPEN_MODEL_MANAGER") == "1")
+            Loaded += OnSmokeTestLoaded;
+#endif
     }
+
+#if DEBUG
+    private void OnSmokeTestLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnSmokeTestLoaded;
+        Console.WriteLine("[VoiceType.Uno] Smoke hook: opening the model manager");
+        _ = ShowModelManagerAsync();
+    }
+#endif
 
     public MainViewModel ViewModel => (MainViewModel)DataContext;
 
@@ -71,8 +88,41 @@ public sealed partial class MainPage : Page
             XamlRoot = XamlRoot
         };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        var result = await dialog.ShowAsync();
+
+        // The dialog closes itself when the user asks for the model manager, so
+        // pending edits are saved first and the manager opens afterwards (WinUI
+        // allows a single content dialog per XamlRoot at a time).
+        if (result == ContentDialogResult.Primary || dialog.OpenModelManagerRequested)
             await ViewModel.ApplySettingsAsync(dialog.ViewModel.BuildSettings());
+
+        if (dialog.OpenModelManagerRequested)
+            await ShowModelManagerAsync();
+    }
+
+    private async void Models_Click(object sender, RoutedEventArgs e)
+        => await ShowModelManagerAsync();
+
+    private async Task ShowModelManagerAsync()
+    {
+        try
+        {
+            var dialog = new ModelManagerDialog(
+                ViewModel.CreateSettingsSnapshot,
+                ViewModel.ApplySettingsAsync)
+            {
+                XamlRoot = XamlRoot
+            };
+
+            await dialog.ShowAsync();
+            dialog.ViewModel.Refresh();
+        }
+        catch (Exception ex)
+        {
+            // ContentDialog throws when another dialog is already open on the same
+            // XamlRoot; report it instead of losing the exception in a discard.
+            Console.WriteLine($"[VoiceType.Uno] Model manager could not be shown: {ex}");
+        }
     }
 
     private async void Help_Click(object sender, RoutedEventArgs e)

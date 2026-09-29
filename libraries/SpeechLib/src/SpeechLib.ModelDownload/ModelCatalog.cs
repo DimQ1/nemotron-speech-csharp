@@ -117,6 +117,28 @@ public static class ModelCatalog
     public static ModelDescriptor Recommended => Models.First(m => m.IsRecommended);
 
     /// <summary>
+    /// Catalog entries in display order: the recommended model first, then the
+    /// remaining variants with their family kept together (stable sort).
+    /// </summary>
+    public static IReadOnlyList<ModelDescriptor> OrderedModels { get; } =
+        Models.OrderBy(m => m.IsRecommended ? 0 : 1).ToList();
+
+    /// <summary>Star ratings and category winners, computed once for the whole catalog.</summary>
+    public static ModelRankingTable Ranking { get; } = ModelRankingTable.For(Models);
+
+    /// <summary>
+    /// Human-readable name of a downloaded model folder: the catalog title when the
+    /// folder belongs to a known variant, otherwise the folder name itself.
+    /// </summary>
+    public static string DescribeFolder(string? folderName)
+    {
+        if (string.IsNullOrWhiteSpace(folderName))
+            return "no model selected";
+
+        return FindBySubfolder(folderName)?.Title ?? folderName;
+    }
+
+    /// <summary>
     /// Finds a catalog entry by its downloaded folder name (<see cref="ModelDescriptor.SubfolderName"/>),
     /// or null when the folder is not part of the catalog (custom/local model).
     /// </summary>

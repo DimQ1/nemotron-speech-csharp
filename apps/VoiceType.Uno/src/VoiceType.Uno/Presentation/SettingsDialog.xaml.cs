@@ -11,12 +11,25 @@ public sealed partial class SettingsDialog : ContentDialog
 {
     public SettingsViewModel ViewModel { get; }
 
+    /// <summary>
+    /// True when the user asked for the model manager. The dialog hides itself so
+    /// the host page can open the manager after this dialog is closed (a second
+    /// content dialog cannot be shown on the same XamlRoot at the same time).
+    /// </summary>
+    public bool OpenModelManagerRequested { get; private set; }
+
     private readonly HashSet<VirtualKey> _pressedModifiers = new();
 
     public SettingsDialog(AppSettings settings)
     {
         ViewModel = new SettingsViewModel(settings);
         InitializeComponent();
+    }
+
+    private void OpenModelManager_Click(object sender, RoutedEventArgs e)
+    {
+        OpenModelManagerRequested = true;
+        Hide();
     }
 
     private void HotkeyBox_GotFocus(object sender, RoutedEventArgs e)
@@ -102,44 +115,6 @@ public sealed partial class SettingsDialog : ContentDialog
             VirtualKey.Down => "Down",
             _ => key.ToString()
         };
-    }
-
-    private async void DownloadModel_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-    {
-        ViewModel.IsDownloadingModel = true;
-        ViewModel.DownloadStatus = "Queued ASR model download...";
-        try
-        {
-            // Route through the shared parallel queue so the aggregate progress
-            // shows on the main window and in the Downloads window.
-            // The variant comes from the Hugging Face catalog picker in Settings.
-            var queue = App.Services.GetRequiredService<DownloadQueueService>();
-            var item = queue.EnqueueAsrModel(
-                ViewModel.ModelsRootPath,
-                onCompleted: modelPath => DispatcherQueue.TryEnqueue(() =>
-                {
-                    ViewModel.SelectedModel = Path.GetFileName(modelPath);
-                    ViewModel.RefreshModels();
-                    ViewModel.DownloadStatus = $"Downloaded to {modelPath}";
-                    ViewModel.NotifyNativeModelChanged();
-                }),
-                repoId: ViewModel.SelectedAsrModel.RepoId,
-                quantizationFolder: ViewModel.SelectedAsrModel.QuantizationFolder);
-
-            await item.Completion;
-        }
-        catch (OperationCanceledException)
-        {
-            ViewModel.DownloadStatus = "Download cancelled.";
-        }
-        catch (Exception ex)
-        {
-            ViewModel.DownloadStatus = $"Download failed: {ex.Message}";
-        }
-        finally
-        {
-            ViewModel.IsDownloadingModel = false;
-        }
     }
 
     private async void DownloadTranslationModel_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)

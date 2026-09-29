@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using SpeechLib.ModelDownload;
 
 namespace VoiceType.Uno.Services;
 
@@ -84,21 +85,31 @@ public sealed class DownloadQueueService : IDisposable
         if (forceRedownload)
             DeleteAsrModelDirectory(targetRoot, repoId, quantizationFolder);
 
-        var existing = FindDuplicate(ModelKind.Asr, repoId);
+        // Several variants can live in one repo (parakeet fp32/int8/int4), so a
+        // duplicate means the same repo AND the same quantization subfolder.
+        var existing = FindDuplicate(ModelKind.Asr, repoId, quantizationFolder);
         if (existing is not null)
             return existing;
 
         var item = new DownloadQueueItem(
             id: Guid.NewGuid(),
             kind: ModelKind.Asr,
-            displayName: $"ASR model ({AsrModelCatalog.Models.FirstOrDefault(m => m.RepoId == repoId)?.CommercialName ?? repoId})",
+            displayName: ModelCatalog.DescribeFolder(SubfolderNameOf(repoId, quantizationFolder)),
             enqueuedAtUtc: DateTime.UtcNow,
             onCompleted,
-            repoId);
+            repoId,
+            quantizationFolder);
 
         Register(item);
         _ = RunItemAsync(item, ct => DownloadAsrAsync(item, targetRoot, repoId, quantizationFolder, ct));
         return item;
+    }
+
+    /// <summary>Folder a repo/quantization pair is downloaded into.</summary>
+    private static string SubfolderNameOf(string repoId, string? quantizationFolder)
+    {
+        var repoName = repoId[(repoId.LastIndexOf('/') + 1)..];
+        return quantizationFolder is null ? repoName : $"{repoName}-{quantizationFolder}";
     }
 
     /// <summary>
@@ -162,7 +173,9 @@ public sealed class DownloadQueueService : IDisposable
                 string.IsNullOrWhiteSpace(item.ResultPath)
                     ? AppPaths.ModelsDir
                     : Path.GetDirectoryName(item.ResultPath) ?? AppPaths.ModelsDir,
-                item.OnCompleted),
+                item.OnCompleted,
+                repoId: item.RepoId,
+                quantizationFolder: item.QuantizationFolder),
             ModelKind.Translation => EnqueueTranslationModel(item.OnCompleted),
             _ => null
         };
@@ -183,9 +196,11 @@ public sealed class DownloadQueueService : IDisposable
 
     // ── Queue internals ────────────────────────────────────────────────────
 
-    private DownloadQueueItem? FindDuplicate(ModelKind kind, string? repoId = null) =>
+    private DownloadQueueItem? FindDuplicate(ModelKind kind, string? repoId = null, string? quantizationFolder = null) =>
         Items.FirstOrDefault(i => i.Kind == kind
-            && (repoId is null || i.Kind != ModelKind.Asr || i.RepoId == repoId)
+            && (repoId is null
+                || i.Kind != ModelKind.Asr
+                || (i.RepoId == repoId && string.Equals(i.QuantizationFolder, quantizationFolder, StringComparison.OrdinalIgnoreCase)))
             && i.State is DownloadQueueItemState.Queued or DownloadQueueItemState.Running);
 
     private void Register(DownloadQueueItem item)
@@ -666,7 +681,7 @@ public sealed class DownloadQueueItem
     private long _downloadedBytes;
     private long _pendingDelta;
 
-    public DownloadQueueItem(Guid id, ModelKind kind, string displayName, DateTime enqueuedAtUtc, Action<string> onCompleted, string? repoId = null)
+    public DownloadQueueItem(Guid id, ModelKind kind, string displayName, DateTime enqueuedAtUtc, Action<string> onCompleted, string? repoId = null, string? quantizationFolder = null)
     {
         Id = id;
         Kind = kind;
@@ -674,6 +689,7 @@ public sealed class DownloadQueueItem
         EnqueuedAtUtc = enqueuedAtUtc;
         OnCompleted = onCompleted;
         RepoId = repoId;
+        QuantizationFolder = quantizationFolder;
     }
 
     public Guid Id { get; }
@@ -683,6 +699,8 @@ public sealed class DownloadQueueItem
     public Action<string> OnCompleted { get; }
     /// <summary>Hugging Face repo id being downloaded (ASR items only).</summary>
     public string? RepoId { get; }
+    /// <summary>Quantization subfolder inside the repo (fp32/int8/int4), or null for single-variant repos.</summary>
+    public string? QuantizationFolder { get; }
     public CancellationToken CancellationToken => _cts.Token;
 
     /// <summary>Awaitable completion: resolves with the result path, faults on failure, cancels on Cancel().</summary>

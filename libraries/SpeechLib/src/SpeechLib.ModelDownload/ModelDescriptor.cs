@@ -64,8 +64,66 @@ public sealed record ModelDescriptor(
         ? PrecisionDisplay
         : $"{PrecisionDisplay} · {ContextWindow}";
 
-    /// <summary>Legacy list label (commercial name + variant + size).</summary>
-    public string DisplayName => $"{CommercialName} · {Variant} · {ModelMetricsFormatter.FormatSize(SizeBytes)}";
+    /// <summary>
+    /// Human-readable precision, e.g. "4-bit (INT4)" — spelled out so a list of
+    /// variants of the same family (INT4/INT8/FP32) stays distinguishable.
+    /// </summary>
+    public string PrecisionSummary => Precision switch
+    {
+        ModelPrecision.Fp32 => "full precision (FP32)",
+        ModelPrecision.Int8 => "8-bit (INT8)",
+        ModelPrecision.Int4 => "4-bit (INT4)",
+        _ => Precision.ToString()
+    };
+
+    /// <summary>Audio window the model consumes, e.g. "1.12s window" or "live streaming".</summary>
+    public string WindowSummary => ContextWindow is null
+        ? "live streaming"
+        : $"{ContextWindow} window";
+
+    /// <summary>What the model is optimized for, in plain words.</summary>
+    public string UseCaseText => UseCase switch
+    {
+        ModelUseCase.FastDictation => "Fast dictation",
+        ModelUseCase.HighQuality => "High accuracy",
+        ModelUseCase.Multilingual => "Multilingual",
+        _ => UseCase.ToString()
+    };
+
+    /// <summary>
+    /// Unambiguous card title: commercial name, spelled-out precision and — when
+    /// the family ships several audio windows (Nemotron 1.12s vs 0.56s) — the window,
+    /// so no two catalog entries share a title.
+    /// </summary>
+    public string Title => ContextWindow is null
+        ? $"{CommercialName} — {PrecisionSummary}"
+        : $"{CommercialName} — {PrecisionSummary} · {ContextWindow} window";
+
+    public string SizeText => ModelMetricsFormatter.FormatSize(SizeBytes);
+
+    /// <summary>Compact accuracy badge, e.g. "WER 8.1%".</summary>
+    public string AccuracyText => ModelMetricsFormatter.FormatWer(Research.Wer);
+
+    /// <summary>Per-language accuracy breakdown, e.g. "ru 5.8% / en 10.0%".</summary>
+    public string AccuracyDetailText => ModelMetricsFormatter.FormatWerDetail(Research.Wer);
+
+    /// <summary>Speed badge, e.g. "≈5.4× real-time".</summary>
+    public string SpeedText => ModelMetricsFormatter.FormatSpeed(Research.Speed);
+
+    public string LatencyText => ModelMetricsFormatter.FormatLatency(Latency);
+
+    /// <summary>One-line summary of every measurable property, used in tooltips.</summary>
+    public string MetricsLine => string.Join(" · ", new[]
+    {
+        AccuracyText,
+        SpeedText,
+        SizeText,
+        LatencyText,
+        UseCaseText
+    }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    /// <summary>Legacy list label (title + download size).</summary>
+    public string DisplayName => $"{Title} · {SizeText}";
 
     public override string ToString() => DisplayName;
 
