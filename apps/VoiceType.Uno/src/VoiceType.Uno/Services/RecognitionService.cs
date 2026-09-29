@@ -31,6 +31,7 @@ public sealed class RecognitionService : IDisposable
     private readonly StringBuilder _accumulatedText = new();
     private readonly object _recognizerOperationGate = new();
     private string? _loadedModelPath;
+    private string? _lastPartial;
     private Exception? _captureException;
 
     public RecognitionService(IAudioSourceFactory audioSourceFactory)
@@ -123,6 +124,7 @@ public sealed class RecognitionService : IDisposable
 
         ApplyRuntimeSettings(settings);
         _accumulatedText.Clear();
+        _lastPartial = null;
         _captureException = null;
         _isRunning = true;
 
@@ -282,7 +284,7 @@ public sealed class RecognitionService : IDisposable
                                 : provisional;
 
                         if (display.Length > 0)
-                            PartialResult?.Invoke(PartialPostProcessing.Execute(display));
+                            RaisePartial(PartialPostProcessing.Execute(display));
                     }
                 }
 
@@ -353,7 +355,16 @@ public sealed class RecognitionService : IDisposable
 
         var processedPartial = PartialPostProcessing.Execute(fullPartial);
         if (!string.IsNullOrEmpty(processedPartial))
-            PartialResult?.Invoke(processedPartial);
+            RaisePartial(processedPartial);
+    }
+
+    /// <summary>Reports a partial only when it differs from the previous one.</summary>
+    private void RaisePartial(string text)
+    {
+        if (string.Equals(text, _lastPartial, StringComparison.Ordinal))
+            return;
+        _lastPartial = text;
+        PartialResult?.Invoke(text);
     }
 
     private static void AppendUtterance(StringBuilder target, string utterance)

@@ -78,7 +78,8 @@ public sealed class AutomaticGainControl
         {
             // Rise quickly to louder speech, decay slowly so single quiet words
             // between loud ones do not swing the gain.
-            if (!_heardSpeech)
+            var firstSpeech = !_heardSpeech;
+            if (firstSpeech)
             {
                 // The first speech frame sets the level, so the first words are
                 // already boosted instead of waiting for the estimate to settle.
@@ -91,7 +92,9 @@ public sealed class AutomaticGainControl
             }
 
             var desired = Math.Clamp(TargetRms / _speechLevel, 1f, MaxGain);
-            _gain += (desired - _gain) * (desired > _gain ? GainRise : 1f);
+            _gain = firstSpeech
+                ? desired // boost the very first word instead of ramping up over it
+                : _gain + (desired - _gain) * (desired > _gain ? GainRise : 1f);
         }
 
         if (peak > 0 && peak * _gain > PeakCeiling)

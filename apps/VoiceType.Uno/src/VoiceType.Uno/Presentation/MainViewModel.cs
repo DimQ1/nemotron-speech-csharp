@@ -220,9 +220,11 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Coalesces a partial recognition result into a trailing-edge debounce window
-    /// (see <see cref="_partialResultTimer"/>) so the transcript updates at a
-    /// bounded rate instead of once per decode step.
+    /// Coalesces partial recognition results so the transcript updates at most once
+    /// per <see cref="_partialResultTimer"/> interval. This is a throttle, not a
+    /// debounce: a recognizer that reports more often than the interval (Nemotron
+    /// reports on every ~50 ms audio batch) kept restarting a debounce window, so no
+    /// text appeared until recording stopped.
     /// </summary>
     private void QueuePartialResult(string text)
     {
@@ -233,9 +235,10 @@ public sealed partial class MainViewModel : ObservableObject
                 return; // manual keyboard input owns the transcript while enabled
 
             _pendingPartialText = text;
-            // Restart the trailing-edge window; the timer is non-repeating.
-            _partialResultTimer.Stop();
-            _partialResultTimer.Start();
+            // Start a window only when none is pending; the timer is non-repeating and
+            // shows the newest text when it fires.
+            if (!_partialResultTimer.IsRunning)
+                _partialResultTimer.Start();
         });
     }
 
