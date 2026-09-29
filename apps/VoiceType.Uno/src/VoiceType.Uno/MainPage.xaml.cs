@@ -14,6 +14,10 @@ public sealed partial class MainPage : Page
         this.InitializeComponent();
         DataContext = App.Services.GetRequiredService<MainViewModel>();
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+
+        // The row is only resized on visibility changes; apply the initial state too,
+        // or with translation off the transcript loses the row's 200 px at startup.
+        UpdateTranslationRowHeight();
     }
 
     public MainViewModel ViewModel => (MainViewModel)DataContext;
