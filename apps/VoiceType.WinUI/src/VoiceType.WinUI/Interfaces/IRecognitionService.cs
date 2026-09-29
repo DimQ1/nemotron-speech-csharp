@@ -17,6 +17,13 @@ public interface IRecognitionService : IDisposable
     bool SupportsLanguageSelection { get; }
 
     event Action<string>? PartialResult;
+
+    /// <summary>
+    /// Full session text that will not change any more (committed recognizer output,
+    /// without the revisable preview). Text injection types from this, never from
+    /// <see cref="PartialResult"/>, because typed text cannot be taken back.
+    /// </summary>
+    event Action<string>? CommittedResult;
     event Action<string>? FinalResult;
 
     /// <summary>Fires when a completed utterance is finalized via blank-based endpointing.</summary>

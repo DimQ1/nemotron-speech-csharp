@@ -29,6 +29,12 @@ public sealed class LoggingRecognitionService : IRecognitionService
     public bool SupportsPromptTranslation => _inner.SupportsPromptTranslation;
     public bool SupportsLanguageSelection => _inner.SupportsLanguageSelection;
 
+    public event Action<string>? CommittedResult
+    {
+        add => _inner.CommittedResult += value;
+        remove => _inner.CommittedResult -= value;
+    }
+
     public event Action<string>? PartialResult
     {
         add => _inner.PartialResult += value;

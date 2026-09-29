@@ -664,7 +664,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
     {
         var final = _pendingFinal.Length > 0 ? _pendingFinal.ToString() : null;
         _pendingFinal.Clear();
-        return new StreamingResult(PartialWithPreview(), final);
+        return new StreamingResult(PartialWithPreview(), final) { Stable = _partial.ToString() };
     }
 
     /// <summary>The committed-but-unfinalized utterance text followed by the revisable preview.</summary>

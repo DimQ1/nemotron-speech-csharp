@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Dispatching;
 using SpeechLib.Audio;
 using SpeechLib.Recognition;
+using SpeechLib.TextOutput;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Messages;
 using VoiceType.WinUI.Models;
@@ -30,8 +31,10 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly object _partialResultGate = new();
 
     private AppSettings _settings;
-    private int _lastInjectedLength;
-    private string _lastInjectedTextTail = ""; // last ~20 chars injected, for punctuation-aware delta
+    // Types only committed text: the recognizer's revisable preview must never reach
+    // another application, because typed text cannot be taken back.
+    private readonly IncrementalTextTyper _typer = new();
+    private string _committedSessionText = "";
     private int _toggleHotkeyId;
     private int _muteHotkeyId;
     private int _injectTextHotkeyId;
@@ -254,6 +257,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         _hook.InputDetected += OnInputDetected;
         _recognition.PartialResult += OnPartialResult;
+        _recognition.CommittedResult += OnCommittedResult;
         _recognition.FinalResult += OnFinalResult;
         _recognition.UtteranceFinalized += OnUtteranceFinalized;
         _recognition.Stopped += OnRecognitionStopped;
@@ -330,7 +334,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnIsTextInjectionEnabledChanged(bool value)
     {
-        _lastInjectedLength = _currentSessionText.Length;
+        // Only text recognized from now on is typed.
+        _typer.SkipTo(_committedSessionText);
         if (_isApplyingSettingsSnapshot)
         {
             IsActivelyInjecting = value && IsRecording;
@@ -932,8 +937,8 @@ public sealed partial class MainViewModel : ObservableObject
             _preservedText = FloatingText;
 
         _currentSessionText = "";
-        _lastInjectedLength = 0;
-        _lastInjectedTextTail = "";
+        _committedSessionText = "";
+        _typer.Reset();
 
         lock (_partialResultGate)
         {
@@ -1289,15 +1294,9 @@ public sealed partial class MainViewModel : ObservableObject
                 _ = FlushTranslationAsync();
             }
 
-            if (IsTextInjectionEnabled && _currentSessionText.Length > _lastInjectedLength && CanInjectToTargetWindow())
-            {
-                var delta = _currentSessionText[_lastInjectedLength..];
-                var cleanedDelta = StripLeadingPunctuation(delta, _lastInjectedTextTail);
-                if (!string.IsNullOrEmpty(cleanedDelta))
-                    _textInjector.Inject(cleanedDelta, _settings.TextInjectionMethod);
-                _lastInjectedTextTail = GetTextTail(_currentSessionText, 20);
-            }
-            _lastInjectedLength = 0;
+            _committedSessionText = text;
+            TypeCommittedText();
+            _typer.Reset();
 
             IsRecording = false;
             StatusText = "Ready";
@@ -1367,28 +1366,6 @@ public sealed partial class MainViewModel : ObservableObject
         if (TranslationEnabled && !UsePromptTranslation)
             _translation.Feed(_currentSessionText);
 
-        if (!IsTextInjectionEnabled)
-        {
-            _lastInjectedLength = _currentSessionText.Length;
-            return;
-        }
-
-        if (_currentSessionText.Length <= _lastInjectedLength)
-            return;
-
-        if (!CanInjectToTargetWindow())
-        {
-            _lastInjectedLength = _currentSessionText.Length;
-            return;
-        }
-
-        var delta = _currentSessionText[_lastInjectedLength..];
-        var cleanedDelta = StripLeadingPunctuation(delta, _lastInjectedTextTail);
-        if (!string.IsNullOrEmpty(cleanedDelta))
-            _textInjector.Inject(cleanedDelta, _settings.TextInjectionMethod);
-        _lastInjectedTextTail = GetTextTail(_currentSessionText, 20);
-        _lastInjectedLength = _currentSessionText.Length;
-        _injectionExplicitlyEnabled = false;
     }
 
     /// <summary>
@@ -1397,34 +1374,33 @@ public sealed partial class MainViewModel : ObservableObject
     /// artifact where the ASR model emits sentence-final punctuation at the
     /// beginning of a streaming chunk.
     /// </summary>
-    private static string StripLeadingPunctuation(string delta, string previousTail)
+    private void OnCommittedResult(string text) => _dispatcher.TryEnqueue(() =>
     {
-        if (string.IsNullOrEmpty(delta))
-            return delta;
+        _committedSessionText = text;
+        TypeCommittedText();
+    });
 
-        // Only strip if previous text ended with whitespace or sentence-final punctuation
-        // (meaning a new sentence/word should start, not continue with punctuation)
-        var shouldStrip = string.IsNullOrEmpty(previousTail)
-            || previousTail.EndsWith(' ')
-            || previousTail.EndsWith('.')
-            || previousTail.EndsWith('!')
-            || previousTail.EndsWith('?')
-            || previousTail.EndsWith('\n');
+    /// <summary>Types the committed text that has not been typed yet.</summary>
+    private void TypeCommittedText()
+    {
+        if (!IsTextInjectionEnabled)
+        {
+            _typer.SkipTo(_committedSessionText);
+            return;
+        }
 
-        if (!shouldStrip)
-            return delta;
+        if (!CanInjectToTargetWindow())
+        {
+            // Focus is elsewhere (or on VoiceType itself): skip, do not type it later.
+            _typer.SkipTo(_committedSessionText);
+            return;
+        }
 
-        // Strip leading punctuation and whitespace: ". Hello" → "Hello"
-        var i = 0;
-        while (i < delta.Length && (char.IsPunctuation(delta[i]) || char.IsWhiteSpace(delta[i])))
-            i++;
-
-        return i > 0 ? delta[i..] : delta;
+        var delta = _typer.Next(_committedSessionText);
+        if (delta.Length > 0)
+            _textInjector.Inject(delta, _settings.TextInjectionMethod);
+        _injectionExplicitlyEnabled = false;
     }
-
-    /// <summary>Returns the last N characters of text for tail comparison.</summary>
-    private static string GetTextTail(string text, int maxLength)
-        => text.Length <= maxLength ? text : text[^maxLength..];
 
     private void PersistSession(RecognitionSession session, bool saveAudio)
     {

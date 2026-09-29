@@ -70,6 +70,7 @@ public sealed class RecognitionService : IRecognitionService
     }
 
     public event Action<string>? PartialResult;
+    public event Action<string>? CommittedResult;
     public event Action<string>? FinalResult;
     public event Action<string>? UtteranceFinalized;
     public event Action? Stopped;
@@ -408,6 +409,9 @@ public sealed class RecognitionService : IRecognitionService
 
                     if (!string.IsNullOrEmpty(display))
                         PartialResult?.Invoke(display);
+
+                    if (raw is not null && _partialProcessedText.Length > 0)
+                        CommittedResult?.Invoke(_partialProcessedText.ToString());
                 }
                 gotData = true;
             }
@@ -488,6 +492,20 @@ public sealed class RecognitionService : IRecognitionService
         var processedPartial = postProc.Process(fullPartial, settings.CompiledRules);
         if (!string.IsNullOrEmpty(processedPartial))
             PartialResult?.Invoke(processedPartial);
+
+        // Committed text only: finalized utterances plus the stable (non-preview) part
+        // of the current one. Recognizers that do not report Stable fall back to the
+        // finalized utterances.
+        var stable = result.Stable ?? "";
+        var committed = _accumulatedText.Length > 0 && stable.Length > 0
+            ? _accumulatedText + " " + stable
+            : _accumulatedText.Length > 0 ? _accumulatedText.ToString() : stable;
+        if (committed.Length > 0)
+        {
+            var processedCommitted = postProc.Process(committed, settings.CompiledRules);
+            if (!string.IsNullOrEmpty(processedCommitted))
+                CommittedResult?.Invoke(processedCommitted);
+        }
     }
 
     private static void AppendUtterance(StringBuilder target, string utterance)
