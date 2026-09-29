@@ -116,7 +116,7 @@
          typed by hand can be translated without dictation. -->
     <ScrollViewer x:Name="TranscriptScroll" Grid.Row="5" BorderThickness="1"
                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Padding="8">
-      <TextBox Text="{x:Bind ViewModel.FloatingText, Mode=TwoWay}"
+      <TextBox Text="{x:Bind ViewModel.FloatingText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                AutomationProperties.Name="Transcript"
                IsReadOnly="{x:Bind ViewModel.IsTranscriptReadOnly, Mode=OneWay}"
                AcceptsReturn="True"
