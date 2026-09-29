@@ -58,7 +58,10 @@ public static class RecognizerFactory
                 executionProvider: executionProvider,
                 previewPartials: options.StreamingPreview,
                 silenceContextSeconds: options.StreamingSilenceContextSeconds ?? ParakeetTdtRecognizer.DefaultSilenceContextSeconds)
-            : new ModelSession(
+            // The Nemotron streaming model has no input normalization and returns
+            // nothing for quiet microphones (silent at a -40 dBFS peak), so its input
+            // goes through automatic gain control.
+            : new AutoGainRecognizerDecorator(new ModelSession(
                 options.ModelPath,
                 executionProvider,
                 langId,
@@ -67,7 +70,7 @@ public static class RecognizerFactory
                 {
                     do_sample = false,
                     repetition_penalty = options.RepetitionPenalty
-                });
+                }));
 
         if (recognizer is ITranslationConfigurable translationConfigurable)
             translationConfigurable.TrySetTranslation(options.TranslationEnabled, options.TranslationLanguage ?? "auto");

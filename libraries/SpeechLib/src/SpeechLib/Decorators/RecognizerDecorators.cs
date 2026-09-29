@@ -122,3 +122,45 @@ public sealed class LoggingRecognizerDecorator : IStreamingSpeechRecognizer, ILa
 
     public void Dispose() => _inner.Dispose();
 }
+
+/// <summary>
+/// Applies <see cref="SpeechLib.Audio.AutomaticGainControl"/> to the audio before the
+/// inner recognizer sees it. Used for models that have no input normalization and
+/// stay silent on quiet microphones.
+/// </summary>
+public sealed class AutoGainRecognizerDecorator : IStreamingSpeechRecognizer, ILanguageConfigurable, IRuntimeConfigurable
+{
+    private readonly IStreamingSpeechRecognizer _inner;
+    private readonly SpeechLib.Audio.AutomaticGainControl _agc;
+
+    public AutoGainRecognizerDecorator(IStreamingSpeechRecognizer inner)
+    {
+        _inner = inner;
+        _agc = new SpeechLib.Audio.AutomaticGainControl(inner.SampleRate);
+    }
+
+    public int SampleRate => _inner.SampleRate;
+    public int ChunkSamples => _inner.ChunkSamples;
+    public int LastTokenCount => _inner.LastTokenCount;
+    public string? PartialText => _inner.PartialText;
+
+    /// <summary>Gain currently applied to the input.</summary>
+    public float Gain => _agc.Gain;
+
+    public bool TrySetLanguage(string language) =>
+        (_inner as ILanguageConfigurable)?.TrySetLanguage(language) == true;
+
+    public bool TrySetVad(bool enabled) =>
+        (_inner as IRuntimeConfigurable)?.TrySetVad(enabled) == true;
+
+    public bool TrySetSearchOptions(int numBeams, double repetitionPenalty) =>
+        (_inner as IRuntimeConfigurable)?.TrySetSearchOptions(numBeams, repetitionPenalty) == true;
+
+    public void ResetStreamingState() => _inner.ResetStreamingState();
+
+    public string? ProcessAudio(float[] chunk) => _inner.ProcessAudio(_agc.Process(chunk));
+
+    public string? Flush() => _inner.Flush();
+
+    public void Dispose() => _inner.Dispose();
+}
