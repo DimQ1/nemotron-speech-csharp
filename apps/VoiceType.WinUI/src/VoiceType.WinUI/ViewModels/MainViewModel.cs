@@ -23,7 +23,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IWindowInterop _windowInterop;
     private readonly IAudioMixer _audioMixer;
     private readonly ITranslationService _translation;
-    private readonly IModelDownloaderService _modelDownloader;
+    private readonly DownloadCenter _downloads;
     private readonly DispatcherQueue _dispatcher;
     private readonly RecognitionStateMachine _stateMachine = new();
     private readonly DispatcherQueueTimer _partialResultTimer;
@@ -182,8 +182,6 @@ public sealed partial class MainViewModel : ObservableObject
             ? "Selected model uses automatic language detection"
             : "";
 
-    public static string RecommendedModelRepo => "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu";
-    public static string RecommendedModelDisplay => "Nemotron 3.5 ASR · CPU (INT4, opset24, 0.56s) — fast, low latency, ~749 MB";
 
     // ---- Translation computed properties ----
 
@@ -215,7 +213,7 @@ public sealed partial class MainViewModel : ObservableObject
         IWindowInterop windowInterop,
         IAudioMixer audioMixer,
         ITranslationService translation,
-        IModelDownloaderService modelDownloader,
+        DownloadCenter downloads,
         DispatcherQueue dispatcher)
     {
         _recognition = recognition;
@@ -228,7 +226,7 @@ public sealed partial class MainViewModel : ObservableObject
         _windowInterop = windowInterop;
         _audioMixer = audioMixer;
         _translation = translation;
-        _modelDownloader = modelDownloader;
+        _downloads = downloads;
         _dispatcher = dispatcher;
         _settings = settingsService.Load();
         _selectedLanguage = _settings.Language;
@@ -266,20 +264,29 @@ public sealed partial class MainViewModel : ObservableObject
         _partialResultTimer.Interval = TimeSpan.FromMilliseconds(200);
         _partialResultTimer.Tick += (_, _) => FlushPendingPartialResult();
 
-        // Listen for ModelDownloaded messages
+        // A finished download switches recognition to it only when there is no usable
+        // model yet; otherwise it is announced and the user picks it ("Use" in the
+        // download manager, or Settings). Several models may finish in any order.
         WeakReferenceMessenger.Default.Register<ModelDownloadedMessage>(this, (r, m) =>
         {
-            var newSettings = _settings.Clone();
-            newSettings.ModelsRootPath = m.Value.ModelsRootPath;
-            newSettings.ModelPath = m.Value.ModelPath;
-            ModelPathResolver.ApplyExistingModelPath(newSettings);
-            _ = Task.Run(() => _settingsService.Update(settings =>
+            _dispatcher.TryEnqueue(() =>
             {
-                settings.ModelsRootPath = newSettings.ModelsRootPath;
-                settings.SelectedModel = newSettings.SelectedModel;
-                settings.ModelPath = newSettings.ModelPath;
-            }));
-            _dispatcher.TryEnqueue(() => HandleSettingsSnapshot(newSettings));
+                if (IsModelAvailable && _recognition.ModelState == ModelState.Loaded)
+                {
+                    StatusText = $"Model downloaded: {Path.GetFileName(m.Value.ModelPath)} — use it from the download manager or Settings";
+                    return;
+                }
+                ActivateModel(m.Value.ModelPath);
+            });
+        });
+
+        WeakReferenceMessenger.Default.Register<UseModelMessage>(this, (r, m) =>
+            _dispatcher.TryEnqueue(() => ActivateModel(m.Value)));
+
+        _downloads.NoticeRaised += notice => _dispatcher.TryEnqueue(() =>
+        {
+            if (notice.Job.Request.Kind == SpeechLib.ModelDownload.ModelDownloadKind.Recognition && !notice.Success)
+                StatusText = notice.Message;
         });
 
         // Listen for SettingsSaved messages — apply the fresh snapshot once, then
@@ -592,20 +599,29 @@ public sealed partial class MainViewModel : ObservableObject
         if (IsTranslationModelDownloading)
             return;
 
-        AppPaths.EnsureTranslationModelsDir();
-        var dest = TranslationModelInfo.LocalModelPath;
-
+        var job = _downloads.EnqueueTranslationModel();
         IsTranslationModelDownloading = true;
-        TranslationDownloadProgress = 0;
+        TranslationDownloadProgress = job.Percent;
         TranslationStatus = "Downloading translation model…";
 
-        _modelDownloader.ProgressChanged += OnTranslationDownloadProgress;
-        _modelDownloader.Completed += OnTranslationDownloadCompleted;
+        void OnUpdated(SpeechLib.ModelDownload.DownloadJob updated)
+        {
+            if (updated != job)
+                return;
+            _dispatcher.TryEnqueue(() =>
+            {
+                TranslationDownloadProgress = updated.Percent;
+                TranslationStatus = $"Downloading translation model… {updated.Percent:F0}%";
+            });
+        }
 
+        _downloads.Manager.JobUpdated += OnUpdated;
         try
         {
-            await _modelDownloader.DownloadHuggingFaceFile(
-                TranslationModelInfo.RepoId, TranslationModelInfo.FileName, dest);
+            await job.Completion;
+            TranslationStatus = "Translation model downloaded";
+            IsTranslationModelAvailable = true;
+            _ = _translation.EnsureLoadedAsync();
         }
         catch (OperationCanceledException)
         {
@@ -618,8 +634,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         finally
         {
-            _modelDownloader.ProgressChanged -= OnTranslationDownloadProgress;
-            _modelDownloader.Completed -= OnTranslationDownloadCompleted;
+            _downloads.Manager.JobUpdated -= OnUpdated;
             IsTranslationModelDownloading = false;
             IsTranslationModelAvailable = TranslationModelInfo.IsDownloaded;
         }
@@ -669,16 +684,6 @@ public sealed partial class MainViewModel : ObservableObject
 
         var window = new Views.ModelDownloaderWindow();
         App.MainWindow?.TrackChildWindow(window);
-        window.Closed += (_, _) =>
-        {
-            if (window.ViewModel.WasDownloaded && window.ViewModel.ResultModelPath is not null)
-            {
-                var msg = new ModelDownloadedMessage(
-                    window.ViewModel.ResultPath ?? _settings.ModelsRootPath,
-                    window.ViewModel.ResultModelPath);
-                WeakReferenceMessenger.Default.Send(msg);
-            }
-        };
         window.Activate();
     }
 
@@ -997,30 +1002,22 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowModelWarning));
     }
 
-    private void OnTranslationDownloadProgress(DownloadProgress progress)
+    /// <summary>Points recognition at <paramref name="modelPath"/> and reloads.</summary>
+    private void ActivateModel(string modelPath)
     {
-        _dispatcher.TryEnqueue(() =>
+        var newSettings = _settings.Clone();
+        newSettings.ModelsRootPath = Path.GetDirectoryName(modelPath) ?? newSettings.ModelsRootPath;
+        newSettings.SelectedModel = Path.GetFileName(modelPath);
+        newSettings.ModelPath = modelPath;
+        ModelPathResolver.ApplyExistingModelPath(newSettings);
+        _ = Task.Run(() => _settingsService.Update(settings =>
         {
-            TranslationDownloadProgress = progress.OverallProgress;
-            TranslationStatus = $"Downloading translation model… {progress.OverallProgress:F0}%";
-        });
-    }
-
-    private void OnTranslationDownloadCompleted(bool ok, string message)
-    {
-        _dispatcher.TryEnqueue(() =>
-        {
-            if (ok)
-            {
-                TranslationStatus = "Translation model downloaded";
-                IsTranslationModelAvailable = true;
-                _ = _translation.EnsureLoadedAsync();
-            }
-            else if (!string.IsNullOrEmpty(message) && message != "Cancelled")
-            {
-                TranslationStatus = $"Download failed: {message}";
-            }
-        });
+            settings.ModelsRootPath = newSettings.ModelsRootPath;
+            settings.SelectedModel = newSettings.SelectedModel;
+            settings.ModelPath = newSettings.ModelPath;
+        }));
+        StatusText = $"Switching to {newSettings.SelectedModel}…";
+        HandleSettingsSnapshot(newSettings);
     }
 
     private void CheckModelAvailability()

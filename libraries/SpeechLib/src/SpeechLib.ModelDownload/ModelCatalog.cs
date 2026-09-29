@@ -13,6 +13,45 @@ public static class ModelCatalog
 
     public static IReadOnlyList<ModelDescriptor> Models { get; } = new List<ModelDescriptor>
     {
+        // ── Parakeet TDT 0.6B v3 (multilingual, 25 European languages, streaming) ─
+        new(
+            CommercialName: "Parakeet TDT 0.6B v3",
+            RepoId: "DimQ1/parakeet-tdt-0.6b-v3-onnx",
+            Tagline: "Recommended — best accuracy, live text",
+            Description: "Most accurate model on our test set, now with live streaming: words show within a fraction of a second and settle about a second later. 25 European languages, compact 4-bit download.",
+            SizeBytes: 730_850_263,
+            Precision: ModelPrecision.Int4,
+            ContextWindow: null,
+            Latency: ModelLatencyProfile.Streaming,
+            UseCase: ModelUseCase.Multilingual,
+            Research: new ModelResearch(new WerMetrics(8.10, 6.04, 9.99), new SpeedMetrics(0.186), Cv17, "build/wer-reports/parakeet-tdt-int4-20260828.md"),
+            QuantizationFolder: "int4",
+            IsRecommended: true),
+        new(
+            CommercialName: "Parakeet TDT 0.6B v3",
+            RepoId: "DimQ1/parakeet-tdt-0.6b-v3-onnx",
+            Tagline: "Best accuracy, full precision",
+            Description: "Full-precision Parakeet with live streaming. Slightly more accurate than INT4, at the cost of a much larger download and more memory.",
+            SizeBytes: 2_549_945_719,
+            Precision: ModelPrecision.Fp32,
+            ContextWindow: null,
+            Latency: ModelLatencyProfile.Streaming,
+            UseCase: ModelUseCase.Multilingual,
+            Research: new ModelResearch(new WerMetrics(7.96, 5.75, 9.99), new SpeedMetrics(0.190), Cv17, "build/wer-reports/parakeet-tdt-fp32-20260828.md"),
+            QuantizationFolder: "fp32"),
+        new(
+            CommercialName: "Parakeet TDT 0.6B v3",
+            RepoId: "DimQ1/parakeet-tdt-0.6b-v3-onnx",
+            Tagline: "Fastest Parakeet",
+            Description: "Lightest CPU load of the Parakeet variants, with lower accuracy on our test set.",
+            SizeBytes: 670_619_803,
+            Precision: ModelPrecision.Int8,
+            ContextWindow: null,
+            Latency: ModelLatencyProfile.Streaming,
+            UseCase: ModelUseCase.Multilingual,
+            Research: new ModelResearch(new WerMetrics(12.15, 9.82, 14.29), new SpeedMetrics(0.141), Cv17, "build/wer-reports/parakeet-tdt-int8-20260828.md"),
+            QuantizationFolder: "int8"),
+
         // ── Nemotron 3.5 ASR (RNN-T, ONNX Runtime GenAI, streaming) ──
         new(
             CommercialName: "Nemotron 3.5 ASR",
@@ -39,15 +78,14 @@ public static class ModelCatalog
         new(
             CommercialName: "Nemotron 3.5 ASR",
             RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-c056-cpu",
-            Tagline: "Recommended — fast response",
+            Tagline: "Fast response, low CPU load",
             Description: "Most responsive — words appear almost instantly as you speak. Compact 4-bit size.",
             SizeBytes: 793_577_927,
             Precision: ModelPrecision.Int4,
             ContextWindow: "0.56s",
             Latency: ModelLatencyProfile.Streaming,
             UseCase: ModelUseCase.FastDictation,
-            Research: new ModelResearch(new WerMetrics(20.25, 16.78, 23.44), new SpeedMetrics(0.199), Cv17, "build/wer-reports/nemotron-cpu-int4-c056-20260828.md"),
-            IsRecommended: true),
+            Research: new ModelResearch(new WerMetrics(20.25, 16.78, 23.44), new SpeedMetrics(0.199), Cv17, "build/wer-reports/nemotron-cpu-int4-c056-20260828.md")),
         new(
             CommercialName: "Nemotron 3.5 ASR",
             RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-c056-cpu",
@@ -73,46 +111,9 @@ public static class ModelCatalog
             UseCase: ModelUseCase.HighQuality,
             Research: new ModelResearch(Dataset: Cv17)),
 
-        // ── Parakeet TDT 0.6B v3 (multilingual, 25 European languages) ─
-        new(
-            CommercialName: "Parakeet TDT 0.6B v3",
-            RepoId: "DimQ1/parakeet-tdt-0.6b-v3-onnx",
-            Tagline: "Multilingual · highest accuracy",
-            Description: "NVIDIA's multilingual model for 25 European languages. Most accurate on our test set, but heavier on the CPU — text appears after each phrase.",
-            SizeBytes: 2_549_945_719,
-            Precision: ModelPrecision.Fp32,
-            ContextWindow: null,
-            Latency: ModelLatencyProfile.Delayed,
-            UseCase: ModelUseCase.Multilingual,
-            Research: new ModelResearch(new WerMetrics(7.96, 5.75, 9.99), new SpeedMetrics(0.190), Cv17, "build/wer-reports/parakeet-tdt-fp32-20260828.md"),
-            QuantizationFolder: "fp32"),
-        new(
-            CommercialName: "Parakeet TDT 0.6B v3",
-            RepoId: "DimQ1/parakeet-tdt-0.6b-v3-onnx",
-            Tagline: "Multilingual · compact & accurate",
-            Description: "Compact 4-bit multilingual model — near-full quality in a small download, with higher CPU load than Nemotron.",
-            SizeBytes: 730_850_263,
-            Precision: ModelPrecision.Int4,
-            ContextWindow: null,
-            Latency: ModelLatencyProfile.Delayed,
-            UseCase: ModelUseCase.Multilingual,
-            Research: new ModelResearch(new WerMetrics(8.10, 6.04, 9.99), new SpeedMetrics(0.186), Cv17, "build/wer-reports/parakeet-tdt-int4-20260828.md"),
-            QuantizationFolder: "int4"),
-        new(
-            CommercialName: "Parakeet TDT 0.6B v3",
-            RepoId: "DimQ1/parakeet-tdt-0.6b-v3-onnx",
-            Tagline: "Multilingual · fastest",
-            Description: "Fastest multilingual option, with lower accuracy on our test set.",
-            SizeBytes: 670_619_803,
-            Precision: ModelPrecision.Int8,
-            ContextWindow: null,
-            Latency: ModelLatencyProfile.Delayed,
-            UseCase: ModelUseCase.Multilingual,
-            Research: new ModelResearch(new WerMetrics(12.15, 9.82, 14.29), new SpeedMetrics(0.141), Cv17, "build/wer-reports/parakeet-tdt-int8-20260828.md"),
-            QuantizationFolder: "int8"),
     };
 
-    /// <summary>The recommended everyday model (fast response, low CPU load).</summary>
+    /// <summary>The recommended everyday model (Parakeet TDT INT4: best accuracy, live streaming).</summary>
     public static ModelDescriptor Recommended => Models.First(m => m.IsRecommended);
 
     /// <summary>

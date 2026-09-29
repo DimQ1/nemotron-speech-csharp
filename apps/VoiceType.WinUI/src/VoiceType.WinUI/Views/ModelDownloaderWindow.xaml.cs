@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using System.Runtime.InteropServices;
@@ -22,7 +22,6 @@ public sealed partial class ModelDownloaderWindow : Window
 
     public ModelDownloaderViewModel ViewModel => _vm;
     public string? ResultPath => _vm.ResultPath;
-    public string? ResultModelPath => _vm.ResultModelPath;
     public bool WasDownloaded => _vm.WasDownloaded;
 
     public string ModelsRootPath
@@ -57,8 +56,8 @@ public sealed partial class ModelDownloaderWindow : Window
     {
         var hwnd = WindowNative.GetWindowHandle(this);
         var dpi = GetWindowDpi(hwnd);
-        var w = (int)(640f * dpi / 96f);
-        var h = (int)(760f * dpi / 96f);
+        var w = (int)(720f * dpi / 96f);
+        var h = (int)(860f * dpi / 96f);
 
         if (hwnd != nint.Zero)
             SetWindowPos(hwnd, 0, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
@@ -74,6 +73,22 @@ public sealed partial class ModelDownloaderWindow : Window
     {
         this.Close();
     }
+
+    // Item-template buttons route to the view-model commands with their item.
+    private void DownloadCard_Click(object sender, RoutedEventArgs e) =>
+        _vm.DownloadModelCommand.Execute((sender as FrameworkElement)?.DataContext as ModelCardViewModel);
+
+    private void UseJob_Click(object sender, RoutedEventArgs e) =>
+        _vm.UseModelCommand.Execute((sender as FrameworkElement)?.DataContext as DownloadJobViewModel);
+
+    private void RetryJob_Click(object sender, RoutedEventArgs e) =>
+        _vm.RetryCommand.Execute((sender as FrameworkElement)?.DataContext as DownloadJobViewModel);
+
+    private void CancelJob_Click(object sender, RoutedEventArgs e) =>
+        _vm.CancelCommand.Execute((sender as FrameworkElement)?.DataContext as DownloadJobViewModel);
+
+    private void Notice_CloseButtonClick(Microsoft.UI.Xaml.Controls.InfoBar sender, object args) =>
+        _vm.DismissNoticeCommand.Execute(sender.DataContext as DownloadNoticeViewModel);
 
     // ---- Win32 interop ----
 

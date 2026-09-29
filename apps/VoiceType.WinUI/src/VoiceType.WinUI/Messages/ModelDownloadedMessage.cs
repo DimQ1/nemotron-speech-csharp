@@ -19,3 +19,9 @@ public sealed class LanguageChangedMessage : ValueChangedMessage<string>
 {
     public LanguageChangedMessage(string language) : base(language) { }
 }
+
+/// <summary>Sent when the user asks to switch recognition to a downloaded model folder.</summary>
+public sealed class UseModelMessage : ValueChangedMessage<string>
+{
+    public UseModelMessage(string modelPath) : base(modelPath) { }
+}

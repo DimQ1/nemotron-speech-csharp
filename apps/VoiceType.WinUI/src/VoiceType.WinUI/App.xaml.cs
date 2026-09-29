@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -204,7 +204,13 @@ public partial class App : Application
                 sp.GetRequiredService<ISystemTelemetry>()));
 
         services.AddTransient<IGlobalInputHook, GlobalInputHook>();
-        services.AddTransient<IModelDownloaderService, ModelDownloaderService>();
+        // One download manager for the whole app: several models download in parallel and
+        // keep going when the manager window closes.
+        services.AddSingleton(_ => new SpeechLib.ModelDownload.ModelDownloadManager(
+            new SpeechLib.ModelDownload.HuggingFaceClient(SpeechLib.ModelDownload.HuggingFaceClient.CreateDefaultHttpClient()),
+            maxConcurrentJobs: 3));
+        services.AddSingleton<ISystemTelemetryAccessor, AppTelemetryAccessor>();
+        services.AddSingleton<DownloadCenter>();
         services.AddSingleton<ITranslationService, TranslationService>();
         services.AddSingleton<IWindowInterop, WindowInterop>();
 

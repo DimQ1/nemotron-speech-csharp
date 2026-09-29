@@ -143,7 +143,7 @@ GPU builds are gone, but a persisted `ExecutionProvider` value of `"cuda"`/`"dml
 | **ONNX GenAI** | `libraries/SpeechLib/src/SpeechLib/ModelSession.cs` |
 | **Word timestamps** | `libraries/SpeechLib/src/SpeechLib/Models/WordTiming.cs`, `libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/Transcriber.cs` (AddWordTimings) |
 | **WPF main VM** | `apps/VoiceType/src/VoiceType/ViewModels/MainViewModel.cs` |
-| **Downloader** | `apps/VoiceType/src/VoiceType/Services/ModelDownloaderService.cs`, `apps/VoiceType/src/VoiceType/ViewModels/ModelDownloaderViewModel.cs` |
+| **Downloader** | `libraries/SpeechLib/src/SpeechLib.ModelDownload/ModelDownloadManager.cs` (parallel jobs, byte progress per job and total, resume, de-dup by key), `HuggingFaceClient.cs`, `ModelCatalog.cs` (Parakeet INT4 recommended); WinUI `Services/DownloadCenter.cs` (app-wide singleton, toast + in-app notice per finished model), `ViewModels/ModelDownloaderViewModel.cs`, `Views/ModelDownloaderWindow.xaml` |
 | **Text injection** | `apps/VoiceType/src/VoiceType/Services/TextInjector.cs` |
 | **Commands** | `apps/VoiceType/src/VoiceType/ViewModels/Commands.cs` |
 | **App startup** | `apps/VoiceType/src/VoiceType/App.xaml.cs` |

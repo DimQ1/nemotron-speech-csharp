@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using SpeechLib.ModelDownload;
 using VoiceType.WinUI.Interfaces;
 using VoiceType.WinUI.Messages;
 using VoiceType.WinUI.Models;
@@ -22,14 +23,15 @@ namespace VoiceType.WinUI.Views;
 /// </summary>
 public sealed partial class FirstRunWizardWindow : Window, INotifyPropertyChanged
 {
-    private readonly IModelDownloaderService _downloader;
+    private readonly DownloadCenter _downloads;
+    private DownloadJob? _job;
     private readonly ISettingsService _settingsService;
     private readonly IRecognitionService _recognition;
     private bool _modelLoadedOk;
 
     public FirstRunWizardWindow()
     {
-        _downloader = App.Services.GetRequiredService<IModelDownloaderService>();
+        _downloads = App.Services.GetRequiredService<DownloadCenter>();
         _settingsService = App.Services.GetRequiredService<ISettingsService>();
         _recognition = App.Services.GetRequiredService<IRecognitionService>();
 
@@ -41,9 +43,8 @@ public sealed partial class FirstRunWizardWindow : Window, INotifyPropertyChange
         ApplyWindowSize();
         ShowStep(WizardStep.Consent);
 
-        _downloader.ProgressChanged += OnDownloadProgress;
-        _downloader.StatusChanged += s => DispatcherQueue.TryEnqueue(() => StatusText = s);
-        this.Closed += (_, _) => _downloader.Dispose();
+        _downloads.Manager.JobUpdated += OnJobUpdated;
+        this.Closed += (_, _) => _downloads.Manager.JobUpdated -= OnJobUpdated;
     }
 
     // ---- Bindable state ----
@@ -113,14 +114,15 @@ public sealed partial class FirstRunWizardWindow : Window, INotifyPropertyChange
         ProgressDetail = "";
         DownloadProgress = 0;
 
-        var repoId = MainViewModel.RecommendedModelRepo; // CPU INT4 opset24 0.56s, ~749 MB
-        var subfolder = repoId[(repoId.LastIndexOf('/') + 1)..];
+        // The catalog's recommended model (Parakeet TDT INT4: best accuracy, live text).
+        var model = ModelCatalog.Recommended;
+        var subfolder = model.SubfolderName;
         var settings = _settingsService.Load();
         var modelsRoot = !string.IsNullOrWhiteSpace(settings.ModelsRootPath)
             ? settings.ModelsRootPath
             : AppPaths.ModelsDir;
 
-        bool ok = await RunDownloadAsync(repoId, subfolder, modelsRoot);
+        bool ok = await RunDownloadAsync(model, modelsRoot);
         if (!ok) return; // error/cancel already handled
 
         var modelPath = Path.Combine(modelsRoot, subfolder);
@@ -159,46 +161,26 @@ public sealed partial class FirstRunWizardWindow : Window, INotifyPropertyChange
         }
     }
 
-    private async Task<bool> RunDownloadAsync(string repoId, string subfolder, string modelsRoot)
+    private async Task<bool> RunDownloadAsync(ModelDescriptor model, string modelsRoot)
     {
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        string? errorMessage = null;
-
-        void OnCompleted(bool ok, string msg)
-        {
-            if (!ok) errorMessage = msg;
-            tcs.TrySetResult(ok);
-        }
-
-        _downloader.Completed += OnCompleted;
+        _job = _downloads.EnqueueCatalogModel(model, modelsRoot);
+        StatusText = $"Downloading {_job.Title}…";
         try
         {
-            await _downloader.DownloadModelRepo(repoId, subfolder, modelsRoot);
+            await _job.Completion;
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            ShowStep(WizardStep.Consent);
+            return false;
         }
         catch (Exception ex)
         {
-            errorMessage = ex.Message;
-            tcs.TrySetResult(false);
+            ErrorText = BuildDownloadErrorMessage(ex.Message);
+            ShowStep(WizardStep.Error);
+            return false;
         }
-        finally
-        {
-            _downloader.Completed -= OnCompleted;
-        }
-
-        var okResult = await tcs.Task;
-        if (!okResult)
-        {
-            if (string.Equals(errorMessage, "Cancelled", StringComparison.OrdinalIgnoreCase))
-            {
-                ShowStep(WizardStep.Consent);
-            }
-            else
-            {
-                ErrorText = BuildDownloadErrorMessage(errorMessage);
-                ShowStep(WizardStep.Error);
-            }
-        }
-        return okResult;
     }
 
     /// <summary>Turn a raw download exception into actionable guidance. A "user-mapped section"
@@ -222,21 +204,25 @@ public sealed partial class FirstRunWizardWindow : Window, INotifyPropertyChange
         return $"Download failed: {msg}. Check your internet connection and try again.";
     }
 
-    private void OnDownloadProgress(DownloadProgress p)
+    private void OnJobUpdated(DownloadJob job)
     {
+        if (job != _job)
+            return;
+
         DispatcherQueue.TryEnqueue(() =>
         {
-            DownloadProgress = p.OverallProgress;
-            StatusText = string.IsNullOrEmpty(p.CurrentFile) ? "Downloading…" : p.CurrentFile;
-            ProgressDetail = p.TotalFiles > 0
-                ? $"{p.DownloadedFiles}/{p.TotalFiles} files • {p.OverallProgress:F0}%"
-                : $"{p.OverallProgress:F0}%";
+            DownloadProgress = job.Percent;
+            StatusText = string.IsNullOrEmpty(job.CurrentFile) ? $"Downloading {job.Title}…" : job.CurrentFile;
+            ProgressDetail = job.TotalBytes > 0
+                ? $"{ModelMetricsFormatter.FormatSize(job.DownloadedBytes)} / {ModelMetricsFormatter.FormatSize(job.TotalBytes)} • {job.Percent:F0}%"
+                : $"{job.Percent:F0}%";
         });
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
-        _downloader.Cancel();
+        if (_job is not null)
+            _downloads.Manager.Cancel(_job);
     }
 
     private async void StartUsing_Click(object sender, RoutedEventArgs e)
