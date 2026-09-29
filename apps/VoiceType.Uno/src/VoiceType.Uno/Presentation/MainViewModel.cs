@@ -1,3 +1,4 @@
+using SpeechLib.TextOutput;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
@@ -27,6 +28,13 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly DispatcherQueue _dispatcher;
     private readonly DispatcherQueueTimer _partialResultTimer;
     private string? _pendingPartialText;
+
+    // The transcript field is the source of truth: speech is appended after the text
+    // the field held when dictation started or resumed, so typed and edited text
+    // survives switching between manual input and dictation.
+    private readonly SpeechAppendComposer _speechComposer = new();
+    private string _lastRecognizerText = "";
+    private bool _keepTextOnNextRecording;
 
     private AppSettings _settings;
     private int _toggleHotkeyId;
@@ -82,6 +90,7 @@ public sealed partial class MainViewModel : ObservableObject
         _recognition.PartialResult += QueuePartialResult;
         _recognition.FinalResult += text => _dispatcher.TryEnqueue(() =>
         {
+            _lastRecognizerText = text;
             if (IsManualInputEnabled)
                 return; // manual keyboard input owns the transcript while enabled
 
@@ -90,13 +99,13 @@ public sealed partial class MainViewModel : ObservableObject
             _partialResultTimer.Stop();
             _pendingPartialText = null;
 
-            FloatingText = text;
+            SetTranscriptFromSpeech(text);
             if (IsTextInjectionEnabled && !string.IsNullOrEmpty(text))
                 InjectOffUiThread(text);
 
             if (IsTranslationEnabled)
             {
-                _translation.Feed(text);
+                _translation.Feed(FloatingText);
                 _ = _translation.FlushAsync();
             }
         });
@@ -219,6 +228,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         _dispatcher.TryEnqueue(() =>
         {
+            _lastRecognizerText = text;
             if (IsManualInputEnabled)
                 return; // manual keyboard input owns the transcript while enabled
 
@@ -237,9 +247,22 @@ public sealed partial class MainViewModel : ObservableObject
         if (text is null || IsManualInputEnabled)
             return;
 
-        FloatingText = text;
+        SetTranscriptFromSpeech(text);
         if (IsTranslationEnabled)
-            _translation.Feed(text);
+            _translation.Feed(FloatingText);
+    }
+
+    /// <summary>
+    /// Shows the text typed or kept in the field, followed by what the recognizer has
+    /// produced since speech started or resumed.
+    /// </summary>
+    private void SetTranscriptFromSpeech(string recognizerText) =>
+        FloatingText = _speechComposer.Compose(recognizerText);
+
+    /// <summary>Speech from now on is appended after the current field text.</summary>
+    private void ContinueSpeechAfterCurrentText()
+    {
+        _speechComposer.ContinueAfter(FloatingText, _lastRecognizerText);
     }
 
     /// <summary>
@@ -312,6 +335,20 @@ public sealed partial class MainViewModel : ObservableObject
         // whole transcript from the beginning.
         if (IsTranslationEnabled)
             _ = _translation.FlushAsync();
+
+        // Leaving manual input: dictation continues after the (possibly edited) text,
+        // speech recognized while typing is not pasted in. Entering it keeps the text,
+        // and the next recording appends to it instead of starting a clean field.
+        if (value)
+        {
+            _keepTextOnNextRecording = true;
+        }
+        else
+        {
+            _partialResultTimer.Stop();
+            _pendingPartialText = null;
+            ContinueSpeechAfterCurrentText();
+        }
     }
 
     [ObservableProperty]
@@ -568,6 +605,19 @@ public sealed partial class MainViewModel : ObservableObject
             }
         }
 
+        // A new recording starts with an empty field only when the setting asks for it
+        // and the user has not been in manual input since the last recording; text
+        // typed or kept in manual mode stays and the new speech is appended after it.
+        if (_settings.ClearTextOnModelOrSessionChange && !_keepTextOnNextRecording && !IsManualInputEnabled)
+        {
+            FloatingText = "";
+            if (IsTranslationEnabled)
+                _translation.Feed("");
+        }
+        _keepTextOnNextRecording = false;
+        _lastRecognizerText = "";
+        ContinueSpeechAfterCurrentText();
+
         try
         {
             _recognition.Start(_settings);
@@ -811,6 +861,13 @@ public sealed partial class MainViewModel : ObservableObject
         if (!wasRecording)
             return;
 
+        // The restarted recognizer begins a new session text; queued before Start so it
+        // runs ahead of the first result, which is dispatched the same way.
+        _dispatcher.TryEnqueue(() =>
+        {
+            _lastRecognizerText = "";
+            ContinueSpeechAfterCurrentText();
+        });
         _recognition.Start(settings);
         _dispatcher.TryEnqueue(() =>
         {
