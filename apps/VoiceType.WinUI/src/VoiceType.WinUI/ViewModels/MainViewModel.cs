@@ -65,6 +65,12 @@ public sealed partial class MainViewModel : ObservableObject
 
     private string _preservedText = "";
     private string _currentSessionText = "";
+
+    // The transcript field is the source of truth: speech is appended after the text
+    // the field held when the session started or dictation resumed, so text typed or
+    // edited in manual input survives switching between typing and dictation.
+    private readonly SpeechAppendComposer _speechComposer = new();
+    private bool _keepTextOnNextRecording;
     private int _settingsApplyVersion;
     private bool _isApplyingSettingsSnapshot;
 
@@ -107,6 +113,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string _selectedLanguage = "auto";
+
+    /// <summary>Manual input: the transcript is editable and dictation does not overwrite it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsTranscriptReadOnly))]
+    private bool _isManualInputEnabled;
+
+    public bool IsTranscriptReadOnly => !IsManualInputEnabled;
 
     // ---- Live translation (LiteRT / Gemma 4) ----
 
@@ -437,7 +450,7 @@ public sealed partial class MainViewModel : ObservableObject
         // Translate from now on only; the text already on screen is translated by the
         // explicit "Translate all" command.
         if (!UsePromptTranslation)
-            _translation.StartFrom(_currentSessionText);
+            _translation.StartFrom(FloatingText ?? "");
 
         if (!UsePromptTranslation && TranslationModelInfo.IsDownloaded)
             _ = _translation.EnsureLoadedAsync();
@@ -578,12 +591,13 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task TranslateAll()
     {
-        if (!TranslationEnabled || UsePromptTranslation || string.IsNullOrWhiteSpace(_currentSessionText))
+        var text = FloatingText ?? "";
+        if (!TranslationEnabled || UsePromptTranslation || string.IsNullOrWhiteSpace(text))
             return;
 
         try
         {
-            await _translation.TranslateAllAsync(_currentSessionText);
+            await _translation.TranslateAllAsync(text);
         }
         catch (Exception ex)
         {
@@ -939,6 +953,7 @@ public sealed partial class MainViewModel : ObservableObject
         _currentSessionText = "";
         _committedSessionText = "";
         _typer.Reset();
+        _speechComposer.ContinueAfter(_preservedText, "", Environment.NewLine);
 
         lock (_partialResultGate)
         {
@@ -948,30 +963,56 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (TranslationEnabled && !UsePromptTranslation)
         {
-            _translation.Reset();
-            TranslatedText = "";
+            if (string.IsNullOrEmpty(_preservedText))
+            {
+                _translation.Reset();
+                TranslatedText = "";
+            }
+            else
+            {
+                // Kept text keeps its translation; the new session is appended to it.
+                _ = FlushTranslationAsync();
+            }
         }
 
-        UpdateDisplayedText();
+        if (!IsManualInputEnabled)
+            UpdateDisplayedText();
     }
 
+    /// <summary>Shows the kept or typed text followed by the current session's speech.</summary>
     private void UpdateDisplayedText()
     {
-        var displayText = CombineDisplayText(_preservedText, _currentSessionText);
+        var displayText = _speechComposer.Compose(_currentSessionText);
         RecognizedText = displayText;
         FloatingText = displayText;
     }
 
-    private static string CombineDisplayText(string preservedText, string currentSessionText)
+    partial void OnFloatingTextChanged(string value)
     {
-        if (string.IsNullOrEmpty(preservedText))
-            return currentSessionText;
-        if (string.IsNullOrEmpty(currentSessionText))
-            return preservedText;
-        if (char.IsWhiteSpace(preservedText[^1]) || char.IsWhiteSpace(currentSessionText[0]))
-            return preservedText + currentSessionText;
+        // Typed text continues the translation of what is already there; an emptied
+        // field is fed too, so text typed afterwards is translated from the start.
+        if (IsManualInputEnabled && TranslationEnabled && !UsePromptTranslation)
+            _translation.Feed(value ?? "");
+    }
 
-        return preservedText + Environment.NewLine + currentSessionText;
+    partial void OnIsManualInputEnabledChanged(bool value)
+    {
+        // Switching between typing and dictation keeps the text and its translation:
+        // the unfinished translation tail is finalized and what comes next is appended.
+        if (TranslationEnabled && !UsePromptTranslation)
+            _ = FlushTranslationAsync();
+
+        if (value)
+        {
+            // The next recording appends to this text instead of starting a clean field.
+            _keepTextOnNextRecording = true;
+            return;
+        }
+
+        // Dictation continues after the (possibly edited) text; speech recognized
+        // while typing is not pasted in.
+        RecognizedText = FloatingText ?? "";
+        _speechComposer.ContinueAfter(FloatingText, _currentSessionText);
     }
 
     private void OnModelStateChanged(ModelState state)
@@ -1178,7 +1219,12 @@ public sealed partial class MainViewModel : ObservableObject
             }
         }
 
-        BeginTextTransition(_settings.ClearTextOnModelOrSessionChange);
+        // A new recording starts with an empty field only when the setting asks for it
+        // and manual input was not used since the last recording.
+        BeginTextTransition(_settings.ClearTextOnModelOrSessionChange
+            && !_keepTextOnNextRecording
+            && !IsManualInputEnabled);
+        _keepTextOnNextRecording = false;
         var foregroundWindow = _windowInterop.GetForegroundWindow();
         var ownWindow = _windowInterop.GetOwnWindowHandle();
         // Don't set injection target to our own window
@@ -1243,6 +1289,11 @@ public sealed partial class MainViewModel : ObservableObject
         if (!_settings.StopOnAnyInput) return;
         if (!IsRecording || IsCaptureMuted) return;
 
+        // Typing into the transcript in manual input must not pause dictation.
+        if (IsManualInputEnabled
+            && _windowInterop.IsWindowInCurrentProcess(_windowInterop.GetForegroundWindow()))
+            return;
+
         // Pause audio processing instead of full stop: model stays loaded, recognition resumes quickly.
         _dispatcher.TryEnqueue(() =>
         {
@@ -1284,14 +1335,19 @@ public sealed partial class MainViewModel : ObservableObject
             _partialResultTimer.Stop();
             FlushPendingPartialResult();
             _currentSessionText = text;
-            UpdateDisplayedText();
 
-            if (TranslationEnabled && !UsePromptTranslation)
+            // Manual input owns the transcript (and its translation) while enabled.
+            if (!IsManualInputEnabled)
             {
-                // The final transcript may revise the last partial; feed it before
-                // flushing so the correction, not the stale draft, gets translated.
-                _translation.Feed(_currentSessionText);
-                _ = FlushTranslationAsync();
+                UpdateDisplayedText();
+
+                if (TranslationEnabled && !UsePromptTranslation)
+                {
+                    // The final transcript may revise the last partial; feed it before
+                    // flushing so the correction, not the stale draft, gets translated.
+                    _translation.Feed(FloatingText ?? "");
+                    _ = FlushTranslationAsync();
+                }
             }
 
             _committedSessionText = text;
@@ -1361,10 +1417,13 @@ public sealed partial class MainViewModel : ObservableObject
             return;
 
         _currentSessionText = text;
+        if (IsManualInputEnabled)
+            return; // manual input owns the transcript while enabled
+
         UpdateDisplayedText();
 
         if (TranslationEnabled && !UsePromptTranslation)
-            _translation.Feed(_currentSessionText);
+            _translation.Feed(FloatingText ?? "");
 
     }
 

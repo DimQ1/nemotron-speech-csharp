@@ -16,16 +16,20 @@ namespace SpeechLib.TextOutput;
 public sealed class SpeechAppendComposer
 {
     private string _base = "";
+    private string _separator = " ";
     private string[] _baselineWords = [];
 
     /// <summary>
     /// Speech from now on is appended after <paramref name="fieldText"/>.
     /// <paramref name="recognizerText"/> is what the recognizer has produced so far in
     /// its current session; it is already accounted for and is not appended again.
+    /// <paramref name="separator"/> goes between the field text and the speech when
+    /// the field text does not already end with whitespace.
     /// </summary>
-    public void ContinueAfter(string? fieldText, string? recognizerText)
+    public void ContinueAfter(string? fieldText, string? recognizerText, string separator = " ")
     {
         _base = fieldText ?? "";
+        _separator = separator;
         _baselineWords = SplitWords(recognizerText);
     }
 
@@ -55,7 +59,7 @@ public sealed class SpeechAppendComposer
 
         if (_base.Length == 0 || spoken.Length == 0)
             return _base + spoken;
-        return char.IsWhiteSpace(_base[^1]) ? _base + spoken : _base + " " + spoken;
+        return char.IsWhiteSpace(_base[^1]) ? _base + spoken : _base + _separator + spoken;
     }
 
     private static string[] SplitWords(string? text) =>

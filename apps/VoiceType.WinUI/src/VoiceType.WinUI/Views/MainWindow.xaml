@@ -137,15 +137,17 @@
             </Grid.RowDefinitions>
 
             <ScrollViewer x:Name="TextScroller" Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                <!-- Read-only while dictating; editable with Manual input. Switching
+                     modes keeps the text, dictation continues after it. -->
                 <TextBox x:Name="TextDisplay"
-                         Text="{x:Bind ViewModel.FloatingText, Mode=OneWay}"
+                         Text="{x:Bind ViewModel.FloatingText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          AutomationProperties.Name="Transcript"
                          Foreground="{StaticResource FgBrush}"
                          Background="Transparent"
                          BorderThickness="0"
                          FontSize="15"
                          TextWrapping="Wrap"
-                         IsReadOnly="True"
+                         IsReadOnly="{x:Bind ViewModel.IsTranscriptReadOnly, Mode=OneWay}"
                          AcceptsReturn="True"/>
             </ScrollViewer>
 
@@ -216,6 +218,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <CheckBox Grid.Column="0"
@@ -224,10 +227,21 @@
                                   Style="{StaticResource DarkCheckBox}"
                                   VerticalAlignment="Center"/>
 
-                        <Button Grid.Column="1"
+                        <ToggleButton Grid.Column="1"
+                                      Content="Manual input"
+                                      Margin="12,0,0,0"
+                                      Background="{StaticResource BgTertiaryBrush}"
+                                      Foreground="{StaticResource FgBrush}"
+                                      BorderThickness="0"
+                                      Padding="10,4"
+                                      FontSize="12"
+                                      ToolTipService.ToolTip="Type or edit the transcript by hand; switching back to dictation keeps the text and continues after it"
+                                      IsChecked="{x:Bind ViewModel.IsManualInputEnabled, Mode=TwoWay}"/>
+
+                        <Button Grid.Column="2"
                                 Content="&#xE8C8;"
                                 FontFamily="Segoe MDL2 Assets"
-                                Margin="12,0,0,0"
+                                Margin="6,0,0,0"
                                 Background="{StaticResource BgTertiaryBrush}"
                                 Foreground="{StaticResource FgBrush}"
                                 BorderThickness="0"

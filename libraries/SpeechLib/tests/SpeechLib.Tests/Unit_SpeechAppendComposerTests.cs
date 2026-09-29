@@ -71,4 +71,14 @@ public sealed class Unit_SpeechAppendComposerTests
 
         Assert.Equal("Edited.", composer.Compose("Hello world"));
     }
+
+    [Fact]
+    public void Compose_CustomSeparator_ShouldJoinWithIt()
+    {
+        var composer = new SpeechAppendComposer();
+        composer.ContinueAfter("Previous session", "", Environment.NewLine);
+
+        Assert.Equal("Previous session", composer.Compose(""));
+        Assert.Equal("Previous session" + Environment.NewLine + "New one", composer.Compose("New one"));
+    }
 }
