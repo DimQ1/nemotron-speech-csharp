@@ -235,6 +235,42 @@ public sealed class Unit_LiveTranslationSessionTests
     }
 
     [Fact]
+    public async Task ManualInputAfterDictation_AppendsOnlyTypedText()
+    {
+        var (session, translator) = Create();
+        await using (session)
+        {
+            // Dictation, then the user switches to manual input (the app flushes) and types on.
+            session.Feed("Hello world. This is dictated");
+            await session.FlushAsync();
+            session.Feed("Hello world. This is dictated and typed.");
+            session.Feed("Hello world. This is dictated and typed. More typed text.");
+            await session.FlushAsync();
+
+            Assert.Equal(
+                string.Join(Environment.NewLine, "HELLO WORLD.", "THIS IS DICTATED", "AND TYPED.", "MORE TYPED TEXT."),
+                session.DisplayText);
+            Assert.Equal(1, translator.Requests.Count(r => r.Text.Contains("Hello", StringComparison.Ordinal)));
+        }
+    }
+
+    [Fact]
+    public async Task ClearedField_TypedTextIsTranslatedFromStart()
+    {
+        var (session, _) = Create();
+        await using (session)
+        {
+            session.Feed("First text.");
+            await session.FlushAsync();
+            session.Feed("");
+            session.Feed("New.");
+            await session.FlushAsync();
+
+            Assert.EndsWith("NEW.", session.DisplayText);
+        }
+    }
+
+    [Fact]
     public async Task ReplaceTranslator_ReloadsLazily()
     {
         var first = new FakeTranslator();

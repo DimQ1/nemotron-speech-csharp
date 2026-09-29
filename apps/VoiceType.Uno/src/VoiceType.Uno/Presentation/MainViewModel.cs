@@ -298,16 +298,20 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     partial void OnFloatingTextChanged(string value)
     {
-        if (IsManualInputEnabled && IsTranslationEnabled && !string.IsNullOrEmpty(value))
-            _translation.Feed(value);
+        // Typed text continues the translation of what is already there; an emptied
+        // field is fed too, so text typed afterwards is picked up from the start.
+        if (IsManualInputEnabled && IsTranslationEnabled)
+            _translation.Feed(value ?? "");
     }
 
     partial void OnIsManualInputEnabledChanged(bool value)
     {
-        // Entering manual mode starts a fresh translation buffer for typed text;
-        // leaving it returns ownership of the transcript to speech results.
+        // Switching between speech and typing keeps the translation: the text fed so
+        // far is finished (its unfinished tail is translated as final) and whatever is
+        // typed or dictated next is appended after it. Resetting here re-translated the
+        // whole transcript from the beginning.
         if (IsTranslationEnabled)
-            _translation.Reset();
+            _ = _translation.FlushAsync();
     }
 
     [ObservableProperty]
