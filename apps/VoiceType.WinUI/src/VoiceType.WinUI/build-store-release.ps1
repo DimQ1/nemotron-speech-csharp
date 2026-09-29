@@ -82,9 +82,12 @@ dotnet @publishArgs
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
 
 # 3. Find the generated MSIX
-#    Single-project MSIX packaging outputs to <ProjectDir>\AppPackages\ (not under bin\)
-#    when publishing from the command line without an explicit OutDir.
-$appPackagesDir = Join-Path $PSScriptRoot 'AppPackages'
+#    Depending on the SDK, single-project MSIX packaging writes to <ProjectDir>\AppPackages\
+#    or to bin\Release\<tfm>\win-<arch>\AppPackages\ — search both.
+$appPackagesDir = @(
+    (Join-Path $PSScriptRoot 'AppPackages'),
+    (Join-Path $PSScriptRoot "bin\Release")
+) | Where-Object { Test-Path $_ }
 $manifestPath = Join-Path $PSScriptRoot 'Package.appxmanifest'
 [xml]$manifest = Get-Content -Path $manifestPath -Raw
 $packageVersion = [string]$manifest.Package.Identity.Version
@@ -102,7 +105,7 @@ $msixUpload = Get-ChildItem -Path $appPackagesDir -Filter '*.msixupload' -Recurs
     | Select-Object -First 1
 
 if (-not $msixFile) {
-    throw "Could not find a VoiceType MSIX for package version $packageVersion under $appPackagesDir"
+    throw "Could not find a VoiceType MSIX for package version $packageVersion under $($appPackagesDir -join ', ')"
 }
 
 Write-Host ''

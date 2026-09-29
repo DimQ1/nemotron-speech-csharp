@@ -289,7 +289,7 @@ dotnet publish VoiceType.WinUI\VoiceType.WinUI.csproj `
 ```
 
 ### Что происходит при сборке:
-- ✅ Генерируется `.msix` файл в `VoiceType.WinUI\AppPackages\VoiceType.WinUI_<version>_x64_Test\`
+- ✅ Генерируется `.msix` файл в `bin\Release\net10.0-windows10.0.26100.0\win-x64\AppPackages\VoiceType.WinUI_<version>_x64_Test\` (скрипт ищет и там, и в `AppPackages\`)
 - ✅ `PublishReadyToRun=false` — AOT отключён (CsWinRT-маршаллинг ломается при AOT)
 - ✅ `PublishTrimmed=false` — тримминг отключён (рефлексия ONNX Runtime / NAudio)
 - ✅ `SelfContained=true` — .NET Runtime включён в пакет
@@ -377,6 +377,36 @@ dotnet build VoiceType.WinUI\VoiceType.WinUI.csproj -c Release -p:GpuArch=CPU
 - [ ] Включите **app analytics** в Partner Center
 - [ ] Настройте **crash reports** через Partner Center или OpenTelemetry
 - [ ] Обновляйте `AGENTS.md` при изменениях процесса сборки
+
+---
+
+## 10. Выпуск обновления (update submission)
+
+Приложение уже опубликовано (Store ID `9NRQX69XCLPT`, identity `DimQ1.VoiceType`), поэтому
+обновление — это новая отправка с новым пакетом и «What's new».
+
+1. **Версия.** В `Package.appxmanifest` поднимите `Version` выше последней отправленной.
+   Четвёртая часть (revision) для Store должна быть `0`: `1.3.0.0`, `1.3.1.0`, …
+   Dev-сборки (`build-dev.ps1`) после этого нумеруйте от новой версии, иначе локальная установка не обновится.
+2. **Пакет.**
+   ```powershell
+   cd apps\VoiceType.WinUI\src\VoiceType.WinUI
+   .\build-store-release.ps1 -Sign -CertThumbprint <thumbprint> -Clean
+   ```
+   Самоподписанный dev-сертификат подходит: Partner Center переподписывает пакет.
+3. **Проверка.** Установите `.msix` локально (`Add-AppxPackage`) и запустите; при наличии Windows SDK
+   прогоните Windows App Cert Kit (`appcert.exe`).
+4. **Partner Center → приложение → Update (новая отправка):**
+   - **Packages:** удалите старый пакет, загрузите новый `.msix`.
+   - **Store listings → Import/export listings → Import:** файл
+     `docs\store\imports\listingData-store-import-v<версия>-multilang.csv` (16 языков) или `...-en-ru.csv`.
+     Импорт обновляет `ReleaseNotes` («What's new in this version») и остальные поля листинга.
+     Файл — UTF-8 с BOM, CRLF, те же колонки, что в экспорте Partner Center.
+   - **Submission options:** justification для `runFullTrust` и Notes for certification — из §5 и §7.6.
+5. **Submit to the Store.**
+
+Новый CSV для следующей версии делается из предыдущего: скопируйте файл и замените только строку `ReleaseNotes`
+(≤ 1500 символов на язык, одним абзацем).
 
 ---
 
