@@ -77,25 +77,28 @@ public sealed class NAudio3AudioSource : IAudioSource
         if (Interlocked.CompareExchange(ref _activeState, state, null) is not null)
             throw new InvalidOperationException("Audio capture is already running.");
 
-        CaptureHandle? loopback = null;
+        var loopbacks = new List<CaptureHandle>();
         CaptureHandle? microphone = null;
         try
         {
             if (_mode is CaptureMode.Loopback or CaptureMode.Mix)
-                loopback = TryCreate("Loopback", () => CaptureHandle.CreateLoopback(state, _targetRate),
-                    "No audio render device is available for system-audio (loopback) capture. " +
-                    "Start playing audio, or run with a microphone instead.");
+                loopbacks = CreateLoopbacks(state);
 
             if (_mode is CaptureMode.Mic or CaptureMode.Mix)
                 microphone = TryCreate("Microphone", () => CaptureHandle.CreateMicrophone(state, _targetRate),
                     "The microphone could not be started. It may be in use by another application or disabled.");
 
-            loopback = TryStart(loopback, "Loopback");
+            loopbacks = StartLoopbacks(loopbacks);
             microphone = TryStart(microphone, "Microphone");
 
-            if (loopback is null && microphone is null)
+            if (loopbacks.Count == 0 && microphone is null)
                 throw new InvalidOperationException(
                     "No audio source could be started. Check your microphone and system-audio settings.");
+
+            // One mixer source per device; streams are aligned instead of padded per drain.
+            var mixer = new MultiSourceMixer(maxSkewSamples: _targetRate * 150 / 1000);
+            var loopbackSources = loopbacks.Select(_ => mixer.AddSource()).ToList();
+            var microphoneSource = mixer.AddSource();
 
             try
             {
@@ -105,29 +108,125 @@ public sealed class NAudio3AudioSource : IAudioSource
                     if (!state.IsRunning)
                         break;
 
-                    DrainAndPublish(loopback, microphone, buffer, signal);
+                    DrainAndPublish(loopbacks, loopbackSources, microphone, microphoneSource, mixer, buffer, signal);
 
                     // A device that stopped on its own (unplugged, format change, driver error)
-                    // must not silently end the session: degrade in Mix mode, fail otherwise.
-                    loopback = CheckFault(loopback, "Loopback", otherAlive: microphone is not null);
-                    microphone = CheckFault(microphone, "Microphone", otherAlive: loopback is not null);
+                    // must not silently end the session: keep going while another source is
+                    // alive, fail otherwise.
+                    for (var i = loopbacks.Count - 1; i >= 0; i--)
+                    {
+                        var otherAlive = microphone is not null || loopbacks.Count > 1;
+                        if (CheckFault(loopbacks[i], "Loopback", otherAlive) is null)
+                        {
+                            mixer.RemoveSource(loopbackSources[i]);
+                            loopbacks.RemoveAt(i);
+                            loopbackSources.RemoveAt(i);
+                        }
+                    }
+
+                    if (microphone is not null && CheckFault(microphone, "Microphone", otherAlive: loopbacks.Count > 0) is null)
+                    {
+                        mixer.RemoveSource(microphoneSource);
+                        microphone = null;
+                    }
                 }
 
-                DrainAndPublish(loopback, microphone, buffer, signal);
+                DrainAndPublish(loopbacks, loopbackSources, microphone, microphoneSource, mixer, buffer, signal);
             }
             finally
             {
                 state.Stop();
-                loopback?.StopRecording();
+                foreach (var loopback in loopbacks)
+                    loopback.StopRecording();
                 microphone?.StopRecording();
             }
         }
         finally
         {
-            loopback?.Dispose();
+            foreach (var loopback in loopbacks)
+                loopback.Dispose();
             microphone?.Dispose();
             Interlocked.CompareExchange(ref _activeState, null, state);
         }
+    }
+
+    /// <summary>
+    /// Loopback handles for every distinct default output device. Windows routes media
+    /// to the default device and calls (Teams, Zoom, browsers in a call) to the default
+    /// communication device; when those differ (monitor speakers vs a headset), capturing
+    /// only the default device records silence during a call.
+    /// </summary>
+    private List<CaptureHandle> CreateLoopbacks(CaptureState state)
+    {
+        var handles = new List<CaptureHandle>();
+        Exception? lastError = null;
+        foreach (var deviceId in DefaultRenderDeviceIds())
+        {
+            try
+            {
+                handles.Add(CaptureHandle.CreateLoopback(deviceId, state, _targetRate));
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                Console.Error.WriteLine($"[capture] Loopback device unavailable ({deviceId}): {ex.Message}");
+            }
+        }
+
+        if (handles.Count == 0 && _mode != CaptureMode.Mix)
+            throw new InvalidOperationException(
+                "No audio render device is available for system-audio (loopback) capture. " +
+                "Start playing audio, or run with a microphone instead.", lastError);
+
+        return handles;
+    }
+
+    /// <summary>Default render endpoints for the multimedia and communications roles, without duplicates.</summary>
+    private static List<string> DefaultRenderDeviceIds()
+    {
+        var ids = new List<string>();
+        using var enumerator = new MMDeviceEnumerator();
+        foreach (var role in new[] { Role.Multimedia, Role.Communications })
+        {
+            try
+            {
+                using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, role);
+                if (!ids.Contains(device.ID, StringComparer.OrdinalIgnoreCase))
+                    ids.Add(device.ID);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[capture] No default render device for {role}: {ex.Message}");
+            }
+        }
+
+        return ids;
+    }
+
+    /// <summary>Starts the loopback handles; loopback capture fails only when none of them starts.</summary>
+    private List<CaptureHandle> StartLoopbacks(List<CaptureHandle> handles)
+    {
+        var started = new List<CaptureHandle>();
+        Exception? lastError = null;
+        foreach (var handle in handles)
+        {
+            try
+            {
+                handle.StartRecording();
+                started.Add(handle);
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                handle.Dispose();
+                Console.Error.WriteLine($"[capture] Loopback device failed to start: {ex.Message}");
+            }
+        }
+
+        if (handles.Count > 0 && started.Count == 0 && _mode != CaptureMode.Mix)
+            throw new InvalidOperationException("Loopback capture could not start.", lastError);
+
+        return started;
     }
 
     public void Dispose()
@@ -196,32 +295,83 @@ public sealed class NAudio3AudioSource : IAudioSource
             fault);
     }
 
+    /// <summary><c>SPEECHLIB_CAPTURE_TRACE=1</c> prints per-second capture levels to stderr.</summary>
+    private static readonly bool TraceEnabled =
+        Environment.GetEnvironmentVariable("SPEECHLIB_CAPTURE_TRACE") == "1";
+
+    private static int _traceDrains;
+
     private static void DrainAndPublish(
-        CaptureHandle? loopback,
+        List<CaptureHandle> loopbacks,
+        List<int> loopbackSources,
         CaptureHandle? microphone,
+        int microphoneSource,
+        MultiSourceMixer mixer,
         ConcurrentQueueWrapper buffer,
         ManualResetEventSlim signal)
     {
-        var loopbackSamples = loopback is null ? ReadOnlySpan<float>.Empty : loopback.Drain();
-        var microphoneSamples = microphone is null ? ReadOnlySpan<float>.Empty : microphone.Drain();
+        // Per-channel levels (pre-mix gain) so the mixer UI can show each source. With
+        // several output devices the loudest one is shown for the system-audio channel.
+        var loopbackPeak = 0f;
+        float[]? loudestLoopback = null;
+        for (var i = 0; i < loopbacks.Count; i++)
+        {
+            var samples = loopbacks[i].Drain();
+            if (samples.IsEmpty)
+                continue;
 
-        var count = CaptureMixer.OutputLength(loopbackSamples.Length, microphoneSamples.Length);
-        if (count == 0)
+            mixer.SetGain(loopbackSources[i], LoopbackVolume);
+            mixer.Push(loopbackSources[i], samples);
+
+            var peak = Peak(samples);
+            if (loudestLoopback is null || peak > loopbackPeak)
+            {
+                loopbackPeak = peak;
+                loudestLoopback = samples.ToArray();
+            }
+        }
+
+        if (loudestLoopback is not null)
+            LoopbackLevelMeter.PublishIfActive(loudestLoopback);
+
+        if (microphone is not null)
+        {
+            var samples = microphone.Drain();
+            if (!samples.IsEmpty)
+            {
+                mixer.SetGain(microphoneSource, MicVolume);
+                mixer.Push(microphoneSource, samples);
+                MicLevelMeter.PublishIfActive(samples);
+            }
+        }
+
+        // The batch is handed to the consumer, so it must be a fresh array (Mix returns one).
+        var batch = mixer.Mix();
+
+        if (TraceEnabled && ++_traceDrains % 20 == 0)
+            Console.Error.WriteLine(
+                $"[capture] loopback devices={loopbacks.Count} loudest peak={loopbackPeak:F3} " +
+                $"mic={(microphone is null ? "off" : "on")} out={batch.Length} out peak={Peak(batch):F3}");
+
+        if (batch.Length == 0)
             return;
-
-        // Per-channel levels (pre-mix gain) so the mixer UI can show each source.
-        if (microphoneSamples.Length > 0)
-            MicLevelMeter.PublishIfActive(microphoneSamples);
-        if (loopbackSamples.Length > 0)
-            LoopbackLevelMeter.PublishIfActive(loopbackSamples);
-
-        // The batch is handed to the consumer, so it must be a fresh array.
-        var batch = new float[count];
-        CaptureMixer.Mix(loopbackSamples, LoopbackVolume, microphoneSamples, MicVolume, batch);
 
         buffer.Enqueue(batch);
         AudioLevelMeter.Publish(batch);
         signal.Set();
+    }
+
+    private static float Peak(ReadOnlySpan<float> samples)
+    {
+        var peak = 0f;
+        foreach (var sample in samples)
+        {
+            var magnitude = Math.Abs(sample);
+            if (magnitude > peak)
+                peak = magnitude;
+        }
+
+        return peak;
     }
 
 // CS0618: WasapiCapture/WasapiLoopbackCapture are deprecated in NAudio 3 preview in
@@ -311,14 +461,26 @@ public sealed class NAudio3AudioSource : IAudioSource
             }
         }
 
-        public static CaptureHandle CreateLoopback(CaptureState state, int targetRate)
+        public static CaptureHandle CreateLoopback(string deviceId, CaptureState state, int targetRate)
         {
             // WasapiLoopbackCapture is the proven loopback path (kept from the previous provider):
             // the WasapiRecorder builder API in the NAudio 3 preview never raised DataAvailable
             // in this scenario, so loopback stayed silent (see capture-diag.log investigation).
             // Loopback streams do not signal the WASAPI event, so this one stays in polling mode.
-            var capture = new WasapiLoopbackCapture();
-            return new CaptureHandle(capture, null, null, state, targetRate);
+            var enumerator = new MMDeviceEnumerator();
+            MMDevice? device = null;
+            try
+            {
+                device = enumerator.GetDevice(deviceId);
+                var capture = new WasapiLoopbackCapture(device);
+                return new CaptureHandle(capture, device, enumerator, state, targetRate);
+            }
+            catch
+            {
+                device?.Dispose();
+                enumerator.Dispose();
+                throw;
+            }
         }
 
         public void StartRecording() => _capture.StartRecording();
