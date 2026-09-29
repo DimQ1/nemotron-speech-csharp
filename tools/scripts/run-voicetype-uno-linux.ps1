@@ -73,11 +73,14 @@ Invoke-WslCommand @("chmod", "+x", "$LinuxAppDir/VoiceType.Uno", "$LinuxAppDir/l
 Invoke-WslCommand @("test", "-f", $modelConfig)
 Invoke-WslCommand @("test", "-S", "/mnt/wslg/PulseServer")
 
-# Debug-only UI hook: open the model manager immediately so the dialog can be
-# inspected on a Linux/WSLg session without clicking through the UI.
+# Debug-only UI hooks (see MainPage.xaml.cs): forward the VOICETYPE_* variables
+# used to drive the app for automated UI checks.
 $extraEnv = @()
-if ($env:VOICETYPE_OPEN_MODEL_MANAGER) {
-    $extraEnv += "VOICETYPE_OPEN_MODEL_MANAGER=$env:VOICETYPE_OPEN_MODEL_MANAGER"
+foreach ($name in @("VOICETYPE_OPEN_MODEL_MANAGER", "VOICETYPE_AUTO_DOWNLOAD_MODEL")) {
+    $value = [Environment]::GetEnvironmentVariable($name)
+    if (-not [string]::IsNullOrWhiteSpace($value)) {
+        $extraEnv += "$name=$value"
+    }
 }
 
 & wsl.exe -d $Distribution -u $LinuxUser -- env `

@@ -1,5 +1,7 @@
 using Microsoft.UI.Xaml.Controls;
+using SpeechLib.ModelDownload;
 using VoiceType.Uno.Presentation;
+using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno;
 
@@ -20,10 +22,12 @@ public sealed partial class MainPage : Page
         UpdateTranslationRowHeight();
 
 #if DEBUG
-        // Smoke-test hook: opens the model manager right away so the dialog can be
-        // verified on a headless-ish Linux/WSLg session (VOICETYPE_OPEN_MODEL_MANAGER=1).
-        // Deferred to Loaded — a ContentDialog needs the page's XamlRoot.
-        if (Environment.GetEnvironmentVariable("VOICETYPE_OPEN_MODEL_MANAGER") == "1")
+        // Smoke-test hooks (Linux/WSLg verification): VOICETYPE_OPEN_MODEL_MANAGER=1
+        // opens the model manager once the page has a XamlRoot, and
+        // VOICETYPE_AUTO_DOWNLOAD_MODEL=<catalog folder> downloads one model through
+        // the shared queue and logs the outcome.
+        if (Environment.GetEnvironmentVariable("VOICETYPE_OPEN_MODEL_MANAGER") == "1"
+            || Environment.GetEnvironmentVariable("VOICETYPE_AUTO_DOWNLOAD_MODEL") is { Length: > 0 })
             Loaded += OnSmokeTestLoaded;
 #endif
     }
@@ -32,8 +36,65 @@ public sealed partial class MainPage : Page
     private void OnSmokeTestLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnSmokeTestLoaded;
-        Console.WriteLine("[VoiceType.Uno] Smoke hook: opening the model manager");
-        _ = ShowModelManagerAsync();
+
+        if (Environment.GetEnvironmentVariable("VOICETYPE_AUTO_DOWNLOAD_MODEL") is { Length: > 0 } folder)
+            _ = RunDownloadSmokeAsync(folder);
+
+        if (Environment.GetEnvironmentVariable("VOICETYPE_OPEN_MODEL_MANAGER") == "1")
+        {
+            Console.WriteLine("[VoiceType.Uno] Smoke hook: opening the model manager");
+            _ = ShowModelManagerAsync();
+        }
+    }
+
+    /// <summary>Debug-only: downloads a catalog model through the shared queue and logs the outcome.</summary>
+    private async Task RunDownloadSmokeAsync(string folderName)
+    {
+        var descriptor = ModelCatalog.FindBySubfolder(folderName);
+        if (descriptor is null)
+        {
+            Console.WriteLine($"[SMOKE] Unknown catalog folder '{folderName}'");
+            return;
+        }
+
+        var settings = ViewModel.CreateSettingsSnapshot();
+        var root = string.IsNullOrWhiteSpace(settings.ModelsRootPath) ? AppPaths.ModelsDir : settings.ModelsRootPath;
+        Console.WriteLine($"[SMOKE] {descriptor.Title} | repo={descriptor.RepoId} quant={descriptor.QuantizationFolder} root={root}");
+
+        var queue = App.Services.GetRequiredService<DownloadQueueService>();
+        var item = queue.EnqueueAsrModel(
+            root,
+            _ => { },
+            repoId: descriptor.RepoId,
+            quantizationFolder: descriptor.QuantizationFolder);
+
+        var lastStatus = "";
+        var watcher = Task.Run(async () =>
+        {
+            while (item.State is DownloadQueueItemState.Queued or DownloadQueueItemState.Running)
+            {
+                if (!string.Equals(item.Status, lastStatus, StringComparison.Ordinal))
+                {
+                    lastStatus = item.Status;
+                    Console.WriteLine($"[SMOKE] {item.Percent:F1}% {lastStatus}");
+                }
+
+                await Task.Delay(2000);
+            }
+        });
+
+        try
+        {
+            var path = await item.Completion;
+            Console.WriteLine($"[SMOKE] COMPLETED {path}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SMOKE] FAILED {ex.GetType().Name}: {ex.Message}");
+        }
+
+        await watcher;
+        Console.WriteLine($"[SMOKE] final state={item.State} bytes={item.DownloadedBytes}");
     }
 #endif
 

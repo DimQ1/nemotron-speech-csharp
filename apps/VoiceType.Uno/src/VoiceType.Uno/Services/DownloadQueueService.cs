@@ -258,22 +258,14 @@ public sealed class DownloadQueueService : IDisposable
         Directory.CreateDirectory(modelRoot);
 
         item.SetStatus($"Fetching {repoId}...");
-        var files = await FetchFilesAsync(repoId, ct).ConfigureAwait(false);
+        var allFiles = await FetchFilesAsync(repoId, ct).ConfigureAwait(false);
 
-        // For multi-precision repos, download only the selected quantization
-        // subfolder (fp32/int8/int4) and strip the prefix so config.json lands
-        // at the model root.
-        if (quantizationFolder is not null)
-        {
-            var prefix = quantizationFolder + "/";
-            files = files
-                .Where(f => f.RelativePath.StartsWith(prefix, StringComparison.Ordinal))
-                .Select(f => f with { RelativePath = f.RelativePath[prefix.Length..] })
-                .ToList();
-        }
+        // Multi-precision repos keep their variants in subfolders: the subfolder is
+        // stripped from the LOCAL path only, the file still comes from "int4/...".
+        var files = ModelFileSelection.ForSubfolder(allFiles, quantizationFolder);
 
         if (files.Count == 0)
-            throw new InvalidOperationException("The model repository did not contain any files.");
+            throw new InvalidOperationException($"The model repository did not contain any files{(quantizationFolder is null ? "" : $" under '{quantizationFolder}/'")}.");
 
         item.SetTotals(totalBytes: files.Sum(f => f.SizeBytes));
 
@@ -281,8 +273,8 @@ public sealed class DownloadQueueService : IDisposable
         {
             ct.ThrowIfCancellationRequested();
             var file = files[index];
-            item.SetStatus($"Downloading {file.RelativePath} ({index + 1}/{files.Count})...");
-            var destination = GetSafeDestination(modelRoot, file.RelativePath);
+            item.SetStatus($"Downloading {file.LocalPath} ({index + 1}/{files.Count})...");
+            var destination = GetSafeDestination(modelRoot, file.LocalPath);
             await DownloadFileAsync(repoId, file, destination, item, ct).ConfigureAwait(false);
         }
 
@@ -296,8 +288,8 @@ public sealed class DownloadQueueService : IDisposable
 
         var files = await FetchFilesAsync(TranslationModelInfo.RepoId, ct).ConfigureAwait(false);
         var modelFile = files.FirstOrDefault(f =>
-            string.Equals(f.RelativePath, TranslationModelInfo.FileName, StringComparison.Ordinal));
-        if (modelFile.RelativePath.Length == 0)
+            string.Equals(f.LocalPath, TranslationModelInfo.FileName, StringComparison.Ordinal));
+        if (modelFile is null)
             throw new InvalidOperationException(
                 $"{TranslationModelInfo.FileName} was not found in {TranslationModelInfo.RepoId}.");
 
@@ -310,8 +302,7 @@ public sealed class DownloadQueueService : IDisposable
         return destination;
     }
 
-    private async Task<List<RemoteFile>> FetchFilesAsync(string repoId, CancellationToken ct)
-    {
+    private async Task<List<RemoteFile>> FetchFilesAsync(string repoId, CancellationToken ct)    {
         // blobs=true is required — without it the API omits file sizes, which
         // leaves the queue progress at "0/N done" with no byte-level percent.
         var endpoint = $"https://huggingface.co/api/models/{repoId}?blobs=true";
@@ -356,17 +347,19 @@ public sealed class DownloadQueueService : IDisposable
             return [];
 
         return siblings.EnumerateArray()
-            .Select(file => new RemoteFile(
-                file.GetProperty("rfilename").GetString() ?? string.Empty,
-                file.TryGetProperty("size", out var size) && size.ValueKind == JsonValueKind.Number
-                    ? size.GetInt64()
-                    : 0))
-            .Where(file => !string.IsNullOrWhiteSpace(file.RelativePath)
-                && !file.RelativePath.StartsWith(".", StringComparison.Ordinal))
-            .OrderBy(file => file.RelativePath, StringComparer.Ordinal)
+            .Select(file =>
+            {
+                var path = file.GetProperty("rfilename").GetString() ?? string.Empty;
+                var size = file.TryGetProperty("size", out var sizeElement) && sizeElement.ValueKind == JsonValueKind.Number
+                    ? sizeElement.GetInt64()
+                    : 0;
+                return new RemoteFile(path, path, size);
+            })
+            .Where(file => !string.IsNullOrWhiteSpace(file.RepoPath)
+                && !file.RepoPath.StartsWith(".", StringComparison.Ordinal))
+            .OrderBy(file => file.RepoPath, StringComparer.Ordinal)
             .ToList();
     }
-
     private async Task<long> DownloadFileAsync(
         string repoId,
         RemoteFile file,
@@ -393,7 +386,7 @@ public sealed class DownloadQueueService : IDisposable
     {
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         var temporaryPath = destination + ".part";
-        var endpoint = $"https://huggingface.co/{repoId}/resolve/main/{Uri.EscapeDataString(file.RelativePath).Replace("%2F", "/", StringComparison.OrdinalIgnoreCase)}";
+        var endpoint = $"https://huggingface.co/{repoId}/resolve/main/{Uri.EscapeDataString(file.RepoPath).Replace("%2F", "/", StringComparison.OrdinalIgnoreCase)}";
         using var response = await _http.GetAsync(endpoint, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
@@ -445,7 +438,7 @@ public sealed class DownloadQueueService : IDisposable
     {
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         var temporaryPath = destination + ".part";
-        var endpoint = $"https://huggingface.co/{repoId}/resolve/main/{Uri.EscapeDataString(file.RelativePath).Replace("%2F", "/", StringComparison.OrdinalIgnoreCase)}";
+        var endpoint = $"https://huggingface.co/{repoId}/resolve/main/{Uri.EscapeDataString(file.RepoPath).Replace("%2F", "/", StringComparison.OrdinalIgnoreCase)}";
         using var process = StartCurlProcess(curlPath, endpoint);
         var errorTask = process.StandardError.ReadToEndAsync();
 
@@ -662,11 +655,9 @@ public sealed class DownloadQueueService : IDisposable
         }
     }
 
-    private readonly record struct RemoteFile(string RelativePath, long SizeBytes);
 }
 
 public enum ModelKind { Asr, Translation }
-
 public enum DownloadQueueItemState { Queued, Running, Completed, Failed, Cancelled }
 
 /// <summary>

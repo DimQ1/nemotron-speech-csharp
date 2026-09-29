@@ -60,27 +60,29 @@ public sealed class HuggingFaceClient
         if (!document.RootElement.TryGetProperty("siblings", out var siblings))
             return files;
 
-        var prefix = string.IsNullOrEmpty(subfolder) ? null : subfolder.TrimEnd('/') + "/";
         foreach (var sibling in siblings.EnumerateArray())
         {
             var path = sibling.GetProperty("rfilename").GetString() ?? "";
             if (path.Length == 0 || Path.GetFileName(path).StartsWith('.'))
                 continue;
-            if (singleFile is not null && !string.Equals(path, singleFile, StringComparison.Ordinal))
-                continue;
-            if (prefix is not null && !path.StartsWith(prefix, StringComparison.Ordinal))
-                continue;
 
-            var local = prefix is null ? path : path[prefix.Length..];
-            if (singleFile is not null)
-                local = Path.GetFileName(path);
             var size = sibling.TryGetProperty("size", out var sizeElement) && sizeElement.ValueKind == JsonValueKind.Number
                 ? sizeElement.GetInt64()
                 : 0;
-            files.Add(new RemoteFile(path, local, size));
+            files.Add(new RemoteFile(path, path, size));
         }
 
-        return files;
+        if (singleFile is not null)
+        {
+            return files
+                .Where(file => string.Equals(file.RepoPath, singleFile, StringComparison.Ordinal))
+                .Select(file => file with { LocalPath = Path.GetFileName(file.RepoPath) })
+                .ToList();
+        }
+
+        // The subfolder is stripped from the local path only — the repo path stays
+        // intact, because that is what the download URL is built from.
+        return ModelFileSelection.ForSubfolder(files, subfolder);
     }
 
     /// <summary>True when the file is already present with the expected size (download can be skipped).</summary>
