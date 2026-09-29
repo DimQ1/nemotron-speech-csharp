@@ -33,6 +33,10 @@ public sealed class DownloadCenter : IDisposable
         Manager = manager;
         _telemetry = telemetry;
         Manager.JobFinished += OnJobFinished;
+        Manager.SubscriberFailed += ex =>
+        {
+            try { _telemetry?.Telemetry?.LogWarning("Download", $"Download event handler failed: {ex}"); } catch { }
+        };
     }
 
     public ModelDownloadManager Manager { get; }
@@ -103,9 +107,16 @@ public sealed class DownloadCenter : IDisposable
 
         if (success && job.Request.Kind == ModelDownloadKind.Recognition && job.ResultPath is not null)
         {
-            WeakReferenceMessenger.Default.Send(new ModelDownloadedMessage(
-                Path.GetDirectoryName(job.ResultPath) ?? job.ResultPath,
-                job.ResultPath));
+            try
+            {
+                WeakReferenceMessenger.Default.Send(new ModelDownloadedMessage(
+                    Path.GetDirectoryName(job.ResultPath) ?? job.ResultPath,
+                    job.ResultPath));
+            }
+            catch (Exception ex)
+            {
+                try { _telemetry?.Telemetry?.LogWarning("Download", $"Model-downloaded notification failed: {ex.Message}"); } catch { }
+            }
         }
     }
 

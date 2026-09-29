@@ -279,6 +279,32 @@ public sealed class Unit_ModelDownloadManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task ThrowingSubscriber_DoesNotFailFinishedDownload()
+    {
+        var (manager, hub) = Create();
+        hub.Add("u/a", "m.onnx", 3000);
+        hub.Add("u/b", "m.onnx", 3000);
+
+        // A UI handler touching a bound collection from the worker thread throws like this.
+        manager.JobFinished += _ => throw new System.Runtime.InteropServices.COMException();
+        manager.JobUpdated += _ => throw new InvalidOperationException("boom");
+        var failures = 0;
+        manager.SubscriberFailed += _ => Interlocked.Increment(ref failures);
+        var finished = 0;
+        manager.JobFinished += _ => Interlocked.Increment(ref finished);
+
+        var a = manager.Enqueue(Request("u/a"));
+        var b = manager.Enqueue(Request("u/b"));
+        await Task.WhenAll(a.Completion, b.Completion);
+
+        Assert.Equal(DownloadJobState.Completed, a.State);
+        Assert.Equal(DownloadJobState.Completed, b.State);
+        Assert.Null(a.Error);
+        Assert.Equal(2, finished); // later subscribers still run
+        Assert.True(failures >= 2);
+    }
+
+    [Fact]
     public void Catalog_RecommendsParakeetInt4()
     {
         var recommended = ModelCatalog.Recommended;

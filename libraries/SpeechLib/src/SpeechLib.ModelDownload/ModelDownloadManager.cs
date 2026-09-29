@@ -182,13 +182,13 @@ public sealed class ModelDownloadManager : IDisposable
             foreach (var old in stale)
                 _jobs.Remove(old);
             foreach (var old in stale)
-                JobRemoved?.Invoke(old);
+                Raise(JobRemoved, old);
 
             job = new DownloadJob(request);
             _jobs.Add(job);
         }
 
-        JobAdded?.Invoke(job);
+        Raise(JobAdded, job);
         _ = Task.Run(() => RunAsync(job));
         return job;
     }
@@ -215,7 +215,7 @@ public sealed class ModelDownloadManager : IDisposable
                 _jobs.Remove(job);
         }
         foreach (var job in removed)
-            JobRemoved?.Invoke(job);
+            Raise(JobRemoved, job);
     }
 
     private async Task RunAsync(DownloadJob job)
@@ -234,7 +234,7 @@ public sealed class ModelDownloadManager : IDisposable
         {
             job.State = DownloadJobState.Downloading;
             job.CurrentFile = "Listing files…";
-            JobUpdated?.Invoke(job);
+            Raise(JobUpdated, job);
 
             var request = job.Request;
             var files = await _client.ListFilesAsync(request.RepoId, request.Subfolder, request.SingleFile, job.Token).ConfigureAwait(false);
@@ -261,7 +261,7 @@ public sealed class ModelDownloadManager : IDisposable
                 }
             }
             job.ResetBytes(done);
-            JobUpdated?.Invoke(job);
+            Raise(JobUpdated, job);
 
             var clock = Stopwatch.StartNew();
             var lastReport = TimeSpan.Zero;
@@ -291,7 +291,7 @@ public sealed class ModelDownloadManager : IDisposable
                         }
 
                         lastReport = now;
-                        JobUpdated?.Invoke(job);
+                        Raise(JobUpdated, job);
                     }, job.Token).ConfigureAwait(false);
                 }
                 catch
@@ -305,7 +305,7 @@ public sealed class ModelDownloadManager : IDisposable
                 if (file.SizeBytes > 0)
                     job.ResetBytes(before + file.SizeBytes);
                 job.FilesDone++;
-                JobUpdated?.Invoke(job);
+                Raise(JobUpdated, job);
             }
 
             if (job.TotalBytes == 0)
@@ -334,18 +334,45 @@ public sealed class ModelDownloadManager : IDisposable
         job.BytesPerSecond = 0;
         job.CurrentFile = "";
         job.FinishedAt = DateTimeOffset.Now;
-        job.Error = error?.Message;
+        job.Error = error is null ? null : string.IsNullOrWhiteSpace(error.Message) ? error.GetType().Name : error.Message;
         if (state == DownloadJobState.Completed)
             job.ResultPath = job.Request.TargetDirectory;
 
-        JobUpdated?.Invoke(job);
-        JobFinished?.Invoke(job);
+        Raise(JobUpdated, job);
+        Raise(JobFinished, job);
 
         switch (state)
         {
             case DownloadJobState.Completed: job.Finish(job.Request.TargetDirectory); break;
             case DownloadJobState.Failed: job.Fail(error!); break;
             default: job.Cancelled(); break;
+        }
+    }
+
+    /// <summary>Raised when a subscriber of a job event throws; the job itself is unaffected.</summary>
+    public event Action<Exception>? SubscriberFailed;
+
+    /// <summary>
+    /// Invokes every subscriber separately. A failing subscriber (for example a UI
+    /// handler touching a bound collection from this worker thread) must never turn a
+    /// finished download into a failed one or stop the other subscribers.
+    /// </summary>
+    private void Raise(Action<DownloadJob>? handlers, DownloadJob job)
+    {
+        if (handlers is null)
+            return;
+
+        foreach (var handler in handlers.GetInvocationList().Cast<Action<DownloadJob>>())
+        {
+            try
+            {
+                handler(job);
+            }
+            catch (Exception ex)
+            {
+                try { SubscriberFailed?.Invoke(ex); } catch { }
+                Debug.WriteLine($"[downloads] subscriber failed for {job.Title}: {ex}");
+            }
         }
     }
 

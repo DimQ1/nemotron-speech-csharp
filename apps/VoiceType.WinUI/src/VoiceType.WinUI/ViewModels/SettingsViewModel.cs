@@ -131,6 +131,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     public string LanguageSelectionStatus =>
         IsLanguageSelectionEnabled ? "" : "Selected model uses automatic language detection";
 
+    // Captured on the UI thread that constructs the view model.
+    private readonly Microsoft.UI.Dispatching.DispatcherQueue? _uiQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+
     public ObservableCollection<string> AvailableModels { get; } = new();
     public ObservableCollection<PostProcessingRule> Rules { get; } = new();
 
@@ -191,9 +194,14 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         // Refresh the model list when a download completes, so a newly
         // downloaded model appears in settings without reopening the dialog.
+        // Download notifications arrive on the download worker thread; the model list is
+        // bound to the UI, so rescan on the UI thread.
         WeakReferenceMessenger.Default.Register<ModelDownloadedMessage>(this, (r, m) =>
         {
-            ScanModels();
+            if (_uiQueue is null || _uiQueue.HasThreadAccess)
+                ScanModels();
+            else
+                _uiQueue.TryEnqueue(ScanModels);
         });
 
         ScanModels();
