@@ -25,25 +25,18 @@ public sealed partial class MainWindow : Window
     private nint _subclassId = 1;
     private readonly List<Window> _childWindows = new();
     private readonly HashSet<Window> _childrenMinimizedWithMain = new();
-    private readonly HashSet<nint> _initiallyPlacedChildWindows = new();
     private bool _wasMinimized;
     private bool _isTopmostEnabled;
     private const double TextPaneMinHeight = 64;
     private const double TranslationDividerHeight = 18;
     private double _translationPaneRatio = 1d / 3d;
-    private bool _childPlacementScheduled;
-    private DispatcherQueueTimer? _childPlacementTimer;
-    private int _childPlacementAttempts;
-    private const int MaxInitialPlacementAttempts = 20;
 
     private delegate nint SubclassProc(nint hWnd, uint uMsg, nint wParam, nint lParam, nint uIdSubclass, nint dwRefData);
-    private delegate bool EnumWindowsProc(nint hWnd, nint lParam);
 
     /// <summary>Per-child-window subclass state: tracks whether the user is currently dragging/sizing the window.</summary>
     private sealed class ChildWindowState
     {
         public bool InSizeMove;
-        public bool AllowProgrammaticMove;
         public bool UserMoved;
         public bool IsMinimizing;
     }
@@ -231,7 +224,6 @@ public sealed partial class MainWindow : Window
     {
         _taskbarService.StopRecordingIndicator();
         _taskbarService.Dispose();
-        _childPlacementTimer?.Stop();
 
         var hotkeyService = App.Services.GetRequiredService<IGlobalHotkeyService>();
         hotkeyService.UnregisterAll();
@@ -244,7 +236,6 @@ public sealed partial class MainWindow : Window
         }
         _childWindows.Clear();
         _childrenMinimizedWithMain.Clear();
-        _initiallyPlacedChildWindows.Clear();
         _windowIconService.Dispose();
     }
 
@@ -355,7 +346,11 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>Register a child window: positions it beside the main window (left/right based on screen space).</summary>
+    /// <summary>
+    /// Registers a child window: keeps its icon and z-order in sync with the main window,
+    /// mirrors the main window's minimized state and stops Windows from re-arranging it on
+    /// activation. Child windows are not positioned by the app.
+    /// </summary>
     public void TrackChildWindow(Window child)
     {
         if (child is null || _childWindows.Contains(child)) return;
@@ -415,7 +410,6 @@ public sealed partial class MainWindow : Window
                 }
                 else if (msg == WM_WINDOWPOSCHANGING
                     && !state.InSizeMove
-                    && !state.AllowProgrammaticMove
                     && !state.IsMinimizing
                     && !IsIconic(hwnd))
                 {
@@ -440,267 +434,22 @@ public sealed partial class MainWindow : Window
         {
             _childWindows.Remove(child);
             _childrenMinimizedWithMain.Remove(child);
-            _initiallyPlacedChildWindows.Remove(childHwnd);
             if (childHwnd != nint.Zero && _childSubclass.Remove(childHwnd, out var entry))
                 RemoveWindowSubclass(childHwnd, entry.Proc, (nint)(childHwnd.ToInt64() ^ 0x5A5A));
         };
 
-        // Child windows must also be AlwaysOnTop so they appear beside the main window,
-        // not behind it. The main window has AlwaysOnTop=true.
+        // Child windows are kept AlwaysOnTop so they stay visible above the main window,
+        // which is also AlwaysOnTop. Their position is left to Windows (normal cascade).
         if (child.AppWindow?.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsAlwaysOnTop = true;
         }
     }
 
-    private void ScheduleChildPlacement()
-    {
-        if (_childPlacementScheduled)
-            return;
-
-        _childPlacementScheduled = true;
-        _childPlacementAttempts = 0;
-        _childPlacementTimer = DispatcherQueue.CreateTimer();
-        _childPlacementTimer.Interval = TimeSpan.FromMilliseconds(100);
-        _childPlacementTimer.Tick += OnChildPlacementTimerTick;
-        _childPlacementTimer.Start();
-    }
-
-    private void OnChildPlacementTimerTick(DispatcherQueueTimer sender, object args)
-    {
-        _childPlacementAttempts++;
-        ArrangeInitialChildWindows();
-
-        if (_childPlacementAttempts < MaxInitialPlacementAttempts && _childWindows.Count > 0)
-            return;
-
-        sender.Stop();
-        sender.Tick -= OnChildPlacementTimerTick;
-        _childPlacementTimer = null;
-        _childPlacementScheduled = false;
-    }
-
-    private void ArrangeInitialChildWindows()
-    {
-        foreach (var child in _childWindows.ToArray())
-        {
-            var childHwnd = WindowNative.GetWindowHandle(child);
-            if (childHwnd == nint.Zero)
-                continue;
-
-            if (_initiallyPlacedChildWindows.Contains(childHwnd))
-                continue;
-
-            if (_childSubclass.TryGetValue(childHwnd, out var entry)
-                && (entry.State.UserMoved || entry.State.InSizeMove))
-            {
-                if (entry.State.UserMoved)
-                    _initiallyPlacedChildWindows.Add(childHwnd);
-                continue;
-            }
-
-            if (!IsWindowVisible(childHwnd))
-                continue;
-
-            if (PositionChildBeside(child))
-                _initiallyPlacedChildWindows.Add(childHwnd);
-        }
-    }
-
-    /// <summary>Position a child in the nearest free slot around the main window and other children.</summary>
-    private bool PositionChildBeside(Window child)
-    {
-        if (child is null || _hwnd == nint.Zero) return false;
-
-        var childHwnd = WindowNative.GetWindowHandle(child);
-        if (childHwnd == nint.Zero) return false;
-
-        if (!GetWindowRect(_hwnd, out var mainRect)) return false;
-        if (!GetWindowRect(childHwnd, out var childRect)) return false;
-
-        var mainWidth = mainRect.Right - mainRect.Left;
-        var mainHeight = mainRect.Bottom - mainRect.Top;
-        var childWidth = childRect.Right - childRect.Left;
-        var childHeight = childRect.Bottom - childRect.Top;
-
-        if (childWidth <= 0 || childHeight <= 0) return false;
-
-        var occupied = new List<RECT> { mainRect };
-        foreach (var trackedChild in _childWindows)
-        {
-            var trackedHwnd = WindowNative.GetWindowHandle(trackedChild);
-            if (trackedHwnd != nint.Zero && trackedHwnd != childHwnd
-                && GetWindowRect(trackedHwnd, out var otherRect))
-                occupied.Add(otherRect);
-        }
-
-        var hmon = MonitorFromWindow(_hwnd, MONITOR_DEFAULTTONEAREST);
-        var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
-        if (!GetMonitorInfo(hmon, ref mi)) return false;
-
-        var workArea = mi.rcWork;
-        if (!IsWindowVisible(_hwnd))
-        {
-            var centeredX = workArea.Left + Math.Max(0, (workArea.Right - workArea.Left - childWidth) / 2);
-            var centeredY = workArea.Top + Math.Max(0, (workArea.Bottom - workArea.Top - childHeight) / 2);
-            MoveChildWindow(childHwnd, centeredX, centeredY);
-            return true;
-        }
-
-        var hasFreePosition = TryFindFreePosition(
-            mainRect,
-            childWidth,
-            childHeight,
-            workArea,
-            occupied,
-            out var x,
-            out var y);
-
-        if (!hasFreePosition)
-        {
-            x = Math.Clamp(mainRect.Right + WindowGap, workArea.Left, workArea.Right - childWidth);
-            y = Math.Clamp(mainRect.Top, workArea.Top, workArea.Bottom - childHeight);
-        }
-
-        MoveChildWindow(childHwnd, x, y);
-        return true;
-    }
-
-    private void MoveChildWindow(nint childHwnd, int x, int y)
-    {
-        if (_childSubclass.TryGetValue(childHwnd, out var entry))
-            entry.State.AllowProgrammaticMove = true;
-
-        try
-        {
-            SetWindowPos(childHwnd, 0, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-        }
-        finally
-        {
-            if (_childSubclass.TryGetValue(childHwnd, out entry))
-                entry.State.AllowProgrammaticMove = false;
-        }
-    }
-
-    private const int WindowGap = 12;
-
-    private static bool TryFindFreePosition(
-        RECT mainRect,
-        int width,
-        int height,
-        RECT workArea,
-        IReadOnlyList<RECT> occupied,
-        out int bestX,
-        out int bestY)
-    {
-        var bestScore = long.MaxValue;
-        var selectedX = workArea.Left;
-        var selectedY = workArea.Top;
-
-        void Consider(int x, int y)
-        {
-            var candidate = new RECT
-            {
-                Left = x,
-                Top = y,
-                Right = x + width,
-                Bottom = y + height,
-            };
-
-            if (candidate.Left < workArea.Left || candidate.Top < workArea.Top
-                || candidate.Right > workArea.Right || candidate.Bottom > workArea.Bottom)
-                return;
-
-            foreach (var existing in occupied)
-            {
-                if (RectanglesOverlap(candidate, existing))
-                    return;
-            }
-
-            var score = PlacementScore(candidate, mainRect);
-            if (score < bestScore)
-            {
-                bestScore = score;
-                selectedX = candidate.Left;
-                selectedY = candidate.Top;
-            }
-        }
-
-        foreach (var anchor in occupied)
-        {
-            var centeredY = anchor.Top + ((anchor.Bottom - anchor.Top) - height) / 2;
-            var bottomAlignedY = anchor.Bottom - height;
-            var centeredX = anchor.Left + ((anchor.Right - anchor.Left) - width) / 2;
-            var rightAlignedX = anchor.Right - width;
-
-            Consider(anchor.Right + WindowGap, anchor.Top);
-            Consider(anchor.Right + WindowGap, centeredY);
-            Consider(anchor.Right + WindowGap, bottomAlignedY);
-            Consider(anchor.Left - width - WindowGap, anchor.Top);
-            Consider(anchor.Left - width - WindowGap, centeredY);
-            Consider(anchor.Left - width - WindowGap, bottomAlignedY);
-            Consider(anchor.Left, anchor.Bottom + WindowGap);
-            Consider(centeredX, anchor.Bottom + WindowGap);
-            Consider(rightAlignedX, anchor.Bottom + WindowGap);
-            Consider(anchor.Left, anchor.Top - height - WindowGap);
-            Consider(centeredX, anchor.Top - height - WindowGap);
-            Consider(rightAlignedX, anchor.Top - height - WindowGap);
-        }
-
-        const int scanStep = 16;
-        for (var y = workArea.Top; y <= workArea.Bottom - height; y += scanStep)
-        {
-            for (var x = workArea.Left; x <= workArea.Right - width; x += scanStep)
-                Consider(x, y);
-
-            Consider(workArea.Right - width, y);
-        }
-
-        for (var x = workArea.Left; x <= workArea.Right - width; x += scanStep)
-            Consider(x, workArea.Bottom - height);
-
-        Consider(workArea.Right - width, workArea.Bottom - height);
-        bestX = selectedX;
-        bestY = selectedY;
-        return bestScore != long.MaxValue;
-    }
-
-    private static bool RectanglesOverlap(RECT first, RECT second) =>
-        first.Left < second.Right && first.Right > second.Left
-        && first.Top < second.Bottom && first.Bottom > second.Top;
-
-    private static long PlacementScore(RECT candidate, RECT mainRect)
-    {
-        var horizontalGap = candidate.Left >= mainRect.Right
-            ? candidate.Left - mainRect.Right
-            : mainRect.Left >= candidate.Right
-                ? mainRect.Left - candidate.Right
-                : 0;
-        var verticalGap = candidate.Top >= mainRect.Bottom
-            ? candidate.Top - mainRect.Bottom
-            : mainRect.Top >= candidate.Bottom
-                ? mainRect.Top - candidate.Bottom
-                : 0;
-
-        var candidateCenterX = candidate.Left + (candidate.Right - candidate.Left) / 2;
-        var candidateCenterY = candidate.Top + (candidate.Bottom - candidate.Top) / 2;
-        var mainCenterX = mainRect.Left + (mainRect.Right - mainRect.Left) / 2;
-        var mainCenterY = mainRect.Top + (mainRect.Bottom - mainRect.Top) / 2;
-        var centerDistanceX = candidateCenterX - mainCenterX;
-        var centerDistanceY = candidateCenterY - mainCenterY;
-
-        return (long)horizontalGap * horizontalGap
-            + (long)verticalGap * verticalGap
-            + (long)centerDistanceX * centerDistanceX / 8
-            + (long)centerDistanceY * centerDistanceY / 8;
-    }
-
     // ---- Win32 interop ----
 
     private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOZORDER = 0x0004;
-    private const uint SWP_NOSIZE = 0x0001;
-    private const uint SWP_NOACTIVATE = 0x0010;
     private const uint MONITOR_DEFAULTTONEAREST = 2;
     private const int MDT_EFFECTIVE_DPI = 0;
 
@@ -708,49 +457,13 @@ public sealed partial class MainWindow : Window
     private static extern bool SetWindowPos(nint hWnd, int hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
     [DllImport("user32.dll")]
-    private static extern bool BringWindowToTop(nint hWnd);
-
-    [DllImport("user32.dll")]
     private static extern nint MonitorFromWindow(nint hWnd, uint dwFlags);
-
-    [DllImport("user32.dll")]
-    private static extern bool GetWindowRect(nint hWnd, out RECT lpRect);
-
-    [DllImport("user32.dll")]
-    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, nint lParam);
-
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
-
-    [DllImport("user32.dll")]
-    private static extern bool IsWindowVisible(nint hWnd);
 
     [DllImport("user32.dll")]
     private static extern bool IsIconic(nint hWnd);
 
-    [DllImport("user32.dll")]
-    private static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);
-
     [DllImport("shcore.dll")]
     private static extern int GetDpiForMonitor(nint hmonitor, int dpiType, out uint dpiX, out uint dpiY);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RECT
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MONITORINFO
-    {
-        public int cbSize;
-        public RECT rcMonitor;
-        public RECT rcWork;
-        public uint dwFlags;
-    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct WINDOWPOS

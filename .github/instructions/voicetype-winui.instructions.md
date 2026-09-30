@@ -24,7 +24,7 @@ applyTo: "apps/VoiceType.WinUI/**"
 ## Window Management and Interop
 
 - Child windows use both their in-process singleton/open-instance guard and `Services/ChildWindowGuard` for cross-process protection. Acquire the global guard before constructing a child window and release it when the window closes.
-- `MainWindow.TrackChildWindow` should place a child beside the main window only during initial activation. Do not reposition it on every activation; preserve user moves.
+- The app does not position child windows: they open where Windows places them (normal cascade) and the user arranges them. Do not reintroduce automatic placement/repositioning logic in `MainWindow.TrackChildWindow`; the old beside-the-main-window algorithm was removed on purpose (2026-09-30).
 - Preserve the existing child-window subclassing behavior that blocks non-user repositioning while allowing manual drag and resize. Remove the subclass when the child closes.
 - Keep Win32 delegate instances alive for as long as the native callback can invoke them, and release hooks, hotkeys, timers, and COM/taskbar resources during window shutdown.
 
