@@ -1,4 +1,4 @@
-using SpeechLib.ModelDownload;
+using SpeechLib.ModelFormats;
 using VoiceType.WinUI.Models;
 
 namespace VoiceType.WinUI.Services;

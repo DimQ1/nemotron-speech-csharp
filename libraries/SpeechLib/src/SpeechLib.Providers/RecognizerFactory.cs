@@ -1,7 +1,7 @@
 using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Decorators;
-using SpeechLib.ModelDownload;
+using SpeechLib.ModelFormats;
 using SpeechLib.ParakeetTdt;
 using SpeechLib.Qwen3;
 using SpeechLib.VibeVoice;

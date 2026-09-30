@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using SpeechLib.ModelDownload;
+using SpeechLib.ModelFormats;
 using SpeechLib.Qwen3;
 
 namespace SpeechLib.VibeVoice;

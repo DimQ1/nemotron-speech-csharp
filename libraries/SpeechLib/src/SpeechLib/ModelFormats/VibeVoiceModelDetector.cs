@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace SpeechLib.ModelDownload;
+namespace SpeechLib.ModelFormats;
 
 /// <summary>Detects the VibeVoice streaming ONNX package produced by the exporter.</summary>
 public static class VibeVoiceModelDetector

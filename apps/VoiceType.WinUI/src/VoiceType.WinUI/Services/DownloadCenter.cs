@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
 using SpeechLib.ModelDownload;
+using SpeechLib.ModelFormats;
 using VoiceType.WinUI.Messages;
 using VoiceType.WinUI.Models;
 

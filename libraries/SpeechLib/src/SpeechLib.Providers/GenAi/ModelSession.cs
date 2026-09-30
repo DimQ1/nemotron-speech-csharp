@@ -53,7 +53,7 @@ public sealed class ModelSession : IStreamingSpeechRecognizer, ILanguageConfigur
             repetition_penalty = 1.1
         };
 
-        _config = Common.GetConfig(modelPath, executionProvider, null, searchOptions, cpuThreads, sequentialExecution);
+        _config = GenAiSessionConfig.Create(modelPath, executionProvider, searchOptions, cpuThreads, sequentialExecution);
 
         _model = new Model(_config);
         _processor = new StreamingProcessor(_model);
@@ -65,7 +65,7 @@ public sealed class ModelSession : IStreamingSpeechRecognizer, ILanguageConfigur
         _tokenizer = new Tokenizer(_model);
         _tokenizerStream = _tokenizer.CreateStream();
         _genParams = new GeneratorParams(_model);
-        Common.SetSearchOptions(_genParams, searchOptions, verbose: false);
+        GenAiSearchOptions.Apply(_genParams, searchOptions, verbose: false);
         _generator = new Generator(_model, _genParams);
 
         if (!IsSingleLanguage && langId is not null)

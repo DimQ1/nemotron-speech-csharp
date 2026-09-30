@@ -1,4 +1,4 @@
-namespace SpeechLib.ModelDownload;
+namespace SpeechLib.ModelFormats;
 
 /// <summary>
 /// Scans a models root folder for usable ASR model directories.

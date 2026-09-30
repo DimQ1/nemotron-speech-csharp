@@ -1,4 +1,4 @@
-using SpeechLib.ModelDownload;
+using SpeechLib.ModelFormats;
 
 namespace VoiceType.Uno.Services;
 

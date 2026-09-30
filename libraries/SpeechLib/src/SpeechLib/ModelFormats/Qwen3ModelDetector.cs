@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace SpeechLib.ModelDownload;
+namespace SpeechLib.ModelFormats;
 
 /// <summary>Detects Qwen3-ASR ONNX packages and streaming manifests.</summary>
 public static class Qwen3ModelDetector

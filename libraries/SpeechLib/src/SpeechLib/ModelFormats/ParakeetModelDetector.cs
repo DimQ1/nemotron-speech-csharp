@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace SpeechLib.ModelDownload;
+namespace SpeechLib.ModelFormats;
 
 /// <summary>
 /// Detects Parakeet TDT ONNX exports without taking a dependency on the

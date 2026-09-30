@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SpeechLib.ModelDownload;
+using SpeechLib.ModelFormats;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.Presentation;

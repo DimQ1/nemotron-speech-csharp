@@ -1,7 +1,7 @@
-using SpeechLib.ModelDownload;
+using SpeechLib.ModelFormats;
 using Xunit;
 
-namespace SpeechLib.ModelDownload.Tests;
+namespace SpeechLib.Tests;
 
 public sealed class Unit_ModelFolderScannerTests : IDisposable
 {

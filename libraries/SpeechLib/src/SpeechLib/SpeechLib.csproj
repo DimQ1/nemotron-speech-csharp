@@ -22,13 +22,7 @@
   <!--
     SpeechLib is the portable contract layer. Runtime/model/audio providers are
     separate projects so applications pay only for the provider they select.
+    The ONNX Runtime GenAI sources (ModelSession, LanguageMapper, the GenAi
+    helpers) live in SpeechLib.Providers next to the package they depend on.
   -->
-  <ItemGroup>
-    <Compile Remove="Common.cs" />
-    <Compile Remove="LanguageMapper.cs" />
-    <Compile Remove="ModelSession.cs" />
-    <Compile Remove="Models\SpeechRecognitionOptions.cs" />
-    <Compile Remove="Models\SpeechRecognitionOptionsBuilder.cs" />
-  </ItemGroup>
-
 </Project>

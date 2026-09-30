@@ -17,10 +17,6 @@
   -->
   <ItemGroup>
     <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
-    <ProjectReference Include="..\SpeechLib.ModelDownload\SpeechLib.ModelDownload.csproj" />
-    <Compile Include="..\SpeechLib\ModelSession.cs" Link="ModelSession.cs" />
-    <Compile Include="..\SpeechLib\Common.cs" Link="Common.cs" />
-    <Compile Include="..\SpeechLib\LanguageMapper.cs" Link="LanguageMapper.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,7 +29,6 @@
       ONNX Runtime 1.30.0). Re-pick the plugin version when ORT is bumped.
     -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime.EP.WebGpu" Version="0.4.0" GeneratePathProperty="true" />
-    <PackageReference Include="System.CommandLine" Version="2.0.1" />
     <!-- FFT for the host-side Whisper log-mel used by the Qwen3-ASR encoder. -->
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
   </ItemGroup>
