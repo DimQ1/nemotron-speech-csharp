@@ -162,6 +162,9 @@ jobs:
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
+          # Releases published by this workflow had empty bodies; generate the notes
+          # from the commits between the previous tag and this one instead.
+          generate_release_notes: true
           files: |
             release-assets/VoiceType.Uno-win-x64.zip
             release-assets/VoiceType.Uno-linux-x64.tar.gz
