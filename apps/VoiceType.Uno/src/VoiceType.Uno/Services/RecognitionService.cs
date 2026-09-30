@@ -28,11 +28,11 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     private bool _isRunning;
     private volatile bool _captureMuted;
     private Task? _processTask;
-    private readonly StringBuilder _accumulatedText = new();
     private readonly object _recognizerOperationGate = new();
     private string? _loadedModelPath;
     private string? _lastPartial;
     private Exception? _captureException;
+    private IRecognitionPipeline? _pipeline;
 
     public RecognitionService(IAudioSourceFactory audioSourceFactory)
     {
@@ -48,7 +48,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
 
     public bool IsRunning => _isRunning;
     public bool IsMuted => _captureMuted;
-    public string AccumulatedText => _accumulatedText.ToString();
+    public string AccumulatedText => _pipeline?.CommittedText ?? "";
     public string? LoadedModelPath => Volatile.Read(ref _loadedModelPath);
 
     private ModelLifecycleState _modelState = ModelLifecycleState.Unloaded;
@@ -74,9 +74,12 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         try
         {
             var recognizer = await Task.Run(() => CreateRecognizer(settings)).ConfigureAwait(false);
-            var old = Interlocked.Exchange(ref _recognizer, recognizer);
+            var previous = Interlocked.Exchange(ref _recognizer, recognizer);
+            // The pipeline owns the accumulated transcript and the per-batch rules, so it
+            // is rebuilt together with the recognizer it drives.
+            Volatile.Write(ref _pipeline, RecognitionPipelineFactory.Create(recognizer));
             lock (_recognizerOperationGate)
-                old?.Dispose();
+                previous?.Dispose();
 
             Volatile.Write(ref _loadedModelPath, settings.ModelPath);
             ModelState = ModelLifecycleState.Loaded;
@@ -105,6 +108,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             Stop();
 
         var old = Interlocked.Exchange(ref _recognizer, null);
+        Volatile.Write(ref _pipeline, null);
         lock (_recognizerOperationGate)
             old?.Dispose();
 
@@ -122,14 +126,15 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     /// </summary>
     public async Task StartAsync(AppSettings settings)
     {
-        if (_recognizer is null || ModelState != ModelLifecycleState.Loaded)
+        if (_recognizer is null || _pipeline is null || ModelState != ModelLifecycleState.Loaded)
             throw new InvalidOperationException("Model is not loaded. Call LoadModelAsync first.");
 
         if (_processTask is not null || _audioSource is not null)
             await StopAndCleanupAsync();
 
+        var pipeline = _pipeline;
         ApplyRuntimeSettings(settings);
-        _accumulatedText.Clear();
+        pipeline.Reset();
         _lastPartial = null;
         _captureException = null;
         _isRunning = true;
@@ -175,7 +180,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         };
         _captureThread.Start();
 
-        _processTask = Task.Run(ProcessLoop);
+        _processTask = Task.Run(() => ProcessLoop(pipeline));
     }
 
     public void Stop()
@@ -247,7 +252,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             languageConfigurable.TrySetLanguage(language);
     }
 
-    private Task ProcessLoop()
+    private Task ProcessLoop(IRecognitionPipeline pipeline)
     {
         try
         {
@@ -262,36 +267,10 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
                     if (_captureMuted)
                         continue;
 
-                    if (_recognizer is IUtteranceStreamingRecognizer utteranceRecognizer)
-                    {
-                        StreamingResult result;
-                        lock (_recognizerOperationGate)
-                            result = utteranceRecognizer.ProcessUtterance(batch);
-                        HandleStreamingResult(result);
-                    }
-                    else
-                    {
-                        string? raw;
-                        lock (_recognizerOperationGate)
-                            raw = _recognizer!.ProcessAudio(batch);
-
-                        if (raw is not null)
-                            _accumulatedText.Append(raw);
-
-                        // The recognizer's PartialText is revisable and never committed:
-                        // show committed + provisional so live text appears early while the
-                        // commit policy stays conservative. Only the committed text is used
-                        // for the final transcript and for text injection.
-                        var provisional = _recognizer!.PartialText;
-                        var display = string.IsNullOrEmpty(provisional)
-                            ? _accumulatedText.ToString()
-                            : _accumulatedText.Length > 0
-                                ? _accumulatedText + " " + provisional
-                                : provisional;
-
-                        if (display.Length > 0)
-                            RaisePartial(PartialPostProcessing.Execute(display));
-                    }
+                    RecognitionStep step;
+                    lock (_recognizerOperationGate)
+                        step = pipeline.Process(batch);
+                    ApplyStep(step);
                 }
 
                 if (!gotData)
@@ -301,24 +280,13 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
                 }
             }
 
-            if (_recognizer is IUtteranceStreamingRecognizer utterance)
-            {
-                StreamingResult result;
-                lock (_recognizerOperationGate)
-                    result = utterance.FlushUtterance();
-                HandleStreamingResult(result);
-            }
-            else
-            {
-                string? final;
-                lock (_recognizerOperationGate)
-                    final = _recognizer!.Flush();
-                if (final is not null)
-                    _accumulatedText.Append(final);
-            }
+            RecognitionStep tail;
+            lock (_recognizerOperationGate)
+                tail = pipeline.Flush();
+            ApplyStep(tail);
 
             // Final pass: strip language tags AND normalize whitespace for clean output.
-            FinalResult?.Invoke(FinalPostProcessing.Execute(_accumulatedText.ToString()));
+            FinalResult?.Invoke(FinalPostProcessing.Execute(pipeline.CommittedText));
         }
         catch (Exception ex)
         {
@@ -340,28 +308,125 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         new PostProcessingChain().Add(new LanguageTagStripper()).Add(new WhitespaceNormalizer());
 
     /// <summary>
-    /// Handles a streaming step from an utterance-segmenting recognizer:
-    /// commits finalized text and surfaces the running partial.
+    /// One decoded batch: the text to show as the live partial, and the text (when any)
+    /// this batch committed to the transcript.
     /// </summary>
-    private void HandleStreamingResult(StreamingResult result)
+    private readonly record struct RecognitionStep(string? Display, string? Committed, bool IsUtteranceCommit)
     {
-        if (!string.IsNullOrEmpty(result.Final))
+        public static RecognitionStep Empty { get; } = new(null, null, false);
+    }
+
+    /// <summary>
+    /// Unifies the two recognizer shapes behind one per-batch step. SpeechLib exposes
+    /// utterance-segmented streaming (committed text plus a revisable partial) and plain
+    /// streaming (a running transcript); the decode loop must not care which one it drives.
+    /// </summary>
+    private interface IRecognitionPipeline
+    {
+        /// <summary>The transcript committed so far.</summary>
+        string CommittedText { get; }
+
+        /// <summary>Drops committed text for a new session.</summary>
+        void Reset();
+
+        RecognitionStep Process(float[] batch);
+
+        RecognitionStep Flush();
+    }
+
+    private static class RecognitionPipelineFactory
+    {
+        public static IRecognitionPipeline Create(IStreamingSpeechRecognizer recognizer) =>
+            recognizer is IUtteranceStreamingRecognizer utterance
+                ? new UtterancePipeline(utterance)
+                : new PlainPipeline(recognizer);
+    }
+
+    /// <summary>
+    /// Utterance-segmented recognizer (Parakeet TDT): finalized utterances are committed
+    /// with a separating space, the revisable tail is shown as the partial.
+    /// </summary>
+    private sealed class UtterancePipeline(IUtteranceStreamingRecognizer recognizer) : IRecognitionPipeline
+    {
+        private readonly StringBuilder _committed = new();
+
+        public string CommittedText => _committed.ToString();
+
+        public void Reset() => _committed.Clear();
+
+        public RecognitionStep Process(float[] batch) => ToStep(recognizer.ProcessUtterance(batch));
+
+        public RecognitionStep Flush() => ToStep(recognizer.FlushUtterance());
+
+        private RecognitionStep ToStep(StreamingResult result)
         {
-            AppendUtterance(_accumulatedText, result.Final);
-            var processed = PartialPostProcessing.Execute(result.Final);
-            if (!string.IsNullOrEmpty(processed))
-                UtteranceFinalized?.Invoke(processed);
+            var committed = string.IsNullOrEmpty(result.Final) ? null : result.Final;
+            if (committed is not null)
+            {
+                if (_committed.Length > 0)
+                    _committed.Append(' ');
+                _committed.Append(committed);
+            }
+
+            return new RecognitionStep(ComposeDisplay(_committed, result.Partial), committed, IsUtteranceCommit: committed is not null);
+        }
+    }
+
+    /// <summary>
+    /// Plain streaming recognizer: every step's text is committed verbatim (no separator)
+    /// and the recognizer's own <c>PartialText</c> is the revisable tail.
+    /// </summary>
+    private sealed class PlainPipeline(IStreamingSpeechRecognizer recognizer) : IRecognitionPipeline
+    {
+        private readonly StringBuilder _committed = new();
+
+        public string CommittedText => _committed.ToString();
+
+        public void Reset() => _committed.Clear();
+
+        public RecognitionStep Process(float[] batch)
+        {
+            var raw = recognizer.ProcessAudio(batch);
+            if (!string.IsNullOrEmpty(raw))
+                _committed.Append(raw);
+
+            return new RecognitionStep(ComposeDisplay(_committed, recognizer.PartialText), raw, IsUtteranceCommit: false);
         }
 
-        var fullPartial = _accumulatedText.Length > 0 && result.Partial.Length > 0
-            ? _accumulatedText.ToString() + " " + result.Partial
-            : _accumulatedText.Length > 0
-                ? _accumulatedText.ToString()
-                : result.Partial;
+        public RecognitionStep Flush()
+        {
+            var tail = recognizer.Flush();
+            if (!string.IsNullOrEmpty(tail))
+                _committed.Append(tail);
 
-        var processedPartial = PartialPostProcessing.Execute(fullPartial);
-        if (!string.IsNullOrEmpty(processedPartial))
-            RaisePartial(processedPartial);
+            return RecognitionStep.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Surfaces one decoded step: committed text joins the transcript, the display text
+    /// becomes the live partial.
+    /// </summary>
+    private void ApplyStep(RecognitionStep step)
+    {
+        if (!string.IsNullOrEmpty(step.Committed))
+        {
+            var finalized = PartialPostProcessing.Execute(step.Committed);
+            if (step.IsUtteranceCommit && !string.IsNullOrEmpty(finalized))
+                UtteranceFinalized?.Invoke(finalized);
+        }
+
+        if (!string.IsNullOrEmpty(step.Display))
+            RaisePartial(PartialPostProcessing.Execute(step.Display));
+    }
+
+    /// <summary>Committed transcript followed by the recognizer's revisable tail.</summary>
+    private static string ComposeDisplay(StringBuilder committed, string? partial)
+    {
+        if (committed.Length == 0)
+            return partial ?? "";
+
+        return string.IsNullOrEmpty(partial) ? committed.ToString() : committed + " " + partial;
     }
 
     /// <summary>Reports a partial only when it differs from the previous one.</summary>
@@ -371,13 +436,6 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             return;
         _lastPartial = text;
         PartialResult?.Invoke(text);
-    }
-
-    private static void AppendUtterance(StringBuilder target, string utterance)
-    {
-        if (string.IsNullOrEmpty(utterance)) return;
-        if (target.Length > 0) target.Append(' ');
-        target.Append(utterance);
     }
 
     private void CleanupCaptureResources()
@@ -403,11 +461,23 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         UnloadModel();
     }
 
-    public void Dispose()
+    /// <summary>
+    /// Signals shutdown without blocking the calling thread; the teardown continues in
+    /// the background. Callers that can await should use <see cref="DisposeAsync"/>, which
+    /// completes deterministically.
+    /// </summary>
+    public void Dispose() => _ = DisposeInBackgroundAsync();
+
+    private async Task DisposeInBackgroundAsync()
     {
-        // Bounded by the shutdown timeout in StopAndCleanupAsync; prefer DisposeAsync
-        // from code that can await.
-        DisposeAsync().AsTask().GetAwaiter().GetResult();
+        try
+        {
+            await DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Error?.Invoke(ex);
+        }
     }
 }
 

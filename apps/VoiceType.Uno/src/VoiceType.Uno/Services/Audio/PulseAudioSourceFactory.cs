@@ -48,6 +48,20 @@ internal sealed class PulseAudioSource : IAudioSource
         }
     }
 
+    /// <summary>
+    /// Intentionally empty: the native stream is created, owned and freed by the capture
+    /// thread inside <see cref="Start"/>, which returns only after the capture loop ends.
+    /// The owner stops capture by clearing <c>state.IsRunning</c> and joining the thread
+    /// (see <c>RecognitionService</c>); the stream is released before that join returns,
+    /// bounded by one read period (~64 ms).
+    /// </summary>
+    /// <summary>
+    /// Intentionally empty: the native stream is created, owned and freed by the capture
+    /// thread inside <see cref="Start"/>, which returns only after the capture loop ends.
+    /// The owner stops capture by clearing <c>state.IsRunning</c> and joining the thread
+    /// (see <c>RecognitionService</c>); the stream is released before that join returns,
+    /// bounded by one read period (~64 ms at 16 kHz / 1024 frames).
+    /// </summary>
     public void Dispose()
     {
     }
@@ -89,18 +103,21 @@ internal sealed class PulseMixAudioSource : IAudioSource
         {
             while (state.IsRunning || microphoneThread.IsAlive || loopbackThread.IsAlive)
             {
-                var microphoneSamples = Drain(microphoneQueue);
-                var loopbackSamples = Drain(loopbackQueue);
-                var mixed = Mix(microphoneSamples, loopbackSamples);
-                if (mixed.Length > 0)
-                {
-                    buffer.Enqueue(mixed);
-                    signal.Set();
-                }
-                else
+                // Mix batch by batch instead of flattening both queues into lists: the two
+                // devices drift apart, and pairing the newest batch of each side keeps them
+                // aligned while removing the per-iteration list allocations.
+                var mixed = AudioMixdown.Average(
+                    TryDequeue(microphoneQueue),
+                    TryDequeue(loopbackQueue));
+
+                if (mixed is null)
                 {
                     state.Wait(20);
+                    continue;
                 }
+
+                buffer.Enqueue(mixed);
+                signal.Set();
             }
         }
         finally
@@ -152,30 +169,8 @@ internal sealed class PulseMixAudioSource : IAudioSource
         return thread;
     }
 
-    private static List<float> Drain(ConcurrentQueue<float[]> queue)
-    {
-        var samples = new List<float>();
-        while (queue.TryDequeue(out var batch))
-            samples.AddRange(batch);
-        return samples;
-    }
-
-    private static float[] Mix(IReadOnlyList<float> microphone, IReadOnlyList<float> loopback)
-    {
-        var count = Math.Max(microphone.Count, loopback.Count);
-        if (count == 0)
-            return [];
-
-        var mixed = new float[count];
-        for (var i = 0; i < count; i++)
-        {
-            var microphoneSample = i < microphone.Count ? microphone[i] : 0f;
-            var loopbackSample = i < loopback.Count ? loopback[i] : 0f;
-            mixed[i] = Math.Clamp((microphoneSample + loopbackSample) * 0.5f, -1f, 1f);
-        }
-
-        return mixed;
-    }
+    private static float[]? TryDequeue(ConcurrentQueue<float[]> queue) =>
+        queue.TryDequeue(out var batch) ? batch : null;
 }
 
 internal sealed class PulseCaptureStream : IDisposable

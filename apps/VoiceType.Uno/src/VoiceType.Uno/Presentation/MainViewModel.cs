@@ -1,8 +1,6 @@
 using SpeechLib.ModelDownload;
-using SpeechLib.TextOutput;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.UI.Dispatching;
 using VoiceType.Hotkeys;
 using VoiceType.Hotkeys.XdgPortal;
 using VoiceType.Uno.Services;
@@ -19,101 +17,96 @@ namespace VoiceType.Uno.Presentation;
 public sealed partial class MainViewModel : ObservableObject
 {
     private readonly RecognitionService _recognition;
-    private readonly SettingsService _settingsService;
+    private readonly SettingsStore _settingsStore;
     private readonly ModelDownloadManager _downloads;
     private IGlobalHotkeyService _hotkeys;
     private readonly IPlatformTextInjector _textInjector;
     private readonly ITrayIndicator _tray;
     private readonly TranslationService _translation;
-    private readonly DispatcherQueue _dispatcher;
-    private readonly DispatcherQueueTimer _partialResultTimer;
-    private string? _pendingPartialText;
+    private readonly IUiScheduler _scheduler;
 
-    // The transcript field is the source of truth: speech is appended after the text
-    // the field held when dictation started or resumed, so typed and edited text
-    // survives switching between manual input and dictation.
-    private readonly SpeechAppendComposer _speechComposer = new();
-    private string _lastRecognizerText = "";
-    private bool _keepTextOnNextRecording;
+    // Speech-to-transcript merging (throttled partials, manual-input hand-off, "speech
+    // continues after the text already in the field") lives in the coordinator; this
+    // class only projects its result into FloatingText.
+    private readonly TranscriptCoordinator _transcript;
 
-    private AppSettings _settings;
+    /// <summary>
+    /// The live settings instance. Always read through the store so a replaced instance
+    /// can never be observed here.
+    /// </summary>
+    private AppSettings Settings => _settingsStore.Current;
+
     private int _toggleHotkeyId;
     private int _muteHotkeyId;
     private int _injectTextHotkeyId;
+
+    // Applying a settings snapshot is serialized (one at a time, newest wins) by the
+    // gate plus the version counter; _isProjectingSettingsSnapshot suppresses the
+    // per-property persistence handlers while the snapshot is written onto the
+    // observable properties, because the snapshot path persists once.
     private readonly SemaphoreSlim _settingsApplyGate = new(1, 1);
     private int _settingsApplyVersion;
+    private bool _isProjectingSettingsSnapshot;
+
     private Task? _modelInitializationTask;
-    private bool _isApplyingSettingsSnapshot;
 
     public MainViewModel(
         RecognitionService recognition,
-        SettingsService settingsService,
+        SettingsStore settingsStore,
         ModelDownloadManager downloads,
         IGlobalHotkeyService hotkeys,
         IPlatformTextInjector textInjector,
         ITrayIndicator tray,
-        TranslationService translation)
+        TranslationService translation,
+        IUiScheduler scheduler)
     {
         _recognition = recognition;
-        _settingsService = settingsService;
+        _settingsStore = settingsStore;
         _downloads = downloads;
         _hotkeys = hotkeys;
         _textInjector = textInjector;
         _tray = tray;
         _translation = translation;
-        _dispatcher = DispatcherQueue.GetForCurrentThread();
+        _scheduler = scheduler;
+        _transcript = new TranscriptCoordinator(scheduler, () => FloatingText ?? "");
 
-        // Partial results arrive on every decode step (the recognizer emits one per
-        // processed chunk). Coalesce them into a trailing-edge 200 ms window — the
-        // same debounce the WinUI app uses — so the transcript binding, the layout
-        // pass and the translation feed run at a bounded rate instead of once per
-        // decode step.
-        _partialResultTimer = _dispatcher.CreateTimer();
-        _partialResultTimer.Interval = TimeSpan.FromMilliseconds(200);
-        _partialResultTimer.IsRepeating = false;
-        _partialResultTimer.Tick += (_, _) => FlushPendingPartialResult();
+        _selectedLanguage = Settings.Language;
+        IsTextInjectionEnabled = Settings.IsTextInjectionEnabled;
+        IsAutoScrollEnabled = Settings.IsAutoScrollEnabled;
+        AlwaysOnTop = Settings.AlwaysOnTop;
+        IsTranslationEnabled = Settings.TranslationEnabled;
+        _translationTargetLanguage = Settings.TranslationTargetLanguage;
+        _translation.SetTargetLanguage(Settings.TranslationTargetLanguage);
+        _translation.SetAdditionalSystemPrompt(Settings.TranslationSystemPrompt);
+        _translation.SetComputeBackend(Settings.TranslationComputeBackend);
+        _translation.SetSourceLanguage(Settings.Language);
 
-        _settings = settingsService.Load();
-        _selectedLanguage = _settings.Language;
-        IsTextInjectionEnabled = _settings.IsTextInjectionEnabled;
-        IsAutoScrollEnabled = _settings.IsAutoScrollEnabled;
-        AlwaysOnTop = _settings.AlwaysOnTop;
-        IsTranslationEnabled = _settings.TranslationEnabled;
-        _translationTargetLanguage = _settings.TranslationTargetLanguage;
-        _translation.SetTargetLanguage(_settings.TranslationTargetLanguage);
-        _translation.SetAdditionalSystemPrompt(_settings.TranslationSystemPrompt);
-        _translation.SetComputeBackend(_settings.TranslationComputeBackend);
-        _translation.SetSourceLanguage(_settings.Language);
-
-        _recognition.PartialResult += QueuePartialResult;
-        _recognition.FinalResult += text => _dispatcher.TryEnqueue(() =>
+        // The coordinator owns the ordering rules; this class mirrors the composed text
+        // and reacts to a committed final result.
+        _transcript.TextChanged += text =>
         {
-            _lastRecognizerText = text;
-            if (IsManualInputEnabled)
-                return; // manual keyboard input owns the transcript while enabled
-
-            // The final result supersedes any queued partial — drop the debounce
-            // window so a stale partial can never overwrite the committed text.
-            _partialResultTimer.Stop();
-            _pendingPartialText = null;
-
-            SetTranscriptFromSpeech(text);
+            FloatingText = text;
+            if (IsTranslationEnabled)
+                _translation.Feed(text);
+        };
+        _transcript.FinalCommitted += text =>
+        {
             if (IsTextInjectionEnabled && !string.IsNullOrEmpty(text))
                 InjectOffUiThread(text);
 
             if (IsTranslationEnabled)
-            {
-                _translation.Feed(FloatingText);
                 _ = _translation.FlushAsync();
-            }
-        });
-        _recognition.Stopped += () => _dispatcher.TryEnqueue(() =>
+        };
+
+        _recognition.PartialResult += _transcript.OnPartialResult;
+        _recognition.FinalResult += _transcript.OnFinalResult;
+        _recognition.Stopped += () => _scheduler.Post(() =>
         {
             IsRecording = false;
             StatusText = "Ready";
             _tray.SetRecording(false);
         });
-        _recognition.ModelStateChanged += state => _dispatcher.TryEnqueue(() =>
+        _recognition.ModelStateChanged += state => _scheduler.Post(() =>
         {
             IsModelLoading = state == ModelLifecycleState.Loading;
             IsModelReady = state == ModelLifecycleState.Loaded;
@@ -127,24 +120,24 @@ public sealed partial class MainViewModel : ObservableObject
             };
             OnPropertyChanged(nameof(RecordButtonText));
         });
-        _recognition.Error += exception => _dispatcher.TryEnqueue(() =>
+        _recognition.Error += exception => _scheduler.Post(() =>
             StatusText = $"Recognition error: {exception.Message}");
 
         // Aggregated progress for the whole download queue (ASR + translation in
         // parallel) comes from the shared manager; the same events drive the
         // per-model status line under the model banner.
-        _downloads.JobAdded += _ => _dispatcher.TryEnqueue(RefreshQueueProgress);
-        _downloads.JobUpdated += job => _dispatcher.TryEnqueue(() =>
+        _downloads.JobAdded += _ => _scheduler.Post(RefreshQueueProgress);
+        _downloads.JobUpdated += job => _scheduler.Post(() =>
         {
             RefreshQueueProgress();
             ReportModelDownloadProgress(job);
         });
-        _downloads.JobFinished += job => _dispatcher.TryEnqueue(() =>
+        _downloads.JobFinished += job => _scheduler.Post(() =>
         {
             RefreshQueueProgress();
             ReportModelDownloadProgress(job);
         });
-        _downloads.JobRemoved += _ => _dispatcher.TryEnqueue(RefreshQueueProgress);
+        _downloads.JobRemoved += _ => _scheduler.Post(RefreshQueueProgress);
 
         // Global hotkeys: presses arrive via the HotkeyPressed event. On Linux
         // the XDG portal is swapped in asynchronously (consent dialog on first
@@ -153,16 +146,16 @@ public sealed partial class MainViewModel : ObservableObject
 
         // Tray indicator: register with the desktop environment; activation
         // (icon click) toggles recording like the main button.
-        _tray.Activated += () => _dispatcher.TryEnqueue(() => _ = ToggleAsync());
-        _ = _tray.InitializeAsync();
+        _tray.Activated += () => _scheduler.Post(() => _ = ToggleAsync());
+        _ = RunInBackgroundAsync(_tray.InitializeAsync(), "Tray indicator");
 
         // Live translation: stream transcript deltas through the LiteRT-LM
         // server; translated text is displayed (and injectable) alongside the
         // original transcript.
-        _translation.TranslationChanged += text => _dispatcher.TryEnqueue(() => TranslatedText = text);
-        _translation.StatusChanged += status => _dispatcher.TryEnqueue(() => TranslationStatusText = status);
+        _translation.TranslationChanged += text => _scheduler.Post(() => TranslatedText = text);
+        _translation.StatusChanged += status => _scheduler.Post(() => TranslationStatusText = status);
 
-        _ = InitializeHotkeysAsync();
+        _ = RunInBackgroundAsync(InitializeHotkeysAsync(), "Global hotkeys");
 
         RefreshModelBanners();
         RefreshQueueProgress();
@@ -192,12 +185,28 @@ public sealed partial class MainViewModel : ObservableObject
         if (!service.IsAvailable)
             return;
 
-        if (!string.IsNullOrWhiteSpace(_settings.ToggleHotkey))
-            _toggleHotkeyId = await service.RegisterAsync(_settings.ToggleHotkey).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(_settings.MuteHotkey))
-            _muteHotkeyId = await service.RegisterAsync(_settings.MuteHotkey).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(_settings.InjectTextHotkey))
-            _injectTextHotkeyId = await service.RegisterAsync(_settings.InjectTextHotkey).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(Settings.ToggleHotkey))
+            _toggleHotkeyId = await service.RegisterAsync(Settings.ToggleHotkey).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(Settings.MuteHotkey))
+            _muteHotkeyId = await service.RegisterAsync(Settings.MuteHotkey).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(Settings.InjectTextHotkey))
+            _injectTextHotkeyId = await service.RegisterAsync(Settings.InjectTextHotkey).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Runs a fire-and-forget startup task, reporting failures on the status line
+    /// instead of leaving an unobserved task exception behind.
+    /// </summary>
+    private async Task RunInBackgroundAsync(Task task, string operation)
+    {
+        try
+        {
+            await task.ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _scheduler.Post(() => StatusText = $"{operation} error: {ex.Message}");
+        }
     }
 
     private async Task ReregisterHotkeysAsync()
@@ -215,58 +224,16 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _dispatcher.TryEnqueue(() => StatusText = $"Hotkey error: {ex.Message}");
+            _scheduler.Post(() => StatusText = $"Hotkey error: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Coalesces partial recognition results so the transcript updates at most once
-    /// per <see cref="_partialResultTimer"/> interval. This is a throttle, not a
-    /// debounce: a recognizer that reports more often than the interval (Nemotron
-    /// reports on every ~50 ms audio batch) kept restarting a debounce window, so no
-    /// text appeared until recording stopped.
+    /// Persists a single settings change. Every write goes through the store, which owns
+    /// the live settings instance and serializes the file writes.
     /// </summary>
-    private void QueuePartialResult(string text)
-    {
-        _dispatcher.TryEnqueue(() =>
-        {
-            _lastRecognizerText = text;
-            if (IsManualInputEnabled)
-                return; // manual keyboard input owns the transcript while enabled
-
-            _pendingPartialText = text;
-            // Start a window only when none is pending; the timer is non-repeating and
-            // shows the newest text when it fires.
-            if (!_partialResultTimer.IsRunning)
-                _partialResultTimer.Start();
-        });
-    }
-
-    private void FlushPendingPartialResult()
-    {
-        var text = _pendingPartialText;
-        _pendingPartialText = null;
-
-        if (text is null || IsManualInputEnabled)
-            return;
-
-        SetTranscriptFromSpeech(text);
-        if (IsTranslationEnabled)
-            _translation.Feed(FloatingText);
-    }
-
-    /// <summary>
-    /// Shows the text typed or kept in the field, followed by what the recognizer has
-    /// produced since speech started or resumed.
-    /// </summary>
-    private void SetTranscriptFromSpeech(string recognizerText) =>
-        FloatingText = _speechComposer.Compose(recognizerText);
-
-    /// <summary>Speech from now on is appended after the current field text.</summary>
-    private void ContinueSpeechAfterCurrentText()
-    {
-        _speechComposer.ContinueAfter(FloatingText, _lastRecognizerText);
-    }
+    private void Persist(Action<AppSettings> mutate) =>
+        _settingsStore.Post(mutate, ex => _scheduler.Post(() => StatusText = $"Settings error: {ex.Message}"));
 
     /// <summary>
     /// Text injection can block for ~80 ms on Linux (clipboard-owner hand-off plus a
@@ -281,18 +248,18 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _dispatcher.TryEnqueue(() => StatusText = $"Injection error: {ex.Message}");
+            _scheduler.Post(() => StatusText = $"Injection error: {ex.Message}");
         }
     });
 
     private void OnHotkeyPressed(int id)
     {
         if (id > 0 && id == _toggleHotkeyId)
-            _dispatcher.TryEnqueue(() => _ = ToggleAsync());
+            _scheduler.Post(() => _ = ToggleAsync());
         else if (id > 0 && id == _muteHotkeyId)
-            _dispatcher.TryEnqueue(() => ToggleMute());
+            _scheduler.Post(ToggleMute);
         else if (id > 0 && id == _injectTextHotkeyId)
-            _dispatcher.TryEnqueue(() =>
+            _scheduler.Post(() =>
             {
                 if (!string.IsNullOrEmpty(FloatingText))
                     InjectOffUiThread(FloatingText);
@@ -342,16 +309,7 @@ public sealed partial class MainViewModel : ObservableObject
         // Leaving manual input: dictation continues after the (possibly edited) text,
         // speech recognized while typing is not pasted in. Entering it keeps the text,
         // and the next recording appends to it instead of starting a clean field.
-        if (value)
-        {
-            _keepTextOnNextRecording = true;
-        }
-        else
-        {
-            _partialResultTimer.Stop();
-            _pendingPartialText = null;
-            ContinueSpeechAfterCurrentText();
-        }
+        _transcript.SetManualInput(value);
     }
 
     [ObservableProperty]
@@ -377,7 +335,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// ("Parakeet TDT 0.6B v3 — 4-bit (INT4)") when the folder is a known variant,
     /// otherwise the raw folder name.
     /// </summary>
-    public string ModelDisplayName => ModelCatalog.DescribeFolder(_settings.SelectedModel);
+    public string ModelDisplayName => ModelCatalog.DescribeFolder(Settings.SelectedModel);
 
     [ObservableProperty]
     private double _downloadProgress;
@@ -425,29 +383,21 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void RefreshQueueProgress()
     {
-        var totals = _downloads.Totals;
-        IsQueueActive = totals.Active > 0;
-        QueueProgressPercent = totals.Percent;
-        var totalJobs = totals.Active + totals.Completed + totals.Failed;
-        QueueProgressText = totals.TotalBytes > 0
-            ? $"Downloading models: {totals.Percent:F0}% " +
-              $"({FormatBytes(totals.DownloadedBytes)} / {FormatBytes(totals.TotalBytes)}, " +
-              $"{totals.Completed}/{totalJobs} done)"
-            : totals.Active > 0
-                ? $"Downloading models... ({totals.Completed}/{totalJobs} done)"
-                : "";
+        var progress = DownloadProgressFormatter.DescribeQueue(_downloads.Totals);
+        IsQueueActive = progress.IsActive;
+        QueueProgressPercent = progress.Percent;
+        QueueProgressText = progress.Text;
     }
 
     /// <summary>Mirrors the running download into the model status line.</summary>
     private void ReportModelDownloadProgress(DownloadJob job)
     {
-        if (!job.IsActive)
+        var status = DownloadProgressFormatter.DescribeJob(job);
+        if (status is null)
             return;
 
         DownloadProgress = job.Percent;
-        ModelStatusText = job.FilesTotal > 0
-            ? $"Downloading model... {job.Percent:F0}% ({job.FilesDone}/{job.FilesTotal} files)"
-            : "Downloading model...";
+        ModelStatusText = status;
         OnPropertyChanged(nameof(RecordButtonText));
     }
 
@@ -455,10 +405,10 @@ public sealed partial class MainViewModel : ObservableObject
     {
         // Check the configured/asr path integrity so a broken or partially
         // downloaded model is reported as "re-download" rather than "missing".
-        var asrPath = ModelPathResolver.FindExistingModelPath(_settings);
+        var asrPath = ModelPathResolver.FindExistingModelPath(Settings);
         var asrIntegrity = asrPath is not null
             ? ModelPathResolver.ModelIntegrity.Complete
-            : ModelPathResolver.CheckIntegrity(_settings.ModelPath);
+            : ModelPathResolver.CheckIntegrity(Settings.ModelPath);
         IsAsrModelPartial = asrIntegrity == ModelPathResolver.ModelIntegrity.Broken;
         IsAsrModelMissing = asrIntegrity != ModelPathResolver.ModelIntegrity.Complete;
         AsrModelBannerText = asrIntegrity switch
@@ -482,27 +432,44 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Enqueues the ASR model download into the shared queue (force re-download when partial).</summary>
     public void EnqueueAsrModelDownload()
     {
-        var modelsRoot = string.IsNullOrWhiteSpace(_settings.ModelsRootPath)
+        var modelsRoot = string.IsNullOrWhiteSpace(Settings.ModelsRootPath)
             ? AppPaths.ModelsDir
-            : _settings.ModelsRootPath;
+            : Settings.ModelsRootPath;
 
         if (IsAsrModelPartial)
             DeleteModelFolder(DefaultAsrModel.FolderPath(modelsRoot));
 
         var job = _downloads.Enqueue(DefaultAsrModel.CreateRequest(modelsRoot));
-        _ = job.Completion.ContinueWith(_ => _dispatcher.TryEnqueue(async () =>
-        {
-            if (job.State != DownloadJobState.Completed || job.ResultPath is null)
-                return;
+        _ = job.Completion.ContinueWith(
+            _ => _scheduler.Post(() => _ = AdoptDownloadedModelAsync(job, modelsRoot)),
+            TaskScheduler.Default);
+    }
 
-            var settings = _settingsService.Load();
-            settings.ModelsRootPath = modelsRoot;
-            settings.SelectedModel = Path.GetFileName(job.ResultPath);
-            settings.ModelPath = job.ResultPath;
-            await Task.Run(() => _settingsService.Save(settings));
-            _settings = settings;
-            RefreshModelBanners();
-        }), TaskScheduler.Default);
+    /// <summary>
+    /// Points the app at a freshly downloaded model. Runs on the UI thread and hands the
+    /// change to the settings store, so it cannot be lost to a concurrent write.
+    /// </summary>
+    private async Task AdoptDownloadedModelAsync(DownloadJob job, string modelsRoot)
+    {
+        if (job.State != DownloadJobState.Completed || job.ResultPath is null)
+            return;
+
+        try
+        {
+            await _settingsStore.MutateAsync(s =>
+            {
+                s.ModelsRootPath = modelsRoot;
+                s.SelectedModel = Path.GetFileName(job.ResultPath);
+                s.ModelPath = job.ResultPath;
+            }).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _scheduler.Post(() => StatusText = $"Settings error: {ex.Message}");
+            return;
+        }
+
+        _scheduler.Post(RefreshModelBanners);
     }
 
     /// <summary>Enqueues the translation model download into the shared queue (force re-download when partial).</summary>
@@ -512,12 +479,14 @@ public sealed partial class MainViewModel : ObservableObject
             TranslationModelInfo.DeleteDownloaded();
 
         var job = _downloads.Enqueue(TranslationModelInfo.CreateRequest());
-        _ = job.Completion.ContinueWith(_ => _dispatcher.TryEnqueue(() =>
-        {
-            RefreshModelBanners();
-            if (job.State == DownloadJobState.Completed)
-                _translation.UpdateBackend(TranslationService.BackendKind.Native);
-        }), TaskScheduler.Default);
+        _ = job.Completion.ContinueWith(
+            _ => _scheduler.Post(() =>
+            {
+                RefreshModelBanners();
+                if (job.State == DownloadJobState.Completed)
+                    _translation.UpdateBackend(TranslationService.BackendKind.Native);
+            }),
+            TaskScheduler.Default);
     }
 
     /// <summary>Removes an installed model folder (repair of a broken download).</summary>
@@ -533,14 +502,6 @@ public sealed partial class MainViewModel : ObservableObject
             // Best effort — the download reports the real problem.
         }
     }
-
-    private static string FormatBytes(long bytes) => bytes switch
-    {
-        >= 1L << 30 => $"{bytes / (double)(1L << 30):F2} GB",
-        >= 1L << 20 => $"{bytes / (double)(1L << 20):F1} MB",
-        >= 1L << 10 => $"{bytes / (double)(1L << 10):F0} KB",
-        _ => $"{bytes} B"
-    };
 
     [ObservableProperty]
     private bool _isTextInjectionEnabled;
@@ -572,11 +533,10 @@ public sealed partial class MainViewModel : ObservableObject
     partial void OnIsTranslationEnabledChanged(bool value)
     {
         OnPropertyChanged(nameof(IsTranslationModelBannerVisible));
-        if (_isApplyingSettingsSnapshot)
+        if (_isProjectingSettingsSnapshot)
             return;
 
-        _settings.TranslationEnabled = value;
-        _ = Task.Run(() => _settingsService.Update(s => s.TranslationEnabled = value));
+        Persist(s => s.TranslationEnabled = value);
         if (!value)
         {
             _translation.Reset();
@@ -593,11 +553,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnTranslationTargetLanguageChanged(string value)
     {
-        if (_isApplyingSettingsSnapshot)
+        if (_isProjectingSettingsSnapshot)
             return;
 
-        _settings.TranslationTargetLanguage = value;
-        _ = Task.Run(() => _settingsService.Update(s => s.TranslationTargetLanguage = value));
+        Persist(s => s.TranslationTargetLanguage = value);
         _translation.SetTargetLanguage(value);
     }
 
@@ -651,21 +610,15 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         // A new recording starts with an empty field only when the setting asks for it
-        // and the user has not been in manual input since the last recording; text
-        // typed or kept in manual mode stays and the new speech is appended after it.
-        if (_settings.ClearTextOnModelOrSessionChange && !_keepTextOnNextRecording && !IsManualInputEnabled)
-        {
-            FloatingText = "";
-            if (IsTranslationEnabled)
-                _translation.Feed("");
-        }
-        _keepTextOnNextRecording = false;
-        _lastRecognizerText = "";
-        ContinueSpeechAfterCurrentText();
+        // and the user has not been in manual input since the last recording; text typed
+        // or kept in manual mode stays and the new speech is appended after it. The
+        // coordinator clears the field through TextChanged, which also feeds the
+        // translator with the emptied text.
+        _transcript.BeginRecordingSession(Settings.ClearTextOnModelOrSessionChange);
 
         try
         {
-            await _recognition.StartAsync(_settings);
+            await _recognition.StartAsync(Settings);
             IsRecording = true;
             StatusText = "Listening...";
             _tray.SetRecording(true);
@@ -728,27 +681,26 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(RecordButtonText));
 
     partial void OnIsTextInjectionEnabledChanged(bool value) =>
-        _ = Task.Run(() => _settingsService.Update(s => s.IsTextInjectionEnabled = value));
+        Persist(s => s.IsTextInjectionEnabled = value);
 
     partial void OnIsAutoScrollEnabledChanged(bool value) =>
-        _ = Task.Run(() => _settingsService.Update(s => s.IsAutoScrollEnabled = value));
+        Persist(s => s.IsAutoScrollEnabled = value);
 
     partial void OnAlwaysOnTopChanged(bool value) =>
-        _ = Task.Run(() => _settingsService.Update(s => s.AlwaysOnTop = value));
+        Persist(s => s.AlwaysOnTop = value);
 
     partial void OnSelectedLanguageChanged(string value)
     {
-        if (_isApplyingSettingsSnapshot)
+        if (_isProjectingSettingsSnapshot)
             return;
 
-        _settings.Language = value;
-        _ = Task.Run(() => _settingsService.Update(s => s.Language = value));
+        Persist(s => s.Language = value);
         _translation.SetSourceLanguage(value);
         if (_recognition.ModelState == ModelLifecycleState.Loaded)
             _ = Task.Run(() => _recognition.SetLanguage(value));
     }
 
-            public AppSettings CreateSettingsSnapshot() => _settings.Clone();
+    public AppSettings CreateSettingsSnapshot() => _settingsStore.Snapshot();
 
     public async Task ApplySettingsAsync(AppSettings newSettings)
     {
@@ -759,17 +711,19 @@ public sealed partial class MainViewModel : ObservableObject
             if (version != Volatile.Read(ref _settingsApplyVersion))
                 return;
 
-            var previousSettings = _settings;
+            var previousSettings = Settings;
             ModelPathResolver.ApplyExistingModelPath(newSettings);
-            await Task.Run(() => _settingsService.Save(newSettings)).ConfigureAwait(false);
-            _settings = newSettings;
-            ApplySettingsSnapshot(newSettings);
-            _ = ReregisterHotkeysAsync();
-            _dispatcher.TryEnqueue(() =>
+            await _settingsStore.ReplaceAsync(newSettings).ConfigureAwait(false);
+
+            // The snapshot mutates observable properties and the banners read the same
+            // state, so both run on the UI thread.
+            _scheduler.Post(() =>
             {
+                ProjectSettingsSnapshot(newSettings);
                 RefreshModelBanners();
                 OnPropertyChanged(nameof(ModelDisplayName));
             });
+            _ = ReregisterHotkeysAsync();
 
             var previousModelPath = _recognition.LoadedModelPath;
             var newModelPath = ModelPathResolver.FindExistingModelPath(newSettings) ?? newSettings.ModelPath;
@@ -791,7 +745,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _dispatcher.TryEnqueue(() => StatusText = $"Settings error: {ex.Message}");
+            _scheduler.Post(() => StatusText = $"Settings error: {ex.Message}");
         }
         finally
         {
@@ -804,24 +758,21 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             await EnsureModelReadyAsync().ConfigureAwait(false);
-            if (!_settings.FirstRunCompleted)
-            {
-                _settings.FirstRunCompleted = true;
-                await Task.Run(() => _settingsService.Save(_settings)).ConfigureAwait(false);
-            }
+            if (!Settings.FirstRunCompleted)
+                await _settingsStore.MutateAsync(s => s.FirstRunCompleted = true).ConfigureAwait(false);
 
-            _dispatcher.TryEnqueue(() =>
+            _scheduler.Post(() =>
             {
                 IsModelLoading = false;
                 IsModelDownloading = false;
                 ModelStatusText = "Model ready";
-                if (_settings.AutoStartRecognition)
+                if (Settings.AutoStartRecognition)
                     _ = ToggleAsync();
             });
         }
         catch (Exception ex)
         {
-            _dispatcher.TryEnqueue(() =>
+            _scheduler.Post(() =>
             {
                 IsModelLoading = false;
                 IsModelDownloading = false;
@@ -833,41 +784,43 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task EnsureModelReadyAsync()
     {
-        var settings = _settingsService.Load();
-        var modelPath = ModelPathResolver.FindExistingModelPath(settings);
+        var modelPath = ModelPathResolver.FindExistingModelPath(Settings);
         if (modelPath is null)
         {
             SetModelPreparationState(true, true, "Downloading model...");
-            var modelsRoot = string.IsNullOrWhiteSpace(settings.ModelsRootPath)
+            var modelsRoot = string.IsNullOrWhiteSpace(Settings.ModelsRootPath)
                 ? AppPaths.ModelsDir
-                : settings.ModelsRootPath;
+                : Settings.ModelsRootPath;
 
             // Enqueue into the shared download manager and await this job's
             // completion. Aggregate progress shows on the main window.
             var job = _downloads.Enqueue(DefaultAsrModel.CreateRequest(modelsRoot));
             modelPath = await job.Completion.ConfigureAwait(false);
 
-            settings.ModelsRootPath = modelsRoot;
-            settings.SelectedModel = Path.GetFileName(modelPath);
-            settings.ModelPath = modelPath;
-            await Task.Run(() => _settingsService.Save(settings)).ConfigureAwait(false);
+            await _settingsStore.MutateAsync(s =>
+            {
+                s.ModelsRootPath = modelsRoot;
+                s.SelectedModel = Path.GetFileName(modelPath);
+                s.ModelPath = modelPath;
+            }).ConfigureAwait(false);
         }
-        else
+        else if (ModelPathResolver.ApplyExistingModelPath(Settings))
         {
-            ModelPathResolver.ApplyExistingModelPath(settings);
+            // The discovered path differed from the stored one; persist it so the next
+            // start is a plain read.
+            await _settingsStore.SaveAsync().ConfigureAwait(false);
         }
 
-        _settings = settings;
-        _dispatcher.TryEnqueue(RefreshModelBanners);
+        _scheduler.Post(RefreshModelBanners);
         SetModelPreparationState(true, false, "Loading model...");
-        await _recognition.LoadModelAsync(settings).ConfigureAwait(false);
+        await _recognition.LoadModelAsync(Settings).ConfigureAwait(false);
         if (_recognition.ModelState != ModelLifecycleState.Loaded)
             throw new InvalidOperationException("The speech model did not reach the Loaded state.");
     }
 
     private async Task ReloadModelAsync(AppSettings settings, string? modelPath, int version)
     {
-        _dispatcher.TryEnqueue(() =>
+        _scheduler.Post(() =>
         {
             IsModelReady = false;
             IsModelLoading = true;
@@ -878,11 +831,11 @@ public sealed partial class MainViewModel : ObservableObject
         if (version != Volatile.Read(ref _settingsApplyVersion))
             return;
 
-        _dispatcher.TryEnqueue(() => IsRecording = false);
+        _scheduler.Post(() => IsRecording = false);
         _recognition.UnloadModel();
         if (string.IsNullOrWhiteSpace(modelPath))
         {
-            _dispatcher.TryEnqueue(() =>
+            _scheduler.Post(() =>
             {
                 IsModelLoading = false;
                 ModelStatusText = "No model selected";
@@ -892,6 +845,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         settings.ModelPath = modelPath;
         await _recognition.LoadModelAsync(settings).ConfigureAwait(false);
+        // The recognizer call takes the operation gate; keep it off the calling thread.
         await Task.Run(() => _recognition.ApplyRuntimeSettings(settings)).ConfigureAwait(false);
     }
 
@@ -902,7 +856,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (version != Volatile.Read(ref _settingsApplyVersion))
             return;
 
-        _dispatcher.TryEnqueue(() =>
+        _scheduler.Post(() =>
         {
             IsRecording = false;
             IsCaptureMuted = false;
@@ -913,13 +867,9 @@ public sealed partial class MainViewModel : ObservableObject
 
         // The restarted recognizer begins a new session text; queued before Start so it
         // runs ahead of the first result, which is dispatched the same way.
-        _dispatcher.TryEnqueue(() =>
-        {
-            _lastRecognizerText = "";
-            ContinueSpeechAfterCurrentText();
-        });
+        _scheduler.Post(_transcript.StartNewSpeechSegment);
         await _recognition.StartAsync(settings);
-        _dispatcher.TryEnqueue(() =>
+        _scheduler.Post(() =>
         {
             IsRecording = true;
             StatusText = "Listening...";
@@ -927,9 +877,14 @@ public sealed partial class MainViewModel : ObservableObject
         });
     }
 
-    private void ApplySettingsSnapshot(AppSettings settings)
+    /// <summary>
+    /// Writes a whole settings snapshot onto the observable properties. Runs on the UI
+    /// thread; the per-property persistence handlers are suppressed because the snapshot
+    /// path persists once (see <see cref="_isProjectingSettingsSnapshot"/>).
+    /// </summary>
+    private void ProjectSettingsSnapshot(AppSettings settings)
     {
-        _isApplyingSettingsSnapshot = true;
+        _isProjectingSettingsSnapshot = true;
         try
         {
             if (!string.Equals(SelectedLanguage, settings.Language, StringComparison.Ordinal))
@@ -956,13 +911,13 @@ public sealed partial class MainViewModel : ObservableObject
         }
         finally
         {
-            _isApplyingSettingsSnapshot = false;
+            _isProjectingSettingsSnapshot = false;
         }
     }
 
     private void SetModelPreparationState(bool loading, bool downloading, string status)
     {
-        _dispatcher.TryEnqueue(() =>
+        _scheduler.Post(() =>
         {
             IsModelLoading = loading;
             IsModelDownloading = downloading;

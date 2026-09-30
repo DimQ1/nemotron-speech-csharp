@@ -26,6 +26,10 @@ dotnet test apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj --filter
 
 # Word-timestamp tests (unit + E2E regression, needs model + sample-0.mp3 for E2E)
 dotnet test apps/VoiceType/tests/VoiceType.Tests/VoiceType.Tests.csproj -c Release --filter "FullyQualifiedName~WordTimings"
+
+# VoiceType.Uno core tests (no UI, no network — settings store, model discovery,
+# transcript coordination, download formatting, audio mixdown)
+dotnet test apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/VoiceType.Uno.Tests.csproj
 ```
 
 - **Framework:** xUnit 2.9.0
@@ -67,9 +71,21 @@ NemotronSpeech (net10.0, Exe)
 VoiceType (net10.0-windows, WPF WinExe)
   └─ Desktop dictation app: MVVM, hotkeys, text injection
 
+VoiceType.Uno.Core (net10.0, Library)
+  └─ UI-free core of the Uno app: SettingsStore (single settings writer),
+     ModelPathResolver, TranscriptCoordinator, download formatting
+
+VoiceType.Uno (net10.0-windows / net10.0-desktop / android, Exe)
+  └─ Uno heads over VoiceType.Uno.Core; UI project, so it has no test project —
+     pure logic belongs in VoiceType.Uno.Core
+
 VoiceType.Tests (net10.0-windows, xUnit)
   └─ Tests referencing VoiceType
 ```
+
+- **VoiceType.Uno has no test project on purpose** — its TFMs (`net10.0-desktop`)
+  cannot be referenced from a plain test project. Put testable logic in
+  `VoiceType.Uno.Core` and test it from `apps/VoiceType.Uno/tests/VoiceType.Uno.Tests`.
 
 - **VoiceType depends on NemotronSpeech** — ONNX Runtime GenAI is pulled transitively
 - **CPU-only builds** — `SpeechLib.Providers` references `Microsoft.ML.OnnxRuntimeGenAI` (CPU) unconditionally; there is no `GpuArch` / GPU build configuration

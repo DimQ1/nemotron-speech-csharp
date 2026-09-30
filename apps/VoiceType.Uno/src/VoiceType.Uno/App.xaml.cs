@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.UI.Dispatching;
 using Uno.Resizetizer;
 using SpeechLib.LiteRT;
 using SpeechLib.ModelDownload;
@@ -44,6 +45,15 @@ public partial class App : Application
                 {
                     // ---- Platform-independent services ----
                     services.AddSingleton<SettingsService>();
+                    // Single owner of the live settings instance and the only writer of
+                    // settings.json: the UI thread, model init, download continuations and
+                    // the settings dialog all mutate through it.
+                    services.AddSingleton<SettingsStore>();
+                    // UI dispatcher behind an interface, so the UI-free core
+                    // (VoiceType.Uno.Core) can be unit-tested with a deterministic scheduler.
+                    services.AddSingleton<IUiScheduler>(_ => new DispatcherQueueUiScheduler(
+                        DispatcherQueue.GetForCurrentThread()
+                            ?? throw new InvalidOperationException("The UI dispatcher is not available on this thread.")));
 
                     // One download pipeline, shared with the WinUI app: the Hugging Face
                     // manager from SpeechLib.ModelDownload. Inside WSL the distro cannot

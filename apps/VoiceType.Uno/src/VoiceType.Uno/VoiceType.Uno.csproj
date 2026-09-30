@@ -53,6 +53,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- UI-free core: settings store, model discovery, transcript coordination.
+         Plain net10.0 so the logic is unit-tested without the Uno runtime. -->
+    <ProjectReference Include="..\VoiceType.Uno.Core\VoiceType.Uno.Core.csproj" />
     <!-- Speech recognition contracts (IAudioSource, IStreamingSpeechRecognizer, ...) -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib\SpeechLib.csproj" />
     <!-- Single recognition library: Nemotron (ORT GenAI) + Parakeet TDT providers.

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- UI-free core of the UNO app: settings, model discovery, transcript
+         composition, download progress formatting. Targets plain net10.0 so the
+         logic is unit-testable without the Uno/WinUI runtime. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>VoiceType.Uno.Core</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Model detectors (Qwen3/Parakeet/VibeVoice) used for model integrity checks -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib\SpeechLib.csproj" />
+    <!-- Download job/total counters formatted for the main window -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.ModelDownload\SpeechLib.ModelDownload.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="VoiceType.Uno.Tests" />
+  </ItemGroup>
+</Project>
