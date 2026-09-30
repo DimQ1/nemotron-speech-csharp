@@ -313,4 +313,27 @@ public sealed class Unit_ModelDownloadManagerTests : IDisposable
         Assert.Equal(ModelLatencyProfile.Streaming, recommended.Latency);
         Assert.Single(ModelCatalog.Models, m => m.IsRecommended);
     }
+
+    [Fact]
+    public async Task Remove_CancelsTheJobAndDropsItFromTheList()
+    {
+        var (manager, hub) = Create();
+        hub.ChunkSize = 128;
+        hub.ChunkDelay = TimeSpan.FromMilliseconds(5);
+        hub.Add("u/big", "model.onnx", 200_000);
+
+        var removed = new List<DownloadJob>();
+        manager.JobRemoved += job => { lock (removed) removed.Add(job); };
+
+        var job = manager.Enqueue(Request("u/big"));
+        while (job.DownloadedBytes == 0 && job.IsActive)
+            await Task.Delay(10);
+
+        manager.Remove(job);
+
+        Assert.DoesNotContain(manager.Jobs, j => j.Id == job.Id);
+        Assert.Equal(0, manager.Totals.Active);
+        Assert.Contains(removed, j => j.Id == job.Id);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => job.Completion);
+    }
 }

@@ -12,18 +12,18 @@ namespace VoiceType.Uno.Presentation;
 /// </summary>
 public sealed partial class ModelManagerViewModel : ObservableObject
 {
-    private readonly DownloadQueueService _queue;
+    private readonly ModelDownloadManager _downloads;
     private readonly DispatcherQueue _dispatcher;
     private readonly Func<AppSettings> _settingsProvider;
     private readonly Func<AppSettings, Task> _applySettings;
 
     public ModelManagerViewModel(
-        DownloadQueueService queue,
+        ModelDownloadManager downloads,
         DispatcherQueue dispatcher,
         Func<AppSettings> settingsProvider,
         Func<AppSettings, Task> applySettings)
     {
-        _queue = queue;
+        _downloads = downloads;
         _dispatcher = dispatcher;
         _settingsProvider = settingsProvider;
         _applySettings = applySettings;
@@ -125,14 +125,33 @@ public sealed partial class ModelManagerViewModel : ObservableObject
         OnPropertyChanged(nameof(SizeLeaderText));
     }
 
-    /// <summary>Queues a catalog variant into the shared parallel download queue.</summary>
-    internal DownloadQueueItem EnqueueDownload(ModelDescriptor model, bool force)
-        => _queue.EnqueueAsrModel(
-            ModelsRootPath,
-            _ => { },
-            forceRedownload: force,
-            repoId: model.RepoId,
-            quantizationFolder: model.QuantizationFolder);
+    /// <summary>Queues a catalog variant into the shared download manager.</summary>
+    internal DownloadJob EnqueueDownload(ModelDescriptor model, bool force)
+    {
+        // The manager de-duplicates and resumes; "re-download" means starting from
+        // an empty folder, so the caller removes it first.
+        if (force)
+            DeleteModelFolder(model.SubfolderName);
+
+        return _downloads.Enqueue(ModelDownloadRequest.ForCatalogModel(model, ModelsRootPath));
+    }
+
+    /// <summary>The download pipeline, so cards can observe and cancel their own job.</summary>
+    internal ModelDownloadManager Downloads => _downloads;
+
+    private void DeleteModelFolder(string folderName)
+    {
+        try
+        {
+            var folder = Path.Combine(ModelsRootPath, folderName);
+            if (Directory.Exists(folder))
+                Directory.Delete(folder, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"Could not clear {folderName}: {ex.Message}";
+        }
+    }
 
     /// <summary>
     /// A downloaded model becomes the active one: the user asked for this card,
@@ -191,7 +210,7 @@ public sealed partial class ModelManagerViewModel : ObservableObject
     /// <summary>Cancels every queued/running download.</summary>
     public void CancelAll()
     {
-        _queue.CancelAll();
+        _downloads.CancelAll();
         _dispatcher.TryEnqueue(() => StatusText = "Cancelled all downloads");
     }
 }

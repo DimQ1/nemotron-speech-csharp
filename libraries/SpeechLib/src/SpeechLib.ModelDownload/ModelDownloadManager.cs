@@ -218,6 +218,24 @@ public sealed class ModelDownloadManager : IDisposable
             Raise(JobRemoved, job);
     }
 
+    /// <summary>
+    /// Drops one job from the list. A running job is cancelled first, so the
+    /// partial file stays on disk and a later retry resumes it.
+    /// </summary>
+    public void Remove(DownloadJob job)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+        job.RequestCancel();
+
+        lock (_gate)
+        {
+            if (!_jobs.Remove(job))
+                return;
+        }
+
+        Raise(JobRemoved, job);
+    }
+
     private async Task RunAsync(DownloadJob job)
     {
         try

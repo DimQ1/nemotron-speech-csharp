@@ -20,8 +20,7 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly RecognitionService _recognition;
     private readonly SettingsService _settingsService;
-    private readonly ModelDownloadService _modelDownloader;
-    private readonly DownloadQueueService _downloadQueue;
+    private readonly ModelDownloadManager _downloads;
     private IGlobalHotkeyService _hotkeys;
     private readonly IPlatformTextInjector _textInjector;
     private readonly ITrayIndicator _tray;
@@ -49,8 +48,7 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(
         RecognitionService recognition,
         SettingsService settingsService,
-        ModelDownloadService modelDownloader,
-        DownloadQueueService downloadQueue,
+        ModelDownloadManager downloads,
         IGlobalHotkeyService hotkeys,
         IPlatformTextInjector textInjector,
         ITrayIndicator tray,
@@ -58,8 +56,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         _recognition = recognition;
         _settingsService = settingsService;
-        _modelDownloader = modelDownloader;
-        _downloadQueue = downloadQueue;
+        _downloads = downloads;
         _hotkeys = hotkeys;
         _textInjector = textInjector;
         _tray = tray;
@@ -133,19 +130,21 @@ public sealed partial class MainViewModel : ObservableObject
         _recognition.Error += exception => _dispatcher.TryEnqueue(() =>
             StatusText = $"Recognition error: {exception.Message}");
 
-        // Aggregated progress for the whole download queue (ASR + translation
-        // in parallel). The single-download ProgressChanged below stays for the
-        // one-off model initialization path.
-        _downloadQueue.Changed += () => _dispatcher.TryEnqueue(RefreshQueueProgress);
-
-        _modelDownloader.ProgressChanged += progress => _dispatcher.TryEnqueue(() =>
+        // Aggregated progress for the whole download queue (ASR + translation in
+        // parallel) comes from the shared manager; the same events drive the
+        // per-model status line under the model banner.
+        _downloads.JobAdded += _ => _dispatcher.TryEnqueue(RefreshQueueProgress);
+        _downloads.JobUpdated += job => _dispatcher.TryEnqueue(() =>
         {
-            DownloadProgress = progress.OverallProgress;
-            ModelStatusText = progress.TotalFiles > 0
-                ? $"Downloading model... {progress.OverallProgress:F0}% ({progress.DownloadedFiles}/{progress.TotalFiles})"
-                : "Downloading model...";
-            OnPropertyChanged(nameof(RecordButtonText));
+            RefreshQueueProgress();
+            ReportModelDownloadProgress(job);
         });
+        _downloads.JobFinished += job => _dispatcher.TryEnqueue(() =>
+        {
+            RefreshQueueProgress();
+            ReportModelDownloadProgress(job);
+        });
+        _downloads.JobRemoved += _ => _dispatcher.TryEnqueue(RefreshQueueProgress);
 
         // Global hotkeys: presses arrive via the HotkeyPressed event. On Linux
         // the XDG portal is swapped in asynchronously (consent dialog on first
@@ -426,16 +425,30 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void RefreshQueueProgress()
     {
-        var aggregate = _downloadQueue.GetAggregateProgress();
-        IsQueueActive = aggregate.ActiveItems > 0;
-        QueueProgressPercent = aggregate.Percent;
-        QueueProgressText = aggregate.TotalBytes > 0
-            ? $"Downloading models: {aggregate.Percent:F0}% " +
-              $"({FormatBytes(aggregate.DownloadedBytes)} / {FormatBytes(aggregate.TotalBytes)}, " +
-              $"{aggregate.CompletedItems}/{aggregate.TotalItems} done)"
-            : aggregate.ActiveItems > 0
-                ? $"Downloading models... ({aggregate.CompletedItems}/{aggregate.TotalItems} done)"
+        var totals = _downloads.Totals;
+        IsQueueActive = totals.Active > 0;
+        QueueProgressPercent = totals.Percent;
+        var totalJobs = totals.Active + totals.Completed + totals.Failed;
+        QueueProgressText = totals.TotalBytes > 0
+            ? $"Downloading models: {totals.Percent:F0}% " +
+              $"({FormatBytes(totals.DownloadedBytes)} / {FormatBytes(totals.TotalBytes)}, " +
+              $"{totals.Completed}/{totalJobs} done)"
+            : totals.Active > 0
+                ? $"Downloading models... ({totals.Completed}/{totalJobs} done)"
                 : "";
+    }
+
+    /// <summary>Mirrors the running download into the model status line.</summary>
+    private void ReportModelDownloadProgress(DownloadJob job)
+    {
+        if (!job.IsActive)
+            return;
+
+        DownloadProgress = job.Percent;
+        ModelStatusText = job.FilesTotal > 0
+            ? $"Downloading model... {job.Percent:F0}% ({job.FilesDone}/{job.FilesTotal} files)"
+            : "Downloading model...";
+        OnPropertyChanged(nameof(RecordButtonText));
     }
 
     private void RefreshModelBanners()
@@ -466,38 +479,59 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsTranslationModelBannerVisible));
     }
 
-    /// <summary>Enqueues the ASR model download into the shared parallel queue (force re-download when partial).</summary>
+    /// <summary>Enqueues the ASR model download into the shared queue (force re-download when partial).</summary>
     public void EnqueueAsrModelDownload()
     {
         var modelsRoot = string.IsNullOrWhiteSpace(_settings.ModelsRootPath)
             ? AppPaths.ModelsDir
             : _settings.ModelsRootPath;
-        var force = IsAsrModelPartial;
-        _downloadQueue.EnqueueAsrModel(modelsRoot, modelPath =>
-            _dispatcher.TryEnqueue(async () =>
-            {
-                var settings = _settingsService.Load();
-                settings.ModelsRootPath = modelsRoot;
-                settings.SelectedModel = Path.GetFileName(modelPath);
-                settings.ModelPath = modelPath;
-                await Task.Run(() => _settingsService.Save(settings));
-                _settings = settings;
-                RefreshModelBanners();
-            }),
-            forceRedownload: force);
+
+        if (IsAsrModelPartial)
+            DeleteModelFolder(DefaultAsrModel.FolderPath(modelsRoot));
+
+        var job = _downloads.Enqueue(DefaultAsrModel.CreateRequest(modelsRoot));
+        _ = job.Completion.ContinueWith(_ => _dispatcher.TryEnqueue(async () =>
+        {
+            if (job.State != DownloadJobState.Completed || job.ResultPath is null)
+                return;
+
+            var settings = _settingsService.Load();
+            settings.ModelsRootPath = modelsRoot;
+            settings.SelectedModel = Path.GetFileName(job.ResultPath);
+            settings.ModelPath = job.ResultPath;
+            await Task.Run(() => _settingsService.Save(settings));
+            _settings = settings;
+            RefreshModelBanners();
+        }), TaskScheduler.Default);
     }
 
-    /// <summary>Enqueues the translation model download into the shared parallel queue (force re-download when partial).</summary>
+    /// <summary>Enqueues the translation model download into the shared queue (force re-download when partial).</summary>
     public void EnqueueTranslationModelDownload()
     {
-        var force = IsTranslationModelPartial;
-        _downloadQueue.EnqueueTranslationModel(_ =>
-            _dispatcher.TryEnqueue(() =>
-            {
-                RefreshModelBanners();
+        if (IsTranslationModelPartial)
+            TranslationModelInfo.DeleteDownloaded();
+
+        var job = _downloads.Enqueue(TranslationModelInfo.CreateRequest());
+        _ = job.Completion.ContinueWith(_ => _dispatcher.TryEnqueue(() =>
+        {
+            RefreshModelBanners();
+            if (job.State == DownloadJobState.Completed)
                 _translation.UpdateBackend(TranslationService.BackendKind.Native);
-            }),
-            forceRedownload: force);
+        }), TaskScheduler.Default);
+    }
+
+    /// <summary>Removes an installed model folder (repair of a broken download).</summary>
+    private static void DeleteModelFolder(string folder)
+    {
+        try
+        {
+            if (Directory.Exists(folder))
+                Directory.Delete(folder, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Best effort — the download reports the real problem.
+        }
     }
 
     private static string FormatBytes(long bytes) => bytes switch
@@ -808,10 +842,10 @@ public sealed partial class MainViewModel : ObservableObject
                 ? AppPaths.ModelsDir
                 : settings.ModelsRootPath;
 
-            // Enqueue into the shared parallel download queue and await this
-            // item's completion. Aggregate progress shows on the main window.
-            var item = _downloadQueue.EnqueueAsrModel(modelsRoot, _ => { });
-            modelPath = await item.Completion.ConfigureAwait(false);
+            // Enqueue into the shared download manager and await this job's
+            // completion. Aggregate progress shows on the main window.
+            var job = _downloads.Enqueue(DefaultAsrModel.CreateRequest(modelsRoot));
+            modelPath = await job.Completion.ConfigureAwait(false);
 
             settings.ModelsRootPath = modelsRoot;
             settings.SelectedModel = Path.GetFileName(modelPath);

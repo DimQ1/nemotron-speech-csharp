@@ -1,4 +1,5 @@
 using Microsoft.UI.Dispatching;
+using SpeechLib.ModelDownload;
 using VoiceType.Uno.Presentation;
 using VoiceType.Uno.Services;
 
@@ -18,7 +19,7 @@ public sealed partial class DownloadsView : UserControl
     {
         InitializeComponent();
         ViewModel = new DownloadsViewModel(
-            App.Services.GetRequiredService<DownloadQueueService>(),
+            App.Services.GetRequiredService<ModelDownloadManager>(),
             DispatcherQueue.GetForCurrentThread());
     }
 

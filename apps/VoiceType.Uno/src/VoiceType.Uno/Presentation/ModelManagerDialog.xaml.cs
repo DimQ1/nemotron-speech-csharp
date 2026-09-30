@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using SpeechLib.ModelDownload;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.Presentation;
@@ -19,7 +20,7 @@ public sealed partial class ModelManagerDialog : ContentDialog
         Func<AppSettings, Task> applySettings)
     {
         ViewModel = new ModelManagerViewModel(
-            App.Services.GetRequiredService<DownloadQueueService>(),
+            App.Services.GetRequiredService<ModelDownloadManager>(),
             Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread(),
             settingsProvider,
             applySettings);

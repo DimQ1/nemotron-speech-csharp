@@ -1,7 +1,6 @@
 using Microsoft.UI.Dispatching;
 using SpeechLib.ModelDownload;
 using VoiceType.Uno.Services;
-
 namespace VoiceType.Uno.Presentation;
 
 /// <summary>
@@ -13,7 +12,8 @@ public sealed partial class ModelCardViewModel : ObservableObject
 {
     private readonly ModelManagerViewModel _owner;
     private readonly DispatcherQueue _dispatcher;
-    private DownloadQueueItem? _item;
+    private DownloadJob? _job;
+    private Action<DownloadJob>? _jobHandler;
 
     public ModelCardViewModel(
         ModelDescriptor descriptor,
@@ -145,14 +145,20 @@ public sealed partial class ModelCardViewModel : ObservableObject
         Progress = 0;
         StatusText = "Queued...";
 
-        var item = _owner.EnqueueDownload(Descriptor, force);
-        _item = item;
-        item.Changed += OnItemChanged;
-        UpdateFromItem(item);
+        var job = _owner.EnqueueDownload(Descriptor, force);
+        _job = job;
+        _jobHandler = updated =>
+        {
+            if (ReferenceEquals(updated, job))
+                _dispatcher.TryEnqueue(() => UpdateFromJob(job));
+        };
+        _owner.Downloads.JobUpdated += _jobHandler;
+        _owner.Downloads.JobFinished += _jobHandler;
+        UpdateFromJob(job);
 
         try
         {
-            await item.Completion.ConfigureAwait(false);
+            await job.Completion.ConfigureAwait(false);
             _dispatcher.TryEnqueue(() => StatusText = "Downloaded");
             await _owner.OnDownloadCompletedAsync(this).ConfigureAwait(false);
         }
@@ -166,8 +172,10 @@ public sealed partial class ModelCardViewModel : ObservableObject
         }
         finally
         {
-            item.Changed -= OnItemChanged;
-            _item = null;
+            _owner.Downloads.JobUpdated -= _jobHandler;
+            _owner.Downloads.JobFinished -= _jobHandler;
+            _jobHandler = null;
+            _job = null;
             _dispatcher.TryEnqueue(() =>
             {
                 IsDownloading = false;
@@ -183,26 +191,24 @@ public sealed partial class ModelCardViewModel : ObservableObject
     /// <summary>Cancels this card's queued/running download, if any.</summary>
     internal void CancelDownload()
     {
-        _item?.Cancel();
+        if (_job is not null)
+            _owner.Downloads.Cancel(_job);
+
         StatusText = "Cancelling...";
     }
 
-    private void OnItemChanged() => _dispatcher.TryEnqueue(() =>
+    private void UpdateFromJob(DownloadJob job)
     {
-        if (_item is not null)
-            UpdateFromItem(_item);
-    });
-
-    private void UpdateFromItem(DownloadQueueItem item)
-    {
-        Progress = item.Percent;
-        StatusText = item.State switch
+        Progress = job.Percent;
+        StatusText = job.State switch
         {
-            DownloadQueueItemState.Queued => item.Status,
-            DownloadQueueItemState.Running => item.Status,
-            DownloadQueueItemState.Completed => "Downloaded",
-            DownloadQueueItemState.Failed => $"Failed: {item.ErrorMessage}",
-            DownloadQueueItemState.Cancelled => "Cancelled",
+            DownloadJobState.Queued => "Queued",
+            DownloadJobState.Downloading => job.FilesTotal > 0
+                ? $"Downloading {job.CurrentFile} ({job.FilesDone}/{job.FilesTotal})"
+                : "Downloading...",
+            DownloadJobState.Completed => "Downloaded",
+            DownloadJobState.Failed => $"Failed: {job.Error}",
+            DownloadJobState.Cancelled => "Cancelled",
             _ => StatusText
         };
     }

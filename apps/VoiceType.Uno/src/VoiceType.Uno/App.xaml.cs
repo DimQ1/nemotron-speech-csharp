@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Uno.Resizetizer;
+using SpeechLib.LiteRT;
+using SpeechLib.ModelDownload;
 using VoiceType.Hotkeys;
 using VoiceType.Hotkeys.Windows;
 using VoiceType.Uno.Presentation;
@@ -7,7 +9,6 @@ using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Audio;
 using VoiceType.Uno.Services.Platform;
 using VoiceType.Uno.Services.Platform.Linux;
-using SpeechLib.LiteRT;
 
 namespace VoiceType.Uno;
 
@@ -43,10 +44,17 @@ public partial class App : Application
                 {
                     // ---- Platform-independent services ----
                     services.AddSingleton<SettingsService>();
-                    services.AddSingleton<ModelDownloadService>();
-                    // Parallel model download queue (ASR + translation at the same
-                    // time, aggregated progress for the whole queue).
-                    services.AddSingleton<DownloadQueueService>();
+
+                    // One download pipeline, shared with the WinUI app: the Hugging Face
+                    // manager from SpeechLib.ModelDownload. Inside WSL the distro cannot
+                    // reach huggingface.co, so downloads run through the Windows curl
+                    // (WindowsCurlHubTransport); everywhere else plain HTTP is used.
+                    services.AddSingleton(_ =>
+                    {
+                        IHubTransport transport = WindowsCurlHubTransport.TryCreate()
+                            ?? (IHubTransport)new HttpHubTransport(HuggingFaceClient.CreateDefaultHttpClient());
+                        return new ModelDownloadManager(new HuggingFaceClient(transport));
+                    });
 #if VOICE_TYPE_WINDOWS
                     services.AddSingleton<SpeechLib.IAudioSourceFactory, SpeechLib.Audio.NAudio3AudioSourceFactory>();
 #elif __ANDROID__

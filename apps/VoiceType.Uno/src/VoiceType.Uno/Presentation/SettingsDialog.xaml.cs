@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using SpeechLib.ModelDownload;
 using System.Text;
 using VoiceType.Uno.Services;
 using Windows.System;
@@ -123,16 +124,13 @@ public sealed partial class SettingsDialog : ContentDialog
         ViewModel.DownloadStatus = "Queued translation model download...";
         try
         {
-            // Route through the shared parallel queue (native .litertlm file).
-            var queue = App.Services.GetRequiredService<DownloadQueueService>();
-            var item = queue.EnqueueTranslationModel(
-                onCompleted: modelPath => DispatcherQueue.TryEnqueue(() =>
-                {
-                    ViewModel.DownloadStatus = $"Downloaded to {modelPath}";
-                    ViewModel.NotifyNativeModelChanged();
-                }));
+            // The single .litertlm file goes through the shared download manager.
+            var downloads = App.Services.GetRequiredService<ModelDownloadManager>();
+            var job = downloads.Enqueue(TranslationModelInfo.CreateRequest());
 
-            await item.Completion;
+            await job.Completion;
+            ViewModel.DownloadStatus = $"Downloaded to {job.ResultPath}";
+            ViewModel.NotifyNativeModelChanged();
         }
         catch (OperationCanceledException)
         {

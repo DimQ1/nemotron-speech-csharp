@@ -47,7 +47,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>Debug-only: downloads a catalog model through the shared queue and logs the outcome.</summary>
+    /// <summary>Debug-only: downloads a catalog model through the shared manager and logs the outcome.</summary>
     private async Task RunDownloadSmokeAsync(string folderName)
     {
         var descriptor = ModelCatalog.FindBySubfolder(folderName);
@@ -61,22 +61,19 @@ public sealed partial class MainPage : Page
         var root = string.IsNullOrWhiteSpace(settings.ModelsRootPath) ? AppPaths.ModelsDir : settings.ModelsRootPath;
         Console.WriteLine($"[SMOKE] {descriptor.Title} | repo={descriptor.RepoId} quant={descriptor.QuantizationFolder} root={root}");
 
-        var queue = App.Services.GetRequiredService<DownloadQueueService>();
-        var item = queue.EnqueueAsrModel(
-            root,
-            _ => { },
-            repoId: descriptor.RepoId,
-            quantizationFolder: descriptor.QuantizationFolder);
+        var downloads = App.Services.GetRequiredService<ModelDownloadManager>();
+        var job = downloads.Enqueue(ModelDownloadRequest.ForCatalogModel(descriptor, root));
 
         var lastStatus = "";
         var watcher = Task.Run(async () =>
         {
-            while (item.State is DownloadQueueItemState.Queued or DownloadQueueItemState.Running)
+            while (job.IsActive)
             {
-                if (!string.Equals(item.Status, lastStatus, StringComparison.Ordinal))
+                var status = $"{job.Percent:F0}% {job.FilesDone}/{job.FilesTotal} {job.CurrentFile}";
+                if (!string.Equals(status, lastStatus, StringComparison.Ordinal))
                 {
-                    lastStatus = item.Status;
-                    Console.WriteLine($"[SMOKE] {item.Percent:F1}% {lastStatus}");
+                    lastStatus = status;
+                    Console.WriteLine($"[SMOKE] {job.Percent:F1}% {status}");
                 }
 
                 await Task.Delay(2000);
@@ -85,7 +82,7 @@ public sealed partial class MainPage : Page
 
         try
         {
-            var path = await item.Completion;
+            var path = await job.Completion;
             Console.WriteLine($"[SMOKE] COMPLETED {path}");
         }
         catch (Exception ex)
@@ -94,7 +91,7 @@ public sealed partial class MainPage : Page
         }
 
         await watcher;
-        Console.WriteLine($"[SMOKE] final state={item.State} bytes={item.DownloadedBytes}");
+        Console.WriteLine($"[SMOKE] final state={job.State} bytes={job.DownloadedBytes}");
     }
 #endif
 
