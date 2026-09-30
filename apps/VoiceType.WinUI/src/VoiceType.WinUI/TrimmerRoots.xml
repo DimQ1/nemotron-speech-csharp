@@ -24,6 +24,13 @@
     <type fullname="CommunityToolkit.Mvvm.Input.*" preserve="all" />
   </assembly>
 
+  <!-- SpeechLib.Providers — the GenAI generation options are applied by reflecting over
+       the property names of this DTO (GenAiSearchOptions.Apply). If a trimmed build drops
+       them, decoding options are silently ignored instead of failing loudly. -->
+  <assembly fullname="SpeechLib.Providers">
+    <type fullname="SpeechLib.GeneratorParamsArgs" preserve="all" />
+  </assembly>
+
   <!-- VoiceType assemblies — ViewModels use source-generated ObservableProperty -->
   <assembly fullname="VoiceType.WinUI">
     <type fullname="VoiceType.WinUI.ViewModels.*" preserve="all" />
