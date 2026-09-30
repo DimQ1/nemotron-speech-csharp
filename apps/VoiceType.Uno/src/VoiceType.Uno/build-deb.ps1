@@ -132,6 +132,18 @@ wsl.exe -d $Distribution -- rm -rf $linuxStaging $linuxOutput
 
 $package = Get-Item $outputFile
 $hash = Get-FileHash $outputFile -Algorithm SHA256
+
+# Mirror build-deb.sh (the CI path): a Debian artifact is shipped together with its
+# checksum file and the install README. Without this the folder keeps the checksums
+# of a previous version, which no longer describe the package next to them.
+$readmeSource = Join-Path $packagingDir "README.md"
+if (Test-Path $readmeSource) {
+    Copy-Item $readmeSource (Join-Path $outputDir "README.md") -Force
+}
+
+$checksumLine = "$($hash.Hash.ToLowerInvariant())  $($package.Name)`n"
+[System.IO.File]::WriteAllText((Join-Path $outputDir "SHA256SUMS"), $checksumLine)
+
 Write-Host ""
 Write-Host "Debian package created:" -ForegroundColor Green
 Write-Host "  $($package.FullName)"
