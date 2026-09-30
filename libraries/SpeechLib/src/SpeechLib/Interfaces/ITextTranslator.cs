@@ -21,13 +21,6 @@ public interface ITextTranslator : IDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Synchronous convenience wrapper for pipeline code that already runs on a
-    /// dedicated thread. Defaults to blocking on <see cref="TranslateAsync"/>.
-    /// </summary>
-    string? Translate(string text, string targetLang, string? sourceLang = null) =>
-        TranslateAsync(text, targetLang, sourceLang).GetAwaiter().GetResult();
-
-    /// <summary>
     /// Translates <paramref name="text"/> incrementally, yielding translated text
     /// as it is produced (token deltas). Implementations that cannot stream fall
     /// back to emitting the full <see cref="TranslateAsync"/> result as one delta.

@@ -199,7 +199,13 @@ public sealed class RecognitionService : IRecognitionService
 
     // ── Capture lifecycle ──────────────────────────────────────
 
-    public void Start(AppSettings settings)
+    /// <summary>
+    /// Starts capture for a new session.
+    /// A previous session is shut down first (await, not block): the decode loop and
+    /// the capture thread share the session fields, so the cleanup has to complete
+    /// before the new session claims them.
+    /// </summary>
+    public async Task StartAsync(AppSettings settings)
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(RecognitionService));
@@ -209,8 +215,8 @@ public sealed class RecognitionService : IRecognitionService
 
         ApplyRuntimeSettings(settings);
 
-        // Dispose previous session resources before creating new ones
-        CleanupPreviousSession();
+        // Release the previous session's resources before creating new ones.
+        await StopAndCleanupAsync().ConfigureAwait(false);
 
         _accumulatedText.Clear();
         _partialProcessedText.Clear();
@@ -518,7 +524,7 @@ public sealed class RecognitionService : IRecognitionService
     public string? SaveAudio(string fileNameBase)
     {
         if (_audioRecorder is null) return null;
-        var sessionMgr = _sessionManager ?? new SessionManager();
+        var sessionMgr = _sessionManager ?? new SessionManager(telemetry: _telemetry);
         var dir = sessionMgr.EnsureDirectory();
         var path = Path.Combine(dir, fileNameBase);
         return _audioRecorder.StopAndSave(path);
@@ -570,7 +576,7 @@ public sealed class RecognitionService : IRecognitionService
         // before disposing its resources — prevents use-after-dispose.
         if (_processTask is not null)
         {
-            try { _processTask.GetAwaiter().GetResult(); } catch { }
+            try { _processTask.Wait(TimeSpan.FromSeconds(2)); } catch { }
             _processTask = null;
         }
 

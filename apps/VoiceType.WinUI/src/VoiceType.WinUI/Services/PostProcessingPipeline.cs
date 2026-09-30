@@ -8,6 +8,10 @@ namespace VoiceType.WinUI.Services;
 
 public sealed partial class PostProcessingPipeline : IPostProcessingPipeline
 {
+    private readonly ISystemTelemetry? _telemetry;
+
+    public PostProcessingPipeline(ISystemTelemetry? telemetry = null) => _telemetry = telemetry;
+
     public sealed record CompiledRule(Regex Regex, string Replacement);
 
     public IReadOnlyList<CompiledRule> CompileRules(List<PostProcessingRule> rules, bool enabled)
@@ -28,7 +32,12 @@ public sealed partial class PostProcessingPipeline : IPostProcessingPipeline
                         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled),
                     rule.Replacement));
             }
-            catch { }
+            catch (ArgumentException ex)
+            {
+                // A malformed user rule must not break dictation: skip it, but the
+                // user needs to know which pattern was rejected and why.
+                _telemetry?.LogWarning("PostProcessing", $"Ignoring rule '{rule.Pattern}': {ex.Message}");
+            }
         }
 
         return compiled;

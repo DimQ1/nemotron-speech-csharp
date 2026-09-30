@@ -87,10 +87,10 @@ public sealed class LoggingRecognitionService : IRecognitionService
         _telemetry.LogInfo("Recognition", "Model unloaded");
     }
 
-    public void Start(AppSettings settings)
+    public async Task StartAsync(AppSettings settings)
     {
         _telemetry.LogInfo("Recognition", "Starting recognition...");
-        _inner.Start(settings);
+        await _inner.StartAsync(settings);
         _telemetry.LogInfo("Recognition", "Recognition started OK");
     }
 

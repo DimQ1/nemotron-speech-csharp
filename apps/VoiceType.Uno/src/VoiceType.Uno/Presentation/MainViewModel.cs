@@ -665,7 +665,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            _recognition.Start(_settings);
+            await _recognition.StartAsync(_settings);
             IsRecording = true;
             StatusText = "Listening...";
             _tray.SetRecording(true);
@@ -918,7 +918,7 @@ public sealed partial class MainViewModel : ObservableObject
             _lastRecognizerText = "";
             ContinueSpeechAfterCurrentText();
         });
-        _recognition.Start(settings);
+        await _recognition.StartAsync(settings);
         _dispatcher.TryEnqueue(() =>
         {
             IsRecording = true;

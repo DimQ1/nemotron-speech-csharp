@@ -1244,10 +1244,7 @@ public sealed partial class MainViewModel : ObservableObject
             _partialResultTimer.Start();
             StatusText = "Listening...";
 
-            await Task.Run(() =>
-            {
-                _recognition.Start(_settings);
-            });
+            await Task.Run(() => _recognition.StartAsync(_settings));
         }
         catch (Exception ex)
         {

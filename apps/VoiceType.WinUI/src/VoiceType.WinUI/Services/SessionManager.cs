@@ -9,10 +9,12 @@ namespace VoiceType.WinUI.Services;
 public sealed class SessionManager : ISessionManager
 {
     private readonly ISettingsService? _settingsService;
+    private readonly ISystemTelemetry? _telemetry;
 
-    public SessionManager(ISettingsService? settingsService = null)
+    public SessionManager(ISettingsService? settingsService = null, ISystemTelemetry? telemetry = null)
     {
         _settingsService = settingsService;
+        _telemetry = telemetry;
     }
 
     private string SessionsDir
@@ -69,7 +71,11 @@ public sealed class SessionManager : ISessionManager
                 var s = JsonSerializer.Deserialize(File.ReadAllText(f), VoiceTypeJsonContext.Default.RecognitionSession);
                 if (s is not null) sessions.Add(s);
             }
-            catch { }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            {
+                // A truncated/unreadable session file must not hide the rest of the history.
+                _telemetry?.LogWarning("Sessions", $"Skipping unreadable session file {Path.GetFileName(f)}: {ex.Message}");
+            }
         }
         return sessions.OrderByDescending(s => s.StartedAt).ToList();
     }

@@ -53,7 +53,7 @@ public interface IRecognitionService : IDisposable
     /// Start audio capture and recognition.
     /// Model must be in <see cref="ModelState.Loaded"/> state.
     /// </summary>
-    void Start(AppSettings settings);
+    Task StartAsync(AppSettings settings);
 
     /// <summary>
     /// Stop audio capture and finalize recognition.

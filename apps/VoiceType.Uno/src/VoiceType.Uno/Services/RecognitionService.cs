@@ -15,7 +15,7 @@ namespace VoiceType.Uno.Services;
 /// model lifecycle is separated from capture lifecycle; the model stays loaded
 /// across Start/Stop cycles.
 /// </summary>
-public sealed class RecognitionService : IDisposable
+public sealed class RecognitionService : IDisposable, IAsyncDisposable
 {
     private readonly IAudioSourceFactory _audioSourceFactory;
 
@@ -114,13 +114,19 @@ public sealed class RecognitionService : IDisposable
 
     // ── Capture lifecycle ──────────────────────────────────────
 
-    public void Start(AppSettings settings)
+    /// <summary>
+    /// Starts capture for a new session.
+    /// A previous session is shut down first (await, not block): the decode loop and
+    /// the capture thread share the session fields, so the cleanup has to complete
+    /// before the new session claims them.
+    /// </summary>
+    public async Task StartAsync(AppSettings settings)
     {
         if (_recognizer is null || ModelState != ModelLifecycleState.Loaded)
             throw new InvalidOperationException("Model is not loaded. Call LoadModelAsync first.");
 
         if (_processTask is not null || _audioSource is not null)
-            StopAndCleanupAsync().GetAwaiter().GetResult();
+            await StopAndCleanupAsync();
 
         ApplyRuntimeSettings(settings);
         _accumulatedText.Clear();
@@ -391,10 +397,17 @@ public sealed class RecognitionService : IDisposable
         _buffer = null;
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        await StopAndCleanupAsync().ConfigureAwait(false);
+        UnloadModel();
+    }
+
     public void Dispose()
     {
-        StopAndCleanupAsync().GetAwaiter().GetResult();
-        UnloadModel();
+        // Bounded by the shutdown timeout in StopAndCleanupAsync; prefer DisposeAsync
+        // from code that can await.
+        DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 }
 

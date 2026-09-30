@@ -87,7 +87,12 @@ public abstract class BufferedAudioRecorder : IAudioRecorder
             _channel?.Writer.Complete();
 
             try { _encoderTask?.GetAwaiter().GetResult(); }
-            catch { }
+            catch (Exception ex)
+            {
+                // EncodeLoop records its own failure in _encoderException (checked below);
+                // rethrowing here would lose the already-encoded audio to a caller crash.
+                System.Diagnostics.Debug.WriteLine($"[{nameof(BufferedAudioRecorder)}] encoder faulted: {ex.Message}");
+            }
 
             _sink?.Dispose();
             _sink = null;

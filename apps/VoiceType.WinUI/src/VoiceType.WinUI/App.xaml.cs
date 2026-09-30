@@ -177,7 +177,9 @@ public partial class App : Application
         // ---- Services ----
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<ISessionManager>(sp =>
-            new SessionManager(sp.GetRequiredService<ISettingsService>()));
+            new SessionManager(
+                sp.GetRequiredService<ISettingsService>(),
+                sp.GetService<ISystemTelemetry>()));
         services.AddSingleton<IPostProcessingPipeline, PostProcessingPipeline>();
         services.AddSingleton<IGlobalHotkeyService, GlobalHotkeyService>();
         services.AddSingleton<ITextInjector, TextInjector>();

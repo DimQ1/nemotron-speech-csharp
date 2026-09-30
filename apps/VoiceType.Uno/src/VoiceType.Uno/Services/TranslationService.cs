@@ -11,7 +11,7 @@ namespace VoiceType.Uno.Services;
 /// picks the backend — the in-process Gemma 4 model when it is downloaded, otherwise
 /// an OpenAI-compatible LiteRT-LM server — and reconnects when settings change.
 /// </summary>
-public sealed class TranslationService : IDisposable
+public sealed class TranslationService : IDisposable, IAsyncDisposable
 {
     public enum BackendKind { Native, Http }
 
@@ -250,16 +250,27 @@ public sealed class TranslationService : IDisposable
         return translator;
     }
 
-    public void Dispose()
+    /// <summary>
+    /// Releases the translation engine. Waits (bounded) for the decode in flight:
+    /// native decode cannot abort mid-token.
+    /// </summary>
+    public async ValueTask DisposeAsync()
     {
-        // Waits (bounded) for the decode in flight: native decode cannot abort mid-token.
         try
         {
-            _session.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            await _session.DisposeAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             Log($"dispose: {ex.Message}");
         }
+    }
+
+    public void Dispose()
+    {
+        // A native decode in flight can hold the session for seconds, so blocking the
+        // calling (usually UI) thread here is not acceptable. Hand the wait to the pool
+        // and report failures the same way the async path does.
+        _ = Task.Run(async () => await DisposeAsync().ConfigureAwait(false));
     }
 }

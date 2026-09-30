@@ -78,7 +78,12 @@ public sealed class ErrorTelemetryService : ISystemTelemetry, IDisposable
                 // Atomic append shared across processes; avoids StreamWriter lock contention.
                 File.AppendAllText(_logFile, line + Environment.NewLine);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // Losing the log must never take the app down, but staying silent about it
+                // would make a broken log path undebuggable.
+                Console.Error.WriteLine($"[telemetry] could not write {_logFile}: {ex.Message}");
+            }
         }
     }
 
