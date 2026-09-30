@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text.Json;
 
 namespace SpeechLib.ModelDownload;
@@ -14,17 +13,28 @@ public sealed record RemoteFile(string RepoPath, string LocalPath, long SizeByte
 /// Minimal Hugging Face Hub client: lists a repo's files with their sizes and
 /// downloads single files with byte progress, resume and atomic replace.
 /// Stateless and thread-safe, so several downloads can share one instance.
+/// The wire format is provided by an <see cref="IHubTransport"/>, so WSL
+/// instances that cannot reach the Hub over HTTP can run the Windows curl
+/// instead (see <see cref="WindowsCurlHubTransport"/>).
 /// </summary>
 public sealed class HuggingFaceClient
 {
     private const string TempSuffix = ".download";
-    private readonly HttpClient _http;
+
+    private readonly IHubTransport _transport;
     private readonly string _baseUrl;
 
-    public HuggingFaceClient(HttpClient http, string baseUrl = "https://huggingface.co")
+    /// <summary>Client over an explicit transport (HTTP, Windows curl, a test double…).</summary>
+    public HuggingFaceClient(IHubTransport transport, string baseUrl = "https://huggingface.co")
     {
-        _http = http ?? throw new ArgumentNullException(nameof(http));
+        _transport = transport ?? throw new ArgumentNullException(nameof(transport));
         _baseUrl = baseUrl.TrimEnd('/');
+    }
+
+    /// <summary>Client over the default HTTP transport.</summary>
+    public HuggingFaceClient(HttpClient http, string baseUrl = "https://huggingface.co")
+        : this(new HttpHubTransport(http), baseUrl)
+    {
     }
 
     /// <summary>An HttpClient tuned for large Hub downloads (redirects to the CDN, no timeout).</summary>
@@ -51,10 +61,10 @@ public sealed class HuggingFaceClient
         string repoId, string? subfolder = null, string? singleFile = null, CancellationToken cancellationToken = default)
     {
         // blobs=true makes the Hub report sizes of LFS files, which byte progress needs.
-        using var response = await _http.GetAsync($"{_baseUrl}/api/models/{repoId}?blobs=true", cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var json = await _transport
+            .GetStringAsync($"{_baseUrl}/api/models/{repoId}?blobs=true", cancellationToken)
+            .ConfigureAwait(false);
+        using var document = JsonDocument.Parse(json);
 
         var files = new List<RemoteFile>();
         if (!document.RootElement.TryGetProperty("siblings", out var siblings))
@@ -94,7 +104,8 @@ public sealed class HuggingFaceClient
 
     /// <summary>
     /// Downloads one file into <paramref name="targetDirectory"/>. A partial
-    /// <c>.download</c> file from an interrupted run is resumed with a Range request.
+    /// <c>.download</c> file from an interrupted run is resumed when the transport
+    /// supports it (the HTTP one does, the Windows curl one restarts).
     /// <paramref name="onBytes"/> receives the byte count of every chunk written
     /// (including the resumed prefix once, up front).
     /// </summary>
@@ -105,45 +116,12 @@ public sealed class HuggingFaceClient
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         var temp = destination + TempSuffix;
 
-        long existing = File.Exists(temp) ? new FileInfo(temp).Length : 0;
-        if (file.SizeBytes > 0 && existing > file.SizeBytes)
-        {
-            File.Delete(temp);
-            existing = 0;
-        }
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, ResolveUrl(repoId, file.RepoPath));
-        if (existing > 0)
-            request.Headers.Range = new RangeHeaderValue(existing, null);
-
-        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-        if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable && existing > 0)
-        {
-            // The partial file already holds everything.
-            onBytes(existing);
-            MoveIntoPlace(temp, destination, cancellationToken);
-            return;
-        }
-
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(
-                $"Hugging Face rejected '{file.RepoPath}': {(int)response.StatusCode} {response.ReasonPhrase}", null, response.StatusCode);
-
-        var resumed = existing > 0 && response.StatusCode == HttpStatusCode.PartialContent;
-        if (resumed)
-            onBytes(existing);
-
-        await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
-        await using (var target = new FileStream(temp, resumed ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16, useAsync: true))
-        {
-            var buffer = new byte[1 << 16];
-            int read;
-            while ((read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
-            {
-                await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
-                onBytes(read);
-            }
-        }
+        await _transport.DownloadToFileAsync(
+            ResolveUrl(repoId, file.RepoPath),
+            temp,
+            file.SizeBytes,
+            onBytes,
+            cancellationToken).ConfigureAwait(false);
 
         MoveIntoPlace(temp, destination, cancellationToken);
     }
