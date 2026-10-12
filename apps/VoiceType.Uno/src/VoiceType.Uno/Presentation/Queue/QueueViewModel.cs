@@ -352,7 +352,8 @@ public sealed partial class JobCardViewModel : ObservableObject
             : [];
         HasLines = Lines.Count > 0;
         Glyph = lead.Kind == HistoryJobKind.Rerecognize ? "" : ""; // Refresh / Translate-ish
-        _totalAudioSeconds = !IsBatch ? manifests[0]?.Audio?.DurationSec : null;
+        // "5:16 of 12:34" only describes audio decoding; Gemma jobs count sentences / chunks, so they show a plain percentage.
+        _totalAudioSeconds = !IsBatch && lead.Kind == HistoryJobKind.Rerecognize ? manifests[0]?.Audio?.DurationSec : null;
 
         PauseCommand = new RelayCommand(() => _owner.Pause(this));
         ResumeCommand = new RelayCommand(() => _owner.Resume(this));
@@ -483,6 +484,20 @@ public sealed partial class JobCardViewModel : ObservableObject
                 parts.Add(vad.ValueKind == System.Text.Json.JsonValueKind.True ? "VAD on" : "VAD off");
             if (manifest is not null)
                 parts.Add("creates " + ReprocessPlan.NextVersionId(manifest));
+        }
+        else if (job.Kind == HistoryJobKind.Translate)
+        {
+            parts.Add("→ " + TranslateTabLogic.LanguageName(p.TargetLanguage ?? ""));
+            if (p.SourceVersion is { Length: > 0 } sourceVersion)
+                parts.Add("from " + sourceVersion);
+        }
+        else if (job.Kind == HistoryJobKind.AutoTitle)
+        {
+            parts.Add(p.Regenerate == true ? "new title" : "Gemma title");
+        }
+        else if (job.Kind == HistoryJobKind.Summarize)
+        {
+            parts.Add("summary for chats");
         }
         else if (!string.IsNullOrEmpty(p.TargetLanguage))
         {

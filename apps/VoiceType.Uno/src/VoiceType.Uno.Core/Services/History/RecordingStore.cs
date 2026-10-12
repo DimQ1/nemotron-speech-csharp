@@ -356,6 +356,9 @@ public sealed class RecordingStore
 
             m.Versions.Remove(version);
             DeleteFileQuietly(Path.Combine(folder, version.File));
+            // Gemma analysis caches of the version (summarize job).
+            DeleteFileQuietly(Path.Combine(folder, AnalysisStore.ChunksFile(versionId)));
+            DeleteFileQuietly(Path.Combine(folder, AnalysisStore.SummaryFile(versionId)));
         });
         return new VersionDeletion(versionId, deleted);
     }

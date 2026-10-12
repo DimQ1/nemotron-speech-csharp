@@ -1,0 +1,152 @@
+<UserControl x:Class="VoiceType.Uno.Presentation.History.TranslateSection"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:history="using:VoiceType.Uno.Presentation.History"
+             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+
+  <!-- Translate tab of the recording page (design §4.3, §8): language picker, run / continue / stop, progress,
+       bilingual transcript synced with the player. Logic: TranslateViewModel. -->
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <history:HistoryStyles />
+      </ResourceDictionary.MergedDictionaries>
+
+      <DataTemplate x:Key="TranslateRowTemplate" x:DataType="history:TranslateRowViewModel">
+        <Grid>
+          <Border Background="{ThemeResource HistorySelectedBrush}" Visibility="{x:Bind IsCurrent, Mode=OneWay}" />
+          <Border Width="3" HorizontalAlignment="Left" Background="{ThemeResource AccentFillColorDefaultBrush}"
+                  Visibility="{x:Bind IsCurrent, Mode=OneWay}" />
+          <Button Style="{StaticResource HistoryRowButtonStyle}" CornerRadius="0" Padding="12,10"
+                  Click="Row_Click" AutomationProperties.Name="{x:Bind AutomationName, Mode=OneWay}">
+            <Grid ColumnSpacing="12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="52" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="{x:Bind TimeText}" FontSize="12" Opacity="0.7" Margin="0,3,0,0" />
+              <StackPanel Grid.Column="1" Spacing="3">
+                <TextBlock Text="{x:Bind MainText, Mode=OneWay}" Opacity="{x:Bind MainOpacity, Mode=OneWay}"
+                           FontSize="15" TextWrapping="Wrap" />
+                <TextBlock Text="{x:Bind SecondaryText, Mode=OneWay}" FontSize="12" Opacity="0.65" TextWrapping="Wrap"
+                           Visibility="{x:Bind HasSecondary, Mode=OneWay}" />
+              </StackPanel>
+            </Grid>
+          </Button>
+        </Grid>
+      </DataTemplate>
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <Grid RowSpacing="8">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- Picker · Show original · More -->
+    <Grid Grid.Row="0" ColumnSpacing="4" Visibility="{x:Bind ViewModel.ShowToolbar, Mode=OneWay}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="44" />
+        <ColumnDefinition Width="44" />
+      </Grid.ColumnDefinitions>
+      <Button x:Name="PickerButton" MinHeight="44" HorizontalAlignment="Left" Padding="12,0" Click="Picker_Click"
+              AutomationProperties.Name="Translation language">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <TextBlock Text="{x:Bind ViewModel.PickerText, Mode=OneWay}" FontSize="13" TextTrimming="CharacterEllipsis"
+                     VerticalAlignment="Center" />
+          <FontIcon Glyph="&#xE70D;" FontSize="10" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+      <Button x:Name="OriginalButton" Grid.Column="1" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
+              Click="Original_Click" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}"
+              AutomationProperties.Name="Show original" ToolTipService.ToolTip="Show original under the translation">
+        <FontIcon Glyph="&#xE8C8;" FontSize="16" />
+      </Button>
+      <Button x:Name="MoreButton" Grid.Column="2" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
+              Click="More_Click" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}"
+              AutomationProperties.Name="Translation actions" ToolTipService.ToolTip="Translate again, delete">
+        <SymbolIcon Symbol="More" />
+      </Button>
+    </Grid>
+
+    <!-- State area: model missing · empty · running · partial · outdated -->
+    <ScrollViewer x:Name="StateScroll" Grid.Row="1" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="8">
+      <Border Style="{StaticResource HistoryHintStyle}" Visibility="{x:Bind ViewModel.ModelMissing, Mode=OneWay}">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Translation needs the Gemma model" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Text="{x:Bind ViewModel.ModelText, Mode=OneWay}" FontSize="13" TextWrapping="Wrap" />
+          <Button Style="{StaticResource HistoryAccentButtonStyle}" HorizontalAlignment="Left" Click="Download_Click"
+                  IsEnabled="{x:Bind ViewModel.CanDownloadModel, Mode=OneWay}" Content="Download Gemma"
+                  AutomationProperties.Name="Download the Gemma model" />
+        </StackPanel>
+      </Border>
+
+      <Border Style="{StaticResource HistoryHintStyle}" Visibility="{x:Bind ViewModel.IsEmptyState, Mode=OneWay}">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Translate this transcript" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock x:Name="EmptyDescription" FontSize="13" TextWrapping="Wrap"
+                     Text="Gemma translates it on the device, sentence by sentence, in sync with the player. Live translations made while recording are kept with the recording." />
+          <Button x:Name="StartButton" Style="{StaticResource HistoryAccentButtonStyle}" HorizontalAlignment="Left"
+                  Click="Start_Click" Content="Translate to…" AutomationProperties.Name="Translate to a language" />
+        </StackPanel>
+      </Border>
+
+      <Grid ColumnSpacing="8" Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="{x:Bind ViewModel.BusyText, Mode=OneWay}" Style="{StaticResource HistorySecondaryStyle}" />
+          <TextBlock Text="{x:Bind ViewModel.WaitText, Mode=OneWay}" Style="{StaticResource HistorySecondaryStyle}"
+                     Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Visibility="{x:Bind ViewModel.HasWaitText, Mode=OneWay}" />
+        </StackPanel>
+        <Button Grid.Column="1" Style="{StaticResource HistoryActionButtonStyle}" Click="Stop_Click" Content="Stop"
+                AutomationProperties.Name="Stop translating" />
+        <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Minimum="0" Maximum="1" Value="{x:Bind ViewModel.BusyFraction, Mode=OneWay}" />
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+      </Grid>
+
+      <Grid ColumnSpacing="8" Visibility="{x:Bind ViewModel.CanContinue, Mode=OneWay}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{x:Bind ViewModel.PartialText, Mode=OneWay}" Style="{StaticResource HistorySecondaryStyle}" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Style="{StaticResource HistoryAccentButtonStyle}" Click="Continue_Click" Content="Continue"
+                AutomationProperties.Name="Continue translating" />
+      </Grid>
+
+      <Border Style="{StaticResource HistoryHintStyle}" Visibility="{x:Bind ViewModel.IsOutdated, Mode=OneWay}">
+        <Grid ColumnSpacing="8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="{x:Bind ViewModel.OutdatedText, Mode=OneWay}" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Style="{StaticResource HistoryActionButtonStyle}" Click="TranslateCurrent_Click"
+                  Visibility="{x:Bind ViewModel.CanTranslateCurrent, Mode=OneWay}" Content="Update"
+                  AutomationProperties.Name="Translate the current version" />
+        </Grid>
+      </Border>
+    </StackPanel>
+    </ScrollViewer>
+
+    <!-- Bilingual transcript -->
+    <Border Grid.Row="2" Style="{StaticResource HistoryCardStyle}" Visibility="{x:Bind ViewModel.HasRows, Mode=OneWay}">
+      <ScrollViewer x:Name="RowsScroll" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <ItemsControl x:Name="RowsList" ItemsSource="{x:Bind ViewModel.Rows}" ItemTemplate="{StaticResource TranslateRowTemplate}"
+                      IsTabStop="False" Padding="0,4" />
+      </ScrollViewer>
+    </Border>
+  </Grid>
+</UserControl>

@@ -322,21 +322,9 @@
       </StackPanel>
     </ScrollViewer>
 
-    <!-- ── Translate (later wave) ──────────────────────────────────── -->
-    <ScrollViewer Grid.Row="2" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Auto" Visibility="{x:Bind ViewModel.IsTranslateTab, Mode=OneWay}">
-      <StackPanel Margin="16,0,16,16" Spacing="8">
-        <Border Style="{StaticResource HistoryHintStyle}">
-          <StackPanel Spacing="2">
-            <TextBlock Text="Translation of saved transcripts is coming soon" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
-            <TextBlock FontSize="13" TextWrapping="Wrap"
-                       Text="Gemma will translate this transcript on the device, in sync with the player. Live translations made while recording are kept with the recording." />
-          </StackPanel>
-        </Border>
-        <TextBlock Text="SAVED TRANSLATIONS" Style="{StaticResource HistorySectionHeaderStyle}" Margin="0,8,0,0" />
-        <TextBlock Text="{x:Bind ViewModel.TranslateText, Mode=OneWay}" FontSize="13" TextWrapping="Wrap" />
-      </StackPanel>
-    </ScrollViewer>
+    <!-- ── Translate: TranslateSection (picker, run / continue / stop, bilingual transcript) ── -->
+    <history:TranslateSection x:Name="TranslateView" Grid.Row="2" Margin="16,0,16,8"
+                              Visibility="{x:Bind ViewModel.IsTranslateTab, Mode=OneWay}" />
 
     <!-- ── Versions: list ──────────────────────────────────────────── -->
     <ScrollViewer Grid.Row="2" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"

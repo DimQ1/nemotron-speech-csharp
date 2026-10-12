@@ -64,6 +64,9 @@ public sealed partial class HistorySettingsPage : Page
             InjectSwitch.IsOn = h.SaveInjectDictations;
             ConfirmSwitch.IsOn = h.ConfirmDelete;
             JobsSwitch.IsOn = h.AllowJobsDuringRecording;
+            TitlesSwitch.IsOn = h.AutoTitles;
+            if (!VoiceType.Uno.Services.Jobs.GemmaAvailability.IsInstalled)
+                TitlesDetail.Text = "Needs the Gemma translation model: download it on the Models page";
             InjectSwitch.IsEnabled = h.Enabled;
             if (OperatingSystem.IsAndroid())
                 JobsDetail.Text = "Slower and uses more battery while you record";
@@ -124,10 +127,11 @@ public sealed partial class HistorySettingsPage : Page
     {
         if (_loading)
             return;
-        bool enabled = EnabledSwitch.IsOn, inject = InjectSwitch.IsOn, confirm = ConfirmSwitch.IsOn, jobs = JobsSwitch.IsOn;
+        bool enabled = EnabledSwitch.IsOn, inject = InjectSwitch.IsOn, confirm = ConfirmSwitch.IsOn, jobs = JobsSwitch.IsOn, titles = TitlesSwitch.IsOn;
         InjectSwitch.IsEnabled = enabled;
         HistoryServices.UpdateHistorySettings(h =>
         {
+            h.AutoTitles = titles;
             h.Enabled = enabled;
             h.SaveInjectDictations = inject;
             h.ConfirmDelete = confirm;

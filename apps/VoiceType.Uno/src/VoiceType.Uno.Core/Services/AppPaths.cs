@@ -37,6 +37,10 @@ public static class AppPaths
 
     private static string ResolveDataRoot()
     {
+        // Test/diagnostics override: run the app on a throwaway data root (settings, sessions, jobs, models).
+        if (Environment.GetEnvironmentVariable("VOICETYPE_DATA_ROOT") is { Length: > 0 } overridden)
+            return Path.GetFullPath(overridden);
+
         var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (string.IsNullOrWhiteSpace(baseDir))
             baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");

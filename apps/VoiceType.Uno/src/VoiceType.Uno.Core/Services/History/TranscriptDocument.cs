@@ -86,10 +86,31 @@ public sealed class TranslationDocument
     public int SentencesDone { get; set; }
     public int SentencesTotal { get; set; }
 
+    /// <summary>
+    /// Saved-transcript translations: the translated sentences in order (the first
+    /// <see cref="SentencesDone"/> of the plan), each with the segment it starts in. Lets a
+    /// partial translation continue exactly where it stopped. Null in translations made live.
+    /// </summary>
+    public List<TranslationSentence>? Sentences { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 
     public string? TextFor(int segmentIndex) => Segments.Find(s => s.Index == segmentIndex)?.Text;
+}
+
+/// <summary>One translated sentence of a saved-transcript translation.</summary>
+public sealed class TranslationSentence
+{
+    /// <summary><see cref="TranscriptSegment.Index"/> the sentence starts in (its translation is shown there).</summary>
+    [JsonPropertyName("s")]
+    public int Segment { get; set; }
+
+    [JsonPropertyName("t")]
+    public string Text { get; set; } = "";
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
 
 public sealed class TranslationSegment
