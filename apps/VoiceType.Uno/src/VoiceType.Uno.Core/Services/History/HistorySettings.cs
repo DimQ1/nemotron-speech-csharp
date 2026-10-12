@@ -45,6 +45,23 @@ public sealed class HistorySettings
     /// <summary>Let Gemma write a title for every saved recording (low-priority job; needs the translation model).</summary>
     public bool AutoTitles { get; set; } = true;
 
+    /// <summary>Speaker detection (<c>Speakers.*</c>, design §11.5).</summary>
+    public SpeakerSettings Speakers
+    {
+        get => _speakers;
+        set => _speakers = value ?? new SpeakerSettings();
+    }
+
+    /// <summary>Automatic reprocessing of new recordings (<c>Reprocess.*</c>, design §11.5).</summary>
+    public ReprocessSettings Reprocess
+    {
+        get => _reprocess;
+        set => _reprocess = value ?? new ReprocessSettings();
+    }
+
+    private SpeakerSettings _speakers = new();
+    private ReprocessSettings _reprocess = new();
+
     [JsonIgnore]
     public bool KeepAudioForever => AudioRetentionDays <= 0;
 
@@ -55,5 +72,11 @@ public sealed class HistorySettings
     public bool ShouldSaveRecording(bool injectTextWasOn) =>
         Enabled && (!injectTextWasOn || SaveInjectDictations);
 
-    public HistorySettings Clone() => (HistorySettings)MemberwiseClone();
+    public HistorySettings Clone()
+    {
+        var copy = (HistorySettings)MemberwiseClone();
+        copy._speakers = _speakers.Clone();
+        copy._reprocess = _reprocess.Clone();
+        return copy;
+    }
 }

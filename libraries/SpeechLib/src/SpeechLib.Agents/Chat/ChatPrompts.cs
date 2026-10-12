@@ -31,6 +31,11 @@ public static partial class ChatPrompts
         "4. When several recordings are involved, say which recording each fact comes from.\n" +
         "5. The transcript is automatic speech recognition without speaker labels and may contain mistakes. Do not guess who spoke or invent names.";
 
+    /// <summary>Rule 5 when the transcript lines carry speaker names ("Anna: text") from speaker detection.</summary>
+    public const string SpeakerRule =
+        "5. Many transcript lines start with a speaker name, as in \"Anna: text\"; use the names exactly as given when you say who spoke. " +
+        "A line without a name has an unknown speaker; never invent a name for it or for \"Speaker N\". The transcript is automatic speech recognition and may contain mistakes.";
+
     // Bump when the wording of a summarisation prompt changes: cached summaries are keyed by it.
     private const string TranscriptLanguage = " Answer in the language of the transcript.";
 
@@ -49,15 +54,15 @@ public static partial class ChatPrompts
             "List the questions that were asked and whether they were answered: one short bullet each, at most 8, each with a citation." + TranscriptLanguage,
             QuestionKind.Extraction),
         new("speakers", "Who said what",
-            "Who spoke and what did each person say? Use only names that are said in the transcript; the transcript has no speaker labels, so if people cannot be told apart, say that and list the main points instead. At most 8 short bullets, each with a citation." + TranscriptLanguage,
+            "Who spoke and what did each person say? When transcript lines start with a speaker name, group the points by those names. Otherwise use only names that are said in the transcript, and if people cannot be told apart, say that and list the main points instead. At most 8 short bullets, each with a citation." + TranscriptLanguage,
             QuestionKind.Extraction),
     ];
 
     /// <summary>Heading of the sources block shown in the system message.</summary>
     public static string BuildSystemMessage(IReadOnlyList<ChatSourceDocument> sources)
     {
-        var sb = new StringBuilder(Instructions);
         var active = sources.Where(s => s.Active).ToList();
+        var sb = new StringBuilder(active.Any(s => HasSpeakers(s)) ? Instructions.Replace(NoSpeakerRule, SpeakerRule, StringComparison.Ordinal) : Instructions);
         sb.Append("\n\nRecordings you can read:");
         foreach (var s in active)
         {
@@ -71,6 +76,21 @@ public static partial class ChatPrompts
         if (removed.Count > 0)
             sb.Append("\n").Append(string.Join(", ", removed)).Append(removed.Count == 1 ? " was" : " were").Append(" removed by the user: do not cite or use it.");
         return sb.ToString();
+    }
+
+    private const string NoSpeakerRule =
+        "5. The transcript is automatic speech recognition without speaker labels and may contain mistakes. Do not guess who spoke or invent names.";
+
+    private static bool HasSpeakers(ChatSourceDocument source)
+    {
+        try
+        {
+            return source.LoadLines().Any(l => !string.IsNullOrWhiteSpace(l.Speaker));
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     public static QuestionKind Classify(string question)

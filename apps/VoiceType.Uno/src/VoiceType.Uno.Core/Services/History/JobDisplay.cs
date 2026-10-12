@@ -23,6 +23,8 @@ public static class JobDisplay
         HistoryJobKind.Translate => "Translate",
         HistoryJobKind.AutoTitle => "Title",
         HistoryJobKind.Summarize => "Prepare chat",
+        HistoryJobKind.Diarize => "Detect speakers",
+        HistoryJobKind.Analyze => "Analyze",
         _ => "Job from a newer VoiceType",
     };
 

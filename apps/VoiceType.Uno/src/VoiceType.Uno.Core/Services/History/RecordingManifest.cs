@@ -78,6 +78,23 @@ public sealed class RecordingManifest
     public List<TranscriptVersion> Versions { get; set; } = [];
     public List<TranslationInfo> Translations { get; set; } = [];
 
+    // Speaker diarization (design §10.4). All additive: schema stays 1, older apps keep these as extension data.
+
+    /// <summary>Model runs over the audio (<c>diarization/rM.json</c>).</summary>
+    public List<DiarizationRunInfo> DiarizationRuns { get; set; } = [];
+
+    /// <summary>Labelling of a version by a run (<c>speakers/vN.rM.json</c>).</summary>
+    public List<SpeakerLayerInfo> SpeakerLayers { get; set; } = [];
+
+    /// <summary>Version id → current speaker layer id; no entry → the newest layer of the version.</summary>
+    public Dictionary<string, string> CurrentSpeakers { get; set; } = [];
+
+    /// <summary>People, names, colours and the channel → person map; null until the first run.</summary>
+    public SpeakerDirectoryInfo? Speakers { get; set; }
+
+    /// <summary>Analyze steps of Reprocess chains (<c>analysis/vN.sK.insights.json</c>).</summary>
+    public List<AnalysisInfo> Analyses { get; set; } = [];
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 
@@ -98,6 +115,16 @@ public sealed class RecordingManifest
 
     public TranscriptVersion? FindVersion(string versionId) => Versions.Find(v => v.Id == versionId);
     public TranslationInfo? FindTranslation(string translationId) => Translations.Find(t => t.Id == translationId);
+    public DiarizationRunInfo? FindRun(string runId) => DiarizationRuns.Find(r => r.Id == runId);
+    public SpeakerLayerInfo? FindSpeakerLayer(string layerId) => SpeakerLayers.Find(l => l.Id == layerId);
+
+    /// <summary>The speaker layer to show for <paramref name="versionId"/>: the chosen one, else the newest of the version.</summary>
+    public SpeakerLayerInfo? CurrentSpeakerLayer(string versionId)
+    {
+        if (CurrentSpeakers.TryGetValue(versionId, out var id) && FindSpeakerLayer(id) is { } chosen && chosen.Version == versionId)
+            return chosen;
+        return SpeakerLayers.LastOrDefault(l => l.Version == versionId);
+    }
 }
 
 public sealed class RecordingMode
@@ -171,6 +198,9 @@ public sealed class TranscriptVersion
 
     /// <summary>First ~200 characters of the text, so lists need not load transcripts.</summary>
     public string? Excerpt { get; set; }
+
+    /// <summary>The Reprocess chain that created the version (written once); null for ordinary versions.</summary>
+    public VersionOrigin? Origin { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }

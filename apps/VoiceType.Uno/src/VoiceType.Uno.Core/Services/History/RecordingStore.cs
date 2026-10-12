@@ -33,7 +33,7 @@ public sealed record RecoveryResult(
 /// load-modify-write under one lock, so concurrent callers never lose a change.
 /// Returned manifests are copies; mutate only through this type.
 /// </summary>
-public sealed class RecordingStore
+public sealed partial class RecordingStore
 {
     public const string ManifestFileName = "manifest.json";
     public const string LockFileName = ".lock";
@@ -308,6 +308,7 @@ public sealed class RecordingStore
             spec.Kind = VersionKinds.Edited;
             spec.Parent = sourceVersionId;
             spec.Edited = false;
+            spec.Origin = null;
             spec.ExtensionData = null;
             spec.Stats = new VersionStats();
             return AddVersion(id, spec, edited, makeCurrent: true);
@@ -360,6 +361,8 @@ public sealed class RecordingStore
             DeleteFileQuietly(Path.Combine(folder, AnalysisStore.ChunksFile(versionId)));
             DeleteFileQuietly(Path.Combine(folder, AnalysisStore.SummaryFile(versionId)));
             DeleteFileQuietly(Path.Combine(folder, AnalysisStore.LegacyChatSummariesFile(versionId)));
+            // Speaker layers and analyses of the version (the runs stay: they belong to the audio).
+            DeleteSpeakerArtifacts(folder, m, versionId);
         });
         return new VersionDeletion(versionId, deleted);
     }

@@ -54,6 +54,9 @@ public sealed class ChatSource
     public string VersionId { get; set; } = "";
     public DateTimeOffset AddedAt { get; set; }
 
+    /// <summary>Speaker layer the model read, when the lines carried speaker names (design 10.8).</summary>
+    public string? SpeakerLayer { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
@@ -84,6 +87,9 @@ public sealed class ChatCitation
     public double StartSec { get; set; }
     public double? EndSec { get; set; }
     public string? Quote { get; set; }
+
+    /// <summary>Name of the speaker of the cited line at the time of the answer (a snapshot: later renames do not change it).</summary>
+    public string? Speaker { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }

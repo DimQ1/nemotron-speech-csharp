@@ -8,10 +8,12 @@ public enum SearchField
     Transcript = 2,
     Translation = 4,
     Chat = 8,
+    /// <summary>A speaker name the user gave (Anna, Mark…) matched.</summary>
+    Speaker = 16,
 }
 
 /// <summary>A segment of the current transcript (for hit snippets / seeking).</summary>
-public sealed record SearchSegment(int Index, double Start, string Text, string Normalized);
+public sealed record SearchSegment(int Index, double Start, string Text, string Normalized, string? Speaker = null);
 
 /// <summary>
 /// Everything search and filters need about one recording, with normalised text
@@ -32,13 +34,21 @@ public sealed class HistorySearchDocument
     public int ChatCount { get; init; }
     public IReadOnlyList<SearchSegment> Segments { get; init; } = [];
 
+    /// <summary>Names given to the speakers of the current version (the default "Speaker N" is not a name).</summary>
+    public IReadOnlyList<string> SpeakerNames { get; init; } = [];
+
+    /// <summary>People told apart in the current version (the "4 speakers" chip); 0 without a speaker layer.</summary>
+    public int SpeakerCount { get; init; }
+
     internal string NormalizedTitle { get; init; } = "";
     internal string NormalizedTranscript { get; init; } = "";
     internal string NormalizedTranslations { get; init; } = "";
     internal string NormalizedChats { get; init; } = "";
+    internal string NormalizedSpeakers { get; init; } = "";
 
     public bool HasTranslation => TranslationLanguages.Count > 0;
     public bool HasChat => ChatCount > 0;
+    public bool HasSpeakers => SpeakerCount > 0;
 }
 
 /// <summary>Filters; null means "any".</summary>
@@ -60,6 +70,9 @@ public sealed record HistoryFilter
     public bool? HasTranslation { get; init; }
     public bool? HasChat { get; init; }
     public bool? HasAudio { get; init; }
+
+    /// <summary>The "With speakers" filter.</summary>
+    public bool? HasSpeakers { get; init; }
 }
 
 public sealed record SearchHit(HistorySearchDocument Document, SearchField MatchedIn, SearchSegment? Segment);
@@ -75,7 +88,8 @@ public static class HistorySearch
         RecordingManifest manifest,
         TranscriptDocument? currentTranscript,
         IEnumerable<TranslationDocument>? translations = null,
-        IEnumerable<ChatRecord>? chats = null)
+        IEnumerable<ChatRecord>? chats = null,
+        IReadOnlyDictionary<int, string>? speakerBySegment = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
 
@@ -88,7 +102,16 @@ public static class HistorySearch
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         var segments = currentTranscript?.Segments
-            .Select(s => new SearchSegment(s.Index, s.Start, s.Text, TextNormalizer.Normalize(s.Text)))
+            .Select(s => new SearchSegment(s.Index, s.Start, s.Text, TextNormalizer.Normalize(s.Text),
+                speakerBySegment is not null && speakerBySegment.TryGetValue(s.Index, out var speaker) ? speaker : null))
+            .ToList() ?? [];
+        var layer = current is null ? null : manifest.CurrentSpeakerLayer(current.Id);
+        var people = layer is not null && manifest.Speakers?.Map.TryGetValue(layer.Run, out var map) == true
+            ? map.Values.Distinct(StringComparer.Ordinal).ToHashSet(StringComparer.Ordinal)
+            : [];
+        var speakerNames = manifest.Speakers?.People
+            .Where(p => people.Contains(p.Id) && !string.IsNullOrWhiteSpace(p.Name))
+            .Select(p => p.Name!)
             .ToList() ?? [];
 
         return new HistorySearchDocument
@@ -108,6 +131,9 @@ public static class HistorySearch
             HasAudio = manifest.HasAudio,
             ChatCount = chatList.Count,
             Segments = segments,
+            SpeakerNames = speakerNames,
+            SpeakerCount = people.Count,
+            NormalizedSpeakers = TextNormalizer.Normalize(string.Join("\n", speakerNames)),
             NormalizedTitle = TextNormalizer.Normalize(manifest.EffectiveTitle),
             NormalizedTranscript = currentTranscript is null
                 ? TextNormalizer.Normalize(current?.Excerpt)
@@ -142,7 +168,8 @@ public static class HistorySearch
             {
                 // Index what we have; a broken file must not hide the recording.
             }
-            documents.Add(CreateDocument(entry.Manifest, transcript, translations, chats.Where(c => c.Includes(entry.Id))));
+            var speakers = entry.Manifest.CurrentVersion is { } version ? SpeakerLabels.ForVersion(store, entry.Id, version) : null;
+            documents.Add(CreateDocument(entry.Manifest, transcript, translations, chats.Where(c => c.Includes(entry.Id)), speakers));
         }
         return documents;
     }
@@ -180,7 +207,9 @@ public static class HistorySearch
             if (!allFound)
                 continue;
 
-            var segment = doc.Segments.FirstOrDefault(s => s.Normalized.Contains(terms[0], StringComparison.Ordinal));
+            var segment = doc.Segments.FirstOrDefault(s => s.Normalized.Contains(terms[0], StringComparison.Ordinal))
+                ?? doc.Segments.FirstOrDefault(s => s.Speaker is not null
+                    && TextNormalizer.Normalize(s.Speaker).Contains(terms[0], StringComparison.Ordinal));
             hits.Add(new SearchHit(doc, matchedIn, segment));
         }
 
@@ -195,6 +224,7 @@ public static class HistorySearch
         if (doc.NormalizedTranscript.Contains(term, StringComparison.Ordinal)) fields |= SearchField.Transcript;
         if (doc.NormalizedTranslations.Contains(term, StringComparison.Ordinal)) fields |= SearchField.Translation;
         if (doc.NormalizedChats.Contains(term, StringComparison.Ordinal)) fields |= SearchField.Chat;
+        if (doc.NormalizedSpeakers.Contains(term, StringComparison.Ordinal)) fields |= SearchField.Speaker;
         return fields;
     }
 
@@ -205,6 +235,7 @@ public static class HistorySearch
         if (f.HasAudio is { } audio && doc.HasAudio != audio) return false;
         if (f.HasChat is { } chat && doc.HasChat != chat) return false;
         if (f.HasTranslation is { } tr && doc.HasTranslation != tr) return false;
+        if (f.HasSpeakers is { } speakers && doc.HasSpeakers != speakers) return false;
         if (!string.IsNullOrWhiteSpace(f.Language)
             && !doc.Languages.Contains(f.Language, StringComparer.OrdinalIgnoreCase))
             return false;

@@ -35,6 +35,31 @@ public static class JobsServiceCollectionExtensions
             new AutoTitleJob(sp.GetRequiredService<RecordingStore>(), () => sp.GetService<SpeechLib.Llm.ILlmHost>()));
         services.AddSingleton<IJobExecutor>(sp =>
             new SummarizeJob(sp.GetRequiredService<RecordingStore>(), () => sp.GetService<SpeechLib.Llm.ILlmHost>()));
+        // Speaker detection (design section 10-11): the Diarize and Analyze executors, the people/layers service,
+        // and the Reprocess chain API (rerecognize -> diarize -> analyze). The ONNX model is found under the model roots.
+        services.AddSingleton<IDiarizerFactory>(sp =>
+        {
+            var settings = sp.GetRequiredService<SettingsStore>();
+            return new OnnxDiarizerFactory(() => InstalledAsrModels.DefaultRoots(settings.Snapshot()));
+        });
+        services.AddSingleton<IJobExecutor>(sp =>
+        {
+            var settings = sp.GetRequiredService<SettingsStore>();
+            return new DiarizeJob(sp.GetRequiredService<RecordingStore>(), sp.GetRequiredService<IDiarizerFactory>(), () => settings.Current.History);
+        });
+        services.AddSingleton<IJobExecutor>(sp =>
+            new AnalyzeJob(sp.GetRequiredService<RecordingStore>(), () => sp.GetService<SpeechLib.Llm.ILlmHost>()));
+        // One instance behind both types: ISpeakerService for the contract, SpeakerService for ChangeSegmentSpeaker / GetLayerInfo.
+        services.AddSingleton<ISpeakerService>(sp => sp.GetRequiredService<SpeakerService>());
+        services.AddSingleton(sp =>
+        {
+            var settings = sp.GetRequiredService<SettingsStore>();
+            return new SpeakerService(
+                sp.GetRequiredService<RecordingStore>(), sp.GetRequiredService<JobQueue>(),
+                sp.GetRequiredService<IDiarizerFactory>(), () => settings.Current.History,
+                poke: () => sp.GetRequiredService<JobRunner>().Poke());
+        });
+        services.AddSingleton(sp => new ReprocessChain(sp.GetRequiredService<JobQueue>(), sp.GetRequiredService<RecordingStore>()));
 #if DEBUG
         // Scripted host for UI checks without the 2.4 GB model: VOICETYPE_FAKE_LLM=1. Any real ILlmHost registration wins.
         if (Environment.GetEnvironmentVariable("VOICETYPE_FAKE_LLM") == "1")
@@ -43,6 +68,8 @@ public static class JobsServiceCollectionExtensions
         services.AddSingleton(sp =>
         {
             var settings = sp.GetRequiredService<SettingsStore>();
+            // A finished chain switches its recording to the new version (design 11.2); attached once, with the runner.
+            sp.GetRequiredService<ReprocessChain>().Attach();
             return new JobRunner(
                 sp.GetRequiredService<JobQueue>(),
                 sp.GetServices<IJobExecutor>(),

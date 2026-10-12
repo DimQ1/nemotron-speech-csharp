@@ -307,6 +307,7 @@ public sealed class ChatService : IChatService
                 StartSec = c.StartSec,
                 EndSec = c.EndSec,
                 Quote = c.Quote,
+                Speaker = c.Speaker,
             }).ToList(),
         };
         var record = _chats.AppendMessage(chatId, message);

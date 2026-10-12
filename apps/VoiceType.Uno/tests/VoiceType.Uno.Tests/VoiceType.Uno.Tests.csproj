@@ -21,4 +21,16 @@
     <ProjectReference Include="..\..\src\VoiceType.Uno.Core\VoiceType.Uno.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The job runner and its executors are plain C#. They are compiled into the tests (not referenced: the Uno head cannot be)
+         so a real chain of jobs can run through the real JobRunner (JobRunnerChainTests, E2E_SpeakerDiarizationTests). -->
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Jobs\JobRunner.cs" Link="Jobs\JobRunner.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Jobs\IJobExecutor.cs" Link="Jobs\IJobExecutor.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Jobs\IJobsKeepAlive.cs" Link="Jobs\IJobsKeepAlive.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Jobs\IRecordingActivity.cs" Link="Jobs\IRecordingActivity.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Jobs\DeviceConditions.cs" Link="Jobs\DeviceConditions.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Jobs\GemmaJobExecutors.cs" Link="Jobs\GemmaJobExecutors.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Jobs\SpeakerJobExecutors.cs" Link="Jobs\SpeakerJobExecutors.cs" />
+  </ItemGroup>
+
 </Project>

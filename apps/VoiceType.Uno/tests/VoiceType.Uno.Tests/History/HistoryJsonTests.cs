@@ -218,7 +218,7 @@ public class HistoryJsonTests
     [Fact]
     public void JobQueueDocument_ShouldLoadUnknownEnumValuesAsUnknown()
     {
-        const string json = """{"jobs":[{"id":"j1","kind":"diarize","recordingId":"r","state":"sleeping","condition":{"kind":"whenOnWifi"},"newField":1}]}""";
+        const string json = """{"jobs":[{"id":"j1","kind":"identifyMusic","recordingId":"r","state":"sleeping","condition":{"kind":"whenOnWifi"},"newField":1}]}""";
 
         var doc = Deserialize(json, HistoryJsonContext.Default.JobQueueDocument);
 

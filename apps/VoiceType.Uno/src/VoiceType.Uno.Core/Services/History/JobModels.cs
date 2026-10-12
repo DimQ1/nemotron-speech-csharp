@@ -12,6 +12,10 @@ public enum HistoryJobKind
     Translate,
     AutoTitle,
     Summarize,
+    /// <summary>Schema 2: speaker detection (a diarization run and a speaker layer for a version).</summary>
+    Diarize,
+    /// <summary>Schema 2: analysis of a version with speakers (talk statistics, summary, title).</summary>
+    Analyze,
 }
 
 [JsonConverter(typeof(LenientEnumConverter<JobConditionKind>))]
@@ -109,6 +113,55 @@ public sealed class JobParameters
     /// <summary>AutoTitle: generate even when a title (Gemma's or the user's) exists. The user title is still never replaced.</summary>
     public bool? Regenerate { get; set; }
 
+    /// <summary>Diarize: model, preset and post-processing.</summary>
+    public DiarizationJobParameters? Diarization { get; set; }
+
+    /// <summary>Analyze: what to produce.</summary>
+    public AnalysisJobParameters? Analysis { get; set; }
+
+    /// <summary>
+    /// Rerecognize step of a Reprocess chain: switch the current version to the new one when the whole chain is over
+    /// (design §11.2) instead of when this step completes.
+    /// </summary>
+    public bool? MakeCurrentAtChainEnd { get; set; }
+
+    /// <summary>Who queued the chain: <c>user</c> | <c>auto</c> | <c>liveFallback</c> (written into the version's origin).</summary>
+    public string? Origin { get; set; }
+
+    /// <summary>Step names of the chain (<c>rerecognize</c>, <c>diarize</c>, <c>analyze</c>), written into the version's origin.</summary>
+    public List<string>? ChainSteps { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>Parameters of a <see cref="HistoryJobKind.Diarize"/> job.</summary>
+public sealed class DiarizationJobParameters
+{
+    /// <summary>Installed model folder (<c>nemotron-3-diarization-onnx-int8</c>); null = the first installed one.</summary>
+    public string? ModelFolder { get; set; }
+    public string? CatalogRepoId { get; set; }
+
+    /// <summary><c>offline</c> (best quality, 30.4 s buffer) or a streaming preset key of <c>diar_config.json</c>.</summary>
+    public string? Preset { get; set; }
+    public double? Threshold { get; set; }
+    public int? MaxSpeakers { get; set; }
+
+    /// <summary>Use an existing run of the same model, variant and preset instead of running the model again (default yes).</summary>
+    public bool? ReuseExistingRun { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>Parameters of a <see cref="HistoryJobKind.Analyze"/> job.</summary>
+public sealed class AnalysisJobParameters
+{
+    public bool? Summary { get; set; }
+    public bool? Title { get; set; }
+    public bool? SpeakerStats { get; set; }
+    public int PromptVersion { get; set; } = 1;
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
@@ -121,7 +174,7 @@ public sealed class HistoryJob
     /// <summary>Shared by jobs enqueued together from a multi-selection.</summary>
     public string? BatchId { get; set; }
 
-    /// <summary>Schema 2: steps of one Reprocess chain (design §11.4). Not executed as a chain yet.</summary>
+    /// <summary>Schema 2: steps of one Reprocess chain (design §11.4); see <see cref="ReprocessChain"/>.</summary>
     public string? ChainId { get; set; }
 
     /// <summary>Schema 2: id of the job that must be <see cref="JobState.Completed"/> before this one starts.</summary>
@@ -149,6 +202,9 @@ public sealed class HistoryJob
     public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? StartedAt { get; set; }
     public DateTimeOffset? FinishedAt { get; set; }
+
+    /// <summary>Rerecognize step of a chain: its "make current at the end of the chain" was carried out (or dropped).</summary>
+    public bool? ChainApplied { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }

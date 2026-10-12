@@ -899,6 +899,11 @@ public sealed partial class MainViewModel : ObservableObject
         // Chat preparation: map-reduce summaries of a long recording, shared with chat (same toggle).
         if (outcome.RecordingId is { } preparedId)
             HistoryLlmJobs.TryEnqueueSummarizeAfterSave(_jobs, _recordings, preparedId, _settingsStore.Current.History, Services.Jobs.GemmaAvailability.IsInstalled);
+        // [speakers] Speaker detection in the background (Speakers.AutoAfterStop = Best; the model must be installed), or the
+        // whole Reprocess chain when Reprocess.AutoNew is on. Never throws; does nothing when the model is missing.
+        if (outcome.RecordingId is { } labelledId && App.Services.GetService<ISpeakerService>() is { } speakers)
+            SpeakerAutomation.TryEnqueueAfterSave(speakers, App.Services.GetService<ReprocessChain>(), _recordings, labelledId,
+                _settingsStore.Current.History, OperatingSystem.IsAndroid());
 
         _scheduler.Post(() =>
         {

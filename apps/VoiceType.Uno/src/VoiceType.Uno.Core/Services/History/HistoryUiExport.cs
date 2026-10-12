@@ -7,7 +7,10 @@ namespace VoiceType.Uno.History;
 /// <param name="EstimatedBytes">Size for the <c>4 files · 2.4 MB</c> summary.</param>
 public sealed record HistoryExportFile(string FileName, string? SourcePath, string? Content, long EstimatedBytes);
 
-public sealed record HistoryExportOptions(bool TranscriptText, bool IncludeTranslation, bool AudioWithSubtitles);
+/// <param name="SpeakerNames">Prefix every segment with its speaker (<c>Anna: </c>); ignored when the version has no speaker layer.</param>
+/// <param name="Markdown">Also write a <c>.md</c> document.</param>
+public sealed record HistoryExportOptions(
+    bool TranscriptText, bool IncludeTranslation, bool AudioWithSubtitles, bool SpeakerNames = false, bool Markdown = false);
 
 /// <summary>
 /// Plans a recording export (decision 7): <c>.txt</c> with <c>[hh:mm:ss]</c> per segment
@@ -22,7 +25,8 @@ public static class HistoryUiExport
         HistoryExportOptions options,
         string? audioPath,
         long audioBytes,
-        TranslationDocument? translation = null)
+        TranslationDocument? translation = null,
+        IReadOnlyDictionary<int, string>? speakerNames = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(transcript);
@@ -30,20 +34,27 @@ public static class HistoryUiExport
 
         var baseName = ExportFiles.SuggestBaseName(manifest);
         var usedTranslation = options.IncludeTranslation ? translation : null;
+        var names = options.SpeakerNames ? speakerNames : null;
         var files = new List<HistoryExportFile>();
 
         if (options.TranscriptText)
         {
-            var text = TranscriptExport.ToText(transcript, usedTranslation);
+            var text = TranscriptExport.ToText(transcript, usedTranslation, names);
             files.Add(new HistoryExportFile(baseName + ".txt", null, text, Utf8Bytes(text)));
+        }
+
+        if (options.Markdown)
+        {
+            var markdown = TranscriptExport.ToMarkdown(manifest, transcript, usedTranslation, names);
+            files.Add(new HistoryExportFile(baseName + ".md", null, markdown, Utf8Bytes(markdown)));
         }
 
         if (options.AudioWithSubtitles && !string.IsNullOrEmpty(audioPath))
         {
             var extension = Path.GetExtension(audioPath);
             files.Add(new HistoryExportFile(baseName + extension, audioPath, null, audioBytes));
-            var srt = TranscriptExport.ToSrt(transcript, usedTranslation);
-            var lrc = TranscriptExport.ToLrc(transcript, manifest.EffectiveTitle, HistoryUiFormat.DurationSeconds(manifest));
+            var srt = TranscriptExport.ToSrt(transcript, usedTranslation, names);
+            var lrc = TranscriptExport.ToLrc(transcript, manifest.EffectiveTitle, HistoryUiFormat.DurationSeconds(manifest), names);
             files.Add(new HistoryExportFile(baseName + ".lrc", null, lrc, Utf8Bytes(lrc)));
             files.Add(new HistoryExportFile(baseName + ".srt", null, srt, Utf8Bytes(srt)));
         }
