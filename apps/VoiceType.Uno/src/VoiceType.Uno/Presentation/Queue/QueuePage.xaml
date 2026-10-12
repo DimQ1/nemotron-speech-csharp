@@ -1,21 +1,226 @@
 <Page x:Class="VoiceType.Uno.Presentation.Queue.QueuePage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-  <!-- Placeholder — replaced by agent L at merge. Exists only so navigation compiles. -->
-  <Grid RowSpacing="8" Padding="4,4,16,16">
+      xmlns:queue="using:VoiceType.Uno.Presentation.Queue"
+      xmlns:controls="using:VoiceType.Uno.Presentation.Controls"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+      KeyDown="Page_KeyDown">
+
+  <Page.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="QueueWarnBrush" Color="#FFF4CE" />
+          <SolidColorBrush x:Key="QueueHintBrush" Color="#DBE9F8" />
+          <SolidColorBrush x:Key="QueueErrorBrush" Color="#C42B1C" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="QueueWarnBrush" Color="#433519" />
+          <SolidColorBrush x:Key="QueueHintBrush" Color="#1F3A52" />
+          <SolidColorBrush x:Key="QueueErrorBrush" Color="#FF99A4" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+
+      <!-- Card: surface + 1 px stroke, 8 px corners (mockup .vcard) -->
+      <Style x:Key="JobCardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="12" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+      </Style>
+      <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="CharacterSpacing" Value="40" />
+        <Setter Property="Opacity" Value="0.7" />
+        <Setter Property="Margin" Value="4,16,0,8" />
+      </Style>
+      <Style x:Key="CardTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+      </Style>
+      <Style x:Key="SecondaryTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Opacity" Value="0.75" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+      </Style>
+      <Style x:Key="ChipStyle" TargetType="Border">
+        <Setter Property="Background" Value="{ThemeResource QueueHintBrush}" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="10,3" />
+      </Style>
+      <Style x:Key="ActionButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="MinWidth" Value="44" />
+        <Setter Property="Padding" Value="16,0" />
+      </Style>
+      <Style x:Key="IconButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+
+      <DataTemplate x:Key="JobCardTemplate" x:DataType="queue:JobCardViewModel">
+        <Border Style="{StaticResource JobCardStyle}">
+          <StackPanel Spacing="8">
+            <Grid ColumnSpacing="8">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <FontIcon Glyph="{x:Bind Glyph}" FontSize="18" VerticalAlignment="Top" Margin="2,4,4,0" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock Text="{x:Bind Title}" Style="{StaticResource CardTitleStyle}" />
+                <TextBlock Text="{x:Bind Subtitle}" Style="{StaticResource SecondaryTextStyle}" />
+              </StackPanel>
+              <Button Grid.Column="2" Style="{StaticResource IconButtonStyle}" Click="More_Click" Tag="{x:Bind}"
+                      AutomationProperties.Name="More actions" ToolTipService.ToolTip="More actions">
+                <SymbolIcon Symbol="More" />
+              </Button>
+            </Grid>
+
+            <ItemsControl ItemsSource="{x:Bind Lines}" Visibility="{x:Bind HasLines}" Margin="30,0,0,0">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <TextBlock Text="{x:Bind}" Style="{StaticResource SecondaryTextStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Spacing="4" Visibility="{x:Bind ShowProgress, Mode=OneWay}">
+              <ProgressBar Value="{x:Bind ProgressValue, Mode=OneWay}" Maximum="100" Height="6" />
+              <Grid>
+                <TextBlock Text="{x:Bind ProgressText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
+                <TextBlock Text="{x:Bind EtaText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" HorizontalAlignment="Right" />
+              </Grid>
+            </StackPanel>
+
+            <ItemsControl ItemsSource="{x:Bind Chips, Mode=OneWay}" Visibility="{x:Bind HasChips, Mode=OneWay}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <controls:ChipWrapPanel Spacing="6" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <Border Style="{StaticResource ChipStyle}">
+                    <TextBlock Text="{x:Bind}" FontSize="12" />
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Style="{StaticResource ChipStyle}" Background="{ThemeResource QueueWarnBrush}" HorizontalAlignment="Left"
+                    Visibility="{x:Bind ShowLiveWarning, Mode=OneWay}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <FontIcon Glyph="&#xE720;" FontSize="12" />
+                <TextBlock Text="{x:Bind LiveWarningText, Mode=OneWay}" FontSize="12" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+
+            <TextBlock Text="{x:Bind StatusText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"
+                       Visibility="{x:Bind HasStatus, Mode=OneWay}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+              <Button Content="Run now" Style="{StaticResource ActionButtonStyle}" Command="{x:Bind RunNowCommand}"
+                      Visibility="{x:Bind CanRunNow, Mode=OneWay}" />
+              <Button Content="Resume" Style="{StaticResource ActionButtonStyle}" Command="{x:Bind ResumeCommand}"
+                      Visibility="{x:Bind CanResume, Mode=OneWay}" />
+              <Button Content="Retry" Style="{StaticResource ActionButtonStyle}" Command="{x:Bind RetryCommand}"
+                      Visibility="{x:Bind CanRetry, Mode=OneWay}" />
+              <Button Content="Pause" Style="{StaticResource ActionButtonStyle}" Command="{x:Bind PauseCommand}"
+                      Visibility="{x:Bind IsRunning, Mode=OneWay}" />
+              <Button Content="{x:Bind CancelLabel}" Style="{StaticResource ActionButtonStyle}" Command="{x:Bind CancelCommand}"
+                      Visibility="{x:Bind IsRunning, Mode=OneWay}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </DataTemplate>
+    </ResourceDictionary>
+  </Page.Resources>
+
+  <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
-    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" MinHeight="56">
-      <Button Width="48" Height="48" Padding="0" Background="Transparent" BorderThickness="0"
-              Click="Back_Click" AutomationProperties.Name="Back" ToolTipService.ToolTip="Back">
+
+    <!-- Top bar: ← Queue · subtitle · ⏸ pause the whole queue -->
+    <Grid MaxWidth="760" Padding="8,4" ColumnSpacing="4">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="48" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="48" />
+      </Grid.ColumnDefinitions>
+      <Button Style="{StaticResource IconButtonStyle}" Click="Back_Click"
+              AutomationProperties.Name="Back" ToolTipService.ToolTip="Back">
+        <Button.KeyboardAccelerators>
+          <KeyboardAccelerator Key="Escape" />
+        </Button.KeyboardAccelerators>
         <SymbolIcon Symbol="Back" />
       </Button>
-      <TextBlock Text="Queue" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-    </StackPanel>
-    <TextBlock x:Name="Body" Grid.Row="1" Margin="12,0" TextWrapping="Wrap"
-               Text="Coming soon." />
+      <StackPanel Grid.Column="1" VerticalAlignment="Center">
+        <TextBlock Text="Queue" FontSize="20" FontWeight="SemiBold" />
+        <TextBlock Text="{x:Bind ViewModel.Subtitle, Mode=OneWay}" FontSize="12" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+      <Button Grid.Column="2" x:Name="PauseAllButton" Style="{StaticResource IconButtonStyle}"
+              Command="{x:Bind ViewModel.TogglePauseAllCommand}"
+              AutomationProperties.Name="{x:Bind ViewModel.PauseAllLabel, Mode=OneWay}"
+              ToolTipService.ToolTip="{x:Bind ViewModel.PauseAllLabel, Mode=OneWay}">
+        <FontIcon x:Name="PauseAllIcon" Glyph="&#xE769;" />
+      </Button>
+    </Grid>
+
+    <ScrollViewer Grid.Row="1" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto">
+      <StackPanel MaxWidth="720" Padding="16,0,16,24">
+        <Border Background="{ThemeResource QueueWarnBrush}" CornerRadius="8" Padding="12,10" Margin="0,8,0,0"
+                Visibility="{x:Bind ViewModel.IsReadOnly, Mode=OneWay}">
+          <TextBlock Text="{x:Bind ViewModel.ReadOnlyText, Mode=OneWay}" TextWrapping="Wrap" FontSize="13" />
+        </Border>
+        <Border Background="{ThemeResource QueueHintBrush}" CornerRadius="8" Padding="12,10" Margin="0,8,0,0"
+                Visibility="{x:Bind ViewModel.ShowPausedNotice, Mode=OneWay}">
+          <TextBlock Text="The queue is paused: nothing new starts. Resume it with ⏵ above." TextWrapping="Wrap" FontSize="13" />
+        </Border>
+
+        <StackPanel Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay}" Margin="0,48,0,0" Spacing="8" HorizontalAlignment="Center">
+          <FontIcon Glyph="&#xE9D5;" FontSize="32" Opacity="0.6" />
+          <TextBlock Text="No jobs" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock Text="Re-recognize a recording from History to add one." Style="{StaticResource SecondaryTextStyle}"
+                     HorizontalAlignment="Center" TextAlignment="Center" />
+        </StackPanel>
+
+        <TextBlock Text="RUNNING" Style="{StaticResource SectionHeaderStyle}" Visibility="{x:Bind ViewModel.HasRunning, Mode=OneWay}" />
+        <ItemsControl ItemsSource="{x:Bind ViewModel.Running}" ItemTemplate="{StaticResource JobCardTemplate}" />
+
+        <TextBlock Text="SCHEDULED" Style="{StaticResource SectionHeaderStyle}" Visibility="{x:Bind ViewModel.HasScheduled, Mode=OneWay}" />
+        <ItemsControl ItemsSource="{x:Bind ViewModel.Scheduled}" ItemTemplate="{StaticResource JobCardTemplate}" />
+
+        <TextBlock Text="WAITING" Style="{StaticResource SectionHeaderStyle}" Visibility="{x:Bind ViewModel.HasWaiting, Mode=OneWay}" />
+        <ItemsControl ItemsSource="{x:Bind ViewModel.Waiting}" ItemTemplate="{StaticResource JobCardTemplate}" />
+
+        <TextBlock Text="FAILED" Style="{StaticResource SectionHeaderStyle}" Visibility="{x:Bind ViewModel.HasFailed, Mode=OneWay}" />
+        <ItemsControl ItemsSource="{x:Bind ViewModel.Failed}" ItemTemplate="{StaticResource JobCardTemplate}" />
+
+        <Grid Margin="0,12,0,0" ColumnSpacing="8" Visibility="{x:Bind ViewModel.HasFinished, Mode=OneWay}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <FontIcon Glyph="&#xE73E;" FontSize="16" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.FinishedText, Mode=OneWay}" VerticalAlignment="Center" FontSize="14" />
+          <Button Grid.Column="2" Content="Clear finished" Style="{StaticResource ActionButtonStyle}"
+                  Command="{x:Bind ViewModel.ClearFinishedCommand}" />
+        </Grid>
+        <TextBlock Text="{x:Bind ViewModel.RunsWhenText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" Margin="4,12,4,0" />
+      </StackPanel>
+    </ScrollViewer>
   </Grid>
 </Page>

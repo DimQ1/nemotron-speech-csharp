@@ -9,6 +9,7 @@ using VoiceType.Uno.History;
 using VoiceType.Uno.Presentation;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Audio;
+using VoiceType.Uno.Services.Jobs;
 using VoiceType.Uno.Services.Playback;
 using VoiceType.Uno.Services.Platform;
 using VoiceType.Uno.Services.Platform.Linux;
@@ -101,6 +102,8 @@ public partial class App : Application
                     });
                     // Startup recovery of crashed recordings + audio retention, off the UI thread.
                     services.AddSingleton<HistoryMaintenance>();
+                    // Background jobs (re-recognition from the Queue): runner, executors, device conditions.
+                    services.AddHistoryJobs();
                     // Playback of stored recordings: WASAPI / PulseAudio / AudioTrack, picked at runtime.
                     services.AddSingleton<IAudioPlayerFactory, AudioPlayerFactory>();
 
@@ -162,6 +165,16 @@ public partial class App : Application
         // Finalize recordings a crash left behind and apply audio retention before the
         // first recording starts (the view model waits for recovery); never on the UI thread.
         Host.Services.GetRequiredService<HistoryMaintenance>().Start();
+
+        // The job runner holds "when idle" jobs while a live recording runs.
+        var activity = Host.Services.GetRequiredService<RecordingActivity>();
+        var mainViewModel = Host.Services.GetRequiredService<MainViewModel>();
+        mainViewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainViewModel.IsRecording))
+                activity.Report(mainViewModel.IsRecording);
+        };
+        Host.Services.GetRequiredService<JobRunner>().Start();
 
         // Do not repeat app initialization when the Window already has content,
         // just ensure that the window is active

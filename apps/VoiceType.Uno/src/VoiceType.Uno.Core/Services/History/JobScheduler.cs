@@ -29,6 +29,8 @@ public enum JobWaitReason
     BeforeStartTime,
     OutsideWindow,
     UnknownCondition,
+    /// <summary>Schema 2: <see cref="HistoryJob.DependsOn"/> has not completed yet.</summary>
+    WaitingForPreviousStep,
 }
 
 /// <summary>
@@ -68,6 +70,9 @@ public static class JobScheduler
             return JobWaitReason.NotQueued;
         if (job.Kind == HistoryJobKind.Unknown)
             return JobWaitReason.UnknownKind;
+        if (job.DependsOn is { } dependsOn
+            && queue.FirstOrDefault(j => j.Id == dependsOn) is { State: not JobState.Completed })
+            return JobWaitReason.WaitingForPreviousStep;
         if (IsHeavy(job.Kind) && queue.Any(j => j.State == JobState.Running && IsHeavy(j.Kind)))
             return JobWaitReason.AnotherJobRunning;
         if (context.IsLiveRecording && !context.AllowDuringRecording)
@@ -79,6 +84,19 @@ public static class JobScheduler
     public static JobWaitReason GetConditionReason(JobCondition? condition, SchedulerContext context)
     {
         condition ??= JobCondition.Now();
+        var reason = GetKindReason(condition, context);
+        if (reason != JobWaitReason.None)
+            return reason;
+        // Schema 2: extra requirements on top of the kind (a conjunction).
+        if (condition.RequireIdle && context.IsLiveRecording)
+            return JobWaitReason.LiveRecording;
+        if (condition.RequireCharging && context.IsAndroid && !context.IsCharging)
+            return JobWaitReason.NotCharging;
+        return JobWaitReason.None;
+    }
+
+    private static JobWaitReason GetKindReason(JobCondition condition, SchedulerContext context)
+    {
         switch (condition.Kind)
         {
             case JobConditionKind.Now:

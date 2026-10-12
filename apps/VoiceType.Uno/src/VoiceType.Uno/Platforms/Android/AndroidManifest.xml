@@ -11,11 +11,20 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <!-- History jobs (re-recognition of stored recordings): JobsForegroundService runs only while a
+       job runs; type mediaProcessing on Android 15+, dataSync on Android 10-14 (declared on the
+       service below; both have a 6 h / 24 h budget on Android 15+) -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROCESSING" />
   <!-- Auto Backup stays on for settings, but recordings, transcripts, chats, the job queue
        and models are excluded (Resources/xml/backup_rules.xml up to Android 11,
        data_extraction_rules.xml from Android 12). -->
   <application android:allowBackup="true"
                android:fullBackupContent="@xml/backup_rules"
                android:dataExtractionRules="@xml/data_extraction_rules"
-               android:supportsRtl="true"></application>
+               android:supportsRtl="true">
+    <service android:name="com.voicetype.uno.JobsForegroundService"
+             android:exported="false"
+             android:foregroundServiceType="dataSync|mediaProcessing" />
+  </application>
 </manifest>

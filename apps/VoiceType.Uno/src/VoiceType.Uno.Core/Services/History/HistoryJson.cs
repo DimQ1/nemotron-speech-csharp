@@ -29,6 +29,8 @@ namespace VoiceType.Uno.History;
 [JsonSerializable(typeof(ChatMessage))]
 [JsonSerializable(typeof(JobParameters))]
 [JsonSerializable(typeof(JobCondition))]
+[JsonSerializable(typeof(JobCheckpoint))]
+[JsonSerializable(typeof(TranscriptSegment))]
 internal partial class HistoryJsonContext : JsonSerializerContext;
 
 /// <summary>Atomic JSON file I/O shared by the history stores.</summary>

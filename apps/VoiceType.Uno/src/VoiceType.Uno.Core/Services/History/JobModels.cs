@@ -64,6 +64,15 @@ public sealed class JobCondition
     /// <summary>Daily window end (exclusive). A window may cross midnight (22:00–06:00).</summary>
     public TimeOnly? WindowEnd { get; set; }
 
+    /// <summary>
+    /// Schema 2: also wait for the charger, on top of <see cref="Kind"/> (conditions are a
+    /// conjunction, e.g. "01:00–06:00 and charging"). Ignored where nothing runs on battery.
+    /// </summary>
+    public bool RequireCharging { get; set; }
+
+    /// <summary>Schema 2: also wait until no live recording runs, on top of <see cref="Kind"/>.</summary>
+    public bool RequireIdle { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 
@@ -94,6 +103,9 @@ public sealed class JobParameters
     /// <summary>Version to process; null = the current version when the job starts.</summary>
     public string? SourceVersion { get; set; }
 
+    /// <summary>Rerecognize: make the new version current when the job completes (null = no).</summary>
+    public bool? MakeCurrent { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
@@ -105,6 +117,12 @@ public sealed class HistoryJob
 
     /// <summary>Shared by jobs enqueued together from a multi-selection.</summary>
     public string? BatchId { get; set; }
+
+    /// <summary>Schema 2: steps of one Reprocess chain (design §11.4). Not executed as a chain yet.</summary>
+    public string? ChainId { get; set; }
+
+    /// <summary>Schema 2: id of the job that must be <see cref="JobState.Completed"/> before this one starts.</summary>
+    public string? DependsOn { get; set; }
     public string RecordingId { get; set; } = "";
     public JobParameters Parameters { get; set; } = new();
 
@@ -115,6 +133,9 @@ public sealed class HistoryJob
 
     /// <summary>0..1.</summary>
     public double Progress { get; set; }
+
+    /// <summary>Where a paused/interrupted job continues; null = from the start.</summary>
+    public JobCheckpoint? Checkpoint { get; set; }
     public int Attempts { get; set; }
     public string? Error { get; set; }
 
@@ -133,12 +154,38 @@ public sealed class HistoryJob
     public bool IsFinished => State is JobState.Completed or JobState.Failed or JobState.Cancelled;
 }
 
+/// <summary>
+/// Resume point of a job, persisted with the queue (design §9.1). Rerecognize: the sample
+/// where the last committed phrase ended plus a file holding the segments committed so far.
+/// </summary>
+public sealed class JobCheckpoint
+{
+    /// <summary>Audio sample (at the recognizer rate) to continue from.</summary>
+    public long Sample { get; set; }
+
+    /// <summary>Full path of the partial result (e.g. <c>jobs/&lt;jobId&gt;.part.json</c>).</summary>
+    public string? PartFile { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
 /// <summary><c>jobs/queue.json</c>. List order is the FIFO order.</summary>
 public sealed class JobQueueDocument
 {
-    public const int CurrentSchema = 1;
+    /// <summary>
+    /// 2: chain fields (<c>chainId</c>, <c>dependsOn</c>), combined conditions, checkpoints and
+    /// the whole-queue pause. An app that reads a newer schema opens the queue read-only, because
+    /// <see cref="LenientEnumConverter{TEnum}"/> would write job kinds it does not know back as
+    /// <c>"unknown"</c> (design §11.4).
+    /// </summary>
+    public const int CurrentSchema = 2;
 
     public int Schema { get; set; } = CurrentSchema;
+
+    /// <summary>Whole-queue pause (⏸ on the Queue page): nothing new starts.</summary>
+    public bool Paused { get; set; }
+
     public List<HistoryJob> Jobs { get; set; } = [];
 
     [JsonExtensionData]
