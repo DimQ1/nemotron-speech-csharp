@@ -22,8 +22,10 @@
     <Project Path="libraries/SpeechLib/src/SpeechLib.ModelDownload/SpeechLib.ModelDownload.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.LiteRT/SpeechLib.LiteRT.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.LiteRT.Native/SpeechLib.LiteRT.Native.csproj" />
+    <Project Path="libraries/SpeechLib/src/SpeechLib.AudioStorage/SpeechLib.AudioStorage.csproj" />
   </Folder>
   <Folder Name="/libraries/SpeechLib/tests/">
+    <Project Path="libraries/SpeechLib/tests/SpeechLib.AudioStorage.Tests/SpeechLib.AudioStorage.Tests.csproj" />
     <Project Path="libraries/SpeechLib/tests/SpeechLib.ModelDownload.Tests/SpeechLib.ModelDownload.Tests.csproj" />
     <Project Path="libraries/SpeechLib/tests/SpeechLib.ParakeetTdt.Tests/SpeechLib.ParakeetTdt.Tests.csproj" />
     <Project Path="libraries/SpeechLib/tests/SpeechLib.Tests/SpeechLib.Tests.csproj" />

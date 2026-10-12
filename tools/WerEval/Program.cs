@@ -12,6 +12,12 @@
 // Usage:
 //   WerEval <parakeet|nemotron|qwen3|qwen3-streaming> <modelDir> <audioRoot> [--max N] [--lang en|ru]
 //           [--streaming] [--top N] [--verbose] [--trace] [--save report.md]
+//           [--codec wav|opus:<kbps>[:audio|voip[:complexity]]] [--codec-only]
+//
+// --codec round-trips every utterance through SpeechLib.AudioStorage (the recordings
+// history writer + reader) before recognition, to measure what storing audio costs in
+// re-recognition accuracy. It also reports encode/decode speed and size per hour.
+// --codec-only measures speed/size without loading a model (pass any modelDir).
 //
 // Build (CPU):
 //   dotnet build tools/WerEval/WerEval.csproj -c Release
@@ -20,6 +26,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using SpeechLib;
+using SpeechLib.AudioStorage;
 using SpeechLib.ParakeetTdt;
 using SpeechLib.Qwen3;
 
@@ -30,6 +37,7 @@ if (args.Length == 0 || args[0] is "--list-gpus")
         Console.WriteLine("Usage: WerEval <parakeet|nemotron|qwen3|qwen3-streaming> <modelDir> <audioRoot> [--max N] [--lang en|ru] [--streaming] [--top N] [--verbose] [--trace] [--save report.md] [--ep cpu|webgpu[...]]");
         Console.WriteLine("       WerEval --list-gpus");
         Console.WriteLine("  --ep specs: cpu (default) | webgpu | webgpu:<hp|lp|index> | webgpu:0,layout=NHWC,capture=1");
+        Console.WriteLine("  --codec wav|opus:<kbps>[:audio|voip[:complexity]]  round-trip audio through the recording store first; --codec-only skips ASR");
         Console.WriteLine("  parakeet streaming: --chunk <s> --right <s> --left <s> --silence <s> --onset <s> --no-preview (see ParakeetTdtRecognizer)");
         return 1;
     }
@@ -58,6 +66,8 @@ bool trace = false;
 int topN = 10;
 string? savePath = null;
 string ep = "cpu";
+RecordingAudioFormat? codec = null;
+bool codecOnly = false;
 var streamingOptions = new ParakeetStreamingOptions();
 
 for (int i = 3; i < args.Length; i++)
@@ -78,6 +88,8 @@ for (int i = 3; i < args.Length; i++)
         case "--verbose": verbose = true; break;
         case "--trace": trace = true; break;
         case "--save" when i + 1 < args.Length: savePath = args[++i]; break;
+        case "--codec" when i + 1 < args.Length: codec = RecordingAudioFormat.Parse(args[++i]); break;
+        case "--codec-only": codecOnly = true; break;
     }
 }
 
@@ -85,6 +97,23 @@ if (!Directory.Exists(audioRoot))
 {
     Console.WriteLine($"Audio root not found: {audioRoot}");
     return 2;
+}
+
+var codecStats = new CodecStats();
+var codecTemp = Path.Combine(Path.GetTempPath(), "wereval-codec-" + Environment.ProcessId);
+if (codec is not null)
+    Directory.CreateDirectory(codecTemp);
+
+if (codecOnly)
+{
+    if (codec is null) { Console.WriteLine("--codec-only needs --codec"); return 1; }
+    var all = Directory.EnumerateFiles(audioRoot, "*.wav", SearchOption.AllDirectories)
+        .OrderBy(p => p, StringComparer.Ordinal).Take(max).ToList();
+    foreach (var wav in all)
+        RoundTrip(ReadWav16kMono(wav), codec, codecTemp, codecStats);
+    PrintCodecStats(codec, codecStats);
+    Directory.Delete(codecTemp, recursive: true);
+    return 0;
 }
 
 using var recognizer = CreateRecognizer(provider, modelDir, lang, ep, streamingOptions);
@@ -115,6 +144,8 @@ foreach (var wav in wavs)
 
     var reference = File.ReadAllText(txtPath).Trim();
     var samples = ReadWav16kMono(wav);
+    if (codec is not null)
+        samples = RoundTrip(samples, codec, codecTemp, codecStats);
 
     // Infer language from the folder name (e.g. cv17/ru) when not forced.
     if (lang is null && recognizer is ILanguageConfigurable languageConfigurable)
@@ -199,6 +230,12 @@ PrintRow(total);
 if (streaming)
     PrintStreamingRows(datasets.Values.OrderBy(d => d.Name, StringComparer.Ordinal).Append(total));
 
+if (codec is not null)
+{
+    PrintCodecStats(codec, codecStats);
+    Directory.Delete(codecTemp, recursive: true);
+}
+
 PrintTypicalErrors(errors, topN);
 
 if (savePath is not null)
@@ -207,6 +244,56 @@ if (savePath is not null)
 return 0;
 
 // ── Local functions ──────────────────────────────────────────────────
+
+// Encodes with the same writer the app uses, then decodes with the reader used for
+// offline re-recognition, so the measured WER is exactly what a stored recording gives.
+static float[] RoundTrip(float[] samples, RecordingAudioFormat format, string tempDir, CodecStats stats)
+{
+    var basePath = Path.Combine(tempDir, "utt");
+    var sw = Stopwatch.StartNew();
+    var writer = RecordingAudioWriterFactory.Create(basePath, format, 16000, queued: false);
+    // Feed 100 ms batches like the live capture does.
+    for (int i = 0; i < samples.Length; i += 1600)
+        writer.Append(samples.AsSpan(i, Math.Min(1600, samples.Length - i)));
+    var result = writer.CompleteAsync().GetAwaiter().GetResult();
+    writer.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    stats.EncodeSeconds += sw.Elapsed.TotalSeconds;
+
+    sw.Restart();
+    var decoded = RecordingAudioReader.ReadMono(result.Path, 16000);
+    stats.DecodeSeconds += sw.Elapsed.TotalSeconds;
+    File.Delete(result.Path);
+
+    stats.Files++;
+    stats.AudioSeconds += samples.Length / 16000.0;
+    stats.Bytes += result.Bytes;
+    if (decoded.Length != samples.Length)
+        stats.LengthMismatches++;
+    // Signal-to-noise of the round trip (sample-aligned, so it is meaningful for WAV and Opus).
+    int n = Math.Min(decoded.Length, samples.Length);
+    double sig = 0, err = 0;
+    for (int i = 0; i < n; i++)
+    {
+        sig += samples[i] * (double)samples[i];
+        double d = samples[i] - decoded[i];
+        err += d * d;
+    }
+    stats.SignalEnergy += sig;
+    stats.ErrorEnergy += err;
+    return decoded;
+}
+
+static void PrintCodecStats(RecordingAudioFormat format, CodecStats s)
+{
+    double hours = s.AudioSeconds / 3600;
+    Console.WriteLine();
+    Console.WriteLine($"Codec {format}: {s.Files} files, {s.AudioSeconds / 60:F1} min audio");
+    Console.WriteLine($"  size      : {s.Bytes / 1e6 / hours:F1} MB/h = {s.Bytes / 1048576.0 / hours:F1} MiB/h ({s.Bytes * 8 / s.AudioSeconds / 1000:F1} kbit/s incl. container)");
+    Console.WriteLine($"  encode    : {s.AudioSeconds / s.EncodeSeconds:F0}x real-time ({s.EncodeSeconds:F2}s)");
+    Console.WriteLine($"  decode    : {s.AudioSeconds / s.DecodeSeconds:F0}x real-time ({s.DecodeSeconds:F2}s)");
+    Console.WriteLine($"  SNR       : {10 * Math.Log10(s.SignalEnergy / Math.Max(s.ErrorEnergy, 1e-12)):F1} dB (waveform; low for Opus by design)");
+    Console.WriteLine($"  length    : {(s.LengthMismatches == 0 ? "all decoded lengths match the input" : $"{s.LengthMismatches} files differ in length")}");
+}
 
 static void PrintRow(DatasetAgg agg)
 {
@@ -523,6 +610,18 @@ sealed class DatasetAgg
     public double Rtf => AudioSeconds == 0 ? 0 : ComputeSeconds / AudioSeconds;
     public double FirstPartialAvg => LatencyFiles == 0 ? 0 : FirstPartialSeconds / LatencyFiles;
     public double FirstCommitAvg => LatencyFiles == 0 ? 0 : FirstCommitSeconds / LatencyFiles;
+}
+
+sealed class CodecStats
+{
+    public int Files;
+    public double AudioSeconds;
+    public long Bytes;
+    public double EncodeSeconds;
+    public double DecodeSeconds;
+    public int LengthMismatches;
+    public double SignalEnergy;
+    public double ErrorEnergy;
 }
 
 sealed class ErrorCounters

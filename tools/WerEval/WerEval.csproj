@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\libraries\SpeechLib\src\SpeechLib.Providers\SpeechLib.Providers.csproj" />
+    <ProjectReference Include="..\..\libraries\SpeechLib\src\SpeechLib.AudioStorage\SpeechLib.AudioStorage.csproj" />
   </ItemGroup>
 
 </Project>

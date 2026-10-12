@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Recording persistence for the recordings history: crash-safe incremental writers
+    (Ogg Opus, WAV) and a reader that decodes back to 16 kHz mono float for offline
+    re-recognition. Kept out of SpeechLib so the Opus codec package only reaches apps
+    that store recordings.
+
+    Codec: Concentus (pure managed C# port of libopus, BSD-3-Clause). The Ogg layer is
+    implemented here (Ogg/OggPageWriter.cs) instead of using Concentus.Oggfile, because
+    the writer needs page-level control: a page flush every ~1 s and recovery of a
+    truncated .part file.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>SpeechLib.AudioStorage</RootNamespace>
+    <AssemblyName>SpeechLib.AudioStorage</AssemblyName>
+    <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Concentus" Version="2.2.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SpeechLib.AudioStorage.Tests" />
+  </ItemGroup>
+
+</Project>
