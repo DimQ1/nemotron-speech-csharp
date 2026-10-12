@@ -95,6 +95,11 @@ public partial class App : Application
                         return new RecordingStore(string.IsNullOrWhiteSpace(sessionsPath) ? AppPaths.SessionsDir : sessionsPath);
                     });
                     services.AddSingleton(_ => new ChatStore(AppPaths.ChatsDir));
+                    // [chat core] IChatService over RecordingStore + ChatStore + the shared Gemma host (ILlmHost, registered by the engine-host work).
+                    services.AddSingleton<IChatService>(sp => new ChatService(
+                        sp.GetRequiredService<RecordingStore>(),
+                        sp.GetRequiredService<ChatStore>(),
+                        sp.GetRequiredService<SpeechLib.Llm.ILlmHost>()));
                     services.AddSingleton(_ =>
                     {
                         AppPaths.EnsureJobsDir();

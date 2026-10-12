@@ -68,6 +68,10 @@ public sealed class ChatMessage
     public DateTimeOffset CreatedAt { get; set; }
     public List<ChatCitation> Citations { get; set; } = [];
 
+    /// <summary>The answer was stopped (Stop pressed or the engine failed): the text is partial.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Incomplete { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
