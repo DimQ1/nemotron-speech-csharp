@@ -18,24 +18,51 @@
         <history:HistoryStyles />
       </ResourceDictionary.MergedDictionaries>
 
+      <!-- Segment row. With a speaker layer: a colour bar, a name line when the speaker changes (tap = rename),
+           overlap / approximate markers; segments of other speakers fold into one "··· N segments by X" line
+           while a speaker filter is active. -->
       <DataTemplate x:Key="SegmentTemplate" x:DataType="history:SegmentViewModel">
-        <Grid>
-          <Border CornerRadius="0" Background="{ThemeResource HistorySelectedBrush}"
-                  Visibility="{x:Bind IsCurrent, Mode=OneWay}" />
-          <Border Width="3" HorizontalAlignment="Left" Background="{ThemeResource AccentFillColorDefaultBrush}"
-                  Visibility="{x:Bind IsCurrent, Mode=OneWay}" />
-          <Button Style="{StaticResource HistoryRowButtonStyle}" CornerRadius="0" Padding="12,10"
-                  Click="Segment_Click" AutomationProperties.Name="{x:Bind AutomationName}">
-            <Grid ColumnSpacing="12">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="52" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Text="{x:Bind TimeText}" FontSize="12" Opacity="0.7" Margin="0,3,0,0" />
-              <TextBlock Grid.Column="1" Text="{x:Bind Text}" FontSize="15" TextWrapping="Wrap" />
-            </Grid>
-          </Button>
-        </Grid>
+        <StackPanel>
+          <TextBlock Text="{x:Bind CollapsedText, Mode=OneWay}" Visibility="{x:Bind HasCollapsed, Mode=OneWay}"
+                     FontSize="12" Margin="24,10,12,10" Opacity="0.7" TextWrapping="Wrap" />
+          <Grid Visibility="{x:Bind ShowRow, Mode=OneWay}">
+            <Border CornerRadius="0" Background="{ThemeResource HistorySelectedBrush}"
+                    Visibility="{x:Bind IsCurrent, Mode=OneWay}" />
+            <Border Width="3" HorizontalAlignment="Left" Background="{ThemeResource AccentFillColorDefaultBrush}"
+                    Visibility="{x:Bind IsCurrent, Mode=OneWay}" />
+            <controls:SpeakerSwatch Width="4" HorizontalAlignment="Left" Margin="6,4,0,4" CornerRadius="2"
+                                    ColorIndex="{x:Bind SpeakerColor, Mode=OneWay}" />
+            <StackPanel>
+              <Button Style="{StaticResource HistoryRowButtonStyle}" CornerRadius="0" Padding="18,0,12,0" MinHeight="44"
+                      Click="SpeakerHeader_Click" Visibility="{x:Bind ShowHeader, Mode=OneWay}"
+                      AutomationProperties.Name="{x:Bind HeaderAutomationName, Mode=OneWay}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <controls:SpeakerSwatch Width="10" Height="10" CornerRadius="5" VerticalAlignment="Center"
+                                          ColorIndex="{x:Bind SpeakerColor, Mode=OneWay}" />
+                  <TextBlock Text="{x:Bind SpeakerName, Mode=OneWay}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <FontIcon Glyph="&#xE70F;" FontSize="11" Opacity="0.6" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Style="{StaticResource HistoryRowButtonStyle}" CornerRadius="0" Padding="18,10,12,10"
+                      Click="Segment_Click" AutomationProperties.Name="{x:Bind AutomationName, Mode=OneWay}">
+                <Grid ColumnSpacing="12">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="52" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="{x:Bind TimeText}" FontSize="12" Opacity="0.7" Margin="0,3,0,0" />
+                  <StackPanel Grid.Column="1" Spacing="4">
+                    <history:SegmentTextBlock Source="{Binding}" FontSize="15" />
+                    <Border Style="{StaticResource HistoryChipStyle}" HorizontalAlignment="Left"
+                            Visibility="{x:Bind HasMarkers, Mode=OneWay}">
+                      <TextBlock Text="{x:Bind MarkerText, Mode=OneWay}" Style="{StaticResource HistoryChipTextStyle}" TextWrapping="Wrap" />
+                    </Border>
+                  </StackPanel>
+                </Grid>
+              </Button>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
       </DataTemplate>
 
       <DataTemplate x:Key="EditSegmentTemplate" x:DataType="history:SegmentViewModel">
@@ -131,6 +158,13 @@
                            Text="{x:Bind DiffText, Mode=OneWay}" FontWeight="SemiBold" />
               </Grid>
               <TextBlock Text="{x:Bind UsageText}" Style="{StaticResource HistorySecondaryStyle}" Visibility="{x:Bind HasUsage}" />
+              <StackPanel Spacing="2" Visibility="{x:Bind HasSpeakers}">
+                <TextBlock Style="{StaticResource HistorySecondaryStyle}">
+                  <Run Text="Speakers" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{x:Bind SpeakersText}" FontWeight="SemiBold" />
+                </TextBlock>
+                <TextBlock Text="{x:Bind PresetText}" Style="{StaticResource HistorySecondaryStyle}" Visibility="{x:Bind HasPreset}" />
+              </StackPanel>
               <Grid ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="*" />
@@ -246,6 +280,7 @@
     <Grid Grid.Row="2" Margin="16,0,16,8" RowSpacing="8" Visibility="{x:Bind ViewModel.IsTranscriptTab, Mode=OneWay}">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
       <Grid x:Name="TranscriptToolbar" ColumnSpacing="4">
@@ -278,12 +313,20 @@
           <SymbolIcon Symbol="Copy" />
         </Button>
       </Grid>
-      <Border Grid.Row="1" Style="{StaticResource HistoryCardStyle}">
+      <!-- Speakers: summary / picker / chips, the filter line and the "Detect speakers" card (design §10.8) -->
+      <Grid x:Name="SpeakerBarHost" Grid.Row="1">
+        <history:SpeakersBar x:Name="SpeakerBar" Visibility="{x:Bind ViewModel.IsSpeakerBarVisible, Mode=OneWay}" />
+      </Grid>
+      <Border Grid.Row="2" Style="{StaticResource HistoryCardStyle}">
         <Grid>
           <ScrollViewer x:Name="TranscriptScroll" HorizontalScrollMode="Disabled"
                         HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <ItemsControl x:Name="SegmentsList" ItemsSource="{x:Bind ViewModel.Segments}"
-                          ItemTemplate="{StaticResource SegmentTemplate}" IsTabStop="False" Padding="0,4" />
+            <StackPanel>
+              <!-- Low windows: the speaker bar moves here and scrolls with the transcript (see ApplyLayout) -->
+              <Grid x:Name="SpeakerBarScrollHost" Margin="8,8,8,0" />
+              <ItemsControl x:Name="SegmentsList" ItemsSource="{x:Bind ViewModel.Segments}"
+                            ItemTemplate="{StaticResource SegmentTemplate}" IsTabStop="False" Padding="0,4" />
+            </StackPanel>
           </ScrollViewer>
           <TextBlock Margin="16" Style="{StaticResource HistorySecondaryStyle}" FontSize="13"
                      Text="This version has no text." Visibility="{x:Bind ViewModel.HasNoSegments, Mode=OneWay}" />
@@ -352,6 +395,13 @@
           <StackPanel Orientation="Horizontal" Spacing="8">
             <SymbolIcon Symbol="Refresh" />
             <TextBlock Text="Re-recognize…" />
+          </StackPanel>
+        </Button>
+        <Button x:Name="DetectSpeakersButton" Style="{StaticResource HistoryActionButtonStyle}" HorizontalAlignment="Stretch"
+                Click="DetectSpeakers_Click" Visibility="Collapsed" AutomationProperties.Name="Detect speakers">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <FontIcon Glyph="&#xE716;" FontSize="14" />
+            <TextBlock x:Name="DetectSpeakersLabel" Text="Detect speakers…" />
           </StackPanel>
         </Button>
         <TextBlock Text="{x:Bind ViewModel.VersionsHint, Mode=OneWay}" Style="{StaticResource HistorySecondaryStyle}" />

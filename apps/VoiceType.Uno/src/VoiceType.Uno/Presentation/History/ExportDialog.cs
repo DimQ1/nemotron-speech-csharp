@@ -21,12 +21,16 @@ internal sealed partial class ExportDialog : ContentDialog
     private readonly long _audioBytes;
     private readonly CheckBox _text;
     private readonly ToggleSwitch _withTranslation;
+    private readonly SpeakerLayerView? _layer;
+    private readonly ToggleSwitch _speakerNames;
     private readonly CheckBox _audio;
     private readonly TextBlock _summary;
 
     private ExportDialog(RecordingManifest manifest, string versionId, TranscriptDocument transcript,
-        TranslationInfo? translationInfo, TranslationDocument? translation, string? audioPath, long audioBytes)
+        TranslationInfo? translationInfo, TranslationDocument? translation, string? audioPath, long audioBytes,
+        SpeakerLayerView? layer)
     {
+        _layer = layer;
         _manifest = manifest;
         _transcript = transcript;
         _translation = translation;
@@ -63,6 +67,19 @@ internal sealed partial class ExportDialog : ContentDialog
         translationRow.Visibility = translation is null ? Visibility.Collapsed : Visibility.Visible;
         panel.Children.Add(translationRow);
 
+        // "Include speaker names": on by default when a speaker layer exists (design §10.8).
+        // .txt gets "[00:03:20] Anna: …", .srt and .lrc an "Anna: " prefix (SpeakerExportOptions).
+        _speakerNames = new ToggleSwitch { OnContent = "", OffContent = "", MinWidth = 0, MinHeight = 44, IsOn = layer is not null };
+        var speakerRow = new Grid { ColumnSpacing = 12, MinHeight = 44 };
+        speakerRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        speakerRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        speakerRow.Children.Add(Label("Include speaker names", "Anna: … in front of each line of .txt, .srt and .lrc"));
+        Grid.SetColumn(_speakerNames, 1);
+        speakerRow.Children.Add(_speakerNames);
+        AutomationProperties.SetName(_speakerNames, "Include speaker names");
+        speakerRow.Visibility = layer is null ? Visibility.Collapsed : Visibility.Visible;
+        panel.Children.Add(speakerRow);
+
         var audioDetail = audioPath is null
             ? "No audio: it was not recorded or was removed by the retention rule"
             : $"{Path.GetExtension(audioPath).TrimStart('.').ToUpperInvariant()} audio ({HistoryUiFormat.Bytes(audioBytes)}) + .lrc (music players) + .srt (video players, VLC)";
@@ -87,6 +104,7 @@ internal sealed partial class ExportDialog : ContentDialog
         _audio.Checked += (_, _) => Update();
         _audio.Unchecked += (_, _) => Update();
         _withTranslation.Toggled += (_, _) => Update();
+        _speakerNames.Toggled += (_, _) => Update();
         Update();
     }
 
@@ -116,15 +134,24 @@ internal sealed partial class ExportDialog : ContentDialog
             }
             var audio = store.GetAudioPath(recordingId);
             var bytes = audio is null ? 0 : new FileInfo(audio).Length;
-            return (entry.Manifest, version, transcript, info, translation, audio, bytes);
+            SpeakerLayerView? layer = null;
+            try
+            {
+                layer = SpeakerServices.Current?.GetLayer(recordingId, version);
+            }
+            catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or KeyNotFoundException)
+            {
+                // Speaker names are optional.
+            }
+            return (entry.Manifest, version, transcript, info, translation, audio, bytes, layer);
         });
         if (data.Manifest is null)
             return null;
-        return new ExportDialog(data.Manifest, data.version, data.transcript, data.info, data.translation, data.audio, data.bytes);
+        return new ExportDialog(data.Manifest, data.version, data.transcript, data.info, data.translation, data.audio, data.bytes, data.layer);
     }
 
     private IReadOnlyList<HistoryExportFile> Plan() => HistoryUiExport.Plan(
-        _manifest, _transcript,
+        _manifest, SpeakerExportOptions.From(_layer, _speakerNames.IsOn).Apply(_transcript),
         new HistoryExportOptions(_text.IsChecked == true, _withTranslation.IsOn, _audio.IsChecked == true),
         _audioPath, _audioBytes, _translation);
 

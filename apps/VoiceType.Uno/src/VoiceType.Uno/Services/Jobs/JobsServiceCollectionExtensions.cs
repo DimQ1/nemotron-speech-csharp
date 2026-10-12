@@ -60,6 +60,7 @@ public static class JobsServiceCollectionExtensions
                 poke: () => sp.GetRequiredService<JobRunner>().Poke());
         });
         services.AddSingleton(sp => new ReprocessChain(sp.GetRequiredService<JobQueue>(), sp.GetRequiredService<RecordingStore>()));
+        services.AddSingleton<IReprocessChainEnqueuer>(sp => new ReprocessChainEnqueuer(sp.GetRequiredService<ReprocessChain>(), sp.GetRequiredService<JobQueue>()));
 #if DEBUG
         // Scripted host for UI checks without the 2.4 GB model: VOICETYPE_FAKE_LLM=1. Any real ILlmHost registration wins.
         if (Environment.GetEnvironmentVariable("VOICETYPE_FAKE_LLM") == "1")

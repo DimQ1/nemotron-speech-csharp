@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace VoiceType.Uno.History;
 
-/// <summary><c>Speakers.AfterStop</c>: background speaker detection after a recording stops.</summary>
+/// <summary><c>Speakers.AutoAfterStop</c>: background speaker detection after a recording stops.</summary>
 [JsonConverter(typeof(LenientEnumConverter<SpeakerAutoMode>))]
 public enum SpeakerAutoMode
 {

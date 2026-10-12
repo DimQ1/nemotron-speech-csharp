@@ -25,7 +25,11 @@ public sealed partial class ReprocessSheet : ContentDialog
     private readonly List<string> _languageValues = [];
     private readonly int _requested;
 
-    public ReprocessSheet(IReadOnlyList<string> recordingIds)
+    private readonly IReprocessChainEnqueuer? _chain;
+    private readonly bool _speakersOnly;
+
+    /// <param name="speakersOnly">"Detect again…" from the Speakers sheet: the Speech step starts switched off.</param>
+    public ReprocessSheet(IReadOnlyList<string> recordingIds, bool speakersOnly = false)
     {
         ArgumentNullException.ThrowIfNull(recordingIds);
         InitializeComponent();
@@ -36,6 +40,8 @@ public sealed partial class ReprocessSheet : ContentDialog
         _runner = services.GetRequiredService<JobRunner>();
         _settings = services.GetRequiredService<SettingsStore>().Snapshot();
         _device = services.GetService<IDeviceConditions>();
+        _speakersOnly = speakersOnly;
+        _chain = SpeakerServices.Chain;
 
         _requested = recordingIds.Distinct(StringComparer.Ordinal).Count();
         foreach (var id in recordingIds.Distinct(StringComparer.Ordinal))
@@ -44,6 +50,7 @@ public sealed partial class ReprocessSheet : ContentDialog
                 _recordings.Add(manifest);
         }
 
+        BuildChain();
         BuildHeader();
         BuildModels();
         BuildLanguages();
@@ -51,6 +58,7 @@ public sealed partial class ReprocessSheet : ContentDialog
         VadSwitch.IsOn = _settings.UseVad;
         MakeCurrentSwitch.IsOn = _recordings.Count > 1;
         MakeCurrentLabel.Text = _recordings.Count > 1 ? "Make new versions current" : "Make it current when done";
+        ApplySteps();
         UpdateEstimate();
         UpdateStartEnabled();
     }
@@ -59,6 +67,46 @@ public sealed partial class ReprocessSheet : ContentDialog
     public IReadOnlyList<HistoryJob> Enqueued { get; private set; } = [];
 
     // ── Build ───────────────────────────────────────────────────────────────
+
+    /// <summary>Chain controls (Speech → Speakers → Analysis); hidden while no <see cref="IReprocessChainEnqueuer"/> is registered.</summary>
+    private void BuildChain()
+    {
+        if (_chain is null)
+            return;
+        ChainPanel.Visibility = Visibility.Visible;
+        var speakers = SpeakerServices.Current;
+        var modelReady = speakers?.IsModelAvailable == true;
+        SpeechStepSwitch.IsOn = !_speakersOnly;
+        SpeakersStepSwitch.IsOn = _speakersOnly || modelReady;
+        SpeakersStepSwitch.IsEnabled = modelReady;
+        if (!modelReady)
+        {
+            SpeakersStepSwitch.IsOn = false;
+            SpeakersStepHint.Text = "Needs the speaker model: see Speakers on the Models page";
+        }
+        AnalysisStepSwitch.IsOn = false;
+        AnalysisStepSwitch.IsEnabled = VoiceType.Uno.Services.Jobs.GemmaAvailability.IsInstalled;
+    }
+
+    private void Steps_Toggled(object sender, RoutedEventArgs e) => ApplySteps();
+
+    /// <summary>The model, language and options sections matter only when the Speech step is on.</summary>
+    private void ApplySteps()
+    {
+        if (SpeechSection is null)
+            return;
+        var speech = _chain is null || SpeechStepSwitch.IsOn;
+        SpeechSection.Visibility = speech ? Visibility.Visible : Visibility.Collapsed;
+        SpeakersPresetBox.Visibility = _chain is not null && SpeakersStepSwitch.IsOn ? Visibility.Visible : Visibility.Collapsed;
+        if (_chain is not null)
+        {
+            TitleText.Text = speech ? "Reprocess audio" : SpeakersStepSwitch.IsOn ? "Detect speakers" : "Reprocess audio";
+            if (!speech)
+                SubtitleText.Text = "Uses the current transcript · no new version";
+        }
+        UpdateEstimate();
+        UpdateStartEnabled();
+    }
 
     private void BuildHeader()
     {
@@ -180,11 +228,16 @@ public sealed partial class ReprocessSheet : ContentDialog
     {
         try
         {
-            var model = SelectedModel() ?? throw new InvalidOperationException("Choose a speech model.");
             if (_recordings.Count == 0)
                 throw new InvalidOperationException("None of these recordings has audio to re-recognize.");
+            var speech = _chain is null || SpeechStepSwitch.IsOn;
+            var speakers = _chain is not null && SpeakersStepSwitch.IsOn;
+            var analysis = _chain is not null && AnalysisStepSwitch.IsOn;
+            if (!speech && !speakers && !analysis)
+                throw new InvalidOperationException("Switch on at least one step.");
+            var model = speech ? SelectedModel() ?? throw new InvalidOperationException("Choose a speech model.") : null;
 
-            var parameters = new JobParameters
+            var parameters = model is null ? null : new JobParameters
             {
                 ModelFolder = model.Folder,
                 CatalogRepoId = model.Descriptor?.RepoId,
@@ -194,9 +247,17 @@ public sealed partial class ReprocessSheet : ContentDialog
             };
             var condition = BuildCondition();
             var ids = _recordings.Select(r => r.Id).ToList();
+            if (_chain is not null && (speakers || analysis || !speech))
+            {
+                // One chain per recording: Speech → Speakers → Analysis (design §11.4). Built by the chain adapter.
+                Enqueued = _chain.Enqueue(new ReprocessChainRequest(ids, parameters, condition, speakers,
+                    SpeakersPresetBox.SelectedIndex == 1 ? "fast" : "offline", analysis));
+                _runner.Poke();
+                return;
+            }
             Enqueued = ids.Count == 1
-                ? [_queue.Enqueue(HistoryJobKind.Rerecognize, ids[0], parameters, condition)]
-                : _queue.EnqueueBatch(HistoryJobKind.Rerecognize, ids, parameters, condition);
+                ? [_queue.Enqueue(HistoryJobKind.Rerecognize, ids[0], parameters!, condition)]
+                : _queue.EnqueueBatch(HistoryJobKind.Rerecognize, ids, parameters!, condition);
             _runner.Poke();
         }
         catch (InvalidOperationException ex)
@@ -234,6 +295,11 @@ public sealed partial class ReprocessSheet : ContentDialog
     {
         if (EstimateText is null)
             return;
+        if (_chain is not null && !SpeechStepSwitch.IsOn)
+        {
+            EstimateText.Text = "Runs from the Queue, one step after another";
+            return;
+        }
         var model = SelectedModel();
         if (model is null || _recordings.Count == 0)
         {
@@ -258,7 +324,9 @@ public sealed partial class ReprocessSheet : ContentDialog
 
     private void UpdateStartEnabled()
     {
-        IsPrimaryButtonEnabled = _models.Count > 0 && _recordings.Count > 0 && !_queue.IsReadOnly;
+        var speech = _chain is null || SpeechStepSwitch.IsOn;
+        var anyStep = speech || (_chain is not null && (SpeakersStepSwitch.IsOn || AnalysisStepSwitch.IsOn));
+        IsPrimaryButtonEnabled = (!speech || _models.Count > 0) && anyStep && _recordings.Count > 0 && !_queue.IsReadOnly;
         if (_queue.IsReadOnly)
         {
             ErrorText.Text = "The queue was saved by a newer VoiceType and is read-only in this version.";

@@ -3,6 +3,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using SpeechLib.ModelDownload;
+using VoiceType.Uno.History;
 using VoiceType.Uno.Services;
 using Windows.System;
 
@@ -172,6 +173,7 @@ public sealed partial class ModelsPage : Page
         {
             ModelsTab.Translation => TranslationTab,
             ModelsTab.Downloads => DownloadsTab,
+            ModelsTab.Speakers => SpeakersTab,
             _ => SpeechTab
         };
 
@@ -185,6 +187,7 @@ public sealed partial class ModelsPage : Page
     {
         var tab = ReferenceEquals(sender, TranslationTab) ? ModelsTab.Translation
             : ReferenceEquals(sender, DownloadsTab) ? ModelsTab.Downloads
+            : ReferenceEquals(sender, SpeakersTab) ? ModelsTab.Speakers
             : ModelsTab.Speech;
         ShowPane(tab);
     }
@@ -198,7 +201,11 @@ public sealed partial class ModelsPage : Page
         SpeechPane.Visibility = tab == ModelsTab.Speech ? Visibility.Visible : Visibility.Collapsed;
         TranslationPane.Visibility = tab == ModelsTab.Translation ? Visibility.Visible : Visibility.Collapsed;
         DownloadsPane.Visibility = tab == ModelsTab.Downloads ? Visibility.Visible : Visibility.Collapsed;
+        SpeakersPane.Visibility = tab == ModelsTab.Speakers ? Visibility.Visible : Visibility.Collapsed;
         ContentScroll.ChangeView(null, 0, null, disableAnimation: true);
+
+        if (tab == ModelsTab.Speakers)
+            UpdateSpeakersPane();
 
         if (tab == ModelsTab.Translation)
         {
@@ -207,8 +214,24 @@ public sealed partial class ModelsPage : Page
         }
     }
 
+    /// <summary>Speakers tab: install status, size, licence, where to put the files; Download stays disabled until the model is published.</summary>
+    private void UpdateSpeakersPane()
+    {
+        var service = VoiceType.Uno.Presentation.History.SpeakerServices.Current;
+        var available = service?.IsModelAvailable == true;
+        SpeakersIntro.Text = SpeakersModelsUi.Intro;
+        SpeakersTitle.Text = SpeakersModelsUi.ModelTitle;
+        SpeakersInstalledChip.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
+        SpeakersStatus.Text = SpeakersModelsUi.Status(service is not null, available, service?.ModelStatus);
+        SpeakersFacts.Text = SpeakersModelsUi.Facts;
+        SpeakersLicence.Text = "Licence: " + SpeakersModelsUi.Licence;
+        SpeakersPlaceFiles.Text = SpeakersModelsUi.PlaceFilesText(AppPaths.ModelsDir);
+        SpeakersDownloadNote.Text = SpeakersModelsUi.DownloadDisabledText;
+    }
+
     private void Refresh_Click(object sender, RoutedEventArgs e)
     {
+        UpdateSpeakersPane();
         Models.Refresh();
         TranslationModel.Refresh();
         LlmModels?.Refresh();
