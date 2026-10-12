@@ -1,3 +1,5 @@
+using VoiceType.Uno.History;
+
 namespace VoiceType.Uno.Services;
 
 /// <summary>
@@ -62,5 +64,23 @@ public sealed class AppSettings
     public string MuteHotkey { get; set; } = "Ctrl+Shift+M";
     public string InjectTextHotkey { get; set; } = "Ctrl+Shift+I";
 
-    public AppSettings Clone() => (AppSettings)MemberwiseClone();
+    // ── Recordings history ──────────────────────────────────────────────────
+    private HistorySettings _history = new();
+
+    /// <summary>
+    /// History section (retention, storage cap, delete confirmation, inject dictations).
+    /// Absent in older settings files, which then load with the defaults.
+    /// </summary>
+    public HistorySettings History
+    {
+        get => _history;
+        set => _history = value ?? new HistorySettings();
+    }
+
+    public AppSettings Clone()
+    {
+        var clone = (AppSettings)MemberwiseClone();
+        clone._history = _history.Clone();
+        return clone;
+    }
 }

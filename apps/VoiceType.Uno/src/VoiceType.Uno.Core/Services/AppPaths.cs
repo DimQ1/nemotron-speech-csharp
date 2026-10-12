@@ -13,6 +13,11 @@ public static class AppPaths
 
     public static string ModelsDir => Path.Combine(DataRoot, "models");
     public static string SessionsDir => Path.Combine(DataRoot, "sessions");
+    /// <summary>Top-level history chats: <c>chats/&lt;chatId&gt;/chat.json</c>.</summary>
+    public static string ChatsDir => Path.Combine(DataRoot, "chats");
+    /// <summary>History job queue: <c>jobs/queue.json</c>.</summary>
+    public static string JobsDir => Path.Combine(DataRoot, "jobs");
+    public static string JobQueueFile => Path.Combine(JobsDir, "queue.json");
     public static string SettingsFile => Path.Combine(DataRoot, "settings.json");
     public static string ErrorLogFile => Path.Combine(DataRoot, "errors.log");
     public static string TempDir => Path.Combine(DataRoot, "temp");
@@ -26,6 +31,8 @@ public static class AppPaths
 
     public static string EnsureModelsDir() { var d = ModelsDir; Directory.CreateDirectory(d); return d; }
     public static string EnsureSessionsDir() { var d = SessionsDir; Directory.CreateDirectory(d); return d; }
+    public static string EnsureChatsDir() { var d = ChatsDir; Directory.CreateDirectory(d); return d; }
+    public static string EnsureJobsDir() { var d = JobsDir; Directory.CreateDirectory(d); return d; }
     public static string EnsureTempDir() { var d = TempDir; Directory.CreateDirectory(d); return d; }
 
     private static string ResolveDataRoot()
