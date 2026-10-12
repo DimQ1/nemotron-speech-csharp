@@ -34,6 +34,8 @@ public sealed partial class RecordingPage : Page
     {
         ViewModel = new RecordingViewModel(HistoryServices.Recordings, HistoryServices.Chats);
         InitializeComponent();
+        // Translate tab: a tap on a bilingual row moves the player (the tab shows the player too).
+        TranslateView.SeekRequested += seconds => Player.Seek(TimeSpan.FromSeconds(seconds));
         _reloadTimer = _dispatcher.CreateTimer();
         _reloadTimer.Interval = TimeSpan.FromMilliseconds(400);
         _reloadTimer.IsRepeating = false;
@@ -111,6 +113,7 @@ public sealed partial class RecordingPage : Page
     private async Task ReloadAsync(string? viewVersion, string? id = null)
     {
         await ViewModel.LoadAsync(id ?? RecordingId, viewVersion);
+        await TranslateView.LoadAsync(ViewModel.RecordingId, ViewModel.ViewedVersionId);
         _currentSegment = -1;
         if (ViewModel.AudioPath is { } audio && audio != _loadedAudio)
         {
@@ -253,6 +256,8 @@ public sealed partial class RecordingPage : Page
     {
         if (ViewModel.IsTranscriptTab)
             Highlight(ViewModel.SegmentAt(position.TotalSeconds), scroll: true);
+        else if (ViewModel.IsTranslateTab)
+            TranslateView.OnPlayerPosition(position);
     }
 
     private void Highlight(int index, bool scroll)

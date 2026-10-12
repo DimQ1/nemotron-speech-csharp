@@ -19,6 +19,8 @@ internal static class HistoryServices
 
     public static SettingsStore Settings => App.Services.GetRequiredService<SettingsStore>();
 
+    public static JobQueue Jobs => App.Services.GetRequiredService<JobQueue>();
+
     /// <summary>Created on first use on the UI thread (its commit timer needs the dispatcher).</summary>
     public static HistoryDeletes Deletes => s_deletes ??= new HistoryDeletes(DispatcherQueue.GetForCurrentThread());
 

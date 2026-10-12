@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using VoiceType.Uno.History;
 
 namespace VoiceType.Uno.Services.Jobs;
@@ -27,6 +28,18 @@ public static class JobsServiceCollectionExtensions
             var settings = sp.GetRequiredService<SettingsStore>();
             return new OfflineRecognitionJob(sp.GetRequiredService<RecordingStore>(), () => settings.Snapshot());
         });
+        // Gemma jobs (Background priority on the shared ILlmHost, resolved per job).
+        services.AddSingleton<IJobExecutor>(sp =>
+            new TranslateJob(sp.GetRequiredService<RecordingStore>(), () => sp.GetService<SpeechLib.Llm.ILlmHost>()));
+        services.AddSingleton<IJobExecutor>(sp =>
+            new AutoTitleJob(sp.GetRequiredService<RecordingStore>(), () => sp.GetService<SpeechLib.Llm.ILlmHost>()));
+        services.AddSingleton<IJobExecutor>(sp =>
+            new SummarizeJob(sp.GetRequiredService<RecordingStore>(), () => sp.GetService<SpeechLib.Llm.ILlmHost>()));
+#if DEBUG
+        // Scripted host for UI checks without the 2.4 GB model: VOICETYPE_FAKE_LLM=1. Any real ILlmHost registration wins.
+        if (Environment.GetEnvironmentVariable("VOICETYPE_FAKE_LLM") == "1")
+            services.TryAddSingleton<SpeechLib.Llm.ILlmHost, DebugFakeLlmHost>();
+#endif
         services.AddSingleton(sp =>
         {
             var settings = sp.GetRequiredService<SettingsStore>();

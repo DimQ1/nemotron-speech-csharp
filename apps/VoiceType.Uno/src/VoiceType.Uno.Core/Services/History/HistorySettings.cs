@@ -42,6 +42,9 @@ public sealed class HistorySettings
     /// <summary>Let queued jobs run next to a live recording (Android shows a CPU/battery warning).</summary>
     public bool AllowJobsDuringRecording { get; set; } = true;
 
+    /// <summary>Let Gemma write a title for every saved recording (low-priority job; needs the translation model).</summary>
+    public bool AutoTitles { get; set; } = true;
+
     [JsonIgnore]
     public bool KeepAudioForever => AudioRetentionDays <= 0;
 

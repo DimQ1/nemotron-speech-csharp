@@ -237,7 +237,7 @@ public sealed class RecordingViewModel : ObservableObject
     }
 
     /// <summary>The player sits under Transcript and the diff (design §4.3), only with audio.</summary>
-    public bool IsPlayerVisible => HasAudio && !IsEditing && (_tab == RecordingTab.Transcript || IsDiffView);
+    public bool IsPlayerVisible => HasAudio && !IsEditing && (_tab == RecordingTab.Transcript || _tab == RecordingTab.Translate || IsDiffView);
 
     public bool IsNoAudioLineVisible => HasNoAudio && !IsEditing && _tab == RecordingTab.Transcript;
 

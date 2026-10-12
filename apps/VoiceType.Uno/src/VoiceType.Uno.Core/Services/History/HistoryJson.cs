@@ -31,6 +31,9 @@ namespace VoiceType.Uno.History;
 [JsonSerializable(typeof(JobCondition))]
 [JsonSerializable(typeof(JobCheckpoint))]
 [JsonSerializable(typeof(TranscriptSegment))]
+// Gemma analysis caches (analysis/vN.chunks.json, analysis/vN.summary.json)
+[JsonSerializable(typeof(AnalysisChunksDocument))]
+[JsonSerializable(typeof(AnalysisSummaryDocument))]
 internal partial class HistoryJsonContext : JsonSerializerContext;
 
 /// <summary>Atomic JSON file I/O shared by the history stores.</summary>

@@ -187,6 +187,25 @@
           </Grid>
         </Border>
 
+        <!-- Gemma titles (low-priority autoTitle job after each saved recording) -->
+        <Border Style="{StaticResource HistoryCardStyle}" Margin="0,8,0,0">
+          <Grid Style="{StaticResource RowGridStyle}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="24" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="✦" FontSize="16" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+              <TextBlock Text="Titles by Gemma" TextWrapping="Wrap" />
+              <TextBlock x:Name="TitlesDetail" Text="Gemma names each new recording on the device. Your own titles are never replaced"
+                         Style="{StaticResource HistorySecondaryStyle}" />
+            </StackPanel>
+            <ToggleSwitch x:Name="TitlesSwitch" Grid.Column="2" Style="{StaticResource HistorySwitchStyle}"
+                          AutomationProperties.Name="Titles by Gemma" Toggled="Setting_Toggled" />
+          </Grid>
+        </Border>
+
         <Border Style="{StaticResource HistoryCardStyle}" Margin="0,24,0,0">
           <Button Style="{StaticResource HistoryRowButtonStyle}" MinHeight="56" Click="DeleteAll_Click"
                   AutomationProperties.Name="Delete all history">

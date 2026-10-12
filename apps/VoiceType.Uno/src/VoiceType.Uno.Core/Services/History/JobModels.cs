@@ -106,6 +106,9 @@ public sealed class JobParameters
     /// <summary>Rerecognize: make the new version current when the job completes (null = no).</summary>
     public bool? MakeCurrent { get; set; }
 
+    /// <summary>AutoTitle: generate even when a title (Gemma's or the user's) exists. The user title is still never replaced.</summary>
+    public bool? Regenerate { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
@@ -165,6 +168,16 @@ public sealed class JobCheckpoint
 
     /// <summary>Full path of the partial result (e.g. <c>jobs/&lt;jobId&gt;.part.json</c>).</summary>
     public string? PartFile { get; set; }
+
+    /// <summary>
+    /// Gemma jobs (translate, summarize): index of the next unit to run. Informational: the jobs
+    /// resume from their own partial result (the partial translation, <c>analysis/vN.chunks.json</c>),
+    /// which is written before the checkpoint and therefore never behind it.
+    /// </summary>
+    public int? Unit { get; set; }
+
+    /// <summary>Gemma jobs: id of the partial result (translation <c>t2</c>).</summary>
+    public string? ArtifactId { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
