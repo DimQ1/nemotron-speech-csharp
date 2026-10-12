@@ -35,6 +35,22 @@ public partial class App : Application
         (Current as App)?.Host?.Services
         ?? throw new InvalidOperationException("App host is not initialized yet.");
 
+    /// <summary>Appends a host lifecycle line (who disposed the Gemma host, worker failures) to host.log in the data root.</summary>
+    private static void LogHostDiagnostics(string message)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.DataRoot);
+            File.AppendAllText(
+                Path.Combine(AppPaths.DataRoot, "host.log"),
+                $"{DateTime.Now:HH:mm:ss.fff} [GemmaHost] {message}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Best-effort file logging.
+        }
+    }
+
     [SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "Uno.Extensions APIs are used in a way that is safe for trimming in this template context.")]
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
@@ -161,12 +177,22 @@ public partial class App : Application
                     // LLM (live translation, chat, saved-transcript translation, titles) takes ILlmHost and never
                     // touches LiteRtLmSharp directly: the host loads the model lazily (3.2 GB at 4096 tokens),
                     // unloads it when idle and schedules Live > Interactive > Background.
-                    services.AddSingleton<SpeechLib.Llm.ILlmHost>(_ => new SpeechLib.LiteRT.Native.GemmaEngineHost(
+                    //
+                    // The container owns the real GemmaEngineHost (and disposes it at shutdown). Components get ILlmHost
+                    // = SharedLlmHost, whose DisposeAsync is a no-op, so no component can shut the engine down for the
+                    // others by disposing "its" host.
+                    services.AddSingleton(_ => new SpeechLib.LiteRT.Native.GemmaEngineHost(
                         new SpeechLib.LiteRT.Native.GemmaEngineHostOptions
                         {
                             ModelPath = TranslationModelInfo.LocalModelPath,
                             Backend = TranslationModelInfo.Backend,
+                            Diagnostics = LogHostDiagnostics,
                         }));
+                    services.AddSingleton<SpeechLib.Llm.ILlmHost>(sp => new SpeechLib.Llm.SharedLlmHost(
+                        sp.GetRequiredService<SpeechLib.LiteRT.Native.GemmaEngineHost>())
+                    {
+                        OnIgnoredDispose = LogHostDiagnostics,
+                    });
                     // <<< Wave 2 / agent M
 
                     // ---- ViewModels ----

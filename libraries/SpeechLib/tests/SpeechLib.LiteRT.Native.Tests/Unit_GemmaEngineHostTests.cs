@@ -241,6 +241,77 @@ public sealed class Unit_GemmaEngineHostTests
     }
 
     [Fact]
+    public async Task AbandonedStream_ShouldNotKillTheHost()
+    {
+        // The consumer of a stream stops (live translation superseding/flushing a sentence, a chat Stop): the stream's
+        // finally cancels and DISPOSES the request's token source while the worker is still inside the native send.
+        // The worker then reports the cancellation from that disposed source; it used to throw out of the loop,
+        // which shut the host down for good ("The LLM host has been disposed.").
+        var inSend = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var gate = new ManualResetEventSlim();
+        var engine = new FakeGemmaEngine
+        {
+            ReplyFor = call => call.UserText == "slow"
+                ? new FakeReply
+                {
+                    FailWith = () =>
+                    {
+                        inSend.TrySetResult();
+                        gate.Wait(); // the worker is busy while the consumer walks away
+                        return new InvalidOperationException("CANCELLED: native send aborted");
+                    },
+                }
+                : FakeReply.Text("fine"),
+        };
+        await using var host = NewHost(engine);
+
+        using var cts = new CancellationTokenSource();
+        var slow = Task.Run(async () =>
+        {
+            await foreach (var _ in host.GenerateStreamAsync(Req(LlmPriority.Live, "slow"), cts.Token))
+            {
+            }
+        });
+        await inSend.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        cts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => slow); // its finally disposed the request's token source
+        gate.Set();
+
+        Assert.Equal("fine", await host.GenerateAsync(Req(LlmPriority.Background, "next")).WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.NotEqual(LlmHostState.Unavailable, host.Status.State);
+    }
+
+    [Fact]
+    public async Task SharedHost_ShouldIgnoreDisposeFromComponents()
+    {
+        var engine = new FakeGemmaEngine();
+        await using var real = NewHost(engine);
+        var ignored = new List<string>();
+        var shared = new SharedLlmHost(real) { OnIgnoredDispose = ignored.Add };
+
+        await shared.DisposeAsync();
+        await shared.DisposeAsync();
+
+        Assert.Equal(2, shared.IgnoredDisposeCount);
+        Assert.Equal(2, ignored.Count);
+        Assert.Equal("R(hi)", await shared.GenerateAsync(Req(LlmPriority.Interactive, "hi")));
+        Assert.NotEqual(LlmHostState.Unavailable, shared.Status.State);
+    }
+
+    [Fact]
+    public async Task Diagnostics_ShouldReportWhoDisposedTheHost()
+    {
+        var lines = new List<string>();
+        var host = new GemmaEngineHost(
+            new GemmaEngineHostOptions { ModelPath = "fake", IdleUnloadAfter = null, Diagnostics = lines.Add },
+            () => new FakeGemmaEngine());
+
+        await host.DisposeAsync();
+
+        Assert.Contains(lines, l => l.Contains("DisposeAsync called by") && l.Contains(nameof(Diagnostics_ShouldReportWhoDisposedTheHost)));
+    }
+
+    [Fact]
     public async Task Cancel_ShouldRemoveQueuedRequestWithoutRunningIt()
     {
         FakeReply? hold = null;

@@ -225,6 +225,7 @@ public sealed class GemmaEngineHost : ILlmHost
 
         if (first)
         {
+            Log("DisposeAsync called by:" + Environment.NewLine + Environment.StackTrace);
             try { _disposeCts.Cancel(); } catch (ObjectDisposedException) { }
             Wake();
         }
@@ -282,7 +283,7 @@ public sealed class GemmaEngineHost : ILlmHost
 
     private void Enqueue(Job job)
     {
-        job.Caller.Token.ThrowIfCancellationRequested();
+        job.CallerToken.ThrowIfCancellationRequested();
         CancellationTokenSource? preempt = null;
         lock (_lock)
         {
@@ -291,7 +292,7 @@ public sealed class GemmaEngineHost : ILlmHost
 
             job.Seq = ++_seq;
             _queue.Add(job);
-            job.CallerRegistration = job.Caller.Token.Register(() => OnCallerCancelled(job));
+            job.CallerRegistration = job.CallerToken.Register(() => OnCallerCancelled(job));
 
             var running = _running;
             if (running is { PreemptRequested: false } && job.Priority < running.Priority && running.Preempt is not null)
@@ -319,7 +320,7 @@ public sealed class GemmaEngineHost : ILlmHost
         // Running jobs notice through their linked token; queued ones are finished here.
         if (removed)
         {
-            job.Fail(new OperationCanceledException(job.Caller.Token));
+            job.Fail(new OperationCanceledException(job.CallerToken));
             PublishStatus();
         }
     }
@@ -332,7 +333,8 @@ public sealed class GemmaEngineHost : ILlmHost
         {
             while (true)
             {
-                DrainReleases();
+                try { DrainReleases(); }
+                catch (Exception ex) { Log($"worker: releasing conversations failed: {ex.Message}"); }
 
                 Job? job;
                 bool disposed;
@@ -348,17 +350,38 @@ public sealed class GemmaEngineHost : ILlmHost
                 if (job is null)
                 {
                     if (!await WaitForWorkAsync().ConfigureAwait(false))
-                        UnloadEngine();
+                    {
+                        try { UnloadEngine(); }
+                        catch (Exception ex) { Log($"worker: idle unload failed: {ex.Message}"); }
+                    }
+
                     continue;
                 }
 
-                PublishStatus();
-                await ExecuteAsync(job).ConfigureAwait(false);
+                try
+                {
+                    PublishStatus();
+                    await ExecuteAsync(job).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    // One request must never take the host down (a dead loop would answer "disposed" to everyone
+                    // until the app restarts): fail that request, drop what it held, and serve the next one.
+                    Log($"worker: request failed outside the engine call, host keeps running: {ex}");
+                    try { DropActive(job); } catch (Exception inner) { Log($"worker: cleanup failed: {inner.Message}"); }
+                    job.Fail(ex);
+                    lock (_lock)
+                    {
+                        if (ReferenceEquals(_running, job))
+                            _running = null;
+                        _detail = null;
+                    }
+                }
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[GemmaEngineHost] worker loop crashed: {ex}");
+            Log($"worker loop crashed, the host shuts down: {ex}");
         }
         finally
         {
@@ -428,6 +451,16 @@ public sealed class GemmaEngineHost : ILlmHost
         return true;
     }
 
+    private void Log(string message)
+    {
+        Debug.WriteLine($"[GemmaEngineHost] {message}");
+        try { _options.Diagnostics?.Invoke(message); }
+        catch
+        {
+            // Diagnostics must never fail the host.
+        }
+    }
+
     private void Wake() => _wake.Writer.TryWrite(0);
 
     private void Touch() => Volatile.Write(ref _lastActivityTimestamp, Stopwatch.GetTimestamp());
@@ -437,7 +470,7 @@ public sealed class GemmaEngineHost : ILlmHost
         var preempt = job.Preempt!;
         try
         {
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(job.Caller.Token, preempt.Token, _disposeCts.Token);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(job.CallerToken, preempt.Token, _disposeCts.Token);
             var ct = linked.Token;
             try
             {
@@ -497,7 +530,7 @@ public sealed class GemmaEngineHost : ILlmHost
         {
             // Includes native errors that surface after the token fired.
             DropActive(job);
-            job.Fail(new OperationCanceledException(job.Caller.Token));
+            job.Fail(new OperationCanceledException(job.CallerToken));
             return;
         }
 
@@ -612,12 +645,16 @@ public sealed class GemmaEngineHost : ILlmHost
     private void Shutdown()
     {
         List<Job> pending;
+        var unexpected = !_disposeCts.IsCancellationRequested;
         lock (_lock)
         {
             _disposed = true;
             pending = [.. _queue];
             _queue.Clear();
         }
+
+        if (unexpected)
+            Log("worker loop ended without DisposeAsync: the host is dead from now on");
 
         foreach (var job in pending)
             job.Fail(new LlmUnavailableException("The LLM host has been disposed."));
@@ -957,6 +994,13 @@ public sealed class GemmaEngineHost : ILlmHost
         public LlmPriority Priority { get; } = priority;
         public LlmRequest? Request { get; } = request;
         public CancellationTokenSource Caller { get; } = caller;
+
+        /// <summary>
+        /// The caller's token, captured while the source is alive. <see cref="Caller"/> is disposed by the request's
+        /// consumer the moment it walks away, and <c>CancellationTokenSource.Token</c> throws once disposed, so the
+        /// worker loop must never read it from <see cref="Caller"/> again.
+        /// </summary>
+        public CancellationToken CallerToken { get; } = caller.Token;
         public Channel<string> Out { get; } = Channel.CreateUnbounded<string>(
             new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
 

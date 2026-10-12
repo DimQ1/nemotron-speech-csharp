@@ -45,6 +45,12 @@ public sealed class GemmaEngineHostOptions
     /// </summary>
     public int LiveNoRepeatNgramSize { get; init; } = 8;
 
+    /// <summary>
+    /// Receives lifecycle diagnostics: who disposed the host (with the stack), and a worker failure. Called on any
+    /// thread; exceptions are swallowed.
+    /// </summary>
+    public Action<string>? Diagnostics { get; init; }
+
     /// <summary>The user turn sent to continue an interactive answer that was preempted mid-way.</summary>
     public string ContinuationPrompt { get; init; } =
         "Continue your previous answer exactly where it stopped. Do not repeat anything you already wrote and do not add an introduction.";

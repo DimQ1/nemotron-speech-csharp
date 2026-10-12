@@ -104,4 +104,8 @@ public interface ILlmHost : IAsyncDisposable
 
     /// <summary>Drops the live conversation kept for <paramref name="conversationKey"/> (chat closed or evicted).</summary>
     void ReleaseConversation(string conversationKey);
+
+    /// <summary>Loads the engine now instead of at the first request (a no-op for hosts without a lazy engine).</summary>
+    Task PreloadAsync(CancellationToken cancellationToken = default, LlmPriority priority = LlmPriority.Background) =>
+        Task.CompletedTask;
 }

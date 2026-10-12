@@ -73,8 +73,7 @@ public sealed class LiteRTLmNativeTranslator : ITextTranslator
             throw new FileNotFoundException("LiteRT-LM model file not found.", options.ModelPath);
 
         // Warm the engine at Live priority so the first sentence does not pay the load; a no-op when it is loaded.
-        if (host is GemmaEngineHost gemma)
-            gemma.Preload(LlmPriority.Live);
+        host.PreloadAsync(CancellationToken.None, LlmPriority.Live).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />
