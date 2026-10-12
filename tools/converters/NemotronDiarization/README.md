@@ -362,3 +362,9 @@ Memory on the phone (int8): about 270 MB resident plus the model file. That is a
   * Int8 numerics of ARM kernels.
 * **Post-processing and labelling:** no tuned post-processing, and no word-level speaker attribution against an ASR transcript.
 * **Reference parity:** exact parity with NeMo (`.nemo`) or NeMo-Speech.cpp (GGUF). Parity is against the HF Transformers port only, which NVIDIA's model card lists as supported.
+
+## Production library
+
+The spike pipeline now lives in `libraries/SpeechLib/src/SpeechLib.Diarization` (streaming and offline diarizers, speaker-cache port, word assignment, model locator),
+tested in `libraries/SpeechLib/tests/SpeechLib.Diarization.Tests`. `tools/DiarizationEval` runs it over the synthetic test set (DER, RTF, memory, parity against DiarBench dumps).
+To publish the ONNX files see `publish_hf.md`.

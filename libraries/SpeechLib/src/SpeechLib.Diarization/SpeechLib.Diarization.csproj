@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>SpeechLib.Diarization</RootNamespace>
+    <AssemblyName>SpeechLib.Diarization</AssemblyName>
+    <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!--
+    Speaker diarization (Nemotron-3-Diarization, Streaming Sortformer, up to 8 speakers) on plain
+    ONNX Runtime. No native dependency beyond ORT, no reflection (System.Text.Json JsonDocument only),
+    no GenAI. Execution-provider selection goes through SpeechLib.ExecutionProviderSelector, which lives
+    (internal) in SpeechLib.Providers, hence the reference; the ORT package version is inherited
+    transitively and must stay in lockstep with SpeechLib/SpeechLib.Providers.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
+    <ProjectReference Include="..\SpeechLib.Providers\SpeechLib.Providers.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SpeechLib.Diarization.Tests" />
+  </ItemGroup>
+
+</Project>
