@@ -1,0 +1,29 @@
+<UserControl x:Class="VoiceType.Uno.Presentation.History.UndoSnackbar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Loaded="OnLoaded"
+             Unloaded="OnUnloaded"
+             Visibility="Collapsed">
+  <!-- "Deleted · Undo" for 8 s when "Ask before deleting" is off. It is a grid row of the
+       page, not an overlay, so it never covers the list or the player. -->
+  <Border Margin="16,4,16,8" Padding="16,2,4,2" CornerRadius="8" MinHeight="48"
+          Background="{ThemeResource SystemFillColorSolidNeutralBrush}">
+    <Grid ColumnSpacing="4">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock x:Name="Label" VerticalAlignment="Center" TextWrapping="Wrap"
+                 Foreground="{ThemeResource TextFillColorInverseBrush}" />
+      <Button Grid.Column="1" Content="Undo" MinHeight="44" MinWidth="64" FontWeight="SemiBold"
+              Background="Transparent" BorderThickness="0" Click="Undo_Click"
+              Foreground="{ThemeResource AccentTextFillColorTertiaryBrush}"
+              AutomationProperties.Name="Undo delete" />
+      <Button Grid.Column="2" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
+              Click="Close_Click" AutomationProperties.Name="Dismiss" ToolTipService.ToolTip="Delete now">
+        <SymbolIcon Symbol="Cancel" Foreground="{ThemeResource TextFillColorInverseBrush}" />
+      </Button>
+    </Grid>
+  </Border>
+</UserControl>

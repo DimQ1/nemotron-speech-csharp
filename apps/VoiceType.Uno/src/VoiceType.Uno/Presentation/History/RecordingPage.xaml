@@ -1,21 +1,431 @@
 <Page x:Class="VoiceType.Uno.Presentation.History.RecordingPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-  <!-- Placeholder — replaced by agent J at merge. Exists only so navigation compiles. -->
-  <Grid RowSpacing="8" Padding="4,4,16,16">
+      xmlns:history="using:VoiceType.Uno.Presentation.History"
+      xmlns:controls="using:VoiceType.Uno.Presentation.Controls"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+      KeyDown="Page_KeyDown"
+      Loaded="Page_Loaded"
+      Unloaded="Page_Unloaded"
+      SizeChanged="Page_SizeChanged">
+
+  <!-- Recording detail (design §4.3, §13): header · tabs Transcript | Chats | Translate |
+       Versions · content · bottom (player, edit bar or the "no audio" line) · snackbar.
+       Every element names its Grid.Row, so a collapsed Auto row never shifts the others. -->
+  <Page.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <history:HistoryStyles />
+      </ResourceDictionary.MergedDictionaries>
+
+      <DataTemplate x:Key="SegmentTemplate" x:DataType="history:SegmentViewModel">
+        <Grid>
+          <Border CornerRadius="0" Background="{ThemeResource HistorySelectedBrush}"
+                  Visibility="{x:Bind IsCurrent, Mode=OneWay}" />
+          <Border Width="3" HorizontalAlignment="Left" Background="{ThemeResource AccentFillColorDefaultBrush}"
+                  Visibility="{x:Bind IsCurrent, Mode=OneWay}" />
+          <Button Style="{StaticResource HistoryRowButtonStyle}" CornerRadius="0" Padding="12,10"
+                  Click="Segment_Click" AutomationProperties.Name="{x:Bind AutomationName}">
+            <Grid ColumnSpacing="12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="52" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="{x:Bind TimeText}" FontSize="12" Opacity="0.7" Margin="0,3,0,0" />
+              <TextBlock Grid.Column="1" Text="{x:Bind Text}" FontSize="15" TextWrapping="Wrap" />
+            </Grid>
+          </Button>
+        </Grid>
+      </DataTemplate>
+
+      <DataTemplate x:Key="EditSegmentTemplate" x:DataType="history:SegmentViewModel">
+        <Grid ColumnSpacing="8" Padding="12,6">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="52" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Top" Margin="0,12,0,0">
+            <TextBlock Text="{x:Bind TimeText}" FontSize="12" Opacity="0.7" />
+            <Ellipse Width="6" Height="6" Fill="{ThemeResource AccentFillColorDefaultBrush}" VerticalAlignment="Center"
+                     Visibility="{x:Bind IsChanged, Mode=OneWay}" />
+          </StackPanel>
+          <TextBox Grid.Column="1" Text="{x:Bind EditText, Mode=OneWay}" TextWrapping="Wrap" AcceptsReturn="False"
+                   MinHeight="44" FontSize="15" TextChanged="EditBox_TextChanged"
+                   AutomationProperties.Name="{x:Bind AutomationName}" />
+        </Grid>
+      </DataTemplate>
+
+      <DataTemplate x:Key="ChatCardTemplate" x:DataType="history:ChatCardViewModel">
+        <Border Style="{StaticResource HistoryCardStyle}" Padding="12">
+          <StackPanel Spacing="4">
+            <TextBlock Text="{x:Bind Title}" Style="{StaticResource HistoryTitleStyle}" />
+            <TextBlock Text="{x:Bind Meta}" Style="{StaticResource HistorySecondaryStyle}" />
+            <TextBlock Text="{x:Bind LastLine}" FontSize="13" TextWrapping="Wrap" MaxLines="2"
+                       TextTrimming="CharacterEllipsis" Visibility="{x:Bind HasLastLine}" />
+          </StackPanel>
+        </Border>
+      </DataTemplate>
+
+      <DataTemplate x:Key="VersionCardTemplate" x:DataType="history:VersionCardViewModel">
+        <Grid>
+          <Border Style="{StaticResource HistoryCardStyle}" Padding="12">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{x:Bind Title}" Style="{StaticResource HistoryTitleStyle}" />
+              <controls:ChipWrapPanel Spacing="4">
+                <Border Style="{StaticResource HistoryChipStyle}" Visibility="{x:Bind IsCurrent}"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}" BorderBrush="{ThemeResource AccentFillColorDefaultBrush}">
+                  <TextBlock Text="● Current" Style="{StaticResource HistoryChipTextStyle}"
+                             Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                </Border>
+                <Border Style="{StaticResource HistoryChipStyle}">
+                  <TextBlock Text="{x:Bind KindText}" Style="{StaticResource HistoryChipTextStyle}" />
+                </Border>
+              </controls:ChipWrapPanel>
+              <Grid ColumnSpacing="12" RowSpacing="2">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" FontSize="12" TextWrapping="Wrap">
+                  <Run Text="Language" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{x:Bind LanguageText}" FontWeight="SemiBold" />
+                </TextBlock>
+                <TextBlock Grid.Row="0" Grid.Column="1" FontSize="12" TextWrapping="Wrap">
+                  <Run Text="VAD" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{x:Bind VadText}" FontWeight="SemiBold" />
+                </TextBlock>
+                <TextBlock Grid.Row="1" Grid.Column="0" FontSize="12" TextWrapping="Wrap">
+                  <Run Text="Created" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{x:Bind CreatedText}" FontWeight="SemiBold" />
+                </TextBlock>
+                <TextBlock Grid.Row="1" Grid.Column="1" FontSize="12" TextWrapping="Wrap">
+                  <Run Text="App" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{x:Bind AppText}" FontWeight="SemiBold" />
+                </TextBlock>
+                <TextBlock Grid.Row="2" Grid.Column="0" FontSize="12" TextWrapping="Wrap">
+                  <Run Text="Words" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{x:Bind WordsText}" FontWeight="SemiBold" />
+                </TextBlock>
+                <TextBlock Grid.Row="2" Grid.Column="1" FontSize="12" TextWrapping="Wrap"
+                           Text="{x:Bind DiffText, Mode=OneWay}" FontWeight="SemiBold" />
+              </Grid>
+              <TextBlock Text="{x:Bind UsageText}" Style="{StaticResource HistorySecondaryStyle}" Visibility="{x:Bind HasUsage}" />
+              <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="1" Content="Make current" Style="{StaticResource HistoryActionButtonStyle}"
+                        Click="MakeCurrent_Click" Visibility="{x:Bind IsNotCurrent}" />
+                <Button Grid.Column="2" Content="Compare" Style="{StaticResource HistoryActionButtonStyle}"
+                        Click="Compare_Click" />
+                <Button Grid.Column="3" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
+                        Click="VersionMore_Click" AutomationProperties.Name="More version actions"
+                        ToolTipService.ToolTip="More actions">
+                  <SymbolIcon Symbol="More" />
+                </Button>
+              </Grid>
+            </StackPanel>
+          </Border>
+          <Border BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" BorderThickness="1.5" CornerRadius="8"
+                  IsHitTestVisible="False" Visibility="{x:Bind IsCurrent}" />
+        </Grid>
+      </DataTemplate>
+    </ResourceDictionary>
+  </Page.Resources>
+
+  <Grid x:Name="LayoutRoot">
     <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />  <!-- 0 header -->
+      <RowDefinition Height="Auto" />  <!-- 1 tabs -->
+      <RowDefinition Height="*" />     <!-- 2 content -->
+      <RowDefinition Height="Auto" />  <!-- 3 player / edit bar / no-audio line -->
+      <RowDefinition Height="Auto" />  <!-- 4 snackbar -->
     </Grid.RowDefinitions>
-    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" MinHeight="56">
-      <Button Width="48" Height="48" Padding="0" Background="Transparent" BorderThickness="0"
-              Click="Back_Click" AutomationProperties.Name="Back" ToolTipService.ToolTip="Back">
+
+    <!-- Header: back · title + date · Ask Gemma · ⋯ -->
+    <Grid x:Name="Header" Grid.Row="0" MinHeight="56" Padding="4" ColumnSpacing="4"
+          Visibility="{x:Bind ViewModel.IsReading, Mode=OneWay}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition x:Name="BackColumn" Width="48" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="48" />
+        <ColumnDefinition Width="48" />
+      </Grid.ColumnDefinitions>
+      <Button x:Name="BackButton" Style="{StaticResource HistoryIconButtonStyle}" Click="Back_Click"
+              AutomationProperties.Name="Back" ToolTipService.ToolTip="Back">
         <SymbolIcon Symbol="Back" />
       </Button>
-      <TextBlock Text="Recording" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-    </StackPanel>
-    <TextBlock x:Name="Body" Grid.Row="1" Margin="12,0" TextWrapping="Wrap"
-               Text="Coming soon." />
+      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,0,0">
+        <TextBlock Text="{x:Bind ViewModel.Title, Mode=OneWay}" FontSize="18" FontWeight="SemiBold"
+                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+        <TextBlock Text="{x:Bind ViewModel.Subtitle, Mode=OneWay}" FontSize="12" Opacity="0.7"
+                   TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+      <Button Grid.Column="2" Style="{StaticResource HistoryIconButtonStyle}" IsEnabled="False"
+              AutomationProperties.Name="Ask Gemma (coming soon)" ToolTipService.ToolTip="Ask Gemma — coming soon">
+        <TextBlock Text="✦" FontSize="18" />
+      </Button>
+      <Button Grid.Column="3" Style="{StaticResource HistoryIconButtonStyle}" Click="More_Click"
+              AutomationProperties.Name="Recording actions" ToolTipService.ToolTip="More actions">
+        <SymbolIcon Symbol="More" />
+      </Button>
+    </Grid>
+
+    <!-- Edit header: × · Edit transcript · Undo -->
+    <Grid Grid.Row="0" MinHeight="56" Padding="4" ColumnSpacing="4"
+          Visibility="{x:Bind ViewModel.IsEditing, Mode=OneWay}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="48" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="48" />
+      </Grid.ColumnDefinitions>
+      <Button Style="{StaticResource HistoryIconButtonStyle}" Click="CancelEdit_Click"
+              AutomationProperties.Name="Close editing" ToolTipService.ToolTip="Close without saving">
+        <SymbolIcon Symbol="Cancel" />
+      </Button>
+      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,0,0">
+        <TextBlock Text="Edit transcript" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+        <TextBlock Text="{x:Bind ViewModel.Title, Mode=OneWay}" FontSize="12" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+      <Button Grid.Column="2" Style="{StaticResource HistoryIconButtonStyle}" Click="Undo_Click"
+              IsEnabled="{x:Bind ViewModel.CanUndo, Mode=OneWay}"
+              AutomationProperties.Name="Undo" ToolTipService.ToolTip="Undo the last change">
+        <SymbolIcon Symbol="Undo" />
+      </Button>
+    </Grid>
+
+    <!-- Tabs -->
+    <Border x:Name="TabsBar" Grid.Row="1" Margin="16,0,16,8" Padding="2" CornerRadius="8"
+            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+            Visibility="{x:Bind ViewModel.IsReading, Mode=OneWay}">
+      <Grid ColumnSpacing="2">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <RadioButton x:Name="TranscriptTab" GroupName="RecordingTabs" Content="Transcript" IsChecked="True"
+                     Style="{StaticResource HistorySegmentStyle}" Checked="Tab_Checked" />
+        <RadioButton x:Name="ChatsTab" Grid.Column="1" GroupName="RecordingTabs" Content="Chats"
+                     Style="{StaticResource HistorySegmentStyle}" Checked="Tab_Checked" />
+        <RadioButton x:Name="TranslateTab" Grid.Column="2" GroupName="RecordingTabs" Content="Translate"
+                     Style="{StaticResource HistorySegmentStyle}" Checked="Tab_Checked" />
+        <RadioButton x:Name="VersionsTab" Grid.Column="3" GroupName="RecordingTabs" Content="Versions"
+                     Style="{StaticResource HistorySegmentStyle}" Checked="Tab_Checked" />
+      </Grid>
+    </Border>
+
+    <!-- ── Transcript ──────────────────────────────────────────────── -->
+    <Grid Grid.Row="2" Margin="16,0,16,8" RowSpacing="8" Visibility="{x:Bind ViewModel.IsTranscriptTab, Mode=OneWay}">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <Grid x:Name="TranscriptToolbar" ColumnSpacing="4">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="44" />
+          <ColumnDefinition Width="44" />
+          <ColumnDefinition Width="44" />
+        </Grid.ColumnDefinitions>
+        <Button x:Name="VersionPickerButton" MinHeight="44" HorizontalAlignment="Left" Padding="12,0"
+                Click="VersionPicker_Click" AutomationProperties.Name="Choose version">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="{x:Bind ViewModel.ViewedVersionLabel, Mode=OneWay}" FontSize="13"
+                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <FontIcon Glyph="&#xE70D;" FontSize="10" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Grid.Column="1" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
+                Click="Edit_Click" IsEnabled="{x:Bind ViewModel.HasSegments, Mode=OneWay}"
+                AutomationProperties.Name="Edit transcript" ToolTipService.ToolTip="Edit transcript">
+          <SymbolIcon Symbol="Edit" />
+        </Button>
+        <Button Grid.Column="2" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
+                Click="Export_Click" AutomationProperties.Name="Export" ToolTipService.ToolTip="Export">
+          <SymbolIcon Symbol="Download" />
+        </Button>
+        <Button Grid.Column="3" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
+                Click="Copy_Click" IsEnabled="{x:Bind ViewModel.HasSegments, Mode=OneWay}"
+                AutomationProperties.Name="Copy transcript" ToolTipService.ToolTip="Copy transcript">
+          <SymbolIcon Symbol="Copy" />
+        </Button>
+      </Grid>
+      <Border Grid.Row="1" Style="{StaticResource HistoryCardStyle}">
+        <Grid>
+          <ScrollViewer x:Name="TranscriptScroll" HorizontalScrollMode="Disabled"
+                        HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="SegmentsList" ItemsSource="{x:Bind ViewModel.Segments}"
+                          ItemTemplate="{StaticResource SegmentTemplate}" IsTabStop="False" Padding="0,4" />
+          </ScrollViewer>
+          <TextBlock Margin="16" Style="{StaticResource HistorySecondaryStyle}" FontSize="13"
+                     Text="This version has no text." Visibility="{x:Bind ViewModel.HasNoSegments, Mode=OneWay}" />
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ── Edit mode ───────────────────────────────────────────────── -->
+    <Grid Grid.Row="2" Margin="16,0,16,8" RowSpacing="6" Visibility="{x:Bind ViewModel.IsEditing, Mode=OneWay}">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <TextBlock Text="{x:Bind ViewModel.EditCaption, Mode=OneWay}" Style="{StaticResource HistorySecondaryStyle}" />
+      <Border Grid.Row="1" Style="{StaticResource HistoryCardStyle}">
+        <ScrollViewer HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <ItemsControl x:Name="EditList" ItemTemplate="{StaticResource EditSegmentTemplate}"
+                        IsTabStop="False" Padding="0,4" />
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <!-- ── Chats ───────────────────────────────────────────────────── -->
+    <ScrollViewer Grid.Row="2" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto" Visibility="{x:Bind ViewModel.IsChatsTab, Mode=OneWay}">
+      <StackPanel Margin="16,0,16,16" Spacing="8">
+        <Grid ColumnSpacing="8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Button Style="{StaticResource HistoryAccentButtonStyle}" HorizontalAlignment="Stretch" IsEnabled="False"
+                  AutomationProperties.Name="Ask Gemma (coming soon)">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="✦" FontSize="14" />
+              <TextBlock Text="Ask Gemma" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="1" Style="{StaticResource HistoryActionButtonStyle}" HorizontalAlignment="Stretch"
+                  IsEnabled="False" Content="+ Add to chat…" AutomationProperties.Name="Add to chat (coming soon)" />
+        </Grid>
+        <TextBlock Text="Chats with Gemma about your recordings are coming soon." Style="{StaticResource HistorySecondaryStyle}" />
+        <TextBlock Text="{x:Bind ViewModel.ChatsHeader, Mode=OneWay}" Style="{StaticResource HistorySectionHeaderStyle}" Margin="0,8,0,0" />
+        <ItemsControl ItemsSource="{x:Bind ViewModel.ChatCards}" ItemTemplate="{StaticResource ChatCardTemplate}" IsTabStop="False">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="8" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+        </ItemsControl>
+        <TextBlock Style="{StaticResource HistorySecondaryStyle}" FontSize="11"
+                   Text="Chats live on the Chats page: one chat can read several recordings, and a recording can be in several chats." />
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ── Translate (later wave) ──────────────────────────────────── -->
+    <ScrollViewer Grid.Row="2" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto" Visibility="{x:Bind ViewModel.IsTranslateTab, Mode=OneWay}">
+      <StackPanel Margin="16,0,16,16" Spacing="8">
+        <Border Style="{StaticResource HistoryHintStyle}">
+          <StackPanel Spacing="2">
+            <TextBlock Text="Translation of saved transcripts is coming soon" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock FontSize="13" TextWrapping="Wrap"
+                       Text="Gemma will translate this transcript on the device, in sync with the player. Live translations made while recording are kept with the recording." />
+          </StackPanel>
+        </Border>
+        <TextBlock Text="SAVED TRANSLATIONS" Style="{StaticResource HistorySectionHeaderStyle}" Margin="0,8,0,0" />
+        <TextBlock Text="{x:Bind ViewModel.TranslateText, Mode=OneWay}" FontSize="13" TextWrapping="Wrap" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ── Versions: list ──────────────────────────────────────────── -->
+    <ScrollViewer Grid.Row="2" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto" Visibility="{x:Bind ViewModel.IsVersionsList, Mode=OneWay}">
+      <StackPanel Margin="16,0,16,16" Spacing="8">
+        <Button Style="{StaticResource HistoryAccentButtonStyle}" HorizontalAlignment="Stretch"
+                Click="Reprocess_Click" IsEnabled="{x:Bind ViewModel.HasAudio, Mode=OneWay}"
+                AutomationProperties.Name="Re-recognize">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <SymbolIcon Symbol="Refresh" />
+            <TextBlock Text="Re-recognize…" />
+          </StackPanel>
+        </Button>
+        <TextBlock Text="{x:Bind ViewModel.VersionsHint, Mode=OneWay}" Style="{StaticResource HistorySecondaryStyle}" />
+        <ItemsControl ItemsSource="{x:Bind ViewModel.Versions}" ItemTemplate="{StaticResource VersionCardTemplate}" IsTabStop="False">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="8" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ── Versions: diff ──────────────────────────────────────────── -->
+    <Grid Grid.Row="2" Margin="16,0,16,8" RowSpacing="8" Visibility="{x:Bind ViewModel.IsDiffView, Mode=OneWay}">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <Grid ColumnSpacing="4">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="44" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Button Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
+                Click="CloseDiff_Click" AutomationProperties.Name="Back to versions" ToolTipService.ToolTip="Back to versions">
+          <SymbolIcon Symbol="Back" />
+        </Button>
+        <ComboBox x:Name="DiffFrom" Grid.Column="1" Style="{StaticResource HistoryComboStyle}" MinWidth="0"
+                  ItemsSource="{x:Bind ViewModel.VersionChoices}" DisplayMemberPath="Label"
+                  SelectionChanged="DiffPicker_SelectionChanged" AutomationProperties.Name="Compare from" />
+        <TextBlock Grid.Column="2" Text="→" VerticalAlignment="Center" Margin="2,0" />
+        <ComboBox x:Name="DiffTo" Grid.Column="3" Style="{StaticResource HistoryComboStyle}" MinWidth="0"
+                  ItemsSource="{x:Bind ViewModel.VersionChoices}" DisplayMemberPath="Label"
+                  SelectionChanged="DiffPicker_SelectionChanged" AutomationProperties.Name="Compare to" />
+      </Grid>
+      <Grid Grid.Row="1" ColumnSpacing="8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="DiffStats" Style="{StaticResource HistorySecondaryStyle}" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+          <TextBlock Text="Changes only" FontSize="13" VerticalAlignment="Center" />
+          <ToggleSwitch x:Name="ChangesOnlySwitch" Style="{StaticResource HistorySwitchStyle}" IsOn="True"
+                        Toggled="ChangesOnly_Toggled" AutomationProperties.Name="Changes only" />
+        </StackPanel>
+      </Grid>
+      <Border Grid.Row="2" Style="{StaticResource HistoryCardStyle}">
+        <ScrollViewer HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel x:Name="DiffList" Padding="0,4" />
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <!-- ── Bottom: player / no-audio line / edit bar ───────────────── -->
+    <history:PlayerBar x:Name="Player" Grid.Row="3" Visibility="{x:Bind ViewModel.IsPlayerVisible, Mode=OneWay}" />
+    <Border Grid.Row="3" Margin="16,0,16,12" Padding="12,10" CornerRadius="8"
+            Background="{ThemeResource HistoryWarningChipBrush}"
+            Visibility="{x:Bind ViewModel.IsNoAudioLineVisible, Mode=OneWay}">
+      <TextBlock Text="{x:Bind ViewModel.NoAudioText, Mode=OneWay}" FontSize="13" TextWrapping="Wrap" />
+    </Border>
+    <Grid Grid.Row="3" Padding="16,6,16,10" ColumnSpacing="8" Visibility="{x:Bind ViewModel.IsEditing, Mode=OneWay}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock x:Name="ChangedLabel" Text="{x:Bind ViewModel.ChangedText, Mode=OneWay}" FontSize="12"
+                 VerticalAlignment="Center" TextWrapping="Wrap" Opacity="0.8" />
+      <Button Grid.Column="1" Content="Cancel" Style="{StaticResource HistoryActionButtonStyle}" Click="CancelEdit_Click" />
+      <Button Grid.Column="2" Content="Save as new version" Style="{StaticResource HistoryAccentButtonStyle}"
+              Click="SaveEdit_Click" IsEnabled="{x:Bind ViewModel.HasEditChanges, Mode=OneWay}" />
+    </Grid>
+
+    <history:UndoSnackbar Grid.Row="4" />
   </Grid>
 </Page>
