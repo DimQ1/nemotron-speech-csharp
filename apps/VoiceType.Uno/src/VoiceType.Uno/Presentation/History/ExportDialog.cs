@@ -170,7 +170,7 @@ internal sealed partial class ExportDialog : ContentDialog
         }
     }
 
-    private static async Task<StorageFolder?> PickFolderAsync(XamlRoot? xamlRoot)
+    internal static async Task<StorageFolder?> PickFolderAsync(XamlRoot? xamlRoot)
     {
         try
         {
@@ -190,7 +190,7 @@ internal sealed partial class ExportDialog : ContentDialog
         }
     }
 
-    private static async Task WriteAsync(StorageFolder folder, IReadOnlyList<HistoryExportFile> files)
+    internal static async Task WriteAsync(StorageFolder folder, IReadOnlyList<HistoryExportFile> files)
     {
         foreach (var file in files)
         {

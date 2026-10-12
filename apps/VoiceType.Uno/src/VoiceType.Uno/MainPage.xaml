@@ -157,8 +157,8 @@
               </Grid>
             </Button>
             <Button Style="{StaticResource PaneItemButtonStyle}"
-                    IsEnabled="False"
-                    AutomationProperties.Name="Chats, coming soon">
+                    Click="Chats_Click"
+                    AutomationProperties.Name="Chats">
               <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="24" />
@@ -167,7 +167,7 @@
                 <FontIcon Grid.Column="0" Glyph="&#xE8BD;" FontSize="18" />
                 <StackPanel Grid.Column="1">
                   <TextBlock Text="Chats" />
-                  <TextBlock Text="Coming soon · ask Gemma across recordings"
+                  <TextBlock x:Name="ChatsSummaryText" Text="Ask Gemma across recordings"
                              Style="{StaticResource SecondaryLineStyle}"
                              TextTrimming="CharacterEllipsis" />
                 </StackPanel>

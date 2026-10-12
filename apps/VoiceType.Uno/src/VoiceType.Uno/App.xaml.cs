@@ -174,6 +174,10 @@ public partial class App : Application
 #endif
 
         Host = builder.Build();
+#if DEBUG
+        // Debug-only: fake recordings and chats in a VOICETYPE_DATA_ROOT sandbox (chat UI checks).
+        Presentation.Chat.DebugChatSeed.RunIfRequested(Host.Services);
+#endif
 
         // Finalize recordings a crash left behind and apply audio retention before the
         // first recording starts (the view model waits for recovery); never on the UI thread.
@@ -217,6 +221,9 @@ public partial class App : Application
             // parameter
             rootFrame.Navigate(typeof(MainPage), args.Arguments);
         }
+#if DEBUG
+        Presentation.Chat.DebugChatSeed.NavigateIfRequested(rootFrame, Host.Services);
+#endif
         // Ensure the current window is active
         MainWindow.Activate();
         // Apply the app icon now that the native window handle exists.

@@ -37,6 +37,11 @@ public static class AppPaths
 
     private static string ResolveDataRoot()
     {
+#if DEBUG
+        // Debug-only sandbox: UI checks run against a throwaway data root, never the user's real one.
+        if (Environment.GetEnvironmentVariable("VOICETYPE_DATA_ROOT") is { Length: > 0 } sandbox)
+            return sandbox;
+#endif
         var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (string.IsNullOrWhiteSpace(baseDir))
             baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");

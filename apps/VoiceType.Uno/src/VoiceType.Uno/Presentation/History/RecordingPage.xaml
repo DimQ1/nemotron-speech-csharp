@@ -55,15 +55,31 @@
         </Grid>
       </DataTemplate>
 
+      <!-- Chat card: opens the chat; ⋯ removes this recording from it (design §4.3) -->
       <DataTemplate x:Key="ChatCardTemplate" x:DataType="history:ChatCardViewModel">
-        <Border Style="{StaticResource HistoryCardStyle}" Padding="12">
-          <StackPanel Spacing="4">
-            <TextBlock Text="{x:Bind Title}" Style="{StaticResource HistoryTitleStyle}" />
-            <TextBlock Text="{x:Bind Meta}" Style="{StaticResource HistorySecondaryStyle}" />
-            <TextBlock Text="{x:Bind LastLine}" FontSize="13" TextWrapping="Wrap" MaxLines="2"
-                       TextTrimming="CharacterEllipsis" Visibility="{x:Bind HasLastLine}" />
-          </StackPanel>
-        </Border>
+        <Grid MinHeight="76">
+          <Border Style="{StaticResource HistoryCardStyle}" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button Style="{StaticResource HistoryRowButtonStyle}" Padding="12,10,4,10" Click="ChatCard_Click"
+                    AutomationProperties.Name="{x:Bind AutomationName}">
+              <StackPanel Spacing="4">
+                <TextBlock Text="{x:Bind Title}" Style="{StaticResource HistoryTitleStyle}" />
+                <TextBlock Text="{x:Bind Meta}" Style="{StaticResource HistorySecondaryStyle}" />
+                <TextBlock Text="{x:Bind LastLine}" FontSize="13" TextWrapping="Wrap" MaxLines="2"
+                           TextTrimming="CharacterEllipsis" Visibility="{x:Bind HasLastLine}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="1" Width="44" Height="44" Margin="0,0,4,0" Padding="0"
+                    Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                    Click="ChatCardMore_Click" AutomationProperties.Name="Chat actions" ToolTipService.ToolTip="More actions">
+              <SymbolIcon Symbol="More" />
+            </Button>
+          </Grid>
+        </Grid>
       </DataTemplate>
 
       <DataTemplate x:Key="VersionCardTemplate" x:DataType="history:VersionCardViewModel">
@@ -169,8 +185,9 @@
         <TextBlock Text="{x:Bind ViewModel.Subtitle, Mode=OneWay}" FontSize="12" Opacity="0.7"
                    TextTrimming="CharacterEllipsis" />
       </StackPanel>
-      <Button Grid.Column="2" Style="{StaticResource HistoryIconButtonStyle}" IsEnabled="False"
-              AutomationProperties.Name="Ask Gemma (coming soon)" ToolTipService.ToolTip="Ask Gemma — coming soon">
+      <Button x:Name="AskGemmaHeaderButton" Grid.Column="2" Style="{StaticResource HistoryIconButtonStyle}"
+              Click="AskGemma_Click"
+              AutomationProperties.Name="Ask Gemma" ToolTipService.ToolTip="Ask Gemma about this recording">
         <TextBlock Text="✦" FontSize="18" />
       </Button>
       <Button Grid.Column="3" Style="{StaticResource HistoryIconButtonStyle}" Click="More_Click"
@@ -298,17 +315,16 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
-          <Button Style="{StaticResource HistoryAccentButtonStyle}" HorizontalAlignment="Stretch" IsEnabled="False"
-                  AutomationProperties.Name="Ask Gemma (coming soon)">
+          <Button x:Name="AskGemmaTabButton" Style="{StaticResource HistoryAccentButtonStyle}" HorizontalAlignment="Stretch"
+                  Click="AskGemma_Click" AutomationProperties.Name="Ask Gemma">
             <StackPanel Orientation="Horizontal" Spacing="8">
               <TextBlock Text="✦" FontSize="14" />
               <TextBlock Text="Ask Gemma" />
             </StackPanel>
           </Button>
-          <Button Grid.Column="1" Style="{StaticResource HistoryActionButtonStyle}" HorizontalAlignment="Stretch"
-                  IsEnabled="False" Content="+ Add to chat…" AutomationProperties.Name="Add to chat (coming soon)" />
+          <Button x:Name="AddToChatTabButton" Grid.Column="1" Style="{StaticResource HistoryActionButtonStyle}" HorizontalAlignment="Stretch"
+                  Click="AddToChat_Click" Content="+ Add to chat…" AutomationProperties.Name="Add to chat" />
         </Grid>
-        <TextBlock Text="Chats with Gemma about your recordings are coming soon." Style="{StaticResource HistorySecondaryStyle}" />
         <TextBlock Text="{x:Bind ViewModel.ChatsHeader, Mode=OneWay}" Style="{StaticResource HistorySectionHeaderStyle}" Margin="0,8,0,0" />
         <ItemsControl ItemsSource="{x:Bind ViewModel.ChatCards}" ItemTemplate="{StaticResource ChatCardTemplate}" IsTabStop="False">
           <ItemsControl.ItemsPanel>

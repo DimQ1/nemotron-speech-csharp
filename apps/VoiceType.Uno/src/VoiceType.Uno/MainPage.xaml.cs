@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using SpeechLib.ModelDownload;
 using VoiceType.Uno.Presentation;
+using VoiceType.Uno.Presentation.Chat;
 using VoiceType.Uno.Presentation.History;
 using VoiceType.Uno.Presentation.Queue;
 using VoiceType.Uno.Services;
@@ -413,6 +414,7 @@ public sealed partial class MainPage : Page
     {
         Shell.IsPaneOpen = true;
         _ = ViewModel.RefreshHistorySummaryAsync();
+        _ = RefreshChatsSummaryAsync();
     }
 
     private void CloseMenu_Click(object sender, RoutedEventArgs e) => Shell.IsPaneOpen = false;
@@ -462,6 +464,28 @@ public sealed partial class MainPage : Page
     {
         await ClosePaneAsync();
         Frame?.Navigate(typeof(HistoryPage));
+    }
+
+    // Chats (design voicetype-uno-history §4.4): the second menu section.
+    private async void Chats_Click(object sender, RoutedEventArgs e)
+    {
+        await ClosePaneAsync();
+        Frame?.Navigate(typeof(ChatsPage));
+    }
+
+    /// <summary>Second line of the Chats menu entry ("3 chats"), counted off the UI thread.</summary>
+    private async Task RefreshChatsSummaryAsync()
+    {
+        try
+        {
+            var chats = App.Services.GetRequiredService<VoiceType.Uno.History.ChatStore>();
+            var count = await Task.Run(() => chats.LoadAll().Chats.Count);
+            ChatsSummaryText.Text = VoiceType.Uno.History.ChatUiFormat.MenuSummary(count);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            ChatsSummaryText.Text = "Ask Gemma across recordings";
+        }
     }
 
     private async void Queue_Click(object sender, RoutedEventArgs e)
