@@ -1,0 +1,14 @@
+# CPU-only environment for the Nemotron-3-Diarization ONNX spike (Python 3.12).
+# torch from the CPU index:  pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.14
+# nemotron3_diarization is only in Transformers main (5.19.0.dev0 at the time of the spike)
+transformers @ git+https://github.com/huggingface/transformers
+onnx>=1.23
+onnxruntime>=1.31
+onnxscript
+numpy
+scipy
+soundfile
+librosa
+safetensors
+pyannote.metrics
