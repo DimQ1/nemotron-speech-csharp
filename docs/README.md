@@ -23,3 +23,5 @@ root so existing Store and website links keep working.
 - ASR timestamps analysis: `research/asr/nemotron-3.5-asr-timestamps-analysis.md`
 - ONNX opset conversion notes: `research/onnx/opset24-conversion.md`
 - WinUI migration plan: `plans/voicetype-winui3-migration-plan.md`
+- VoiceType.Uno mobile redesign (design, mockup, overlap check): `design/voicetype-uno-mobile/README.md`
+- VoiceType.Uno recordings history (design only: playback, Gemma chat, translation, versioned re-recognition): `design/voicetype-uno-history/README.md`

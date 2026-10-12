@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VoiceType mockup frame</title>
+<!-- Test harness for render.ps1: hosts mockup.html in an iframe of an exact
+     CSS-pixel viewport (headless Edge sizes the outer window, not the viewport).
+     frame.html?w=360&h=800&q=<url-encoded mockup query>
+     The mockup posts its layout report back; it is copied into #check here so
+     --dump-dom on this page can read it (file:// frames are cross-origin). -->
+<style>
+  html, body { margin: 0; background: #808080; overflow: hidden; }
+  iframe { position: absolute; left: 0; top: 0; border: 0; display: block; }
+</style>
+</head>
+<body>
+<iframe id="f"></iframe>
+<pre id="check"></pre>
+<script>
+  const q = new URLSearchParams(location.search);
+  const f = document.getElementById('f');
+  f.style.width = (q.get('w') || 360) + 'px';
+  f.style.height = (q.get('h') || 800) + 'px';
+  addEventListener('message', e => { document.getElementById('check').textContent = e.data; });
+  f.src = 'mockup.html?' + (q.get('q') || '');
+</script>
+</body>
+</html>

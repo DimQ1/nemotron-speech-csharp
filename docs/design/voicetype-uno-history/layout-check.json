@@ -1,0 +1,3691 @@
+{
+  "phone-main-saved": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "snack-open",
+      "snack-close",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-drawer-history": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "drawer",
+    "checked": [
+      "d-close",
+      "d-history",
+      "d-chats",
+      "d-queue",
+      "d-inject",
+      "d-translate",
+      "d-manual",
+      "d-speakers",
+      "d-models",
+      "d-downloads",
+      "d-settings",
+      "d-help"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-history": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-history-search": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 480
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-5",
+      "row-5-more",
+      "storage"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-history-select": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "l-cancel",
+      "l-rerun",
+      "l-all",
+      "l-delete",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-2",
+      "row-3",
+      "row-4",
+      "row-5",
+      "row-6",
+      "storage"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-history-filter": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "f-tr",
+      "f-chat",
+      "f-audio",
+      "f-spk",
+      "f-inject",
+      "f-langsel",
+      "f-model",
+      "f-sort",
+      "f-reset",
+      "f-apply"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-batch-sheet": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "b-m1",
+      "b-m2",
+      "b-m3",
+      "b-lang",
+      "b-vad",
+      "b-spk",
+      "b-ana",
+      "b-current",
+      "b-now",
+      "b-idle",
+      "b-window",
+      "b-window-pick",
+      "b-charging",
+      "s-cancel",
+      "b-schedule"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-delete-confirm": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "del-dontask",
+      "del-cancel",
+      "del-ok"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-transcript-playing": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-transcript-noaudio": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-transcript-edit": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 480
+    },
+    "layer": "page",
+    "checked": [
+      "e-close",
+      "e-undo",
+      "eseg-0",
+      "eseg-1",
+      "eseg-2",
+      "eseg-3",
+      "eseg-4",
+      "eseg-5",
+      "eseg-6",
+      "eseg-7",
+      "eseg-8",
+      "eseg-9",
+      "eseg-10",
+      "eseg-11",
+      "eseg-12",
+      "eseg-13",
+      "e-cancel",
+      "e-save"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-rename": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 480
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "rn-field",
+      "rn-clear",
+      "rn-regen",
+      "rn-cancel",
+      "rn-save"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-export-sheet": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "x-txt",
+      "x-txt-tr",
+      "x-audio",
+      "x-audio-fmt",
+      "x-spk",
+      "x-chats",
+      "x-save",
+      "x-share"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-recording-chats": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "rc-ask",
+      "rc-addto",
+      "rc-1",
+      "rc-1-more",
+      "rc-2",
+      "rc-2-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-addto-sheet": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "at-new",
+      "at-1",
+      "at-3",
+      "at-4",
+      "at-5",
+      "at-cancel",
+      "at-add"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-chats": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "cl-back",
+      "cl-new",
+      "chat-1",
+      "chat-1-more",
+      "chat-2",
+      "chat-2-more",
+      "chat-3",
+      "chat-3-more",
+      "chat-4",
+      "chat-4-more",
+      "chat-5",
+      "chat-5-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-chat-empty": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "c-back",
+      "c-more",
+      "src-sum",
+      "src-add-i",
+      "qp-summary",
+      "qp-actions",
+      "qp-points",
+      "qp-decisions",
+      "qp-email",
+      "c-prompts",
+      "c-input",
+      "c-send"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-chat-streaming": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "c-back",
+      "c-more",
+      "src-sum",
+      "src-add-i",
+      "src-1",
+      "src-2",
+      "src-3",
+      "src-4",
+      "c-prompts",
+      "c-input",
+      "c-send"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-chat-keyboard": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 480
+    },
+    "layer": "page",
+    "checked": [
+      "c-back",
+      "c-more",
+      "src-1",
+      "src-2",
+      "src-3",
+      "src-4",
+      "src-5",
+      "c-prompts",
+      "c-input",
+      "c-send"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-chat-add-source": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "as-search",
+      "as-0",
+      "as-1",
+      "as-2",
+      "as-3",
+      "as-4",
+      "as-cancel",
+      "as-add"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-chat-sources": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "sr-0",
+      "sr-0-remove",
+      "sr-1",
+      "sr-1-remove",
+      "sr-2",
+      "sr-2-remove",
+      "sr-done",
+      "sr-add"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-chat-export": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "x-md",
+      "x-html",
+      "x-save",
+      "x-share"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-translation": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tl-lang",
+      "tl-orig",
+      "tl-rerun",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-translation-progress": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tl-lang",
+      "tl-orig",
+      "tl-rerun",
+      "tl-cancel",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-versions-running": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "v-reprocess",
+      "v-rerun",
+      "v3-cancel",
+      "v2-compare",
+      "v2-more",
+      "v1-current",
+      "v1-compare",
+      "v1-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-versions-diff": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "diff-back",
+      "diff-a",
+      "diff-b",
+      "diff-only",
+      "dseg-0",
+      "dseg-3",
+      "dseg-6",
+      "dseg-10",
+      "dseg-11",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-rerecognize-sheet": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "o-1",
+      "o-2",
+      "o-3",
+      "o-lang",
+      "o-vad",
+      "o-current",
+      "o-when",
+      "s-cancel",
+      "s-start"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-queue": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "q-back",
+      "q-pause-all",
+      "j1-more",
+      "j1-pause",
+      "j1-cancel",
+      "j2-handle",
+      "j2-more",
+      "j2-edit",
+      "j2-now",
+      "j3-handle",
+      "j3-more",
+      "j4-handle",
+      "j4-more",
+      "j4-resume",
+      "j5-handle",
+      "j5-more",
+      "q-done"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-settings": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "st-back",
+      "st-save",
+      "st-inject",
+      "st-confirm",
+      "st-titles",
+      "st-keep",
+      "st-cap",
+      "st-quality",
+      "st-live",
+      "st-spkq",
+      "st-auto",
+      "st-profile",
+      "st-when",
+      "st-concurrent",
+      "st-delete-all"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-live-speakers": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-live-fallback": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-transcript-speakers": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "spk-sum",
+      "spk-manage",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-speakers-filter": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "spk-sum",
+      "spk-clear",
+      "seg-3",
+      "seg-5",
+      "seg-10",
+      "seg-12",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-speakers-sheet": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "sp-0-color",
+      "sp-0",
+      "sp-0-more",
+      "sp-1-color",
+      "sp-1",
+      "sp-1-more",
+      "sp-2-color",
+      "sp-2",
+      "sp-2-more",
+      "sp-3-color",
+      "sp-3",
+      "sp-3-more",
+      "sp-merge",
+      "sp-redetect",
+      "sp-done"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-speakers-merge": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "mg-0",
+      "mg-1",
+      "mg-2",
+      "mg-3",
+      "mg-name",
+      "mg-cancel",
+      "mg-ok"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-versions-speakers": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "v-reprocess",
+      "v-rerun",
+      "v4-cancel",
+      "v2-compare",
+      "v2-more",
+      "v1-current",
+      "v1-compare",
+      "v1-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-reprocess-sheet": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "rp-asr",
+      "rp-asr-model",
+      "rp-spk",
+      "rp-spk-mode",
+      "rp-ana",
+      "rp-current",
+      "rp-when",
+      "s-cancel",
+      "rp-start"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-recording-insights": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "ai-1",
+      "ai-2",
+      "ai-3",
+      "ins-regen",
+      "rc-ask",
+      "rc-addto",
+      "rc-1",
+      "rc-1-more",
+      "rc-2",
+      "rc-2-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-queue-chain": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "q-back",
+      "q-pause-all",
+      "c1-more",
+      "c1-pause",
+      "c1-cancel",
+      "c2-handle",
+      "c2-more",
+      "c2-settings",
+      "c2-now"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-models-speakers": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "m-back",
+      "m-speech",
+      "m-speakers",
+      "m-gemma",
+      "mv-int8",
+      "mv-int8-more",
+      "mv-fp32",
+      "mv-fp32-dl",
+      "ms-quality",
+      "ms-live",
+      "ms-test",
+      "ms-run"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-main-saved": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "snack-open",
+      "snack-close",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-history": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-history-select": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "l-cancel",
+      "l-rerun",
+      "l-all",
+      "l-delete",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-2",
+      "row-3",
+      "row-4",
+      "row-5",
+      "row-6",
+      "storage"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-batch-sheet": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "b-m1",
+      "b-m2",
+      "b-m3",
+      "b-lang",
+      "b-vad",
+      "b-spk",
+      "b-ana",
+      "b-current",
+      "b-now",
+      "b-idle",
+      "b-window",
+      "b-window-pick",
+      "b-charging",
+      "s-cancel",
+      "b-schedule"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-delete-confirm": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "sheet",
+    "checked": [
+      "del-dontask",
+      "del-cancel",
+      "del-ok"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-transcript": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-transcript-edit": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 308
+    },
+    "layer": "page",
+    "checked": [
+      "e-close",
+      "e-undo",
+      "eseg-0",
+      "eseg-1",
+      "eseg-2",
+      "eseg-3",
+      "eseg-4",
+      "eseg-5",
+      "eseg-6",
+      "eseg-7",
+      "eseg-8",
+      "eseg-9",
+      "eseg-10",
+      "eseg-11",
+      "eseg-12",
+      "eseg-13",
+      "e-cancel",
+      "e-save"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-rename": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 308
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "rn-field",
+      "rn-clear",
+      "rn-regen",
+      "rn-cancel",
+      "rn-save"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-export-sheet": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "x-txt",
+      "x-txt-tr",
+      "x-audio",
+      "x-audio-fmt",
+      "x-spk",
+      "x-chats",
+      "x-save",
+      "x-share"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-recording-chats": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "rc-ask",
+      "rc-addto",
+      "rc-1",
+      "rc-1-more",
+      "rc-2",
+      "rc-2-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-chats": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "cl-back",
+      "cl-new",
+      "chat-1",
+      "chat-1-more",
+      "chat-2",
+      "chat-2-more",
+      "chat-3",
+      "chat-3-more",
+      "chat-4",
+      "chat-4-more",
+      "chat-5",
+      "chat-5-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-chat": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "c-back",
+      "c-more",
+      "src-sum",
+      "src-add-i",
+      "src-1",
+      "src-2",
+      "src-3",
+      "src-4",
+      "c-prompts",
+      "c-input",
+      "c-send"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-chat-keyboard": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 308
+    },
+    "layer": "page",
+    "checked": [
+      "c-back",
+      "c-more",
+      "src-1",
+      "src-2",
+      "src-3",
+      "src-4",
+      "src-5",
+      "c-prompts",
+      "c-input",
+      "c-send"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-chat-add-source": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "as-search",
+      "as-0",
+      "as-1",
+      "as-2",
+      "as-3",
+      "as-4",
+      "as-cancel",
+      "as-add"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-chat-sources": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "sr-0",
+      "sr-0-remove",
+      "sr-1",
+      "sr-1-remove",
+      "sr-2",
+      "sr-2-remove",
+      "sr-done",
+      "sr-add"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-versions-diff": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "diff-back",
+      "diff-a",
+      "diff-b",
+      "diff-only",
+      "dseg-0",
+      "dseg-3",
+      "dseg-6",
+      "dseg-10",
+      "dseg-11",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-rerecognize-sheet": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "o-1",
+      "o-2",
+      "o-3",
+      "o-lang",
+      "o-vad",
+      "o-current",
+      "o-when",
+      "s-cancel",
+      "s-start"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-queue": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "q-back",
+      "q-pause-all",
+      "j1-more",
+      "j1-pause",
+      "j1-cancel",
+      "j2-handle",
+      "j2-more",
+      "j2-edit",
+      "j2-now",
+      "j3-handle",
+      "j3-more",
+      "j4-handle",
+      "j4-more",
+      "j4-resume",
+      "j5-handle",
+      "j5-more",
+      "q-done"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-settings": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "st-back",
+      "st-save",
+      "st-inject",
+      "st-confirm",
+      "st-titles",
+      "st-keep",
+      "st-cap",
+      "st-quality",
+      "st-live",
+      "st-spkq",
+      "st-auto",
+      "st-profile",
+      "st-when",
+      "st-concurrent",
+      "st-delete-all"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-live-speakers": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-transcript-speakers": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "spk-sum",
+      "spk-manage",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-speakers-filter": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "spk-sum",
+      "spk-clear",
+      "seg-3",
+      "seg-5",
+      "seg-10",
+      "seg-12",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-speakers-sheet": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "sp-0-color",
+      "sp-0",
+      "sp-0-more",
+      "sp-1-color",
+      "sp-1",
+      "sp-1-more",
+      "sp-2-color",
+      "sp-2",
+      "sp-2-more",
+      "sp-3-color",
+      "sp-3",
+      "sp-3-more",
+      "sp-merge",
+      "sp-redetect",
+      "sp-done"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-speakers-merge": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "mg-0",
+      "mg-1",
+      "mg-2",
+      "mg-3",
+      "mg-name",
+      "mg-cancel",
+      "mg-ok"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-versions-speakers": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "v-reprocess",
+      "v-rerun",
+      "v4-cancel",
+      "v2-compare",
+      "v2-more",
+      "v1-current",
+      "v1-compare",
+      "v1-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-reprocess-sheet": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "rp-asr",
+      "rp-asr-model",
+      "rp-spk",
+      "rp-spk-mode",
+      "rp-ana",
+      "rp-current",
+      "rp-when",
+      "s-cancel",
+      "rp-start"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-recording-insights": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "ai-1",
+      "ai-2",
+      "ai-3",
+      "ins-regen",
+      "rc-ask",
+      "rc-addto",
+      "rc-1",
+      "rc-1-more",
+      "rc-2",
+      "rc-2-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-queue-chain": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "q-back",
+      "q-pause-all",
+      "c1-more",
+      "c1-pause",
+      "c1-cancel",
+      "c2-handle",
+      "c2-more",
+      "c2-settings",
+      "c2-now"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-models-speakers": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "m-back",
+      "m-speech",
+      "m-speakers",
+      "m-gemma",
+      "mv-int8",
+      "mv-int8-more",
+      "mv-fp32",
+      "mv-fp32-dl",
+      "ms-quality",
+      "ms-live",
+      "ms-test",
+      "ms-run"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-main-saved": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "snack-open",
+      "snack-close",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-history": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-batch-sheet": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "b-m1",
+      "b-m2",
+      "b-m3",
+      "b-lang",
+      "b-vad",
+      "b-spk",
+      "b-ana",
+      "b-current",
+      "b-now",
+      "b-idle",
+      "b-window",
+      "b-window-pick",
+      "b-charging",
+      "s-cancel",
+      "b-schedule"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-delete-confirm": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "sheet",
+    "checked": [
+      "del-dontask",
+      "del-cancel",
+      "del-ok"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-transcript": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-transcript-edit": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "e-close",
+      "e-undo",
+      "eseg-0",
+      "eseg-1",
+      "eseg-2",
+      "eseg-3",
+      "eseg-4",
+      "eseg-5",
+      "eseg-6",
+      "eseg-7",
+      "eseg-8",
+      "eseg-9",
+      "eseg-10",
+      "eseg-11",
+      "eseg-12",
+      "eseg-13",
+      "e-cancel",
+      "e-save"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-rename": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "rn-field",
+      "rn-clear",
+      "rn-regen",
+      "rn-cancel",
+      "rn-save"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-export-sheet": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "x-txt",
+      "x-txt-tr",
+      "x-audio",
+      "x-audio-fmt",
+      "x-spk",
+      "x-chats",
+      "x-save",
+      "x-share"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-recording-chats": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "rc-ask",
+      "rc-addto",
+      "rc-1",
+      "rc-1-more",
+      "rc-2",
+      "rc-2-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-chats": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "cl-back",
+      "cl-new",
+      "chat-1",
+      "chat-1-more",
+      "chat-2",
+      "chat-2-more",
+      "chat-3",
+      "chat-3-more",
+      "chat-4",
+      "chat-4-more",
+      "chat-5",
+      "chat-5-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-chat": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "c-back",
+      "c-more",
+      "src-sum",
+      "src-add-i",
+      "src-1",
+      "src-2",
+      "src-3",
+      "src-4",
+      "src-5",
+      "c-prompts",
+      "c-input",
+      "c-send"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-chat-add-source": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "as-search",
+      "as-0",
+      "as-1",
+      "as-2",
+      "as-3",
+      "as-4",
+      "as-cancel",
+      "as-add"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-chat-sources": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "sr-0",
+      "sr-0-remove",
+      "sr-1",
+      "sr-1-remove",
+      "sr-2",
+      "sr-2-remove",
+      "sr-done",
+      "sr-add"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-versions": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "v-reprocess",
+      "v-rerun",
+      "v3-cancel",
+      "v2-compare",
+      "v2-more",
+      "v1-current",
+      "v1-compare",
+      "v1-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-rerecognize-sheet": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "o-1",
+      "o-2",
+      "o-3",
+      "o-lang",
+      "o-vad",
+      "o-current",
+      "o-when",
+      "s-cancel",
+      "s-start"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-queue": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "q-back",
+      "q-pause-all",
+      "j1-more",
+      "j1-pause",
+      "j1-cancel",
+      "j2-handle",
+      "j2-more",
+      "j2-edit",
+      "j2-now",
+      "j3-handle",
+      "j3-more",
+      "j4-handle",
+      "j4-more",
+      "j4-resume",
+      "j5-handle",
+      "j5-more",
+      "q-done"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-settings": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "st-back",
+      "st-save",
+      "st-inject",
+      "st-confirm",
+      "st-titles",
+      "st-keep",
+      "st-cap",
+      "st-quality",
+      "st-live",
+      "st-spkq",
+      "st-auto",
+      "st-profile",
+      "st-when",
+      "st-concurrent",
+      "st-delete-all"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-live-speakers": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-transcript-speakers": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "spk-pick",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-speakers-sheet": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "sp-0-color",
+      "sp-0",
+      "sp-0-more",
+      "sp-1-color",
+      "sp-1",
+      "sp-1-more",
+      "sp-2-color",
+      "sp-2",
+      "sp-2-more",
+      "sp-3-color",
+      "sp-3",
+      "sp-3-more",
+      "sp-merge",
+      "sp-redetect",
+      "sp-done"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-versions-speakers": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "v-reprocess",
+      "v-rerun",
+      "v4-cancel",
+      "v2-compare",
+      "v2-more",
+      "v1-current",
+      "v1-compare",
+      "v1-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-reprocess-sheet": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "rp-asr",
+      "rp-asr-model",
+      "rp-spk",
+      "rp-spk-mode",
+      "rp-ana",
+      "rp-current",
+      "rp-when",
+      "s-cancel",
+      "rp-start"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-recording-insights": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "ai-1",
+      "ai-2",
+      "ai-3",
+      "ins-regen",
+      "rc-ask",
+      "rc-addto",
+      "rc-1",
+      "rc-1-more",
+      "rc-2",
+      "rc-2-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-queue-chain": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "q-back",
+      "q-pause-all",
+      "c1-more",
+      "c1-pause",
+      "c1-cancel",
+      "c2-handle",
+      "c2-more",
+      "c2-settings",
+      "c2-now"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-models-speakers": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "m-back",
+      "m-speech",
+      "m-speakers",
+      "m-gemma",
+      "mv-int8",
+      "mv-int8-more",
+      "mv-fp32",
+      "mv-fp32-dl",
+      "ms-quality",
+      "ms-live",
+      "ms-test",
+      "ms-run"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-main-saved": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "snack-open",
+      "snack-close",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-history-empty": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-batch-dialog": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "b-m1",
+      "b-m2",
+      "b-m3",
+      "b-lang",
+      "b-vad",
+      "b-spk",
+      "b-ana",
+      "b-current",
+      "b-now",
+      "b-idle",
+      "b-window",
+      "b-window-pick",
+      "b-charging",
+      "s-cancel",
+      "b-schedule"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-delete-confirm": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "del-dontask",
+      "del-cancel",
+      "del-ok"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-transcript": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-transcript-edit": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage",
+      "e-close",
+      "e-undo",
+      "eseg-0",
+      "eseg-1",
+      "eseg-2",
+      "eseg-3",
+      "eseg-4",
+      "eseg-5",
+      "eseg-6",
+      "eseg-7",
+      "eseg-8",
+      "eseg-9",
+      "eseg-10",
+      "eseg-11",
+      "eseg-12",
+      "eseg-13",
+      "e-cancel",
+      "e-save"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-rename": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "rn-field",
+      "rn-clear",
+      "rn-regen",
+      "rn-cancel",
+      "rn-save"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-export-dialog": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "x-txt",
+      "x-txt-tr",
+      "x-audio",
+      "x-audio-fmt",
+      "x-spk",
+      "x-chats",
+      "x-save",
+      "x-share"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-recording-chats": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "rc-ask",
+      "rc-addto",
+      "rc-1",
+      "rc-1-more",
+      "rc-2",
+      "rc-2-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-chats-empty": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "cl-back",
+      "cl-new",
+      "chat-1",
+      "chat-1-more",
+      "chat-2",
+      "chat-2-more",
+      "chat-3",
+      "chat-3-more",
+      "chat-4",
+      "chat-4-more",
+      "chat-5",
+      "chat-5-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-chat": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "cl-back",
+      "cl-new",
+      "chat-1",
+      "chat-1-more",
+      "chat-2",
+      "chat-2-more",
+      "chat-3",
+      "chat-3-more",
+      "chat-4",
+      "chat-4-more",
+      "chat-5",
+      "chat-5-more",
+      "c-more",
+      "src-chip-0",
+      "src-chip-1",
+      "src-chip-2",
+      "src-add",
+      "src-1",
+      "src-2",
+      "src-3",
+      "src-4",
+      "c-prompts",
+      "c-input",
+      "c-send"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-chat-add-source": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "as-search",
+      "as-0",
+      "as-1",
+      "as-2",
+      "as-3",
+      "as-4",
+      "as-cancel",
+      "as-add"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-chat-export": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "x-md",
+      "x-html",
+      "x-save",
+      "x-share"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-versions-diff": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "diff-back",
+      "diff-a",
+      "diff-b",
+      "diff-only",
+      "dseg-0",
+      "dseg-3",
+      "dseg-6",
+      "dseg-10",
+      "dseg-11",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-rerecognize-dialog": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "o-1",
+      "o-2",
+      "o-3",
+      "o-lang",
+      "o-vad",
+      "o-current",
+      "o-when",
+      "s-cancel",
+      "s-start"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-dark-translation": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tl-lang",
+      "tl-orig",
+      "tl-rerun",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-queue": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "q-back",
+      "q-pause-all",
+      "j1-more",
+      "j1-pause",
+      "j1-cancel",
+      "j2-handle",
+      "j2-more",
+      "j2-edit",
+      "j2-now",
+      "j3-handle",
+      "j3-more",
+      "j4-handle",
+      "j4-more",
+      "j4-resume",
+      "j5-handle",
+      "j5-more",
+      "q-done"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-settings": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "st-back",
+      "st-save",
+      "st-inject",
+      "st-confirm",
+      "st-titles",
+      "st-keep",
+      "st-cap",
+      "st-quality",
+      "st-live",
+      "st-spkq",
+      "st-auto",
+      "st-profile",
+      "st-when",
+      "st-concurrent",
+      "st-delete-all"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-dark-chat": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "cl-back",
+      "cl-new",
+      "chat-1",
+      "chat-1-more",
+      "chat-2",
+      "chat-2-more",
+      "chat-3",
+      "chat-3-more",
+      "chat-4",
+      "chat-4-more",
+      "chat-5",
+      "chat-5-more",
+      "c-more",
+      "src-chip-0",
+      "src-chip-1",
+      "src-chip-2",
+      "src-add",
+      "src-1",
+      "src-2",
+      "src-3",
+      "src-4",
+      "src-5",
+      "c-prompts",
+      "c-input",
+      "c-send"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-live-speakers": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-transcript-speakers": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "spk-all",
+      "spk-c0",
+      "spk-c1",
+      "spk-c2",
+      "spk-c3",
+      "spk-manage-w",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-speakers-filter": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "spk-all",
+      "spk-c0",
+      "spk-c1",
+      "spk-c2",
+      "spk-c3",
+      "spk-manage-w",
+      "seg-3",
+      "seg-5",
+      "seg-10",
+      "seg-12",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-speakers-sheet": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "sp-0-color",
+      "sp-0",
+      "sp-0-more",
+      "sp-1-color",
+      "sp-1",
+      "sp-1-more",
+      "sp-2-color",
+      "sp-2",
+      "sp-2-more",
+      "sp-3-color",
+      "sp-3",
+      "sp-3-more",
+      "sp-merge",
+      "sp-redetect",
+      "sp-done"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-speakers-merge": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "mg-0",
+      "mg-1",
+      "mg-2",
+      "mg-3",
+      "mg-name",
+      "mg-cancel",
+      "mg-ok"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-reprocess-dialog": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "rp-asr",
+      "rp-asr-model",
+      "rp-spk",
+      "rp-spk-mode",
+      "rp-ana",
+      "rp-current",
+      "rp-when",
+      "s-cancel",
+      "rp-start"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-versions-speakers": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "v-reprocess",
+      "v-rerun",
+      "v4-cancel",
+      "v2-compare",
+      "v2-more",
+      "v1-current",
+      "v1-compare",
+      "v1-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-recording-insights": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "ai-1",
+      "ai-2",
+      "ai-3",
+      "ins-regen",
+      "rc-ask",
+      "rc-addto",
+      "rc-1",
+      "rc-1-more",
+      "rc-2",
+      "rc-2-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-queue-chain": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "q-back",
+      "q-pause-all",
+      "c1-more",
+      "c1-pause",
+      "c1-cancel",
+      "c2-handle",
+      "c2-more",
+      "c2-settings",
+      "c2-now"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-models-speakers": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "m-back",
+      "m-speech",
+      "m-speakers",
+      "m-gemma",
+      "mv-int8",
+      "mv-int8-more",
+      "mv-fp32",
+      "mv-fp32-dl",
+      "ms-quality",
+      "ms-live",
+      "ms-test",
+      "ms-run"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-dark-speakers": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "l-back",
+      "search",
+      "filter",
+      "f-lang",
+      "row-1",
+      "row-1-more",
+      "row-2",
+      "row-2-more",
+      "row-3",
+      "row-3-more",
+      "row-4",
+      "row-4-more",
+      "row-5",
+      "row-5-more",
+      "row-6",
+      "row-6-more",
+      "storage",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "spk-all",
+      "spk-c0",
+      "spk-c1",
+      "spk-c2",
+      "spk-c3",
+      "spk-manage-w",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-min-window": {
+    "viewport": "480x560",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 480,
+      "b": 560
+    },
+    "layer": "page",
+    "checked": [
+      "d-back",
+      "d-ask",
+      "d-more",
+      "tab-transcript",
+      "tab-chats",
+      "tab-translation",
+      "tab-versions",
+      "tr-version",
+      "tr-edit",
+      "tr-follow",
+      "tr-copy",
+      "seg-0",
+      "seg-1",
+      "seg-2",
+      "seg-3",
+      "seg-4",
+      "seg-5",
+      "seg-6",
+      "seg-7",
+      "seg-8",
+      "seg-9",
+      "seg-10",
+      "seg-11",
+      "seg-12",
+      "seg-13",
+      "seek",
+      "p-back",
+      "play",
+      "p-fwd",
+      "speed"
+    ],
+    "issues": [],
+    "ok": true
+  }
+}

@@ -1,0 +1,1527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VoiceType History mockup</title>
+<!--
+  VoiceType.Uno — recordings history mockup (mobile + desktop).
+  Same visual language, tokens and layout rules as ../voicetype-uno-mobile/mockup.html.
+
+  Layers (top-most is interactive):  sheet/dialog  >  drawer  >  page (History, Chats, Queue, Settings)  >  main screen
+
+  Query parameters (all optional):
+    screen=main|history|detail|chats|chat|queue|settings   which page is shown (default main)
+    snack=1      main screen: "Saved to History" snackbar after Stop
+    drawer=1     side menu open (main screen)
+    tab=transcript|chats|translation|versions   Recording detail tab (no per-recording chat tab any more)
+    edit=1       Transcript tab in edit mode (saving creates an "edited" version)
+    playing=1    player is playing (current segment highlighted)
+    chat=empty|thread|streaming   top-level chat (screen=chat): empty = just created by "Ask Gemma"
+    trp=1        translation in progress            rr=1  re-recognition running
+    diff=1       Versions tab: compare view          noaudio=1  audio removed by retention
+    sel=1        History: selection mode             q=<text>   History search text
+    screen=models  Models page, Speakers tab (Nemotron 3 Diarization, ONNX variants)
+    live=1       main screen recording with live speaker labels   live=2  live labels fell behind (fallback)
+    spk=1        the recording has speakers (diarization layer)   fspk=1  transcript filtered to one speaker
+    rp=1         Versions: a reprocess chain is running           ins=1   Chats tab: Insights from the analysis step
+    chain=1      Queue: a reprocess chain runs + auto-reprocess is scheduled
+    merge=1      Speakers sheet in merge mode
+    sheet=rerun|filter|batch|delete|rename|export|addsrc|sources|addto|speakers|reprocess   (exp=chat: export a chat as Markdown)
+                 modal sheet (bottom sheet on phones, dialog on wide/short windows);
+                 delete is a centred confirmation dialog on every size
+    top/bottom/left/right=<px>  system bar insets   kb=<px>  on-screen keyboard height
+    theme=light|dark   check=1  run the layout check, report JSON into #check
+
+  Layout check — for every interactive element ([data-hit]) of the top-most layer:
+    1. fully inside the safe viewport (scrollable panes: the pane must be inside it),
+    2. hit target >= 44x44 px,
+    3. no intersection with another interactive element (visible part in scroll panes),
+    4. its label is not clipped (scrollWidth <= clientWidth),
+    5. centring: Record on the main screen, Play inside the player bar (|dx| <= 1 px),
+    6. reading areas (transcript / chat / lists / diff / queue / settings) keep >= 96 px height
+       (>= 72 px on short landscape windows),
+    7. the main-screen snackbar does not overlap the command bar.
+-->
+<style>
+  :root {
+    --bg: #f3f3f3; --surface: #ffffff; --surface-2: #f9f9f9; --stroke: #e0e0e0;
+    --text: #1b1b1b; --text-2: #5f5f5f; --accent: #005fb8; --accent-text: #ffffff;
+    --rec: #c42b1c; --rec-ring: rgba(196, 43, 28, .25);
+    --caution-bg: #fff4ce; --caution: #9d5d00; --scrim: rgba(0, 0, 0, .4);
+    --chip-on: #dbe9f8; --ins: #dff6dd; --ins-text: #0f5c0f; --del: #fde7e9; --del-text: #a4262c;
+    --shadow: 0 8px 24px rgba(0,0,0,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #202020; --surface: #2b2b2b; --surface-2: #323232; --stroke: #3d3d3d;
+      --text: #ffffff; --text-2: #c5c5c5; --accent: #60cdff; --accent-text: #000000;
+      --rec: #ff99a4; --rec-ring: rgba(255, 153, 164, .25);
+      --caution-bg: #433519; --caution: #fce100; --chip-on: #1f3a52;
+      --ins: #1e3b1e; --ins-text: #9fd89f; --del: #442726; --del-text: #ff99a4;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #202020; --surface: #2b2b2b; --surface-2: #323232; --stroke: #3d3d3d;
+    --text: #ffffff; --text-2: #c5c5c5; --accent: #60cdff; --accent-text: #000000;
+    --rec: #ff99a4; --rec-ring: rgba(255, 153, 164, .25);
+    --caution-bg: #433519; --caution: #fce100; --chip-on: #1f3a52;
+    --ins: #1e3b1e; --ins-text: #9fd89f; --del: #442726; --del-text: #ff99a4;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--text);
+         font: 14px/20px "Segoe UI Variable Text", "Segoe UI", Roboto, system-ui, sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7;
+        stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* System bars + keyboard (simulated) */
+  .sysbar { position: fixed; z-index: 60; background: rgba(0,0,0,.08); pointer-events: none; }
+  .sysbar.top { left: 0; right: 0; top: 0; height: var(--inset-top); }
+  .sysbar.bottom { left: 0; right: 0; bottom: 0; height: var(--inset-bottom); }
+  .sysbar.right { top: 0; bottom: 0; right: 0; width: var(--inset-right); }
+  .sysbar.left { top: 0; bottom: 0; left: 0; width: var(--inset-left); }
+  .keyboard { position: fixed; z-index: 59; left: 0; right: 0; bottom: 0; height: var(--kb);
+              background: repeating-linear-gradient(90deg, #cfd3d8 0 34px, #c3c7cc 34px 36px); display: none; }
+  body.is-kb .keyboard { display: block; }
+
+  /* Shared bits (identical to the sibling mockup) */
+  .appbar { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 8px;
+            min-height: 56px; padding: 4px 8px 4px 4px; }
+  .icon-btn { width: 48px; height: 48px; border: 0; border-radius: 8px; background: transparent;
+              display: inline-grid; place-items: center; cursor: pointer; position: relative; }
+  .icon-btn:hover { background: var(--surface-2); }
+  .title { min-width: 0; }
+  .title h1 { margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .title p { margin: 0; font-size: 12px; line-height: 16px; color: var(--text-2);
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn { min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid var(--stroke);
+         background: var(--surface-2); cursor: pointer; white-space: nowrap; }
+  .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  .btn[disabled] { opacity: .5; cursor: default; }
+  .chip { font-size: 11px; line-height: 16px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--stroke); white-space: nowrap; }
+  .chip.acc { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .chip.on { background: var(--chip-on); border-color: transparent; font-weight: 600; }
+  .chip.warn { background: var(--caution-bg); border-color: var(--caution); color: var(--text); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .muted { color: var(--text-2); }
+  .bar { height: 4px; border-radius: 2px; background: var(--stroke); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .seg-ctl { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0,1fr); gap: 2px; padding: 2px;
+             border-radius: 8px; background: var(--surface-2); border: 1px solid var(--stroke); }
+  .seg-ctl button { min-height: 44px; border: 0; border-radius: 6px; background: transparent; cursor: pointer;
+                    font-size: 13px; padding: 0 6px; white-space: nowrap; overflow: hidden; }
+  .seg-ctl button.sel { background: var(--surface); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .switch { width: 40px; height: 20px; border-radius: 10px; border: 1px solid var(--text-2); position: relative; flex: none; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-2); }
+  .on > .switch, .switch.on { background: var(--accent); border-color: var(--accent); }
+  .on > .switch::after, .switch.on::after { left: 23px; background: var(--accent-text); }
+
+  /* ════════ Main screen (only what the history entry points need) ════════ */
+  .page { position: fixed; inset: 0;
+          padding: var(--inset-top) var(--inset-right) max(var(--inset-bottom), var(--kb)) var(--inset-left);
+          display: grid; grid-template-rows: auto 1fr auto auto; }
+  .page > .appbar { grid-row: 1; } .page > .content { grid-row: 2; } .page > .snack-row { grid-row: 3; } .page > .cmdbar { grid-row: 4; }
+  .state-pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 14px;
+                background: var(--surface); border: 1px solid var(--stroke); font-size: 12px; white-space: nowrap; }
+  .state-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-2); }
+  .content { min-height: 0; padding: 8px 16px; display: grid; }
+  .card { min-height: 0; display: grid; grid-template-rows: auto 1fr; border-radius: 8px;
+          background: var(--surface); border: 1px solid var(--stroke); overflow: hidden; }
+  .card > header { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 4px 0 12px;
+                   font-size: 12px; color: var(--text-2); border-bottom: 1px solid var(--stroke); }
+  .card > header .sp { flex: 1; }
+  .card > header .icon-btn { width: 44px; height: 44px; }
+  .card .body { overflow: auto; padding: 12px; font-size: 15px; line-height: 22px; }
+  /* Snackbar: its own grid row above the command bar, so it never covers Record/Mute/Copy */
+  .snack-row { padding: 0 16px 4px; }
+  .snack { display: grid; grid-template-columns: 24px 1fr auto auto; align-items: center; gap: 4px 8px;
+           max-width: 560px; margin: 0 auto; padding: 2px 2px 2px 12px; border-radius: 8px;
+           background: #323232; color: #fff; box-shadow: var(--shadow); }
+  :root[data-theme="dark"] .snack { background: #e6e6e6; color: #1b1b1b; }
+  .snack p { margin: 0; font-size: 13px; line-height: 18px; min-width: 0; }
+  .snack p small { display: block; opacity: .75; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .snack .open { min-height: 44px; padding: 0 14px; border: 0; border-radius: 6px; background: transparent;
+                 color: #9fd3ff; font-weight: 600; cursor: pointer; }
+  :root[data-theme="dark"] .snack .open { color: #005fb8; }
+  .snack .x { width: 44px; height: 44px; border: 0; background: transparent; color: inherit; display: grid; place-items: center; cursor: pointer; }
+  .cmdbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 24px;
+            padding: 8px 16px 12px; background: var(--bg); }
+  .cmdbar .left { justify-self: end; } .cmdbar .right { justify-self: start; }
+  .round-btn { width: 48px; height: 48px; border-radius: 24px; border: 1px solid var(--stroke);
+               background: var(--surface); display: grid; place-items: center; cursor: pointer; }
+  .round-btn[disabled] { opacity: .4; }
+  .record { width: 72px; height: 72px; border-radius: 36px; border: 0; cursor: pointer;
+            background: var(--accent); color: var(--accent-text); display: grid; place-items: center; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+  .record svg { width: 30px; height: 30px; }
+  .record-wrap { display: grid; justify-items: center; gap: 4px; }
+  .record-caption { font-size: 12px; line-height: 16px; color: var(--text-2); white-space: nowrap; }
+  @media (max-height: 479px) {
+    .appbar { min-height: 48px; padding-top: 0; padding-bottom: 0; }
+    .cmdbar { padding: 4px 16px 8px; }
+    .record { width: 56px; height: 56px; border-radius: 28px; }
+    .record-caption { display: none; }
+  }
+
+  /* Drawer (copied from the sibling, plus the History entry) */
+  .scrim { position: fixed; inset: 0; z-index: 20; background: var(--scrim); display: none; }
+  .drawer { position: fixed; z-index: 21; top: 0; bottom: 0; left: 0; width: min(320px, 85vw);
+            padding: var(--inset-top) 0 var(--inset-bottom) var(--inset-left);
+            background: var(--surface); box-shadow: var(--shadow); transform: translateX(-105%);
+            display: grid; grid-template-rows: auto 1fr auto; }
+  body.is-drawer .scrim { display: block; } body.is-drawer .drawer { transform: none; }
+  .drawer .head { display: grid; grid-template-columns: 48px 1fr; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; min-height: 56px; }
+  .drawer .scroll { overflow: auto; padding: 0 8px 8px; min-height: 0; }
+  .drawer h2 { margin: 16px 12px 4px; font-size: 12px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+  .item { width: 100%; min-height: 48px; display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 12px;
+          padding: 4px 12px; border: 0; border-radius: 6px; background: transparent; text-align: left; cursor: pointer; }
+  .item:hover { background: var(--surface-2); }
+  .item small { display: block; font-size: 12px; line-height: 16px; color: var(--text-2); }
+  .item.new { background: var(--chip-on); }
+  .badge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: var(--accent-text);
+           font-size: 11px; line-height: 20px; text-align: center; }
+  .drawer .foot { border-top: 1px solid var(--stroke); padding: 4px 8px; }
+
+  /* ════════ History page: list pane + detail pane (master-detail >= 840 px) ════════ */
+  .hist { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: none;
+          padding: var(--inset-top) var(--inset-right) max(var(--inset-bottom), var(--kb)) var(--inset-left);
+          grid-template-columns: minmax(0,1fr); grid-template-rows: 1fr; }
+  body.is-history .hist, body.is-detail .hist { display: grid; }
+  .pane { min-width: 0; min-height: 0; display: grid; }
+  .list-pane { grid-template-rows: auto auto auto 1fr; }
+  .detail-pane { grid-template-rows: auto auto 1fr auto; background: var(--bg); }
+  body.is-detail .list-pane { display: none; }
+  body:not(.is-detail) .detail-pane { display: none; }
+  @media (min-width: 840px) {
+    .hist { grid-template-columns: 360px minmax(0,1fr); }
+    body.is-detail .list-pane, body.is-history .list-pane { display: grid; }
+    body.is-history .detail-pane, body.is-detail .detail-pane { display: grid; }
+    .list-pane { border-right: 1px solid var(--stroke); }
+    .detail-pane .back { visibility: hidden; }
+  }
+  /* Search row */
+  .search-row { display: grid; grid-template-columns: 1fr 48px; gap: 4px; padding: 0 12px 8px 16px; align-items: center; }
+  .search { display: grid; grid-template-columns: 20px 1fr; gap: 8px; align-items: center; min-height: 44px; padding: 0 12px;
+            border-radius: 6px; border: 1px solid var(--stroke); background: var(--surface); }
+  .search input { border: 0; outline: 0; background: transparent; min-width: 0; height: 40px; }
+  body.is-kb .search { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+  .active-filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 8px; }
+  .fchip { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 6px 0 12px; border-radius: 22px;
+           border: 1px solid var(--stroke); background: var(--chip-on); cursor: pointer; font-size: 13px; }
+  .fchip svg { width: 16px; height: 16px; }
+  .dot-badge { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .list-scroll { min-height: 0; overflow: auto; padding: 0 8px 16px; }
+  .group-h { margin: 12px 8px 4px; font-size: 12px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+  .row { display: grid; grid-template-columns: 1fr 44px; align-items: center; border-radius: 8px; margin-bottom: 4px;
+         background: var(--surface); border: 1px solid var(--stroke); }
+  .row.sel-row { border-color: var(--accent); background: var(--chip-on); }
+  .row.cur { border-color: var(--accent); }
+  .row-main { display: grid; grid-template-columns: auto 1fr; gap: 10px; min-height: 76px; padding: 8px 4px 8px 12px; border: 0;
+              background: transparent; text-align: left; cursor: pointer; min-width: 0; border-radius: 8px; }
+  .row-main .lead { width: 36px; height: 36px; border-radius: 18px; background: var(--surface-2); border: 1px solid var(--stroke);
+                    display: grid; place-items: center; align-self: center; font-size: 11px; color: var(--text-2); }
+  .row-main .lead:not(.chk) { width: auto; min-width: 40px; height: 24px; padding: 0 6px; border-radius: 12px; font-variant-numeric: tabular-nums; }
+  .row-main .lead.chk { border-radius: 4px; width: 22px; height: 22px; margin: 0 7px; }
+  .row-main .lead.chk.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .row-main .txt { min-width: 0; display: grid; gap: 2px; }
+  .row-main b { font-weight: 600; font-size: 14px; line-height: 19px; display: -webkit-box; -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical; overflow: hidden; }
+  .row-main .meta { font-size: 12px; line-height: 16px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-main mark { background: var(--caution-bg); color: inherit; border-radius: 2px; }
+  .row .icon-btn { width: 44px; height: 44px; }
+  .storage { margin: 12px 4px 0; padding: 10px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--stroke);
+             display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; font-size: 12px; color: var(--text-2); }
+  .storage b { color: var(--text); font-size: 13px; }
+  .empty-detail { display: grid; place-items: center; text-align: center; color: var(--text-2); padding: 24px; }
+
+  /* Detail */
+  .d-tabs { margin: 0 16px 8px; }
+  .tab-body { min-height: 0; display: grid; }
+  .tabp { display: none; min-height: 0; }
+  body.t-transcript .tabp.transcript, body.t-chats .tabp.chats, body.t-translation .tabp.translation,
+  body.t-versions .tabp.versions { display: grid; }
+  .tabp.transcript, .tabp.translation { grid-template-rows: auto 1fr; }
+  .tabp.versions, .tabp.chats { grid-template-rows: 1fr; }
+  /* Explicit rows: hiding the tabs (edit mode, keyboard) must not shift the reading area into an auto row */
+  .detail-pane > .appbar, .c-detail > .appbar { grid-row: 1; }
+  .detail-pane > .d-tabs, .c-detail > .sources { grid-row: 2; }
+  .detail-pane > .tab-body, .c-detail > .msgs { grid-row: 3; }
+  .detail-pane > #detailBottom, .c-detail > .composer { grid-row: 4; }
+  .appbar .acts { display: flex; gap: 0; }
+  .toolbar { display: flex; align-items: center; gap: 4px; padding: 0 12px 6px 16px; min-width: 0; }
+  .toolbar .sp { flex: 1; min-width: 0; }
+  .toolbar .info { font-size: 12px; line-height: 16px; color: var(--text-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pick { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 10px; border: 1px solid var(--stroke);
+          border-radius: 6px; background: var(--surface); cursor: pointer; font-size: 13px; white-space: nowrap; max-width: 100%; overflow: hidden; }
+  .pick svg { width: 14px; height: 14px; }
+  .reader { min-height: 0; overflow: auto; margin: 0 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--stroke); padding: 4px 0; }
+  .seg { display: grid; grid-template-columns: 52px 1fr; gap: 4px; min-height: 44px; width: 100%; padding: 6px 12px 6px 8px;
+         border: 0; border-left: 3px solid transparent; background: transparent; text-align: left; cursor: pointer;
+         font-size: 15px; line-height: 22px; }
+  .seg time { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; padding-top: 1px; }
+  .seg.cur { background: var(--chip-on); border-left-color: var(--accent); }
+  .seg .w-cur { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: var(--accent); }
+  .seg .orig { display: block; font-size: 13px; line-height: 18px; color: var(--text-2); }
+  .seg ins { background: var(--ins); color: var(--ins-text); text-decoration: none; border-radius: 2px; }
+  .seg del { background: var(--del); color: var(--del-text); border-radius: 2px; }
+  .notice { margin: 0 16px 8px; padding: 8px 12px; border-radius: 8px; font-size: 12px; line-height: 16px;
+            background: var(--caution-bg); border: 1px solid var(--caution); }
+  .prog { margin: 0 16px 8px; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center;
+          font-size: 12px; color: var(--text-2); }
+  .prog .bar { grid-column: 1; }
+
+  /* Player bar: Grid "1fr auto auto auto 1fr" keeps Play centred */
+  .player { padding: 4px 16px 10px; background: var(--bg); display: grid; gap: 2px; }
+  .seek { position: relative; height: 44px; display: grid; align-items: center; cursor: pointer; }
+  .seek .track { height: 4px; border-radius: 2px; background: var(--stroke); position: relative; }
+  .seek .track i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 2px; }
+  .seek .track b { position: absolute; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); margin-left: -8px; }
+  .seek .marks span { position: absolute; top: 12px; width: 2px; height: 6px; background: var(--text-2); opacity: .5; }
+  .controls { display: grid; grid-template-columns: minmax(0,1fr) auto auto auto minmax(0,1fr); align-items: center; column-gap: 16px; }
+  .controls .time { justify-self: start; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .controls .speed { justify-self: end; }
+  .play { width: 56px; height: 56px; border-radius: 28px; border: 0; background: var(--accent); color: var(--accent-text);
+          display: grid; place-items: center; cursor: pointer; }
+  .play svg { width: 26px; height: 26px; }
+  .speed { min-height: 44px; min-width: 52px; border-radius: 22px; border: 1px solid var(--stroke); background: var(--surface); cursor: pointer; font-size: 13px; }
+  .player-off { display: grid; grid-template-columns: 24px 1fr; gap: 8px; align-items: center; padding: 8px 16px 12px; font-size: 12px; color: var(--text-2); }
+  /* Short windows (phone landscape): one-row player */
+  @media (max-height: 479px) {
+    .player { grid-template-columns: auto auto auto 1fr auto auto; align-items: center; column-gap: 8px; padding: 2px 12px 4px; }
+    .controls { display: contents; }
+    .controls .time { order: 5; } .controls .speed { order: 6; }
+    .seek { order: 4; }
+    .play { width: 48px; height: 48px; }
+    .d-tabs { margin-bottom: 4px; }
+    .player-off { padding: 4px 16px; }
+  }
+
+  /* Chat */
+  .thread-bar { display: grid; grid-template-columns: 1fr 44px; gap: 4px; align-items: center; padding: 0 12px 4px 16px; }
+  .thread-bar .ctx { grid-column: 1 / -1; font-size: 12px; line-height: 16px; color: var(--text-2); }
+  .msgs { min-height: 0; overflow: auto; padding: 4px 16px 8px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 88%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 20px; }
+  .msg.user { align-self: flex-end; background: var(--accent); color: var(--accent-text); border-bottom-right-radius: 4px; }
+  .msg.bot { align-self: flex-start; background: var(--surface); border: 1px solid var(--stroke); border-bottom-left-radius: 4px; }
+  .msg ul { margin: 4px 0; padding-left: 18px; }
+  .msg .src { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .msg .src button { min-height: 44px; min-width: 56px; padding: 0 10px; border-radius: 22px; border: 1px solid var(--stroke);
+                     background: var(--surface-2); cursor: pointer; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .msg .foot { font-size: 11px; color: var(--text-2); margin-top: 4px; }
+  .caret { display: inline-block; width: 8px; height: 16px; background: var(--accent); vertical-align: -3px; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .hero { text-align: center; padding: 12px 8px 4px; color: var(--text-2); font-size: 13px; }
+  .hero b { display: block; color: var(--text); font-size: 15px; margin-bottom: 2px; }
+  .quick { display: grid; gap: 6px; }
+  @media (min-width: 560px) { .quick { grid-template-columns: 1fr 1fr; } }
+  .quick button { min-height: 48px; display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: center; text-align: left;
+                  padding: 4px 12px; border-radius: 8px; border: 1px solid var(--stroke); background: var(--surface); cursor: pointer; }
+  .quick small { display: block; font-size: 12px; color: var(--text-2); line-height: 16px; }
+  .composer { display: grid; grid-template-columns: 44px 1fr 44px; gap: 6px; align-items: end; padding: 6px 12px 10px; background: var(--bg); }
+  .composer .box { min-height: 44px; border-radius: 22px; border: 1px solid var(--stroke); background: var(--surface);
+                   padding: 11px 14px; font-size: 14px; line-height: 20px; color: var(--text-2); }
+  body.is-kb .composer .box { border-color: var(--accent); color: var(--text); }
+  .composer .send { width: 44px; height: 44px; border-radius: 22px; border: 0; background: var(--accent); color: var(--accent-text); display: grid; place-items: center; cursor: pointer; }
+  .composer .send.stop { background: var(--rec); }
+  .composer .icon-btn { width: 44px; height: 44px; }
+  /* Keyboard open while chatting: the source chips step aside, messages keep the space */
+  body.is-kb.is-chat .c-detail > .sources { display: none; }
+  body.is-kb .detail-pane > .appbar, body.is-kb .c-detail > .appbar { min-height: 48px; padding-top: 0; padding-bottom: 0; }
+
+  /* Chat sources (a chat reads 1..N recordings): wrapping chips + "Add recording" */
+  .sources { padding: 0 16px 6px; display: grid; gap: 4px; }
+  .sources .chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .srcchip { display: inline-grid; grid-template-columns: auto auto; gap: 6px; align-items: center; min-height: 44px; max-width: 100%;
+             padding: 0 12px; border-radius: 22px; border: 1px solid var(--stroke); background: var(--surface); cursor: pointer;
+             font-size: 13px; white-space: nowrap; }
+  .srcchip small { color: var(--text-2); font-size: 11px; }
+  .srcchip.add { background: transparent; border-style: dashed; grid-template-columns: 16px auto; }
+  .srcchip.add svg { width: 16px; height: 16px; }
+  .sources .ctx { font-size: 12px; line-height: 16px; color: var(--text-2); }
+  /* Narrow or short windows: one summary row (scales to N recordings) → Sources sheet; chips from 600 px wide */
+  .srcsum-row { display: grid; grid-template-columns: minmax(0,1fr) 44px; gap: 4px; align-items: center; }
+  .srcsum { display: grid; grid-template-columns: 20px auto minmax(0,1fr) 14px; gap: 6px; align-items: center; min-height: 44px; min-width: 0;
+            padding: 0 10px; border-radius: 22px; border: 1px solid var(--stroke); background: var(--surface); cursor: pointer; text-align: left; }
+  .srcsum b { font-weight: 600; font-size: 13px; white-space: nowrap; }
+  .srcsum .names { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .srcsum svg { width: 16px; height: 16px; } .srcsum svg:last-child { width: 14px; height: 14px; }
+  .srcsum-row .icon-btn { width: 44px; height: 44px; }
+  @media (max-width: 599px), (max-height: 479px) { .sources .wide-only { display: none; } }
+  @media (min-width: 600px) and (min-height: 480px) { .sources .narrow-only { display: none; } }
+  .srow { display: grid; grid-template-columns: minmax(0,1fr) 44px; gap: 4px; align-items: center; }
+  .srow .opt { grid-template-columns: 24px minmax(0,1fr); }
+  .srow .icon-btn { width: 44px; height: 44px; }
+  .evt { align-self: center; font-size: 12px; line-height: 16px; color: var(--text-2); text-align: center; padding: 2px 10px;
+         border-radius: 10px; background: var(--surface-2); border: 1px solid var(--stroke); max-width: 92%; }
+  .msg .src button.long { min-width: 0; }
+
+  /* Top-level Chats page: list + conversation, master-detail >= 840 px (same rules as History) */
+  .cpage, .solo { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: none;
+          padding: var(--inset-top) var(--inset-right) max(var(--inset-bottom), var(--kb)) var(--inset-left);
+          grid-template-columns: minmax(0,1fr); grid-template-rows: 1fr; }
+  body.is-chats .cpage, body.is-chat .cpage, body.is-queue .solo, body.is-settings .solo, body.is-models .solo { display: grid; }
+  .c-list { grid-template-rows: auto 1fr; }
+  .c-detail { grid-template-rows: auto auto 1fr auto; background: var(--bg); }
+  body.is-chat .c-list { display: none; }
+  body.is-chats .c-detail { display: none; }
+  @media (min-width: 840px) {
+    .cpage { grid-template-columns: 360px minmax(0,1fr); }
+    body.is-chat .c-list, body.is-chats .c-detail { display: grid; }
+    .c-list { border-right: 1px solid var(--stroke); }
+    .c-detail .back { visibility: hidden; }
+  }
+  .row-main .lead.ic { width: 36px; min-width: 36px; height: 36px; padding: 0; border-radius: 18px; }
+  .row-main .lead.ic svg { width: 18px; height: 18px; }
+
+  /* Single-column pages: Queue, Settings (content max 720 px, centred on wide windows) */
+  .solo-pane { display: grid; grid-template-rows: auto 1fr; min-height: 0; min-width: 0; }
+  .solo-scroll { min-height: 0; overflow: auto; padding: 0 16px 16px; }
+  .solo-inner { max-width: 720px; margin: 0 auto; display: grid; gap: 8px; align-content: start; }
+  .sec-h { margin: 12px 4px 0; font-size: 12px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+  .group { border-radius: 8px; background: var(--surface); border: 1px solid var(--stroke); padding: 4px; display: grid; }
+  .group .opt + .opt, .group .usage + .opt { border-top: 1px solid var(--stroke); border-radius: 0; }
+  .opt .val { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; color: var(--text-2); white-space: nowrap; }
+  .opt .val svg { width: 14px; height: 14px; }
+  .opt.danger { color: var(--del-text); }
+  .usage { padding: 8px 8px 10px 44px; display: grid; gap: 6px; font-size: 12px; line-height: 16px; color: var(--text-2); }
+  .usage .ubar { display: flex; height: 8px; border-radius: 4px; background: var(--stroke); overflow: hidden; }
+  .usage .ubar i { display: block; height: 100%; background: var(--accent); }
+  .usage .ubar i.t { background: var(--caution); }
+  .usage b { color: var(--text); font-weight: 600; }
+  /* Queue jobs */
+  .job { gap: 8px; }
+  .job-head { display: grid; grid-template-columns: 44px minmax(0,1fr) 44px; gap: 4px; align-items: start; margin: -6px -6px 0 -8px; }
+  .job-head .ic { width: 44px; height: 44px; display: grid; place-items: center; color: var(--text-2); }
+  .job-head .handle { cursor: grab; }
+  .job-head .txt { min-width: 0; padding-top: 4px; display: grid; gap: 2px; }
+  .job-head b { font-size: 14px; line-height: 19px; font-weight: 600; }
+  .job-head small { font-size: 12px; line-height: 16px; color: var(--text-2); }
+  .job .sub { margin: 0 0 0 40px; padding: 0; list-style: none; font-size: 12px; line-height: 18px; color: var(--text-2); }
+  .job .sub li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .job .chips, .job .kv, .job > .bar { margin-left: 40px; }
+  .cond { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; padding: 3px 8px; border-radius: 12px;
+          background: var(--chip-on); white-space: nowrap; }
+  .cond svg { width: 14px; height: 14px; }
+  .cond.warn { background: var(--caution-bg); }
+
+  /* Transcript edit mode: no tabs, no player; segments are text fields; Save creates a new "edited" version */
+  body.is-edit .detail-pane > .d-tabs { display: none; }
+  .seg.edit { cursor: text; grid-template-columns: 52px minmax(0,1fr); }
+  .seg.edit .fld { display: block; border: 1px solid var(--stroke); border-radius: 6px; padding: 5px 8px; background: var(--surface-2); }
+  .seg.edit.focus .fld { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); background: var(--surface); }
+  .seg.edit.changed time::after { content: " •"; color: var(--accent); font-weight: 700; }
+  .editbar { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 8px; align-items: center; padding: 6px 16px 10px; background: var(--bg); }
+  .editbar .info { font-size: 12px; line-height: 16px; color: var(--text-2); min-width: 0; }
+  @media (max-width: 359px) { .editbar .info { display: none; } .editbar { grid-template-columns: minmax(0,1fr) auto; } .editbar .btn:first-of-type { justify-self: end; } }
+  /* Chats tab of a recording: actions + the chats that include it */
+  .ask-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
+  .ask-row .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; }
+
+  /* Versions */
+  .v-scroll { min-height: 0; overflow: auto; padding: 0 16px 16px; display: grid; gap: 8px; align-content: start; }
+  .vcard { border-radius: 8px; background: var(--surface); border: 1px solid var(--stroke); padding: 12px; display: grid; gap: 6px; }
+  .vcard.cur { border-color: var(--accent); }
+  .vcard h3 { margin: 0; font-size: 14px; line-height: 20px; }
+  .kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 2px 12px; font-size: 12px; line-height: 16px; color: var(--text-2); }
+  .kv b { color: var(--text); font-weight: 600; }
+  .v-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+  .v-actions .grow { flex: 1; font-size: 12px; color: var(--text-2); min-width: 0; }
+  .vcard .icon-btn { width: 44px; height: 44px; }
+  .diffhead { display: grid; grid-template-columns: 44px 1fr; gap: 6px; align-items: center; }
+  .diffpick { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: center; }
+  .diffpick .pick { justify-content: space-between; }
+  .stat { font-size: 12px; color: var(--text-2); }
+  .tabp.versions.is-diff { grid-template-rows: auto 1fr; }
+  .diff-top { padding: 0 16px 6px; display: grid; gap: 6px; }
+  .sbs { display: grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 839px) { .sbs-only { display: none; } }
+
+  /* Sheets: bottom sheet on phones, centred dialog on wide or short windows */
+  .sheet-scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); display: none; }
+  .sheet { position: fixed; z-index: 41; left: var(--inset-left); right: var(--inset-right); bottom: max(var(--inset-bottom), var(--kb));
+           max-height: calc(100% - var(--inset-top) - max(var(--inset-bottom), var(--kb)) - 24px);
+           background: var(--surface); border-radius: 12px 12px 0 0; box-shadow: var(--shadow); display: none;
+           grid-template-rows: auto 1fr auto; }
+  body.is-sheet .sheet-scrim { display: block; } body.is-sheet .sheet { display: grid; }
+  @media (min-width: 840px), (max-height: 479px) {
+    .sheet { left: 50%; right: auto; width: min(480px, calc(100% - var(--inset-left) - var(--inset-right) - 32px));
+             transform: translateX(-50%); top: calc(var(--inset-top) + 16px); bottom: auto;
+             max-height: calc(100% - var(--inset-top) - var(--inset-bottom) - 32px); border-radius: 12px; }
+    body.is-sheet .sheet { display: grid; }
+    .sheet.center-v { top: 50%; transform: translate(-50%, -50%); }
+  }
+  .sheet .s-head { padding: 8px 8px 4px 16px; display: grid; grid-template-columns: 1fr 44px; align-items: center; }
+  .sheet .s-head b { font-size: 16px; }
+  .sheet .s-head small { display: block; font-size: 12px; color: var(--text-2); line-height: 16px; }
+  .sheet .s-body { min-height: 0; overflow: auto; padding: 0 8px 8px; }
+  .sheet h4 { margin: 12px 8px 4px; font-size: 12px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+  .opt { width: 100%; min-height: 52px; display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: center; padding: 4px 8px;
+         border: 0; border-radius: 6px; background: transparent; text-align: left; cursor: pointer; }
+  .opt small { display: block; font-size: 12px; line-height: 16px; color: var(--text-2); }
+  .radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--text-2); }
+  .opt.on .radio { border: 6px solid var(--accent); }
+  .select { display: grid; grid-template-columns: 1fr auto; align-items: center; min-height: 44px; padding: 0 12px; margin: 0 8px;
+            border-radius: 6px; border: 1px solid var(--stroke); background: var(--surface-2); cursor: pointer; }
+  .sheet .s-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 8px 16px 12px; border-top: 1px solid var(--stroke); }
+  .sheet .s-foot .est { flex: 1; font-size: 12px; color: var(--text-2); line-height: 16px; align-self: center; min-width: 0; }
+  /* Confirmation dialog: centred in the safe area on every window size */
+  .sheet.dialog { right: auto; bottom: auto; border-radius: 12px;
+                  width: min(400px, calc(100% - var(--inset-left) - var(--inset-right) - 32px));
+                  left: calc(var(--inset-left) + (100% - var(--inset-left) - var(--inset-right)) / 2);
+                  top: calc(var(--inset-top) + (100% - var(--inset-top) - max(var(--inset-bottom), var(--kb))) / 2);
+                  transform: translate(-50%, -50%);
+                  max-height: calc(100% - var(--inset-top) - max(var(--inset-bottom), var(--kb)) - 32px); }
+  .sheet .s-text { margin: 0 8px 4px; font-size: 14px; line-height: 20px; color: var(--text-2); }
+  .cbox { width: 20px; height: 20px; border-radius: 4px; border: 2px solid var(--text-2); display: grid; place-items: center; }
+  .opt.on .cbox { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .opt[aria-disabled="true"] { opacity: .55; cursor: default; }
+  .btn.danger { background: var(--rec); border-color: var(--rec); color: #fff; font-weight: 600; }
+  :root[data-theme="dark"] .btn.danger { color: #000; }
+  .field { display: grid; grid-template-columns: minmax(0,1fr) 44px; align-items: center; min-height: 44px; margin: 0 8px; padding-left: 12px;
+           border-radius: 6px; border: 1px solid var(--accent); box-shadow: inset 0 -2px 0 var(--accent); background: var(--surface); }
+  .field span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .field .icon-btn { width: 44px; height: 44px; }
+  .hint { display: grid; grid-template-columns: 20px minmax(0,1fr) auto; gap: 8px; align-items: center; margin: 8px 8px 0;
+          font-size: 12px; line-height: 16px; color: var(--text-2); }
+  .hint svg { width: 16px; height: 16px; }
+  .s-search { margin: 0 8px 4px; }
+
+  /* ════════ Speakers (Nemotron 3 Diarization, on device) ════════ */
+  /* 8 speaker colours (the model tells apart up to 8 voices); user can change a speaker's colour */
+  :root { --spk0: #0f6cbd; --spk1: #b4009e; --spk2: #107c10; --spk3: #ca5010; --spk4: #5c2e91; --spk5: #038387; --spk6: #986f0b; --spk7: #8e562e; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --spk0: #60cdff; --spk1: #ee5fb7; --spk2: #6ccb5f; --spk3: #f7894a; --spk4: #b996e8; --spk5: #4fd1d1; --spk6: #e8c55b; --spk7: #d8a27c; } }
+  :root[data-theme="dark"] { --spk0: #60cdff; --spk1: #ee5fb7; --spk2: #6ccb5f; --spk3: #f7894a; --spk4: #b996e8; --spk5: #4fd1d1; --spk6: #e8c55b; --spk7: #d8a27c; }
+  .who { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-2); white-space: nowrap; min-width: 0; }
+  .who i, .spkdot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .who i.unk { background: transparent; border: 1.5px dashed var(--text-2); }
+  .seg .who { margin-bottom: 1px; }
+  .seg .turn { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; font-weight: 600; color: var(--text-2);
+               padding: 0 6px; border-radius: 8px; border: 1px solid var(--stroke); vertical-align: 1px; }
+  .seg .turn i { width: 8px; height: 8px; border-radius: 50%; }
+  .seg .ovl { text-decoration: underline dotted var(--text-2); text-underline-offset: 4px; }
+  .skipnote { margin: 2px 12px 2px 63px; font-size: 12px; line-height: 16px; color: var(--text-2); }
+  /* Speaker control: own row < 600 px, inline in the toolbar 600–839 px or on short windows, filter chips on wide + tall windows */
+  .spk-row { padding: 0 12px 6px 16px; }
+  .spk-inline { display: none !important; }
+  .spk-chips { display: none; flex-wrap: wrap; gap: 6px; padding: 0 16px 6px; }
+  @media (min-width: 600px) { .spk-row { display: none; } .spk-inline { display: inline-flex !important; } }
+  @media (min-width: 840px) and (min-height: 480px) { .spk-inline { display: none !important; } .spk-chips { display: flex; } }
+  .spkchip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 22px; border: 1px solid var(--stroke);
+             background: var(--surface); cursor: pointer; font-size: 13px; white-space: nowrap; }
+  .spkchip small { color: var(--text-2); font-size: 11px; }
+  .spkchip.on { background: var(--chip-on); border-color: transparent; font-weight: 600; }
+  .spkchip svg { width: 16px; height: 16px; }
+  .srcsum .spkdot { justify-self: center; }
+  /* Speakers sheet rows: colour swatch · name (tap = rename) · more */
+  .spkrow { display: grid; grid-template-columns: 44px minmax(0,1fr) 44px; gap: 4px; align-items: center; }
+  .spkrow .sw { width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; display: grid; place-items: center; cursor: pointer; }
+  .spkrow .sw i { width: 20px; height: 20px; border-radius: 50%; }
+  .spkrow .opt { grid-template-columns: minmax(0,1fr) auto; }
+  .spkrow .opt svg { width: 16px; height: 16px; color: var(--text-2); }
+  .spkrow .icon-btn { width: 44px; height: 44px; }
+  .opt .spkdot { justify-self: center; }
+  /* Main screen while recording with live speaker labels */
+  .card .body .ll { margin: 0 0 10px; }
+  .card .body .ll.pending { color: var(--text-2); }
+  .record.stop { background: var(--rec); }
+  /* Reprocess chain steps (Versions card, Queue) */
+  .steps { margin: 0 0 0 40px; padding: 0; list-style: none; display: grid; gap: 2px; font-size: 12px; line-height: 18px; color: var(--text-2); }
+  .vcard > .steps { margin-left: 0; }
+  .steps li { display: grid; grid-template-columns: 16px minmax(0,1fr); gap: 6px; align-items: center; }
+  .steps li.run { color: var(--text); font-weight: 600; }
+  .steps svg { width: 14px; height: 14px; }
+  /* Insights (analysis step): summary, action items with owners, talk time */
+  .ins ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 19px; }
+  .ins .lbl { font-size: 12px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; margin-top: 4px; }
+  .ai { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: center; min-height: 44px; width: 100%; padding: 4px 10px;
+        border: 0; border-radius: 6px; background: var(--surface-2); text-align: left; cursor: pointer; font-size: 13px; line-height: 18px; }
+  .ai .who { margin-bottom: 1px; }
+  .ai time { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .talk { display: grid; grid-template-columns: 92px minmax(0,1fr) auto; gap: 8px; align-items: center; font-size: 12px; line-height: 16px; color: var(--text-2); }
+  .talk .tbar { height: 8px; border-radius: 4px; background: var(--stroke); overflow: hidden; }
+  .talk .tbar i { display: block; height: 100%; }
+  .talk .who { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
+  /* Models page: variant rows (choice + download / more) */
+  .vrow { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: center; }
+  .vrow .icon-btn { width: 44px; height: 44px; }
+  .vcard .foot { font-size: 12px; line-height: 16px; color: var(--text-2); margin: 0; }
+  .m-tabs { margin: 0 0 4px; }
+
+  #check { display: none; }
+</style>
+</head>
+<body>
+<div class="sysbar top"></div><div class="sysbar bottom"></div><div class="sysbar left"></div><div class="sysbar right"></div>
+<div class="keyboard"></div>
+
+<!-- ═══════════ Main screen (existing, simplified) ═══════════ -->
+<div class="page" id="main">
+  <header class="appbar">
+    <button class="icon-btn" data-hit="menu" aria-label="Open menu" onclick="go({drawer:1})">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <div class="title"><h1>VoiceType</h1><p>Parakeet TDT INT4 · Auto</p></div>
+    <span class="state-pill"><span class="dot"></span>Ready</span>
+  </header>
+  <main class="content">
+    <article class="card transcript">
+      <header><span>Transcript</span><span class="sp"></span>
+        <button class="icon-btn" data-hit="clear" aria-label="Clear transcript"><svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg></button>
+      </header>
+      <div class="body" id="mainText"></div>
+    </article>
+  </main>
+  <!-- After Stop: the session is saved; snackbar for ~8 s (and until the next recording starts) -->
+  <div class="snack-row" id="snackRow" hidden>
+    <div class="snack" role="status" aria-live="polite">
+      <svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg>
+      <p>Saved to History<small>12:34 · audio + transcript</small></p>
+      <button class="open" data-hit="snack-open" onclick="go({screen:'detail', tab:'transcript', snack:0})">Open</button>
+      <button class="x" data-hit="snack-close" aria-label="Dismiss" onclick="go({snack:0})"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+  </div>
+  <footer class="cmdbar">
+    <button class="round-btn left" data-hit="mute" aria-label="Mute microphone" disabled>
+      <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <div class="record-wrap">
+      <button class="record" data-hit="record" aria-label="Start recording"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+      <span class="record-caption">Tap to start</span>
+    </div>
+    <button class="round-btn right" data-hit="copy" aria-label="Copy transcript">
+      <svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button>
+  </footer>
+</div>
+
+<!-- ═══════════ Side menu: History entry added at the top ═══════════ -->
+<div class="scrim" onclick="go({drawer:0})"></div>
+<nav class="drawer" aria-label="Main menu">
+  <div class="head">
+    <button class="icon-btn" data-hit="d-close" aria-label="Close menu" onclick="go({drawer:0})"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <b>VoiceType</b>
+  </div>
+  <div class="scroll">
+    <h2>Recordings</h2>
+    <button class="item new" data-hit="d-history" onclick="go({screen:'history', drawer:0})">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span>History<small>24 recordings · 1.2 GB</small></span><span></span>
+    </button>
+    <button class="item" data-hit="d-chats" onclick="go({screen:'chats', drawer:0})">
+      <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>
+      <span>Chats<small>5 chats with Gemma, across recordings</small></span><span></span>
+    </button>
+    <button class="item" data-hit="d-queue" onclick="go({screen:'queue', drawer:0})">
+      <svg viewBox="0 0 24 24"><path d="M4 6h11M4 12h11M4 18h7"/><path d="M17 15l3 3-3 3"/></svg>
+      <span>Queue<small>1 running · 4 waiting</small></span><span class="badge" aria-label="5 jobs">5</span>
+    </button>
+    <h2>Mode</h2>
+    <button class="item" data-hit="d-inject"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h1M11 10h1M15 10h2M7 14h10"/></svg><span>Inject text<small>Type each phrase into the focused app</small></span><span class="switch"></span></button>
+    <button class="item" data-hit="d-translate"><svg viewBox="0 0 24 24"><path d="M4 5h9M8.5 3v2M6 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/></svg><span>Live translation<small>Gemma 4, on-device</small></span><span class="switch"></span></button>
+    <button class="item" data-hit="d-manual"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg><span>Manual input<small>Type or edit the transcript</small></span><span class="switch"></span></button>
+    <button class="item" data-hit="d-speakers"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg><span>Live speaker labels<small>Experimental · who is speaking</small></span><span class="switch"></span></button>
+    <h2>Models</h2>
+    <button class="item" data-hit="d-models" onclick="go({screen:'models', drawer:0})"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg><span>Models<small>Speech · Speakers · Gemma</small></span><span></span></button>
+    <button class="item" data-hit="d-downloads"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Downloads</span><span></span></button>
+  </div>
+  <div class="foot">
+    <button class="item" data-hit="d-settings" onclick="go({screen:'settings', drawer:0})"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>Settings<small>Recording history, audio retention</small></span><span></span></button>
+    <button class="item" data-hit="d-help"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg><span>Help</span><span></span></button>
+  </div>
+</nav>
+
+<!-- ═══════════ History page ═══════════ -->
+<section class="hist" aria-label="History">
+  <!-- List pane -->
+  <div class="pane list-pane">
+    <header class="appbar" id="listBar"></header>
+    <div class="search-row">
+      <label class="search" data-hit="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+        <input id="searchInput" placeholder="Search transcripts, translations, chats" aria-label="Search"></label>
+      <button class="icon-btn" data-hit="filter" aria-label="Filter" onclick="go({sheet:'filter'})"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span class="dot-badge"></span></button>
+    </div>
+    <div class="active-filters">
+      <button class="fchip" data-hit="f-lang">Language: EN <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="list-scroll" id="list"></div>
+  </div>
+
+  <!-- Detail pane -->
+  <div class="pane detail-pane" id="detail">
+    <header class="appbar" id="detailBar"></header>
+    <div class="seg-ctl d-tabs" role="tablist">
+      <button role="tab" data-hit="tab-transcript" data-tab="transcript" onclick="go({tab:'transcript'})">Transcript</button>
+      <button role="tab" data-hit="tab-chats" data-tab="chats" onclick="go({tab:'chats'})">Chats</button>
+      <button role="tab" data-hit="tab-translation" data-tab="translation" onclick="go({tab:'translation'})">Translate</button>
+      <button role="tab" data-hit="tab-versions" data-tab="versions" onclick="go({tab:'versions'})">Versions</button>
+    </div>
+    <div class="tab-body">
+      <!-- Transcript -->
+      <div class="tabp transcript"><div>
+        <div class="toolbar" id="trToolbar">
+          <button class="pick" data-hit="tr-version" onclick="go({tab:'versions'})">v2 · Parakeet FP32 <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <span id="spkInline"></span>
+          <span class="sp"></span>
+          <button class="icon-btn" data-hit="tr-edit" aria-label="Edit transcript (saves a new version)" style="width:44px;height:44px" onclick="go({edit:1})"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg></button>
+          <button class="icon-btn" data-hit="tr-follow" aria-label="Follow playback" style="width:44px;height:44px"><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>
+          <button class="icon-btn" data-hit="tr-copy" aria-label="Copy transcript" style="width:44px;height:44px"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button>
+        </div>
+        <div id="spkBar"></div></div>
+        <div class="reader" id="reader"></div>
+      </div>
+      <!-- Chats: an index of the top-level chats that include this recording (the conversation itself lives on the Chats page) -->
+      <div class="tabp chats"><div class="v-scroll" id="recChats"></div></div>
+      <!-- Translation -->
+      <div class="tabp translation">
+        <div>
+          <div class="toolbar">
+            <button class="pick" data-hit="tl-lang">→ Russian · from v2 <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+            <span class="sp"></span>
+            <button class="icon-btn" data-hit="tl-orig" aria-label="Show original" style="width:44px;height:44px"><svg viewBox="0 0 24 24"><path d="M4 6h7M4 10h7M4 14h5M14 6h6M14 10h6M14 14h6M14 18h4"/></svg></button>
+            <button class="icon-btn" data-hit="tl-rerun" aria-label="Translate again" style="width:44px;height:44px"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg></button>
+          </div>
+          <div id="tlStatus"></div>
+        </div>
+        <div class="reader" id="tlReader"></div>
+      </div>
+      <!-- Versions -->
+      <div class="tabp versions" id="versions"></div>
+    </div>
+    <div id="detailBottom"></div>
+  </div>
+</section>
+
+<!-- ═══════════ Chats page (top level): list + conversation with 1..N recordings ═══════════ -->
+<section class="cpage" aria-label="Chats">
+  <div class="pane c-list">
+    <header class="appbar">
+      <button class="icon-btn" data-hit="cl-back" aria-label="Back" onclick="go({screen:'main'})"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="title"><h1>Chats</h1><p>5 chats · Gemma 4 E2B on this device</p></div>
+      <button class="icon-btn" data-hit="cl-new" aria-label="New chat: pick recordings" onclick="go({screen:'chat', chat:'empty', sheet:'addsrc'})"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    </header>
+    <div class="list-scroll" id="chatList"></div>
+  </div>
+  <div class="pane c-detail" id="chatPane">
+    <header class="appbar" id="chatBar"></header>
+    <div class="sources" id="sources"></div>
+    <div class="msgs" id="msgs"></div>
+    <div class="composer">
+      <button class="icon-btn" data-hit="c-prompts" aria-label="Quick prompts"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg></button>
+      <div class="box" data-hit="c-input" id="cInput">Ask about these recordings…</div>
+      <button class="send" data-hit="c-send" id="cSend" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ Single-column pages: Queue, Settings › History ═══════════ -->
+<section class="solo" aria-label="Page">
+  <div class="solo-pane">
+    <header class="appbar" id="soloBar"></header>
+    <div class="solo-scroll"><div class="solo-inner" id="soloBody"></div></div>
+  </div>
+</section>
+
+<!-- ═══════════ Sheets ═══════════ -->
+<div class="sheet-scrim" onclick="go({sheet:''})"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+
+<pre id="check"></pre>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const S = Object.fromEntries(q.entries());
+  const px = k => (parseInt(S[k] || '0', 10) || 0) + 'px';
+  const root = document.documentElement.style;
+  for (const k of ['top','bottom','left','right']) root.setProperty('--inset-' + k, px(k));
+  root.setProperty('--kb', px('kb'));
+  if (S.theme) document.documentElement.dataset.theme = S.theme;
+
+  const ICON = {
+    more: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
+    back: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+    close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    trash: '<svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>',
+    play: '<svg viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><path d="M8 5v14l11-7z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+    back10: '<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5"/><text x="12" y="15.5" font-size="7" text-anchor="middle" fill="currentColor" stroke="none">10</text></svg>',
+    fwd10: '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/><text x="12" y="15.5" font-size="7" text-anchor="middle" fill="currentColor" stroke="none">10</text></svg>',
+    spark: '<svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>',
+    chk: '<svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M5 12l4 4 10-10"/></svg>',
+    plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+    rerun: '<svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>',
+    chat: '<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>',
+    moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
+    bolt: '<svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></svg>',
+    idle: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M4 4l16 16"/></svg>',
+    handle: '<svg viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="3"/></svg>',
+    pauseO: '<svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg>',
+    title: '<svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v13"/></svg>',
+    translate: '<svg viewBox="0 0 24 24"><path d="M4 5h9M8.5 3v2M6 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/></svg>',
+    doc: '<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg>',
+    music: '<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="16" r="2"/></svg>',
+    md: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M6 15V9l2.5 3L11 9v6M15 9v6M13 13l2 2 2-2"/></svg>',
+    undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
+    save: '<svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+    share: '<svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/></svg>',
+    storage: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>',
+    mic: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+    kbd: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h1M11 10h1M15 10h2M7 14h10"/></svg>',
+    clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    wave: '<svg viewBox="0 0 24 24"><path d="M3 12h3l3-7 4 14 3-7h5"/></svg>',
+    alert: '<svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>',
+    people: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg>',
+    merge: '<svg viewBox="0 0 24 24"><path d="M6 4v3a6 6 0 0 0 6 6 6 6 0 0 1 6 6v1M18 4v3a6 6 0 0 1-3 5.2"/></svg>',
+    pencil: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>',
+    chain: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="5" rx="1"/><rect x="14" y="15" width="7" height="5" rx="1"/><path d="M10 6.5h3a2 2 0 0 1 2 2V15"/></svg>',
+    prevTurn: '<svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6z"/></svg>',
+    nextTurn: '<svg viewBox="0 0 24 24"><path d="M18 5v14M6 6l8 6-8 6z"/></svg>',
+    stop: '<svg viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>',
+    done: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
+    running: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" style="fill:currentColor"/></svg>',
+    todo: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg>',
+  };
+  // ── Speakers: 4 voices found by Nemotron 3 Diarization (arrival order); names are per recording and user-editable ──
+  const SPK = [ { n: 'Mark', c: 0, pct: 46, t: '5:47', turns: 7 }, { n: 'Anna', c: 1, pct: 34, t: '4:16', turns: 5 },
+                { n: 'Speaker 3', c: 2, pct: 18, t: '2:15', turns: 2 }, { n: 'Speaker 4', c: 3, pct: 2, t: '0:38', turns: 1 } ];
+  const SEGSPK = [0, 0, 0, 1, 0, 1, 0, 2, 0, 2, 1, 0, 1, 0];
+  const dot = i => `<i style="background:var(--spk${SPK[i].c})"></i>`;
+  const who = (i, extra = '') => `<span class="who">${dot(i)}${SPK[i].n}${extra}</span>`;
+
+  // ── Demo data: one meeting, two transcript versions, a Russian translation ──
+  const SEG = [
+    ['00:00', "Okay, let's start. The meeting moves to ten next Monday, not nine."],
+    ['00:41', 'Please bring the quarterly report and the updated budget.'],
+    ['01:12', 'Anna, can you send the hiring plan by Thursday?'],
+    ['01:30', 'Sure, I will share it in the team channel on Wednesday evening.'],
+    ['02:05', 'We still have two open positions: a backend engineer and a designer.'],
+    ['02:48', 'The designer role is the priority, the backend one can wait until March.'],
+    ['03:20', 'Budget-wise we are about five percent over in cloud costs.'],
+    ['04:05', 'Mark will look into the storage bills and report back next week.'],
+    ['05:12', 'Any questions about the release date?'],
+    ['05:30', 'Is the twentieth still realistic with the new login flow?'],
+    ['06:02', 'I think so, if QA gets the build by Friday.'],
+    ['07:40', "Good. Let's also decide on the offsite: Lisbon or Kraków."],
+    ['08:15', "Let's vote in the chat and close it by end of week."],
+    ['12:20', 'Thanks everyone, see you on Monday.'],
+  ];
+  const RU = [
+    'Итак, начнём. Встреча переносится на десять утра в следующий понедельник, а не на девять.',
+    'Пожалуйста, возьмите квартальный отчёт и обновлённый бюджет.',
+    'Анна, можешь прислать план найма до четверга?',
+    'Конечно, выложу его в канал команды в среду вечером.',
+    'У нас всё ещё две открытые вакансии: бэкенд-разработчик и дизайнер.',
+    'Дизайнер в приоритете, бэкенд может подождать до марта.',
+    'По бюджету мы примерно на пять процентов превышаем расходы на облако.',
+    'Марк разберётся со счетами за хранилище и отчитается на следующей неделе.',
+    'Есть вопросы по дате релиза?',
+    'Двадцатое всё ещё реально с новым процессом входа?',
+    'Думаю, да, если QA получит сборку к пятнице.',
+    'Хорошо. Давайте ещё решим насчёт выезда: Лиссабон или Краков.',
+    'Проголосуем в чате и закроем вопрос до конца недели.',
+    'Всем спасибо, до понедельника.',
+  ];
+  // v1 (live) → v2 (re-recognized): [segment, html]
+  const DIFF = {
+    0: "Okay, let's start. The meeting <del>moved</del><ins>moves</ins> to ten next <del>monday</del><ins>Monday,</ins> not nine.",
+    3: 'Sure, I will share it in the team channel on Wednesday <del>evening</del><ins>evening.</ins>',
+    6: 'Budget-wise we are about five percent over in cloud <del>cost.</del><ins>costs.</ins>',
+    10: 'I think so, if <del>Q and A</del><ins>QA</ins> gets the build by Friday.',
+    11: "Good. Let's also decide on the offsite: Lisbon or <del>Krakow.</del><ins>Kraków.</ins>",
+  };
+  const CUR = 6; // segment under the playhead in the demo
+
+  const HIST = [
+    { g: 'Today', id: 1, t: 'Weekly sync — budget and hiring', w: "Okay, let's start. The meeting moves to ten next Monday…", m: '14:02 · 12:34 · Parakeet FP32 · EN', b: ['→ RU', '2 chats', 'v2', '4 speakers'] },
+    { g: 'Today', id: 2, t: 'Okay so the idea for the landing page is', w: '', m: '09:15 · 3:08 · Parakeet INT4 · EN', b: ['Title queued'] },
+    { g: 'Yesterday', id: 3, t: 'Звонок с поставщиком по срокам поставки', w: '', m: '17:40 · 41:10 · Parakeet INT4 · RU', b: ['→ EN', '1 chat', 'v2 queued'] },
+    { g: 'Yesterday', id: 4, t: 'Buy filters, call the bank about the card', w: '', m: '08:02 · 0:48 · Nemotron INT4 · EN', b: ['Inject'] },
+    { g: 'Earlier', id: 5, t: 'Lecture 4 — distributed consensus, Raft', w: '', m: 'Sep 28 · 1:24:05 · Parakeet INT4 · EN', b: ['1 chat', 'v3', 'No audio'] },
+    { g: 'Earlier', id: 6, t: 'Interview with Maria (UX research)', w: '', m: 'Sep 21 · 52:17 · Parakeet INT4 · EN', b: ['→ DE'] },
+  ];
+
+  // ── State ──
+  const screen = S.screen || 'main';
+  const tab = S.tab === 'chat' ? 'chats' : (S.tab || 'transcript');
+  const has = k => S[k] === '1';
+  const cls = document.body.classList;
+  if (screen !== 'main') cls.add('is-' + screen);
+  if (screen === 'main' && has('drawer')) cls.add('is-drawer');
+  if (S.sheet) cls.add('is-sheet');
+  if (parseInt(S.kb || '0', 10) > 0) cls.add('is-kb');
+  const editing = screen === 'detail' && tab === 'transcript' && has('edit');
+  if (editing) cls.add('is-edit');
+  cls.add('t-' + tab);
+  for (const b of document.querySelectorAll('.d-tabs button')) b.classList.toggle('sel', b.dataset.tab === tab);
+
+  function go(patch) {
+    const n = new URLSearchParams(location.search);
+    for (const [k, v] of Object.entries(patch)) (v === 0 || v === '' ? n.delete(k) : n.set(k, v));
+    if (patch.screen || patch.tab) { n.delete('diff'); n.delete('edit'); if (!patch.sheet) n.delete('sheet'); }
+    location.search = n.toString();
+  }
+  const caret = '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+
+  // Main
+  document.getElementById('mainText').textContent = has('snack')
+    ? 'Thanks everyone, see you on Monday.'
+    : SEG.slice(0, 3).map(s => s[1]).join(' ');
+  document.getElementById('snackRow').hidden = !has('snack');
+  // Recording with live speaker labels (live=1), or labels that fell behind and switch to "after Stop" (live=2)
+  const live = S.live === '1' || S.live === '2';
+  if (live) {
+    const fallback = S.live === '2';
+    document.querySelector('#main .title p').textContent = 'Parakeet TDT INT4 · Auto · speaker labels';
+    document.querySelector('#main .state-pill').innerHTML = '<span class="dot" style="background:var(--rec)"></span>Recording 06:10';
+    document.querySelector('#main .card > header span').innerHTML = fallback ? 'Transcript' : 'Transcript · 3 speakers';
+    const L = [[0, '03:20', SEG[6][1]], [2, '04:05', SEG[7][1]], [0, '05:12', SEG[8][1]], [2, '05:30', SEG[9][1]]];
+    document.getElementById('mainText').innerHTML = (fallback
+      ? `<div class="notice" style="margin:0 0 10px">${'Speaker labels paused: this phone can’t keep up with both models. Speakers will be added after Stop.'}</div>` : '')
+      + L.map(([s, t, x], k) => `<p class="ll">${fallback && k >= 2 ? `<span class="who"><i class="unk"></i>${t}</span>` : who(s, ` · ${t}`)}${x}</p>`).join('')
+      + `<p class="ll pending"><span class="who"><i class="unk"></i>${fallback ? '06:02' : 'Speaker in ~1 s'}</span>I think so, if QA gets the <span class="caret"></span></p>`;
+    const rec = document.querySelector('#main .record');
+    rec.classList.add('stop'); rec.setAttribute('aria-label', 'Stop recording'); rec.innerHTML = ICON.stop;
+    document.querySelector('#main .record-caption').textContent = 'Tap to stop';
+    document.querySelector('#main [data-hit="mute"]').removeAttribute('disabled');
+  }
+
+  // List pane
+  const sel = has('sel');
+  document.getElementById('listBar').innerHTML = sel
+    ? `<button class="icon-btn" data-hit="l-cancel" aria-label="Cancel selection" onclick="go({sel:0})">${ICON.close}</button>
+       <div class="title"><h1>3 selected</h1><p>41 MB of audio</p></div>
+       <span class="acts"><button class="icon-btn" data-hit="l-rerun" aria-label="Reprocess selected (batch)" onclick="go({sheet:'batch'})">${ICON.rerun}</button>
+       <button class="icon-btn" data-hit="l-all" aria-label="Select all"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 12l3 3 5-6"/></svg></button>
+       <button class="icon-btn" data-hit="l-delete" aria-label="Delete selected" onclick="go({sheet:'delete'})">${ICON.trash}</button></span>`
+    : `<button class="icon-btn" data-hit="l-back" aria-label="Back" onclick="go({screen:'main'})">${ICON.back}</button>
+       <div class="title"><h1>History</h1><p>24 recordings · 1.2 GB</p></div><span></span>`;
+  const query = S.q || '';
+  document.getElementById('searchInput').value = query;
+  const mark = (s) => query ? s.replace(new RegExp('(' + query + ')', 'i'), '<mark>$1</mark>') : s;
+  let html = '', g = '';
+  const rows = query ? HIST.filter(h => (h.t + h.w).toLowerCase().includes(query.toLowerCase()) || h.id === 5) : HIST;
+  for (const h of rows) {
+    if (h.g !== g) { g = h.g; html += `<div class="group-h">${g}</div>`; }
+    const selected = sel && [1, 3, 4].includes(h.id);
+    const cur = !sel && h.id === 1 && screen === 'detail';
+    const lead = sel ? `<span class="lead chk ${selected ? 'on' : ''}">${selected ? ICON.chk : ''}</span>`
+                     : `<span class="lead">${h.m.split(' · ')[1]}</span>`;
+    const snippet = query && h.id === 5 ? `<span class="meta">…the leader sends a <mark>budget</mark> of heartbeats… <i>(chat)</i></span>` : '';
+    html += `<div class="row ${selected ? 'sel-row' : ''} ${cur ? 'cur' : ''}">
+      <button class="row-main" data-hit="row-${h.id}" onclick="go({screen:'detail'})">${lead}
+        <span class="txt"><b>${mark(h.t)}</b><span class="meta">${h.m}</span>${snippet}
+        ${h.b.length ? `<span class="chips">${h.b.map(x => `<span class="chip ${x === 'No audio' ? 'warn' : x.startsWith('→') ? 'on' : ''}">${x}</span>`).join('')}</span>` : ''}</span>
+      </button>
+      ${sel ? '<span></span>' : `<button class="icon-btn" data-hit="row-${h.id}-more" aria-label="More actions">${ICON.more}</button>`}
+    </div>`;
+  }
+  html += `<div class="storage"><span><b>Storage · 1.2 GB of 2 GB</b><br>Audio is kept 30 days, transcripts forever</span>
+           <button class="btn" data-hit="storage" onclick="go({screen:'settings'})">Manage</button></div>`;
+  document.getElementById('list').innerHTML = html;
+
+  // Transcript reader
+  const reader = (i, text, extra = '') => {
+    const cur = (has('playing') || S.cur) && i === CUR;
+    let t = text;
+    if (cur) t = t.replace('cloud', '<span class="w-cur">cloud</span>');
+    return `<button class="seg ${cur ? 'cur' : ''}" data-hit="seg-${i}"><time>${SEG[i][0]}</time><span>${t}${extra}</span></button>`;
+  };
+  // Edit mode: every segment is a text field; Save creates v3 (kind "edited", parent v2) and makes it current
+  const EDITED = { 3: 'Sure, I will share it in the #hiring channel on Wednesday evening.', 10: 'I think so, if QA gets the build by Friday noon|' };
+  // Speakers: a name line when the speaker changes; a mid-segment change is an inline chip; overlap is dotted
+  const spk = has('spk') && !editing, fspk = spk && has('fspk');
+  const FSPK = 1; // filter demo: Anna only
+  const spkText = i => {
+    let t = SEG[i][1];
+    if (i === 10) t = t.replace('I think so,', '<span class="ovl" title="Overlaps with Speaker 3">I think so,</span>');
+    if (i === 12) t = t.replace('and close', `<span class="turn">${dot(3)}Speaker 4</span> and close`);
+    return t;
+  };
+  const spkReader = () => {
+    let out = '', prev = -1, skipped = [];
+    SEG.forEach((s, i) => {
+      const sp = SEGSPK[i];
+      if (fspk && sp !== FSPK) { skipped.push(i); return; }
+      if (fspk && skipped.length) {
+        const names = [...new Set(skipped.map(k => SPK[SEGSPK[k]].n))].join(', ');
+        out += `<div class="skipnote">··· ${skipped.length} segment${skipped.length > 1 ? 's' : ''} by ${names}</div>`; skipped = [];
+      }
+      const cur = has('playing') && i === (fspk ? 5 : CUR);
+      let t = spkText(i);
+      if (cur && !fspk) t = t.replace('cloud', '<span class="w-cur">cloud</span>');
+      if (cur && fspk) t = t.replace('priority', '<span class="w-cur">priority</span>');
+      out += `<button class="seg ${cur ? 'cur' : ''}" data-hit="seg-${i}"><time>${s[0]}</time><span>${sp !== prev || fspk ? who(sp) : ''}${t}</span></button>`;
+      prev = sp;
+    });
+    return out;
+  };
+  document.getElementById('reader').innerHTML = editing
+    ? SEG.map((s, i) => `<div class="seg edit ${EDITED[i] ? 'changed' : ''} ${i === 10 ? 'focus' : ''}" data-hit="eseg-${i}"><time>${s[0]}</time><span class="fld">${EDITED[i] || s[1]}</span></div>`).join('')
+    : spk ? spkReader() : SEG.map((s, i) => reader(i, s[1])).join('');
+  if (spk) {
+    const f = SPK[FSPK];
+    document.getElementById('spkInline').innerHTML = fspk
+      ? `<button class="pick spk-inline" data-hit="spk-pick" onclick="go({sheet:'speakers'})"><span class="spkdot" style="background:var(--spk${f.c})"></span>${f.n} only ${caret}</button>`
+      : `<button class="pick spk-inline" data-hit="spk-pick" onclick="go({sheet:'speakers'})">${ICON.people}4 speakers ${caret}</button>`;
+    document.getElementById('spkBar').innerHTML = (fspk
+      ? `<div class="srcsum-row spk-row"><button class="srcsum" data-hit="spk-sum" onclick="go({sheet:'speakers'})"><span class="spkdot" style="background:var(--spk${f.c})"></span><b>${f.n} only</b><span class="names">4 of 14 segments · ${f.t}</span>${caret}</button>
+           <button class="icon-btn" data-hit="spk-clear" aria-label="Show all speakers" onclick="go({fspk:0})">${ICON.close}</button></div>`
+      : `<div class="srcsum-row spk-row"><button class="srcsum" data-hit="spk-sum" onclick="go({sheet:'speakers'})" aria-label="Speakers: filter, rename, merge">${ICON.people}<b>4 speakers</b><span class="names">${SPK.map(s => s.n).join(', ')}</span>${caret}</button>
+           <button class="icon-btn" data-hit="spk-manage" aria-label="Rename or merge speakers" onclick="go({sheet:'speakers'})">${ICON.pencil}</button></div>`)
+      + `<div class="spk-chips"><button class="spkchip ${fspk ? '' : 'on'}" data-hit="spk-all" onclick="go({fspk:0})">All speakers</button>
+         ${SPK.map((s, i) => `<button class="spkchip ${fspk && i === FSPK ? 'on' : ''}" data-hit="spk-c${i}" aria-label="Show only ${s.n}"><span class="spkdot" style="background:var(--spk${s.c})"></span>${s.n}<small>${s.pct}%</small></button>`).join('')}
+         <button class="spkchip" data-hit="spk-manage-w" onclick="go({sheet:'speakers'})">${ICON.pencil}Rename, merge</button></div>`;
+  }
+  if (editing) document.getElementById('trToolbar').innerHTML =
+    `<span class="info" style="flex:1;white-space:normal">Editing v2 · Save creates <b>v3 · edited</b>; v2 stays as it is.</span>`;
+
+  // Recording header: ← title [Ask Gemma] ⋯   (edit mode: × "Edit transcript" [Undo])
+  document.getElementById('detailBar').innerHTML = editing
+    ? `<button class="icon-btn" data-hit="e-close" aria-label="Cancel editing" onclick="go({edit:0})">${ICON.close}</button>
+       <div class="title"><h1>Edit transcript</h1><p>Weekly sync — budget and hiring</p></div>
+       <button class="icon-btn" data-hit="e-undo" aria-label="Undo">${ICON.undo}</button>`
+    : `<button class="icon-btn back" data-hit="d-back" aria-label="Back" onclick="go({screen:'history'})">${ICON.back}</button>
+       <div class="title"><h1>Weekly sync — budget and hiring</h1><p>Mon 12 Oct, 14:02 · 12:34 · EN</p></div>
+       <span class="acts"><button class="icon-btn" data-hit="d-ask" aria-label="Ask Gemma about this recording" onclick="go({screen:'chat', chat:'empty'})">${ICON.spark}</button>
+       <button class="icon-btn" data-hit="d-more" aria-label="More: rename, edit, reprocess, export, add to chat, delete">${ICON.more}</button></span>`;
+
+  // Chats tab: the top-level chats that include this recording
+  // Insights from the analysis step of a reprocess chain (Gemma, with speaker names) — above the chats that include the recording
+  const insights = has('ins') ? `
+    <article class="vcard ins"><h3>Insights · v2 with speakers</h3>
+      <span class="muted" style="font-size:12px;line-height:16px">Gemma 4 E2B · made overnight by Reprocess · 13 Oct 02:14</span>
+      <ul><li>The meeting moves to 10:00 on Monday.</li><li>Designer role first; backend waits until March.</li><li>Cloud costs are about 5% over budget.</li></ul>
+      <div class="lbl">Action items</div>
+      <button class="ai" data-hit="ai-1"><span>${who(1)}Share the hiring plan in the team channel · Wed evening</span><time>01:30</time></button>
+      <button class="ai" data-hit="ai-2"><span>${who(0)}Look into the storage bills · next week</span><time>04:05</time></button>
+      <button class="ai" data-hit="ai-3"><span>${who(1)}Close the offsite vote · end of week</span><time>08:15</time></button>
+      <div class="lbl">Talk time</div>
+      ${SPK.map(s => `<div class="talk" role="img" aria-label="${s.n} ${s.pct}%"><span class="who"><i style="background:var(--spk${s.c})"></i>${s.n}</span><span class="tbar"><i style="width:${s.pct}%;background:var(--spk${s.c})"></i></span><span>${s.pct}% · ${s.t}</span></div>`).join('')}
+      <div class="v-actions"><span class="grow">Names changed after this summary? Regenerate updates it.</span><button class="btn" data-hit="ins-regen">Regenerate</button></div>
+    </article>` : '';
+  document.getElementById('recChats').innerHTML = insights + `
+    <div class="ask-row">
+      <button class="btn primary" data-hit="rc-ask" onclick="go({screen:'chat', chat:'empty'})">${ICON.spark}Ask Gemma</button>
+      <button class="btn" data-hit="rc-addto" onclick="go({sheet:'addto'})">${ICON.plus}Add to chat…</button>
+    </div>
+    <div class="group-h" style="margin:8px 4px 0">In 2 chats</div>
+    <div class="row"><button class="row-main" data-hit="rc-1" onclick="go({screen:'chat'})"><span class="lead ic">${ICON.chat}</span>
+      <span class="txt"><b>Q4 planning across meetings</b><span class="meta">3 recordings · 12 messages · 15:40</span>
+      <span class="meta">Anna sends the hiring plan by Wednesday evening [Weekly sync 01:30]…</span></span></button>
+      <button class="icon-btn" data-hit="rc-1-more" aria-label="More: open, remove this recording from the chat">${ICON.more}</button></div>
+    <div class="row"><button class="row-main" data-hit="rc-2" onclick="go({screen:'chat'})"><span class="lead ic">${ICON.chat}</span>
+      <span class="txt"><b>Weekly sync — action items</b><span class="meta">Only this recording · 4 messages · 14:30</span></span></button>
+      <button class="icon-btn" data-hit="rc-2-more" aria-label="More actions">${ICON.more}</button></div>
+    <p class="muted" style="margin:4px 4px 0;font-size:12px;line-height:16px">Chats live on the Chats page and can read several recordings. Removing a recording from a chat keeps its messages.</p>`;
+
+  // Translation
+  const tlStatus = document.getElementById('tlStatus');
+  if (has('trp')) {
+    tlStatus.innerHTML = `<div class="prog"><span>Translating to German · 6 / 14 sentences</span><button class="btn" data-hit="tl-cancel">Cancel</button><div class="bar"><i style="width:43%"></i></div></div>`;
+    document.querySelector('[data-hit="tl-lang"]').innerHTML = '→ German · from v2 <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+  }
+  const orig = has('orig');
+  document.getElementById('tlReader').innerHTML = SEG.map((s, i) => {
+    if (has('trp') && i >= 6) return '';
+    const text = has('trp') ? ['Okay, fangen wir an. Das Meeting wird auf zehn Uhr nächsten Montag verschoben, nicht neun.',
+      'Bitte bringt den Quartalsbericht und das aktualisierte Budget mit.', 'Anna, kannst du den Einstellungsplan bis Donnerstag schicken?',
+      'Klar, ich teile ihn Mittwochabend im Team-Kanal.', 'Wir haben noch zwei offene Stellen: Backend-Entwickler und Designer.',
+      'Die Designer-Stelle hat Priorität, Backend kann bis März warten.'][i] : RU[i];
+    return reader(i, text, orig ? `<span class="orig">${s[1]}</span>` : '');
+  }).join('');
+
+  // Chat
+  // Chats list (top level)
+  const CHATS = [
+    { id: 1, t: 'Q4 planning across meetings', m: '3 recordings · 12 messages · 15:40', s: 'Anna sends the hiring plan by Wednesday evening [Weekly sync 01:30]…' },
+    { id: 2, t: 'Weekly sync — action items', m: 'Weekly sync · 4 messages · 14:30', s: 'Anna — hiring plan; Mark — storage bills…' },
+    { id: 3, t: 'Supplier call — delivery risks', m: 'Звонок с поставщиком · 6 messages · Yesterday', s: 'Поставка сдвигается на 2 недели [12:05]…' },
+    { id: 4, t: 'Raft study notes', m: 'Lecture 4 · 9 messages · Sep 29', s: 'Leader election uses randomized timeouts [18:40]…' },
+    { id: 5, t: 'UX interviews — recurring pains', m: '2 recordings · 3 messages · Sep 22', s: 'Both users mention the login flow…' },
+  ];
+  document.getElementById('chatList').innerHTML = CHATS.map(c => `<div class="row ${screen === 'chat' && c.id === (S.chat === 'empty' ? 0 : 1) ? 'cur' : ''}">
+      <button class="row-main" data-hit="chat-${c.id}" onclick="go({screen:'chat'})"><span class="lead ic">${ICON.chat}</span>
+      <span class="txt"><b>${c.t}</b><span class="meta">${c.m}</span><span class="meta">${c.s}</span></span></button>
+      <button class="icon-btn" data-hit="chat-${c.id}-more" aria-label="More: rename, export, delete">${ICON.more}</button></div>`).join('');
+
+  // Chat conversation: sources (1..N recordings), messages with citations "recording + time"
+  const chat = S.chat || 'thread';
+  const single = chat === 'empty';
+  document.getElementById('chatBar').innerHTML = `
+    <button class="icon-btn back" data-hit="c-back" aria-label="Back" onclick="go({screen:'chats'})">${ICON.back}</button>
+    <div class="title"><h1>${single ? 'New chat' : 'Q4 planning across meetings'}</h1><p>${single ? '1 recording · Gemma 4 E2B on this device' : '3 recordings · 12 messages · on this device'}</p></div>
+    <button class="icon-btn" data-hit="c-more" aria-label="More: rename, export as Markdown, delete" onclick="go({sheet:'export', exp:'chat'})">${ICON.more}</button>`;
+  const SRC = single ? [['Weekly sync', 'v2']] : [['Weekly sync', 'v2'], ['Supplier call', 'v1'], ['Interview Maria', 'v1']];
+  document.getElementById('sources').innerHTML = `<div class="chips-row wide-only">
+      ${SRC.map((s, i) => `<button class="srcchip" data-hit="src-chip-${i}" aria-label="${s[0]} ${s[1]}: open or remove">${s[0]}<small>${s[1]}</small></button>`).join('')}
+      <button class="srcchip add" data-hit="src-add" onclick="go({sheet:'addsrc'})">${ICON.plus}Add recording</button></div>
+    <div class="ctx wide-only">${single ? 'Reads transcript v2 (current) · 12:34' : 'Reads a summary of each recording + the passages closest to your question, with speaker names'}</div>
+    <div class="srcsum-row narrow-only">
+      <button class="srcsum" data-hit="src-sum" onclick="go({sheet:'sources'})" aria-label="Sources: ${SRC.map(s => s[0]).join(', ')}">${ICON.doc}
+        <b>${SRC.length} recording${SRC.length > 1 ? 's' : ''}</b><span class="names">${SRC.map(s => s[0] + ' ' + s[1]).join(', ')}</span>${caret}</button>
+      <button class="icon-btn" data-hit="src-add-i" aria-label="Add recording" onclick="go({sheet:'addsrc'})">${ICON.plus}</button></div>`;
+  const msgs = document.getElementById('msgs');
+  if (single) {
+    msgs.innerHTML = `<div class="hero"><b>Ask Gemma about this recording</b>Answers come from the transcript and stay on this device. Add more recordings to compare them.</div>
+      <div class="quick">
+        <button data-hit="qp-summary">${ICON.spark}<span>Summary<small>5–7 bullet points</small></span></button>
+        <button data-hit="qp-actions">${ICON.spark}<span>Action items<small>Who does what, by when — by speaker</small></span></button>
+        <button data-hit="qp-points">${ICON.spark}<span>Key points<small>Facts, numbers, dates</small></span></button>
+        <button data-hit="qp-decisions">${ICON.spark}<span>Decisions and open questions</span></button>
+        <button data-hit="qp-email">${ICON.spark}<span>Draft a follow-up email</span></button>
+      </div>`;
+  } else {
+    const streaming = chat === 'streaming';
+    msgs.innerHTML = `
+      <div class="msg user">Summary</div>
+      <div class="msg bot"><b>Summary</b><ul>
+        <li>Next meeting moves to 10:00 on Monday.</li><li>Two open roles; the designer comes first.</li>
+        <li>Cloud costs are about 5% over budget.</li></ul>
+        <div class="src"><button class="long" data-hit="src-1">Weekly sync · Mark 00:00</button><button class="long" data-hit="src-2">Weekly sync · Mark 03:20</button></div>
+        <div class="foot">From Weekly sync v2 · 9.1 s</div></div>
+      <div class="evt">Supplier call and Interview Maria added · Gemma now reads 3 recordings</div>
+      <div class="msg user">Which risks could move the release date?</div>
+      <div class="msg bot">• <b>QA build</b> must land by Friday.<br>• <b>Supplier</b> delivery slips two weeks.<br>• <b>Login flow</b> confuses users${streaming ? ' <span class="caret"></span>' : ' in interviews.'}
+        <div class="src"><button class="long" data-hit="src-3">Weekly sync · Anna 06:02</button><button class="long" data-hit="src-4">Supplier call · Speaker 2 12:05</button>${streaming ? '' : '<button class="long" data-hit="src-5">Interview Maria · Maria 31:40</button>'}</div>
+        ${streaming ? '' : '<div class="foot">From 3 recordings · summaries + 6 passages · 14.2 s</div>'}</div>`;
+    if (streaming) {
+      const s = document.getElementById('cSend');
+      s.classList.add('stop'); s.setAttribute('aria-label', 'Stop answer');
+      s.innerHTML = '<svg viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><rect x="7" y="7" width="10" height="10" rx="1"/></svg>';
+    }
+  }
+  if (cls.contains('is-kb')) document.getElementById('cInput').textContent = 'And what did the supplier promise|';
+
+  // Versions
+  const versions = document.getElementById('versions');
+  if (has('diff')) {
+    versions.classList.add('is-diff');
+    const body = SEG.map((s, i) => DIFF[i] ? `<button class="seg ${i === 6 && has('playing') ? 'cur' : ''}" data-hit="dseg-${i}"><time>${s[0]}</time><span>${DIFF[i]}</span></button>` : '').join('');
+    versions.innerHTML = `<div class="diff-top">
+        <div class="diffhead"><button class="icon-btn" data-hit="diff-back" aria-label="Back to versions" style="width:44px;height:44px" onclick="go({diff:0})">${ICON.back}</button>
+          <div class="diffpick"><button class="pick" data-hit="diff-a">v1 · Live <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button><span class="muted">→</span>
+          <button class="pick" data-hit="diff-b">v2 · FP32 <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div></div>
+        <div class="toolbar" style="padding:0;flex-wrap:wrap"><span class="stat" style="flex:1 1 160px">7 words changed in 5 of 14 segments · 3.4% of words</span>
+          <button class="pick" data-hit="diff-only">Changes only <span class="switch on" style="transform:scale(.8)"></span></button></div>
+      </div>
+      <div class="reader">${body}</div>`;
+  } else {
+    const chainCard = has('rp') ? `<article class="vcard"><h3>v4 · Reprocess — Parakeet TDT FP32 → speakers → summary</h3>
+          <ol class="steps"><li>${ICON.done}<span>Re-recognize · done in 1 min 38 s · v4 saved</span></li>
+            <li class="run">${ICON.running}<span>Detect speakers · offline · 40%</span></li>
+            <li>${ICON.todo}<span>Summary, action items, talk time</span></li></ol>
+          <div class="bar"><i style="width:55%"></i></div>
+          <div class="v-actions"><span class="grow">Step 2 of 3 · ≈ 2 min left · in Queue</span><button class="btn" data-hit="v4-cancel">Cancel</button></div></article>` : '';
+    const spkKv = (n, how) => has('spk') ? `<span>Speakers <b>${n}</b></span><span>Detection <b>${how}</b></span>` : '';
+    versions.innerHTML = `<div class="v-scroll">
+      <div class="ask-row"><button class="btn primary" data-hit="v-reprocess" onclick="go({sheet:'reprocess'})" ${has('noaudio') ? 'disabled' : ''}>${ICON.chain}Reprocess…</button>
+        <button class="btn" data-hit="v-rerun" onclick="go({sheet:'rerun'})" ${has('noaudio') ? 'disabled' : ''}>Re-recognize…</button></div>
+      ${chainCard}
+      ${has('noaudio') ? '<div class="notice" style="margin:0">Audio was removed after 30 days (retention setting) — re-recognition and playback are unavailable. Transcripts, translations and chats are kept.</div>' : ''}
+      ${has('rr') ? `<article class="vcard"><h3>v3 · Nemotron 3.5 ASR — 4-bit (INT4)</h3>
+          <div class="dl" style="display:grid;gap:4px"><div class="bar"><i style="width:42%"></i></div>
+          <div class="kv"><span>42% · 5:16 of 12:34</span><span>≈ 1 min left · job in Queue</span></div></div>
+          <div class="v-actions"><span class="grow">Recognizing…</span><button class="btn" data-hit="v3-cancel">Cancel</button></div></article>` : ''}
+      <article class="vcard cur"><h3>v2 · Parakeet TDT 0.6B v3 — full precision (FP32)</h3>
+        <div class="chips"><span class="chip acc">● Current</span><span class="chip">Re-recognized</span>${has('spk') ? '<span class="chip">Speakers</span>' : ''}</div>
+        <div class="kv"><span>Language <b>EN</b></span><span>VAD <b>on</b></span><span>Created <b>12 Oct 15:10</b></span><span>App <b>1.4.0</b></span><span>Words <b>1,842</b></span><span>vs v1 <b>3.4% diff</b></span>${spkKv('4 · Nemotron Diarization INT8', 'offline, 30 s buffer')}</div>
+        <div class="v-actions"><span class="grow">Translation RU and 2 chats use this version</span><button class="btn" data-hit="v2-compare" onclick="go({diff:1})">Compare</button><button class="icon-btn" data-hit="v2-more" aria-label="More actions">${ICON.more}</button></div></article>
+      <article class="vcard"><h3>v1 · Parakeet TDT 0.6B v3 — 4-bit (INT4)</h3>
+        <div class="chips"><span class="chip">Recorded live</span></div>
+        <div class="kv"><span>Language <b>Auto → EN</b></span><span>VAD <b>on</b></span><span>Created <b>12 Oct 14:02</b></span><span>App <b>1.4.0</b></span><span>Words <b>1,839</b></span>${spkKv('3 · live labels', 'live, 1 s delay')}</div>
+        <div class="v-actions"><button class="btn" data-hit="v1-current">Make current</button><button class="btn" data-hit="v1-compare" onclick="go({diff:1})">Compare</button><button class="icon-btn" data-hit="v1-more" aria-label="More: detect speakers again, export, delete">${ICON.more}</button></div></article>
+    </div>`;
+  }
+
+  // Bottom of the detail pane: player (Transcript, Translation, Versions diff), nothing on Chat/Versions list
+  const bottom = document.getElementById('detailBottom');
+  const wantsPlayer = !editing && (tab === 'transcript' || tab === 'translation' || (tab === 'versions' && has('diff')));
+  if (editing) {
+    bottom.innerHTML = `<div class="editbar"><span class="info">2 segments changed</span>
+      <button class="btn" data-hit="e-cancel" onclick="go({edit:0})">Cancel</button>
+      <button class="btn primary" data-hit="e-save">Save as new version</button></div>`;
+  } else if (wantsPlayer && has('noaudio')) {
+    bottom.innerHTML = `<div class="player-off"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4zM16 9l5 5M21 9l-5 5"/></svg><span>Audio removed after 30 days · transcript only</span></div>`;
+  } else if (wantsPlayer) {
+    const playing = has('playing');
+    bottom.innerHTML = `<div class="player" id="player">
+      <div class="seek" data-hit="seek" role="slider" aria-label="Seek" aria-valuetext="3:24 of 12:34">
+        <div class="track"><i style="width:27%"></i><b style="left:27%"></b></div>
+      </div>
+      <div class="controls">
+        <span class="time">${fspk ? '2:48 / 12:34' : '3:24 / 12:34'}</span>
+        ${fspk ? `<button class="icon-btn" data-hit="p-back" aria-label="Previous turn by Anna">${ICON.prevTurn}</button>` : `<button class="icon-btn" data-hit="p-back" aria-label="Back 10 seconds">${ICON.back10}</button>`}
+        <button class="play" data-hit="play" aria-label="${playing ? 'Pause' : 'Play'}">${playing ? ICON.pause : ICON.play}</button>
+        ${fspk ? `<button class="icon-btn" data-hit="p-fwd" aria-label="Next turn by Anna">${ICON.nextTurn}</button>` : `<button class="icon-btn" data-hit="p-fwd" aria-label="Forward 10 seconds">${ICON.fwd10}</button>`}
+        <button class="speed" data-hit="speed" aria-label="Playback speed">1.0×</button>
+      </div></div>`;
+  }
+
+  // Sheets
+  const sheet = document.getElementById('sheet');
+  if (S.sheet === 'rerun') {
+    sheet.innerHTML = `<div class="s-head"><span><b>Re-recognize audio</b><small>Creates v3 · the current version stays until you switch</small></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({sheet:''})">${ICON.close}</button></div>
+      <div class="s-body">
+        <h4>Speech model (installed)</h4>
+        <button class="opt" data-hit="o-1"><span class="radio"></span><span>Parakeet TDT 0.6B v3 — 4-bit (INT4)<small>Used for v1 · WER 8.1%</small></span><span></span></button>
+        <button class="opt" data-hit="o-2"><span class="radio"></span><span>Parakeet TDT 0.6B v3 — full precision (FP32)<small>Used for v2 · WER 8.0%</small></span><span></span></button>
+        <button class="opt on" data-hit="o-3"><span class="radio"></span><span>Nemotron 3.5 ASR — 4-bit (INT4)<small>WER 19.2% · lowest CPU load</small></span><span></span></button>
+        <h4>Language</h4>
+        <div class="select" data-hit="o-lang">English (same as v2) <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M6 9l6 6 6-6"/></svg></div>
+        <h4>Options</h4>
+        <button class="opt on" data-hit="o-vad"><svg viewBox="0 0 24 24"><path d="M3 12h3l3-7 4 14 3-7h5"/></svg><span>Skip silence (VAD)<small>Faster; same as live recording</small></span><span class="switch"></span></button>
+        <button class="opt" data-hit="o-current"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg><span>Make it current when done<small>Translations and chats keep their version</small></span><span class="switch"></span></button>
+        <h4>When</h4>
+        <div class="select" data-hit="o-when">Now — after the running job <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M6 9l6 6 6-6"/></svg></div>
+      </div>
+      <div class="s-foot"><span class="est">≈ 1 min 40 s on this device · runs from the Queue</span>
+        <button class="btn" data-hit="s-cancel" onclick="go({sheet:''})">Cancel</button><button class="btn primary" data-hit="s-start">Start</button></div>`;
+  } else if (S.sheet === 'batch') {
+    sheet.innerHTML = `<div class="s-head"><span><b>Reprocess 3 recordings</b><small>One batch · each recording gets a new version</small></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({sheet:''})">${ICON.close}</button></div>
+      <div class="s-body">
+        <h4>Speech model (installed)</h4>
+        <button class="opt on" data-hit="b-m1"><span class="radio"></span><span>Parakeet TDT 0.6B v3 — FP32<small>WER 8.0% · slowest, best quality</small></span><span></span></button>
+        <button class="opt" data-hit="b-m2"><span class="radio"></span><span>Parakeet TDT 0.6B v3 — INT4<small>WER 8.1%</small></span><span></span></button>
+        <button class="opt" data-hit="b-m3"><span class="radio"></span><span>Nemotron 3.5 ASR — INT4<small>WER 19.2% · lowest CPU load</small></span><span></span></button>
+        <h4>Language</h4>
+        <div class="select" data-hit="b-lang">Keep each recording's language ${caret}</div>
+        <h4>Options</h4>
+        <button class="opt on" data-hit="b-vad">${ICON.wave}<span>Skip silence (VAD)</span><span class="switch"></span></button>
+        <button class="opt on" data-hit="b-spk">${ICON.people}<span>Then detect speakers<small>Nemotron 3 Diarization · offline</small></span><span class="switch"></span></button>
+        <button class="opt" data-hit="b-ana">${ICON.spark}<span>Then summarize<small>Summary, action items, talk time</small></span><span class="switch"></span></button>
+        <button class="opt on" data-hit="b-current"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg><span>Make new versions current</span><span class="switch"></span></button>
+        <h4>When</h4>
+        <button class="opt" data-hit="b-now"><span class="radio"></span><span>Now<small>After the running job · one job at a time</small></span><span></span></button>
+        <button class="opt" data-hit="b-idle"><span class="radio"></span><span>When idle<small>While no live recording is running</small></span><span></span></button>
+        <button class="opt on" data-hit="b-window"><span class="radio"></span><span>In a time window<small>Tonight 01:00–06:00, continues next night</small></span><span></span></button>
+        <div class="select" data-hit="b-window-pick">01:00 – 06:00 · every night ${caret}</div>
+        <button class="opt on" data-hit="b-charging">${ICON.bolt}<span>Only while charging<small>Phones and laptops; waits otherwise</small></span><span class="switch"></span></button>
+      </div>
+      <div class="s-foot"><span class="est">≈ 7 min of work · 3 recordings × 2 steps</span>
+        <button class="btn" data-hit="s-cancel" onclick="go({sheet:''})">Cancel</button><button class="btn primary" data-hit="b-schedule">Schedule</button></div>`;
+  } else if (S.sheet === 'delete') {
+    sheet.classList.add('dialog');
+    const many = screen === 'history';
+    sheet.innerHTML = `<div class="s-head"><span><b>${many ? 'Delete 3 recordings?' : 'Delete this recording?'}</b></span><span></span></div>
+      <div class="s-body">
+        <p class="s-text">${many ? 'Audio (41 MB), transcripts, versions and translations' : 'Audio, transcripts, versions and translations'} are deleted from this device. Chats keep their messages but lose ${many ? 'these sources' : 'this source'}. This can't be undone.</p>
+        <button class="opt" data-hit="del-dontask"><span class="cbox"></span><span>Don't ask again<small>Turn it back on in Settings › History</small></span><span></span></button>
+      </div>
+      <div class="s-foot"><button class="btn" data-hit="del-cancel" onclick="go({sheet:''})">Cancel</button><button class="btn danger" data-hit="del-ok">Delete</button></div>`;
+  } else if (S.sheet === 'rename') {
+    sheet.innerHTML = `<div class="s-head"><span><b>Rename recording</b></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({sheet:''})">${ICON.close}</button></div>
+      <div class="s-body">
+        <div class="field"><span data-hit="rn-field" style="line-height:44px">Weekly sync — budget and hiring|</span><button class="icon-btn" data-hit="rn-clear" aria-label="Clear">${ICON.close}</button></div>
+        <div class="hint">${ICON.spark}<span>Generated by Gemma from v2. Your own title is never replaced.</span>
+          <button class="btn" data-hit="rn-regen">Regenerate</button></div>
+      </div>
+      <div class="s-foot"><button class="btn" data-hit="rn-cancel" onclick="go({sheet:''})">Cancel</button><button class="btn primary" data-hit="rn-save">Save</button></div>`;
+  } else if (S.sheet === 'export' && S.exp === 'chat') {
+    sheet.innerHTML = `<div class="s-head"><span><b>Export chat</b><small>Q4 planning across meetings · 3 sources</small></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({sheet:''})">${ICON.close}</button></div>
+      <div class="s-body">
+        <button class="opt on" data-hit="x-md"><span class="radio"></span><span>Markdown document (.md)<small>Title, sources with versions and models, Q&amp;A with [mm:ss] citations</small></span><span></span></button>
+        <button class="opt" data-hit="x-html"><span class="radio"></span><span>Web page (.html)<small>Same content, opens in any browser</small></span><span></span></button>
+      </div>
+      <div class="s-foot"><button class="btn" data-hit="x-save">Save to…</button><button class="btn primary" data-hit="x-share">Share</button></div>`;
+  } else if (S.sheet === 'export') {
+    sheet.innerHTML = `<div class="s-head"><span><b>Export</b><small>Weekly sync — budget and hiring · v2</small></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({sheet:''})">${ICON.close}</button></div>
+      <div class="s-body">
+        <button class="opt on" data-hit="x-txt"><span class="cbox">${ICON.chk}</span><span>Transcript with timestamps (.txt)<small>[00:03:20] text, one line per segment</small></span><span></span></button>
+        <button class="opt" data-hit="x-txt-tr">${ICON.translate}<span>Add the Russian translation<small>Under each line</small></span><span class="switch"></span></button>
+        <button class="opt on" data-hit="x-audio"><span class="cbox">${ICON.chk}</span><span>Audio for media players<small>Audio + .lrc (music players) + .srt (video players, VLC)</small></span><span></span></button>
+        <div class="select" data-hit="x-audio-fmt">Audio: Ogg Opus (original, 2.3 MB) ${caret}</div>
+        <button class="opt on" data-hit="x-spk">${ICON.people}<span>Speaker names<small>“Mark: …” in .txt, .srt and .lrc</small></span><span class="switch"></span></button>
+        <button class="opt" data-hit="x-chats"><span class="cbox"></span><span>Chats as Markdown (.md)<small>2 chats that include this recording</small></span><span></span></button>
+      </div>
+      <div class="s-foot"><span class="est">4 files · 2.4 MB</span><button class="btn" data-hit="x-save">Save to…</button><button class="btn primary" data-hit="x-share">Share</button></div>`;
+  } else if (S.sheet === 'addsrc') {
+    const REC = [['Weekly sync — budget and hiring', 'Today 14:02 · 12:34 · v2', 'in'], ['Okay so the idea for the landing page is', 'Today 09:15 · 3:08 · v1', ''],
+                 ['Звонок с поставщиком по срокам поставки', 'Yesterday · 41:10 · v1', 'on'], ['Interview with Maria (UX research)', 'Sep 21 · 52:17 · v1', 'on'],
+                 ['Lecture 4 — distributed consensus, Raft', 'Sep 28 · 1:24:05 · v3', '']];
+    sheet.innerHTML = `<div class="s-head"><span><b>Add recordings</b><small>Gemma reads their current versions</small></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({sheet:''})">${ICON.close}</button></div>
+      <div class="s-body">
+        <label class="search s-search" data-hit="as-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><input placeholder="Search recordings" aria-label="Search recordings"></label>
+        ${REC.map((r, i) => `<button class="opt ${r[2] ? 'on' : ''}" data-hit="as-${i}" ${r[2] === 'in' ? 'aria-disabled="true"' : ''}><span class="cbox">${r[2] ? ICON.chk : ''}</span><span>${r[0]}<small>${r[2] === 'in' ? 'Already in this chat' : r[1]}</small></span><span></span></button>`).join('')}
+      </div>
+      <div class="s-foot"><span class="est">+2 · first answer prepares summaries (≈ 2 min)</span>
+        <button class="btn" data-hit="as-cancel" onclick="go({sheet:''})">Cancel</button><button class="btn primary" data-hit="as-add">Add 2</button></div>`;
+  } else if (S.sheet === 'sources') {
+    const SR = [['Weekly sync — budget and hiring', 'v2 (current) · since the start'], ['Звонок с поставщиком по срокам поставки', 'v1 · added 15:31'], ['Interview with Maria (UX research)', 'v1 · added 15:31']];
+    sheet.innerHTML = `<div class="s-head"><span><b>Sources · 3 recordings</b><small>Gemma reads the version shown for each</small></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({sheet:''})">${ICON.close}</button></div>
+      <div class="s-body">
+        ${SR.map((r, i) => `<div class="srow"><button class="opt" data-hit="sr-${i}" aria-label="Open ${r[0]}">${ICON.doc}<span>${r[0]}<small>${r[1]}</small></span></button>
+          <button class="icon-btn" data-hit="sr-${i}-remove" aria-label="Remove ${r[0]} from this chat">${ICON.close}</button></div>`).join('')}
+        <p class="s-text" style="font-size:12px;line-height:16px">Removed recordings are no longer read. Earlier answers keep their citations.</p>
+      </div>
+      <div class="s-foot"><button class="btn" data-hit="sr-done" onclick="go({sheet:''})">Done</button><button class="btn primary" data-hit="sr-add" onclick="go({sheet:'addsrc'})">Add recording</button></div>`;
+  } else if (S.sheet === 'addto') {
+    sheet.innerHTML = `<div class="s-head"><span><b>Add to chat</b><small>Weekly sync — budget and hiring · v2</small></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({sheet:''})">${ICON.close}</button></div>
+      <div class="s-body">
+        <button class="opt" data-hit="at-new"><span class="radio"></span><span>New chat with this recording</span><span></span></button>
+        <h4>Existing chats</h4>
+        <button class="opt" data-hit="at-1" aria-disabled="true"><span class="radio"></span><span>Q4 planning across meetings<small>Already includes it</small></span><span></span></button>
+        <button class="opt on" data-hit="at-3"><span class="radio"></span><span>Supplier call — delivery risks<small>1 recording · 6 messages</small></span><span></span></button>
+        <button class="opt" data-hit="at-4"><span class="radio"></span><span>Raft study notes<small>1 recording · 9 messages</small></span><span></span></button>
+        <button class="opt" data-hit="at-5"><span class="radio"></span><span>UX interviews — recurring pains<small>2 recordings · 3 messages</small></span><span></span></button>
+      </div>
+      <div class="s-foot"><button class="btn" data-hit="at-cancel" onclick="go({sheet:''})">Cancel</button><button class="btn primary" data-hit="at-add">Add</button></div>`;
+  } else if (S.sheet === 'speakers' && has('merge')) {
+    sheet.innerHTML = `<div class="s-head"><span><b>Merge speakers</b><small>Pick the voices that are one person</small></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({merge:0})">${ICON.close}</button></div>
+      <div class="s-body">
+        ${SPK.map((s, i) => `<button class="opt ${i === 0 || i === 3 ? 'on' : ''}" data-hit="mg-${i}"><span class="cbox">${i === 0 || i === 3 ? ICON.chk : ''}</span><span>${who(i)}<small>${s.pct}% · ${s.t} · ${s.turns} turn${s.turns > 1 ? 's' : ''}</small></span><span></span></button>`).join('')}
+        <h4>Name to keep</h4>
+        <div class="select" data-hit="mg-name">${SPK[0].n} ${caret}</div>
+        <p class="s-text" style="font-size:12px;line-height:16px;margin-top:8px">The detection is not changed: merging only maps both voices to one name. Undo with ⋯ › Split.</p>
+      </div>
+      <div class="s-foot"><button class="btn" data-hit="mg-cancel" onclick="go({merge:0})">Cancel</button><button class="btn primary" data-hit="mg-ok">Merge 2</button></div>`;
+  } else if (S.sheet === 'speakers') {
+    sheet.innerHTML = `<div class="s-head"><span><b>Speakers · 4</b><small>Nemotron 3 Diarization INT8 · offline · for v2</small></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({sheet:''})">${ICON.close}</button></div>
+      <div class="s-body">
+        ${SPK.map((s, i) => `<div class="spkrow"><button class="sw" data-hit="sp-${i}-color" aria-label="Colour for ${s.n}"><i style="background:var(--spk${s.c})"></i></button>
+          <button class="opt" data-hit="sp-${i}" aria-label="Rename ${s.n}"><span>${s.n}<small>${s.pct}% · ${s.t} · ${s.turns} turn${s.turns > 1 ? 's' : ''}${i === 2 ? ' · Gemma suggests “Oleg”' : ''}</small></span>${ICON.pencil}</button>
+          <button class="icon-btn" data-hit="sp-${i}-more" aria-label="More for ${s.n}: show only, merge into, split">${ICON.more}</button></div>`).join('')}
+        <div class="hint">${ICON.merge}<span>Speaker 4 talks only 38 s. The same person as someone else?</span><button class="btn" data-hit="sp-merge" onclick="go({merge:1})">Merge…</button></div>
+        <p class="s-text" style="font-size:12px;line-height:16px;margin-top:8px">Names stay on this device and apply to this recording only. Up to 8 voices are told apart; labels are not voice IDs.</p>
+      </div>
+      <div class="s-foot"><button class="btn" data-hit="sp-redetect" onclick="go({tab:'versions', sheet:'reprocess'})">Detect again…</button><button class="btn primary" data-hit="sp-done" onclick="go({sheet:''})">Done</button></div>`;
+  } else if (S.sheet === 'reprocess') {
+    sheet.innerHTML = `<div class="s-head"><span><b>Reprocess recording</b><small>Creates v4 with speakers and a summary · v2 stays</small></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({sheet:''})">${ICON.close}</button></div>
+      <div class="s-body">
+        <h4>1 · Speech</h4>
+        <button class="opt on" data-hit="rp-asr">${ICON.wave}<span>Re-recognize audio<small>Off: keep v2 and add speakers to it</small></span><span class="switch"></span></button>
+        <div class="select" data-hit="rp-asr-model">Parakeet TDT 0.6B v3 — FP32 ${caret}</div>
+        <h4>2 · Speakers</h4>
+        <button class="opt on" data-hit="rp-spk">${ICON.people}<span>Detect speakers<small>Nemotron 3 Diarization INT8 · up to 8 voices</small></span><span class="switch"></span></button>
+        <div class="select" data-hit="rp-spk-mode">Best quality · offline, 30 s buffer ${caret}</div>
+        <h4>3 · Analysis</h4>
+        <button class="opt on" data-hit="rp-ana">${ICON.spark}<span>Summary, action items, talk time<small>Gemma 4 E2B · uses speaker names</small></span><span class="switch"></span></button>
+        <button class="opt on" data-hit="rp-current"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg><span>Make v4 current when done<small>Translations and chats keep their version</small></span><span class="switch"></span></button>
+        <h4>When</h4>
+        <div class="select" data-hit="rp-when">Tonight 01:00–06:00 · while charging ${caret}</div>
+      </div>
+      <div class="s-foot"><span class="est">≈ 4 min · 3 steps in the Queue</span>
+        <button class="btn" data-hit="s-cancel" onclick="go({sheet:''})">Cancel</button><button class="btn primary" data-hit="rp-start">Schedule</button></div>`;
+  } else if (S.sheet === 'filter') {
+    sheet.innerHTML = `<div class="s-head"><span><b>Filter recordings</b><small>24 recordings · 6 match</small></span>
+        <button class="icon-btn" data-hit="s-close" aria-label="Close" style="width:44px;height:44px" onclick="go({sheet:''})">${ICON.close}</button></div>
+      <div class="s-body">
+        <h4>Show</h4>
+        <button class="opt" data-hit="f-tr"><svg viewBox="0 0 24 24"><path d="M4 5h9M8.5 3v2M6 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/></svg><span>With translation</span><span class="switch"></span></button>
+        <button class="opt" data-hit="f-chat">${ICON.spark}<span>Used in a chat</span><span class="switch"></span></button>
+        <button class="opt" data-hit="f-audio"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7"/></svg><span>Audio available</span><span class="switch"></span></button>
+        <button class="opt" data-hit="f-spk">${ICON.people}<span>With speakers<small>Two or more voices detected</small></span><span class="switch"></span></button>
+        <button class="opt on" data-hit="f-inject">${ICON.kbd}<span>Inject text dictations<small>Short phrases typed into other apps</small></span><span class="switch"></span></button>
+        <h4>Language</h4>
+        <div class="select" data-hit="f-langsel">English <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M6 9l6 6 6-6"/></svg></div>
+        <h4>Speech model</h4>
+        <div class="select" data-hit="f-model">Any model <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M6 9l6 6 6-6"/></svg></div>
+        <h4>Sort</h4>
+        <div class="select" data-hit="f-sort">Newest first <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M6 9l6 6 6-6"/></svg></div>
+      </div>
+      <div class="s-foot"><span class="est"></span><button class="btn" data-hit="f-reset">Reset</button><button class="btn primary" data-hit="f-apply">Show 6</button></div>`;
+  }
+
+  // Queue and Settings › History (single-column pages)
+  const soloBar = document.getElementById('soloBar'), soloBody = document.getElementById('soloBody');
+  if (screen === 'queue') {
+    soloBar.innerHTML = `<button class="icon-btn" data-hit="q-back" aria-label="Back" onclick="go({screen:'main'})">${ICON.back}</button>
+      <div class="title"><h1>Queue</h1><p>1 running · 4 waiting · one heavy job at a time</p></div>
+      <button class="icon-btn" data-hit="q-pause-all" aria-label="Pause the queue">${ICON.pauseO}</button>`;
+    const handle = (id, label) => `<button class="icon-btn ic handle" data-hit="${id}" aria-label="Reorder: ${label} (drag, or use the menu)">${ICON.handle}</button>`;
+    const chainRun = `
+      <div class="sec-h">Running</div>
+      <article class="vcard job"><div class="job-head"><span class="ic">${ICON.chain}</span>
+          <span class="txt"><b>Reprocess · Weekly sync — budget and hiring</b><small>Parakeet FP32 → speakers → summary · creates v4</small></span>
+          <button class="icon-btn" data-hit="c1-more" aria-label="More: pause, cancel chain, skip step">${ICON.more}</button></div>
+        <ol class="steps"><li>${ICON.done}<span>Re-recognize · 1 min 38 s · v4 saved</span></li>
+          <li class="run">${ICON.running}<span>Detect speakers · offline · 40%</span></li>
+          <li>${ICON.todo}<span>Summary, action items, talk time</span></li></ol>
+        <div class="bar"><i style="width:55%"></i></div>
+        <div class="kv"><span>Step 2 of 3 · 55%</span><span>≈ 2 min left</span></div>
+        <div class="v-actions"><button class="btn" data-hit="c1-pause">Pause</button><button class="btn" data-hit="c1-cancel">Cancel chain</button></div></article>
+      <div class="sec-h">Scheduled</div>
+      <article class="vcard job"><div class="job-head">${handle('c2-handle', 'auto-reprocess')}
+          <span class="txt"><b>Auto-reprocess · 2 new recordings</b><small>Parakeet FP32 + speakers + summary · from Settings</small></span>
+          <button class="icon-btn" data-hit="c2-more" aria-label="More: run now, skip, settings">${ICON.more}</button></div>
+        <ul class="sub"><li>Okay so the idea for the landing page is · 3:08</li><li>Interview with Maria (UX research) · 52:17</li></ul>
+        <div class="chips"><span class="cond">${ICON.moon}Tonight 01:00–06:00</span><span class="cond">${ICON.bolt}When charging</span></div>
+        <div class="v-actions"><button class="btn" data-hit="c2-settings" onclick="go({screen:'settings'})">Settings</button><button class="btn" data-hit="c2-now">Run now</button></div></article>`;
+    soloBody.innerHTML = has('chain') ? chainRun : `
+      <div class="sec-h">Running</div>
+      <article class="vcard job"><div class="job-head"><span class="ic">${ICON.rerun}</span>
+          <span class="txt"><b>Re-recognize · Weekly sync — budget and hiring</b><small>Nemotron 3.5 ASR INT4 · EN · creates v3</small></span>
+          <button class="icon-btn" data-hit="j1-more" aria-label="More actions">${ICON.more}</button></div>
+        <div class="bar"><i style="width:42%"></i></div>
+        <div class="kv"><span>42% · 5:16 of 12:34</span><span>≈ 1 min left</span></div>
+        <div class="chips"><span class="cond warn">${ICON.mic}Live recording in progress · slower, uses battery</span></div>
+        <div class="v-actions"><button class="btn" data-hit="j1-pause">Pause</button><button class="btn" data-hit="j1-cancel">Cancel</button></div></article>
+      <div class="sec-h">Scheduled</div>
+      <article class="vcard job"><div class="job-head">${handle('j2-handle', 'batch')}
+          <span class="txt"><b>Batch · Re-recognize 3 recordings</b><small>Parakeet TDT FP32 · keep each language · VAD on</small></span>
+          <button class="icon-btn" data-hit="j2-more" aria-label="More: move up, move down, pause, cancel batch">${ICON.more}</button></div>
+        <ul class="sub"><li>Звонок с поставщиком по срокам поставки · 41:10</li><li>Weekly sync — budget and hiring · 12:34</li><li>Buy filters, call the bank about the card · 0:48</li></ul>
+        <div class="chips"><span class="cond">${ICON.moon}Tonight 01:00–06:00</span><span class="cond">${ICON.bolt}When charging</span></div>
+        <div class="v-actions"><button class="btn" data-hit="j2-edit" onclick="go({screen:'history', sel:1, sheet:'batch'})">Edit schedule</button><button class="btn" data-hit="j2-now">Run now</button></div></article>
+      <div class="sec-h">Waiting</div>
+      <article class="vcard job"><div class="job-head">${handle('j3-handle', 'translation')}
+          <span class="txt"><b>Translate → German · Interview with Maria</b><small>Gemma 4 E2B · from v1 · 0 / 212 sentences</small></span>
+          <button class="icon-btn" data-hit="j3-more" aria-label="More actions">${ICON.more}</button></div>
+        <div class="chips"><span class="cond">${ICON.idle}When idle</span></div></article>
+      <article class="vcard job"><div class="job-head">${handle('j4-handle', 'summaries')}
+          <span class="txt"><b>Prepare chat · Q4 planning across meetings</b><small>Summaries of 2 added recordings · paused at 3 / 7 parts</small></span>
+          <button class="icon-btn" data-hit="j4-more" aria-label="More actions">${ICON.more}</button></div>
+        <div class="bar"><i style="width:43%"></i></div>
+        <div class="v-actions"><span class="grow">Paused by you</span><button class="btn" data-hit="j4-resume">Resume</button></div></article>
+      <article class="vcard job"><div class="job-head">${handle('j5-handle', 'titles')}
+          <span class="txt"><b>Titles · 2 recordings</b><small>Gemma 4 E2B · never replaces a title you typed</small></span>
+          <button class="icon-btn" data-hit="j5-more" aria-label="More actions">${ICON.more}</button></div>
+        <div class="chips"><span class="cond">${ICON.idle}When idle</span><span class="cond">Low priority</span></div></article>
+      <button class="item" data-hit="q-done" style="margin-top:4px">${ICON.chk}<span>3 completed today<small>Progress is saved: a closed app resumes where it stopped</small></span>${caret}</button>`;
+  } else if (screen === 'settings') {
+    soloBar.innerHTML = `<button class="icon-btn" data-hit="st-back" aria-label="Back" onclick="go({screen:'main'})">${ICON.back}</button>
+      <div class="title"><h1>Settings</h1><p>History and storage</p></div><span></span>`;
+    const val = (t) => `<span class="val">${t}${caret}</span>`;
+    soloBody.innerHTML = `
+      <div class="sec-h">Recording history</div>
+      <div class="group">
+        <button class="opt on" data-hit="st-save">${ICON.clock}<span>Save recordings to History<small>Audio + transcript after each Stop</small></span><span class="switch"></span></button>
+        <button class="opt on" data-hit="st-inject">${ICON.kbd}<span>Save Inject text dictations<small>Short phrases typed into other apps</small></span><span class="switch"></span></button>
+        <button class="opt on" data-hit="st-confirm">${ICON.trash}<span>Ask before deleting<small>Turns "Don't ask again" back on</small></span><span class="switch"></span></button>
+        <button class="opt on" data-hit="st-titles">${ICON.spark}<span>Titles by Gemma<small>Queued when idle; rename any time</small></span><span class="switch"></span></button>
+      </div>
+      <div class="sec-h">Audio storage</div>
+      <div class="group">
+        <button class="opt" data-hit="st-keep">${ICON.clock}<span>Keep audio<small>Text, versions, translations and chats are kept forever</small></span>${val('30 days')}</button>
+        <button class="opt" data-hit="st-cap">${ICON.storage}<span>Storage limit for audio<small>Oldest audio is removed first</small></span>${val('2 GB')}</button>
+        <div class="usage" role="img" aria-label="1.1 GB of 2 GB used by audio"><div class="ubar"><i style="width:55%"></i><i class="t" style="width:5%"></i></div>
+          <span><b>Audio 1.1 GB</b> of 2 GB · text and chats 96 MB · 41 GB free on device</span></div>
+        <button class="opt" data-hit="st-quality">${ICON.wave}<span>Audio quality<small>High keeps WAV for re-recognition</small></span>${val('Standard')}</button>
+      </div>
+      <div class="sec-h">Speakers and reprocessing</div>
+      <div class="group">
+        <button class="opt" data-hit="st-live">${ICON.people}<span>Live speaker labels<small>Experimental · off on phones until the device test passes</small></span><span class="switch"></span></button>
+        <button class="opt" data-hit="st-spkq">${ICON.people}<span>Speakers after Stop<small>Detect speakers in the background when idle</small></span>${val('Best')}</button>
+        <button class="opt on" data-hit="st-auto">${ICON.chain}<span>Auto-reprocess new recordings<small>Re-recognize, detect speakers, summarize</small></span><span class="switch"></span></button>
+        <button class="opt" data-hit="st-profile">${ICON.wave}<span>Reprocess with<small>Parakeet FP32 · speakers · summary</small></span>${val('Edit')}</button>
+        <button class="opt" data-hit="st-when">${ICON.moon}<span>When<small>01:00–06:00, while charging</small></span>${val('Night')}</button>
+      </div>
+      <div class="sec-h">Background jobs</div>
+      <div class="group">
+        <button class="opt on" data-hit="st-concurrent">${ICON.rerun}<span>Run jobs during live recording<small>On phones: slower and uses more battery</small></span><span class="switch"></span></button>
+      </div>
+      <div class="group" style="margin-top:8px">
+        <button class="opt danger" data-hit="st-delete-all">${ICON.trash}<span>Delete all history<small>24 recordings, 5 chats · asks to confirm</small></span><span></span></button>
+      </div>`;
+  }
+  if (screen === 'models') {
+    soloBar.innerHTML = `<button class="icon-btn" data-hit="m-back" aria-label="Back" onclick="go({screen:'main'})">${ICON.back}</button>
+      <div class="title"><h1>Models</h1><p>On this device · 2.4 GB used · 41 GB free</p></div><span></span>`;
+    soloBody.innerHTML = `
+      <div class="seg-ctl m-tabs" role="tablist"><button role="tab" data-hit="m-speech">Speech</button><button role="tab" class="sel" data-hit="m-speakers">Speakers</button><button role="tab" data-hit="m-gemma">Gemma</button></div>
+      <p class="muted" style="margin:0 4px;font-size:12px;line-height:16px">Speaker models tell apart who is speaking. They run on this device; nothing is uploaded.</p>
+      <article class="vcard"><h3>Nemotron 3 Diarization</h3>
+        <div class="chips"><span class="chip acc">Recommended</span><span class="chip">Up to 8 speakers</span><span class="chip">OpenMDW-1.1</span></div>
+        <div class="kv"><span>Source <b>nvidia/Nemotron-3-Diarization</b></span><span>Format <b>ONNX, converted</b></span><span>Size <b>100M parameters</b></span><span>Modes <b>offline · live</b></span></div>
+        <div class="vrow"><button class="opt on" data-hit="mv-int8"><span class="radio"></span><span>8-bit (INT8) · installed<small>≈ 110 MB* · for phones · in use</small></span><span></span></button>
+          <button class="icon-btn" data-hit="mv-int8-more" aria-label="More: delete, show folder">${ICON.more}</button></div>
+        <div class="vrow"><button class="opt" data-hit="mv-fp32"><span class="radio"></span><span>Full precision (FP32)<small>≈ 400 MB* · reference quality</small></span><span></span></button>
+          <button class="btn" data-hit="mv-fp32-dl">Download</button></div>
+        <p class="foot">* Estimates until the ONNX conversion spike measures the files.</p>
+      </article>
+      <div class="sec-h">Speaker detection</div>
+      <div class="group">
+        <button class="opt" data-hit="ms-quality">${ICON.people}<span>For recordings<small>Runs after Stop or in Reprocess</small></span><span class="val">Best${caret}</span></button>
+        <button class="opt" data-hit="ms-live">${ICON.mic}<span>Live speaker labels<small>Experimental · labels about 1 s behind the text</small></span><span class="switch"></span></button>
+        <div class="vrow" style="padding:0 4px 4px 0"><button class="opt" data-hit="ms-test">${ICON.wave}<span>Test this device<small>Last run: 0.62× real time with Parakeet INT4 — too slow for live labels</small></span><span></span></button>
+          <button class="btn" data-hit="ms-run">Run test</button></div>
+      </div>`;
+  }
+  if (screen === 'chats' && innerWidth >= 840) {
+    document.getElementById('chatPane').innerHTML = '<div class="empty-detail" style="grid-row:1/-1">Select a chat, or start one from a recording with Ask Gemma.</div>';
+  }
+
+  if (screen === 'history' && innerWidth >= 840) {
+    // Wide window with nothing selected yet: the detail pane shows a placeholder
+    document.getElementById('detail').innerHTML = '<div class="empty-detail" style="grid-row:1/-1">Select a recording to play it, read the transcript and chat about it.</div>';
+  }
+
+  // ── Layout check ─────────────────────────────────────────────────────────
+  function check() {
+    const vw = innerWidth, vh = innerHeight;
+    const n = k => parseInt(S[k] || '0', 10) || 0;
+    const safe = { l: n('left'), t: n('top'), r: vw - n('right'), b: vh - Math.max(n('bottom'), n('kb')) };
+    const short = vh < 480;
+    const visible = el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+    const layerOf = el => el.closest('.sheet') ? 'sheet' : el.closest('.drawer') ? 'drawer' : el.closest('.hist, .cpage, .solo') ? 'page' : 'main';
+    const active = cls.contains('is-sheet') ? 'sheet' : cls.contains('is-drawer') ? 'drawer' : screen !== 'main' ? 'page' : 'main';
+    const els = [...document.querySelectorAll('[data-hit]')].filter(visible).filter(el => layerOf(el) === active);
+    const issues = [];
+    const scrollParent = el => { for (let p = el.parentElement; p; p = p.parentElement) { const s = getComputedStyle(p).overflowY; if ((s === 'auto' || s === 'scroll') && p.scrollHeight > p.clientHeight) return p; } return null; };
+    const clip = (r, el) => { const sp = scrollParent(el); if (!sp) return r; const c = sp.getBoundingClientRect();
+      const l = Math.max(r.left, c.left), t = Math.max(r.top, c.top), rr = Math.min(r.right, c.right), b = Math.min(r.bottom, c.bottom);
+      return { left: l, top: t, right: Math.max(l, rr), bottom: Math.max(t, b) }; };
+    const rects = els.map(el => ({ id: el.dataset.hit, r: el.getBoundingClientRect(), v: clip(el.getBoundingClientRect(), el), el }));
+    const tol = 0.5;
+    for (const { id, r, el } of rects) {
+      const sp = scrollParent(el);
+      const box = sp ? sp.getBoundingClientRect() : r;
+      if (!sp && (r.left < safe.l - tol || r.top < safe.t - tol || r.right > safe.r + tol || r.bottom > safe.b + tol))
+        issues.push(`${id}: outside safe area [${r.left|0},${r.top|0},${r.right|0},${r.bottom|0}] vs [${safe.l},${safe.t},${safe.r},${safe.b}]`);
+      if (sp && (box.left < safe.l - tol || box.top < safe.t - tol || box.right > safe.r + tol || box.bottom > safe.b + tol))
+        issues.push(`${id}: scroll container outside safe area`);
+      if (r.width < 44 - tol || r.height < 44 - tol) issues.push(`${id}: hit target ${r.width.toFixed(0)}x${r.height.toFixed(0)} < 44x44`);
+      if (el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflow !== 'visible') issues.push(`${id}: label clipped (${el.scrollWidth} > ${el.clientWidth})`);
+    }
+    for (let i = 0; i < rects.length; i++)
+      for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i].v, c = rects[j].v;
+        const ox = Math.min(a.right, c.right) - Math.max(a.left, c.left);
+        const oy = Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top);
+        if (ox > 0.5 && oy > 0.5) issues.push(`${rects[i].id} overlaps ${rects[j].id} (${ox.toFixed(0)}x${oy.toFixed(0)})`);
+      }
+    const minRead = short ? 72 : 96;
+    const area = (sel, name) => { for (const e of document.querySelectorAll(sel)) if (visible(e)) { const h = e.getBoundingClientRect().height; if (h < minRead - tol) issues.push(`${name}: reading area ${h.toFixed(0)} px < ${minRead}`); } };
+    if (active === 'main') {
+      const rec = rects.find(x => x.id === 'record');
+      if (rec) { const dx = (rec.r.left + rec.r.right) / 2 - (safe.l + safe.r) / 2; if (Math.abs(dx) > 1) issues.push(`record: not centred (dx=${dx.toFixed(1)})`); }
+      area('#main .card', 'transcript card');
+      const sn = document.getElementById('snackRow');
+      if (visible(sn)) { const a = sn.getBoundingClientRect(), b = document.querySelector('.cmdbar').getBoundingClientRect();
+        if (a.bottom > b.top + tol) issues.push('snackbar overlaps the command bar'); }
+    }
+    if (active === 'page') {
+      area('.list-scroll', 'history list');
+      area('body.t-transcript .tabp.transcript .reader', 'transcript');
+      area('body.t-translation .tabp.translation .reader', 'translation');
+      area('.cpage .msgs', 'chat messages');
+      area('.tabp.versions.is-diff .reader', 'diff');
+      area('.tabp.versions .v-scroll', 'versions list');
+      area('.tabp.chats .v-scroll', 'recording chats');
+      area('.solo-scroll', screen);
+      const play = rects.find(x => x.id === 'play');
+      if (play && !short) { const bar = document.getElementById('player').getBoundingClientRect();
+        const dx = (play.r.left + play.r.right) / 2 - (bar.left + bar.right) / 2;
+        if (Math.abs(dx) > 1) issues.push(`play: not centred in the player (dx=${dx.toFixed(1)})`); }
+    }
+    return { viewport: `${vw}x${vh}`, safe, layer: active, checked: rects.map(x => x.id), issues, ok: issues.length === 0 };
+  }
+  if (S.check === '1') {
+    const report = JSON.stringify(check());
+    document.getElementById('check').textContent = report;
+    if (parent !== window) parent.postMessage(report, '*');
+  }
+</script>
+</body>
+</html>
