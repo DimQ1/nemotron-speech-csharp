@@ -137,6 +137,69 @@
         <!-- Scrolls on short screens; Settings / Help below stay pinned. -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="8,0,8,8">
+            <!-- Recordings history (design voicetype-uno-history §4.1): first section. -->
+            <TextBlock Text="RECORDINGS" Style="{StaticResource SectionHeaderStyle}" />
+            <Button Style="{StaticResource PaneItemButtonStyle}"
+                    Click="History_Click"
+                    AutomationProperties.Name="History">
+              <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="24" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <FontIcon Grid.Column="0" Glyph="&#xE81C;" FontSize="18" />
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="History" />
+                  <TextBlock Text="{x:Bind ViewModel.HistorySummary, Mode=OneWay}"
+                             Style="{StaticResource SecondaryLineStyle}"
+                             TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </Grid>
+            </Button>
+            <Button Style="{StaticResource PaneItemButtonStyle}"
+                    IsEnabled="False"
+                    AutomationProperties.Name="Chats, coming soon">
+              <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="24" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <FontIcon Grid.Column="0" Glyph="&#xE8BD;" FontSize="18" />
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="Chats" />
+                  <TextBlock Text="Coming soon · ask Gemma across recordings"
+                             Style="{StaticResource SecondaryLineStyle}"
+                             TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </Grid>
+            </Button>
+            <Button Style="{StaticResource PaneItemButtonStyle}"
+                    Click="Queue_Click"
+                    AutomationProperties.Name="Queue">
+              <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="24" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <FontIcon Grid.Column="0" Glyph="&#xE9D5;" FontSize="18" />
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="Queue" />
+                  <TextBlock Text="{x:Bind ViewModel.QueueSummary, Mode=OneWay}"
+                             Style="{StaticResource SecondaryLineStyle}"
+                             TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <Border Grid.Column="2" MinWidth="20" Height="20" Padding="6,0" CornerRadius="10"
+                        VerticalAlignment="Center"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Visibility="{x:Bind ViewModel.IsQueueBadgeVisible, Mode=OneWay}">
+                  <TextBlock Text="{x:Bind ViewModel.PendingJobCount, Mode=OneWay}"
+                             FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
+                             Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                </Border>
+              </Grid>
+            </Button>
+
             <TextBlock Text="MODE" Style="{StaticResource SectionHeaderStyle}" />
 
             <Grid MinHeight="48" Padding="12,4" ColumnSpacing="12"
@@ -277,6 +340,7 @@
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
 
@@ -452,7 +516,7 @@
                 <TextBlock x:Name="TranslationTitle" Grid.Column="0" Text="Translation  →"
                            Style="{StaticResource SecondaryLineStyle}" VerticalAlignment="Center" />
                 <ComboBox x:Name="TranslationTargetCombo" Grid.Column="1"
-                          MinWidth="72" MinHeight="40" VerticalAlignment="Center"
+                          MinWidth="72" MinHeight="44" VerticalAlignment="Center"
                           BorderThickness="0" Background="Transparent"
                           AutomationProperties.Name="Translation target language"
                           ItemsSource="{x:Bind ViewModel.TranslationLanguageOptions}"
@@ -505,12 +569,44 @@
         </Grid>
       </Grid>
 
-      <!-- Row 3: command bar. Columns "*,Auto,*" keep Record exactly centred;
+      <!-- Row 3: "Saved to History · Open" snackbar. Its own grid row above the
+           command bar (design voicetype-uno-history §4.1), not an overlay, so it can
+           never cover Record / Mute / Copy; the transcript shrinks while it shows. -->
+      <Border x:Name="SavedSnackbar" Grid.Row="3"
+              Margin="16,4,16,0" Padding="16,0,4,0" MinHeight="48" CornerRadius="8"
+              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" BorderThickness="1"
+              Visibility="{x:Bind ViewModel.IsSavedSnackbarVisible, Mode=OneWay}">
+        <Grid ColumnSpacing="4">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Text="{x:Bind ViewModel.SavedSnackbarText, Mode=OneWay}"
+                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                     AutomationProperties.LiveSetting="Polite" />
+          <Button Grid.Column="1" Content="Open" MinHeight="44" MinWidth="64"
+                  Background="Transparent" BorderThickness="0"
+                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                  Click="SnackbarOpen_Click"
+                  AutomationProperties.Name="Open the saved recording" />
+          <Button Grid.Column="2" Width="44" Height="44"
+                  Style="{StaticResource IconButtonStyle}"
+                  Command="{x:Bind ViewModel.DismissSavedSnackbarCommand}"
+                  AutomationProperties.Name="Dismiss"
+                  ToolTipService.ToolTip="Dismiss">
+            <SymbolIcon Symbol="Cancel" />
+          </Button>
+        </Grid>
+      </Border>
+
+      <!-- Row 4: command bar. Columns "*,Auto,*" keep Record exactly centred;
            Mute and Copy hug it from both sides. System bars are kept out by the
            window root (App.xaml.cs); this wrapper only lifts the bar above the
            on-screen keyboard. It is a separate element because ApplyChrome sets
            BottomBar.Padding, which would overwrite a SafeArea padding inset. -->
-      <Border Grid.Row="3" utu:SafeArea.Insets="SoftInput">
+      <Border Grid.Row="4" utu:SafeArea.Insets="SoftInput">
       <Grid x:Name="BottomBar" ColumnSpacing="24" RowSpacing="4" Padding="16,8,16,12">
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto" />

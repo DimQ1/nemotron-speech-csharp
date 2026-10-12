@@ -53,6 +53,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The Uno SDK emits no version attributes; the display version is read back at
+         runtime for the History version metadata (app.version). -->
+    <AssemblyMetadata Include="ApplicationDisplayVersion" Value="$(ApplicationDisplayVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- UI-free core: settings store, model discovery, transcript coordination.
          Plain net10.0 so the logic is unit-tested without the Uno runtime. -->
     <ProjectReference Include="..\VoiceType.Uno.Core\VoiceType.Uno.Core.csproj" />

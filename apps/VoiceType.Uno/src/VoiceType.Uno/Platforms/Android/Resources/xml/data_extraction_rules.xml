@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backup / device-transfer rules for Android 12+ (android:dataExtractionRules); same
+     content as backup_rules.xml (used up to Android 11). Recordings, transcripts, chats and
+     the job queue never leave the device (design voicetype-uno-history §6.5); models and
+     temp files are large and re-downloadable. -->
+<data-extraction-rules>
+  <cloud-backup>
+    <exclude domain="file" path=".local/share/VoiceType/sessions" />
+    <exclude domain="file" path=".local/share/VoiceType/chats" />
+    <exclude domain="file" path=".local/share/VoiceType/jobs" />
+    <exclude domain="file" path=".local/share/VoiceType/trash" />
+    <exclude domain="file" path=".local/share/VoiceType/models" />
+    <exclude domain="file" path=".local/share/VoiceType/temp" />
+    <exclude domain="file" path="VoiceType/sessions" />
+    <exclude domain="file" path="VoiceType/chats" />
+    <exclude domain="file" path="VoiceType/jobs" />
+    <exclude domain="file" path="VoiceType/trash" />
+    <exclude domain="file" path="VoiceType/models" />
+    <exclude domain="file" path="VoiceType/temp" />
+  </cloud-backup>
+  <device-transfer>
+    <exclude domain="file" path=".local/share/VoiceType/sessions" />
+    <exclude domain="file" path=".local/share/VoiceType/chats" />
+    <exclude domain="file" path=".local/share/VoiceType/jobs" />
+    <exclude domain="file" path=".local/share/VoiceType/trash" />
+    <exclude domain="file" path=".local/share/VoiceType/models" />
+    <exclude domain="file" path=".local/share/VoiceType/temp" />
+    <exclude domain="file" path="VoiceType/sessions" />
+    <exclude domain="file" path="VoiceType/chats" />
+    <exclude domain="file" path="VoiceType/jobs" />
+    <exclude domain="file" path="VoiceType/trash" />
+    <exclude domain="file" path="VoiceType/models" />
+    <exclude domain="file" path="VoiceType/temp" />
+  </device-transfer>
+</data-extraction-rules>

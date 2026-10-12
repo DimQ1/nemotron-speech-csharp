@@ -5,9 +5,11 @@ using SpeechLib.LiteRT;
 using SpeechLib.ModelDownload;
 using VoiceType.Hotkeys;
 using VoiceType.Hotkeys.Windows;
+using VoiceType.Uno.History;
 using VoiceType.Uno.Presentation;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Audio;
+using VoiceType.Uno.Services.Playback;
 using VoiceType.Uno.Services.Platform;
 using VoiceType.Uno.Services.Platform.Linux;
 
@@ -83,6 +85,25 @@ public partial class App : Application
 #endif
                     services.AddSingleton<RecognitionService>();
 
+                    // ---- Recordings history (design docs/design/voicetype-uno-history) ----
+                    // One writer per store: recording folders (sessions/, or the
+                    // SessionsPath setting), chats (chats/) and the job queue (jobs/queue.json).
+                    services.AddSingleton(sp =>
+                    {
+                        var sessionsPath = sp.GetRequiredService<SettingsStore>().Current.SessionsPath;
+                        return new RecordingStore(string.IsNullOrWhiteSpace(sessionsPath) ? AppPaths.SessionsDir : sessionsPath);
+                    });
+                    services.AddSingleton(_ => new ChatStore(AppPaths.ChatsDir));
+                    services.AddSingleton(_ =>
+                    {
+                        AppPaths.EnsureJobsDir();
+                        return new JobQueue(AppPaths.JobQueueFile);
+                    });
+                    // Startup recovery of crashed recordings + audio retention, off the UI thread.
+                    services.AddSingleton<HistoryMaintenance>();
+                    // Playback of stored recordings: WASAPI / PulseAudio / AudioTrack, picked at runtime.
+                    services.AddSingleton<IAudioPlayerFactory, AudioPlayerFactory>();
+
                     // ---- Platform abstractions (backends selected per-OS) ----
                     // Global hotkeys: Windows → RegisterHotKey (message-only
                     // window); Linux → XDG GlobalShortcuts portal (swapped in
@@ -137,6 +158,10 @@ public partial class App : Application
 #endif
 
         Host = builder.Build();
+
+        // Finalize recordings a crash left behind and apply audio retention before the
+        // first recording starts (the view model waits for recovery); never on the UI thread.
+        Host.Services.GetRequiredService<HistoryMaintenance>().Start();
 
         // Do not repeat app initialization when the Window already has content,
         // just ensure that the window is active

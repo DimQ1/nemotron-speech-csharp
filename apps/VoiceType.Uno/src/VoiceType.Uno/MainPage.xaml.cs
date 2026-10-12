@@ -2,6 +2,8 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using SpeechLib.ModelDownload;
 using VoiceType.Uno.Presentation;
+using VoiceType.Uno.Presentation.History;
+using VoiceType.Uno.Presentation.Queue;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno;
@@ -31,8 +33,12 @@ public sealed partial class MainPage : Page
         // Smoke-test hook (Linux/WSLg verification): VOICETYPE_OPEN_MODEL_MANAGER=1 opens
         // the Models page once the page is loaded, and VOICETYPE_AUTO_DOWNLOAD_MODEL=<catalog
         // folder> downloads one model through the shared queue and logs the outcome.
+        // VOICETYPE_SMOKE_RECORD_SECONDS=<n> records n seconds once the model is ready
+        // (optional VOICETYPE_SMOKE_MUTE=<from>-<to> seconds mutes inside it) and logs the
+        // History recording it saved.
         if (Environment.GetEnvironmentVariable("VOICETYPE_OPEN_MODEL_MANAGER") == "1"
-            || Environment.GetEnvironmentVariable("VOICETYPE_AUTO_DOWNLOAD_MODEL") is { Length: > 0 })
+            || Environment.GetEnvironmentVariable("VOICETYPE_AUTO_DOWNLOAD_MODEL") is { Length: > 0 }
+            || Environment.GetEnvironmentVariable("VOICETYPE_SMOKE_RECORD_SECONDS") is { Length: > 0 })
             Loaded += OnSmokeTestLoaded;
 #endif
     }
@@ -43,7 +49,11 @@ public sealed partial class MainPage : Page
 
         // Models may have been downloaded or deleted on the Models page.
         if (e.NavigationMode == Microsoft.UI.Xaml.Navigation.NavigationMode.Back)
+        {
             ViewModel.RefreshModelBanners();
+            // Recordings may have been deleted on the History pages.
+            _ = ViewModel.RefreshHistorySummaryAsync();
+        }
     }
 
 #if DEBUG
@@ -54,10 +64,62 @@ public sealed partial class MainPage : Page
         if (Environment.GetEnvironmentVariable("VOICETYPE_AUTO_DOWNLOAD_MODEL") is { Length: > 0 } folder)
             _ = RunDownloadSmokeAsync(folder);
 
+        if (double.TryParse(Environment.GetEnvironmentVariable("VOICETYPE_SMOKE_RECORD_SECONDS"),
+                System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var seconds))
+            _ = RunRecordSmokeAsync(seconds, Environment.GetEnvironmentVariable("VOICETYPE_SMOKE_MUTE"));
+
         if (Environment.GetEnvironmentVariable("VOICETYPE_OPEN_MODEL_MANAGER") == "1")
         {
             Console.WriteLine("[VoiceType.Uno] Smoke hook: opening the Models page");
             OpenModelsPage(ModelsTab.Speech);
+        }
+    }
+
+    /// <summary>Debug-only: records for a while (optionally muting inside it) and logs the saved History recording.</summary>
+    private async Task RunRecordSmokeAsync(double seconds, string? mute)
+    {
+        try
+        {
+            for (var i = 0; i < 600 && !ViewModel.IsModelReady; i++)
+                await Task.Delay(500);
+            Console.WriteLine($"[SMOKE] model ready={ViewModel.IsModelReady}");
+            if (!ViewModel.IsModelReady)
+                return;
+
+            double muteFrom = -1, muteTo = -1;
+            if (mute?.Split('-') is [var from, var to])
+            {
+                muteFrom = double.Parse(from, System.Globalization.CultureInfo.InvariantCulture);
+                muteTo = double.Parse(to, System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            await ViewModel.ToggleCommand.ExecuteAsync(null);
+            Console.WriteLine($"[SMOKE] recording={ViewModel.IsRecording}");
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            while (clock.Elapsed.TotalSeconds < seconds)
+            {
+                var t = clock.Elapsed.TotalSeconds;
+                var shouldMute = t >= muteFrom && t < muteTo;
+                if (shouldMute != ViewModel.IsCaptureMuted)
+                {
+                    ViewModel.ToggleMuteCommand.Execute(null);
+                    Console.WriteLine($"[SMOKE] muted={ViewModel.IsCaptureMuted} at {t:F1}s");
+                }
+                await Task.Delay(100);
+            }
+
+            if (ViewModel.IsCaptureMuted)
+                ViewModel.ToggleMuteCommand.Execute(null);
+            await ViewModel.ToggleCommand.ExecuteAsync(null);
+            Console.WriteLine("[SMOKE] stop requested");
+
+            for (var i = 0; i < 300 && !ViewModel.IsSavedSnackbarVisible; i++)
+                await Task.Delay(100);
+            Console.WriteLine($"[SMOKE] saved={ViewModel.IsSavedSnackbarVisible} id={ViewModel.LastSavedRecordingId} status='{ViewModel.StatusText}' text='{ViewModel.FloatingText}'");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SMOKE] record smoke failed: {ex}");
         }
     }
 
@@ -347,7 +409,11 @@ public sealed partial class MainPage : Page
 
     // ── Menu ──────────────────────────────────────────────────────────────────
 
-    private void Menu_Click(object sender, RoutedEventArgs e) => Shell.IsPaneOpen = true;
+    private void Menu_Click(object sender, RoutedEventArgs e)
+    {
+        Shell.IsPaneOpen = true;
+        _ = ViewModel.RefreshHistorySummaryAsync();
+    }
 
     private void CloseMenu_Click(object sender, RoutedEventArgs e) => Shell.IsPaneOpen = false;
 
@@ -389,6 +455,27 @@ public sealed partial class MainPage : Page
     }
 
     private void OpenModelsPage(ModelsTab tab) => Frame?.Navigate(typeof(ModelsPage), tab);
+
+    // ── Recordings history ────────────────────────────────────────────────────
+
+    private async void History_Click(object sender, RoutedEventArgs e)
+    {
+        await ClosePaneAsync();
+        Frame?.Navigate(typeof(HistoryPage));
+    }
+
+    private async void Queue_Click(object sender, RoutedEventArgs e)
+    {
+        await ClosePaneAsync();
+        Frame?.Navigate(typeof(QueuePage));
+    }
+
+    /// <summary>"Saved to History · Open": opens the recording that was just saved.</summary>
+    private void SnackbarOpen_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.TakeSavedRecordingToOpen() is { } recordingId)
+            Frame?.Navigate(typeof(RecordingPage), recordingId);
+    }
 
     private async void Settings_Click(object sender, RoutedEventArgs e)
     {

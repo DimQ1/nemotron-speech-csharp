@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VoiceType.Hotkeys;
 using VoiceType.Hotkeys.XdgPortal;
+using VoiceType.Uno.History;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Platform;
 using VoiceType.Uno.Services.Platform.Linux;
@@ -28,6 +29,17 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly TranslationService _translation;
     private readonly IUiScheduler _scheduler;
     private readonly IRecordingKeepAlive _keepAlive;
+    private readonly RecordingStore _recordings;
+    private readonly JobQueue _jobs;
+    private readonly HistoryMaintenance _historyMaintenance;
+
+    // The History recording of the running session. Set on the UI thread before capture
+    // starts; taken (exchanged to null) by the Stopped handler on the decode thread.
+    private LiveRecordingSession? _historySession;
+
+    // "Saved to History · Open" snackbar: hides itself after a few seconds.
+    private static readonly TimeSpan SavedSnackbarDuration = TimeSpan.FromSeconds(8);
+    private readonly IUiTimer _savedSnackbarTimer;
 
     // Session timer: drives the "Rec mm:ss" pill and the recording notification. The
     // scheduler only offers one-shot timers, so each tick re-arms it while recording.
@@ -80,7 +92,10 @@ public sealed partial class MainViewModel : ObservableObject
         ITrayIndicator tray,
         TranslationService translation,
         IUiScheduler scheduler,
-        IRecordingKeepAlive keepAlive)
+        IRecordingKeepAlive keepAlive,
+        RecordingStore recordings,
+        JobQueue jobs,
+        HistoryMaintenance historyMaintenance)
     {
         _recognition = recognition;
         _settingsStore = settingsStore;
@@ -91,7 +106,11 @@ public sealed partial class MainViewModel : ObservableObject
         _translation = translation;
         _scheduler = scheduler;
         _keepAlive = keepAlive;
+        _recordings = recordings;
+        _jobs = jobs;
+        _historyMaintenance = historyMaintenance;
         _sessionTimer = scheduler.CreateOneShotTimer(SessionTickInterval, OnSessionTick);
+        _savedSnackbarTimer = scheduler.CreateOneShotTimer(SavedSnackbarDuration, () => IsSavedSnackbarVisible = false);
         _transcript = new TranscriptCoordinator(scheduler, () => FloatingText ?? "");
 
         _selectedLanguage = Settings.Language;
@@ -124,12 +143,23 @@ public sealed partial class MainViewModel : ObservableObject
 
         _recognition.PartialResult += _transcript.OnPartialResult;
         _recognition.FinalResult += _transcript.OnFinalResult;
-        _recognition.Stopped += () => _scheduler.Post(() =>
+        _recognition.Stopped += () =>
         {
-            IsRecording = false;
-            StatusText = "Ready";
-            _tray.SetRecording(false);
-        });
+            // Raised on the decode thread after the last batch; the session is taken here
+            // so a session started right after cannot be mistaken for this one.
+            var historySession = Interlocked.Exchange(ref _historySession, null);
+            _scheduler.Post(() =>
+            {
+                IsRecording = false;
+                StatusText = "Ready";
+                _tray.SetRecording(false);
+
+                // The final result was posted before this, so the field holds the
+                // finished text (plus whatever the user typed).
+                if (historySession is not null)
+                    _ = SaveHistorySessionAsync(historySession, FloatingText ?? "");
+            });
+        };
         _recognition.ModelStateChanged += state => _scheduler.Post(() =>
         {
             IsModelLoading = state == ModelLifecycleState.Loading;
@@ -188,6 +218,12 @@ public sealed partial class MainViewModel : ObservableObject
 
         RefreshModelBanners();
         RefreshQueueProgress();
+
+        // Recordings history: queue badge and the menu summary.
+        PendingJobCount = _jobs.PendingCount;
+        _jobs.Changed += () => _scheduler.Post(() => PendingJobCount = _jobs.PendingCount);
+        _historyMaintenance.Problem += message => _scheduler.Post(() => StatusText = message);
+        _ = RunInBackgroundAsync(RefreshHistorySummaryAfterStartupAsync(), "History");
 
         IsModelLoading = true;
         ModelStatusText = "Checking model...";
@@ -328,6 +364,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnIsManualInputEnabledChanged(bool value)
     {
+        // Typing during a recording makes the saved text an edit of what was recognized.
+        if (value && Volatile.Read(ref _historySession) is { } historySession)
+            historySession.UserTouched = true;
+
         // Switching between speech and typing keeps the translation: the text fed so
         // far is finished (its unfinished tail is translated as final) and whatever is
         // typed or dictated next is appended after it. Resetting here re-translated the
@@ -724,17 +764,158 @@ public sealed partial class MainViewModel : ObservableObject
         // translator with the emptied text.
         _transcript.BeginRecordingSession(Settings.ClearTextOnModelOrSessionChange);
 
+        var historySession = await BeginHistorySessionAsync();
+        Volatile.Write(ref _historySession, historySession);
         try
         {
-            await _recognition.StartAsync(Settings);
+            await _recognition.StartAsync(Settings, historySession);
             IsRecording = true;
-            StatusText = ListeningStatus;
+            StatusText = historySession?.AudioWarning ?? ListeningStatus;
             _tray.SetRecording(true);
         }
         catch (Exception ex)
         {
             StatusText = $"Error: {ex.Message}";
             IsRecording = false;
+            if (Interlocked.CompareExchange(ref _historySession, null, historySession) == historySession && historySession is not null)
+                _ = historySession.AbandonAsync();
+        }
+    }
+
+    // ── Recordings history ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Opens the History recording for a session that is about to start, or returns null
+    /// when History is off for it (disabled, or an Inject dictation that is excluded).
+    /// Modes are taken now: the save decision follows the session START (design §5.7).
+    /// </summary>
+    private async Task<LiveRecordingSession?> BeginHistorySessionAsync()
+    {
+        var settings = _settingsStore.Snapshot();
+        var plan = LiveRecordingPlan.Decide(
+            settings.History,
+            injectText: IsTextInjectionEnabled && IsTextInjectionAvailable,
+            translation: IsTranslationEnabled);
+        if (!plan.Save || _recognition.RecognizerInfo is not { } recognizer)
+            return null;
+
+        var fieldAtStart = FloatingText ?? "";
+        var manualInput = IsManualInputEnabled;
+        try
+        {
+            // Startup recovery must have finished, or it would finalize this new folder.
+            await _historyMaintenance.Recovered;
+            var session = await Task.Run(() => LiveRecordingSession.Start(_recordings, settings, recognizer, plan));
+            session.FieldAtStart = fieldAtStart;
+            session.UserTouched = manualInput;
+            return session;
+        }
+        catch (Exception ex)
+        {
+            _scheduler.Post(() => StatusText = $"History is not saving this recording: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>Writes the finished session to History off the UI thread, then shows the snackbar.</summary>
+    private async Task SaveHistorySessionAsync(LiveRecordingSession session, string fieldAtEnd)
+    {
+        LiveRecordingOutcome outcome;
+        try
+        {
+            outcome = await Task.Run(() => session.FinishAsync(fieldAtEnd)).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _scheduler.Post(() => StatusText = $"History save error: {ex.Message}");
+            return;
+        }
+
+        _scheduler.Post(() =>
+        {
+            if (outcome.Warning is not null)
+                StatusText = outcome.Warning;
+            if (outcome.RecordingId is { } id)
+                ShowSavedSnackbar(id);
+        });
+        await RefreshHistorySummaryAsync().ConfigureAwait(false);
+    }
+
+    [ObservableProperty]
+    private bool _isSavedSnackbarVisible;
+
+    [ObservableProperty]
+    private string _savedSnackbarText = "Saved to History";
+
+    /// <summary>Recording the snackbar's Open button navigates to.</summary>
+    public string? LastSavedRecordingId { get; private set; }
+
+    private void ShowSavedSnackbar(string recordingId)
+    {
+        LastSavedRecordingId = recordingId;
+        SavedSnackbarText = "Saved to History";
+        IsSavedSnackbarVisible = true;
+        _savedSnackbarTimer.Stop();
+        _savedSnackbarTimer.Start();
+    }
+
+    /// <summary>Hides the snackbar and returns the recording to open (Open button).</summary>
+    public string? TakeSavedRecordingToOpen()
+    {
+        _savedSnackbarTimer.Stop();
+        IsSavedSnackbarVisible = false;
+        return LastSavedRecordingId;
+    }
+
+    [RelayCommand]
+    private void DismissSavedSnackbar()
+    {
+        _savedSnackbarTimer.Stop();
+        IsSavedSnackbarVisible = false;
+    }
+
+    /// <summary>Queued / waiting / running / paused history jobs (menu badge).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsQueueBadgeVisible))]
+    [NotifyPropertyChangedFor(nameof(QueueSummary))]
+    private int _pendingJobCount;
+
+    public bool IsQueueBadgeVisible => PendingJobCount > 0;
+
+    public string QueueSummary => PendingJobCount switch
+    {
+        0 => "No jobs waiting",
+        1 => "1 job waiting",
+        var n => $"{n} jobs waiting",
+    };
+
+    /// <summary>Second line of the History menu entry ("12 recordings").</summary>
+    [ObservableProperty]
+    private string _historySummary = "Recordings and transcripts";
+
+    private async Task RefreshHistorySummaryAfterStartupAsync()
+    {
+        await _historyMaintenance.Recovered.ConfigureAwait(false);
+        await RefreshHistorySummaryAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Recounts the recordings in the background (menu opened, recording saved).</summary>
+    public async Task RefreshHistorySummaryAsync()
+    {
+        try
+        {
+            var count = await Task.Run(() => _recordings.LoadAll().Recordings.Count).ConfigureAwait(false);
+            var text = count switch
+            {
+                0 => "No recordings yet",
+                1 => "1 recording",
+                _ => $"{count} recordings",
+            };
+            _scheduler.Post(() => HistorySummary = text);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _scheduler.Post(() => HistorySummary = "History is unavailable");
         }
     }
 
@@ -786,6 +967,8 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void Clear()
     {
+        if (Volatile.Read(ref _historySession) is { } historySession)
+            historySession.UserTouched = true;
         _transcript.Clear();
         if (!IsTranslationEnabled)
             return;
@@ -1068,9 +1251,21 @@ public sealed partial class MainViewModel : ObservableObject
             return;
 
         // The restarted recognizer begins a new session text; queued before Start so it
-        // runs ahead of the first result, which is dispatched the same way.
+        // runs ahead of the first result, which is dispatched the same way. The previous
+        // capture was saved to History on Stopped; the restarted one is a new recording.
         _scheduler.Post(_transcript.StartNewSpeechSegment);
-        await _recognition.StartAsync(settings);
+        var historySession = await BeginHistorySessionAsync().ConfigureAwait(false);
+        Volatile.Write(ref _historySession, historySession);
+        try
+        {
+            await _recognition.StartAsync(settings, historySession);
+        }
+        catch
+        {
+            if (Interlocked.CompareExchange(ref _historySession, null, historySession) == historySession && historySession is not null)
+                _ = historySession.AbandonAsync();
+            throw;
+        }
         _scheduler.Post(() =>
         {
             IsRecording = true;

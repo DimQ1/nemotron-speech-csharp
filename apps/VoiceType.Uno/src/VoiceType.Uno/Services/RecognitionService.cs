@@ -4,6 +4,7 @@ using SpeechLib.Audio;
 using SpeechLib.Models;
 using SpeechLib.PostProcessing;
 using SpeechLib.Providers;
+using VoiceType.Uno.History;
 
 namespace VoiceType.Uno.Services;
 
@@ -33,6 +34,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     private string? _lastPartial;
     private Exception? _captureException;
     private IRecognitionPipeline? _pipeline;
+    private LiveRecognizerInfo? _recognizerInfo;
 
     public RecognitionService(IAudioSourceFactory audioSourceFactory)
     {
@@ -50,6 +52,9 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     public bool IsMuted => _captureMuted;
     public string AccumulatedText => _pipeline?.CommittedText ?? "";
     public string? LoadedModelPath => Volatile.Read(ref _loadedModelPath);
+
+    /// <summary>Facts about the loaded recognizer for History version metadata; null when unloaded.</summary>
+    public LiveRecognizerInfo? RecognizerInfo => Volatile.Read(ref _recognizerInfo);
 
     private ModelLifecycleState _modelState = ModelLifecycleState.Unloaded;
     public ModelLifecycleState ModelState
@@ -74,7 +79,9 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         try
         {
             var recognizer = await Task.Run(() => CreateRecognizer(settings)).ConfigureAwait(false);
+            var info = await Task.Run(() => DescribeRecognizer(recognizer, settings.ModelPath)).ConfigureAwait(false);
             var previous = Interlocked.Exchange(ref _recognizer, recognizer);
+            Volatile.Write(ref _recognizerInfo, info);
             // The pipeline owns the accumulated transcript and the per-batch rules, so it
             // is rebuilt together with the recognizer it drives.
             Volatile.Write(ref _pipeline, RecognitionPipelineFactory.Create(recognizer));
@@ -88,6 +95,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         {
             ModelState = ModelLifecycleState.Error;
             Volatile.Write(ref _loadedModelPath, null);
+            Volatile.Write(ref _recognizerInfo, null);
             throw;
         }
     }
@@ -102,6 +110,40 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             RepetitionPenalty = settings.RepetitionPenalty,
         });
 
+    /// <summary>
+    /// Recognizer family and the values that shape its output (step, contexts, end of
+    /// utterance) — what a re-recognition needs to reproduce or explain the live text.
+    /// </summary>
+    private static LiveRecognizerInfo DescribeRecognizer(IStreamingSpeechRecognizer recognizer, string modelPath)
+    {
+        var values = new List<KeyValuePair<string, object?>>
+        {
+            new("chunkSamples", recognizer.ChunkSamples),
+        };
+        double commitLag = 0;
+        if (recognizer is IUtteranceStreamingRecognizer utterance)
+        {
+            commitLag = utterance.StopHistoryEouSeconds;
+            values.Add(new("stopHistoryEouSec", utterance.StopHistoryEouSeconds));
+        }
+        if (recognizer is SpeechLib.ParakeetTdt.ParakeetTdtRecognizer parakeet)
+        {
+            values.Add(new("chunkSec", parakeet.ChunkSeconds));
+            values.Add(new("leftContextSec", parakeet.LeftContextSeconds));
+            values.Add(new("rightContextSec", parakeet.RightContextSeconds));
+            values.Add(new("silenceContextSec", parakeet.SilenceContextSeconds));
+            values.Add(new("onsetContextSec", parakeet.OnsetContextSeconds));
+        }
+
+        return new LiveRecognizerInfo(
+            modelPath,
+            LiveRecordingMetadata.DetectFamily(modelPath),
+            recognizer.SampleRate,
+            recognizer is IUtteranceStreamingRecognizer,
+            commitLag,
+            values);
+    }
+
     public void UnloadModel()
     {
         if (_isRunning)
@@ -109,6 +151,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
 
         var old = Interlocked.Exchange(ref _recognizer, null);
         Volatile.Write(ref _pipeline, null);
+        Volatile.Write(ref _recognizerInfo, null);
         lock (_recognizerOperationGate)
             old?.Dispose();
 
@@ -124,7 +167,11 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     /// the capture thread share the session fields, so the cleanup has to complete
     /// before the new session claims them.
     /// </summary>
-    public async Task StartAsync(AppSettings settings)
+    /// <param name="tap">
+    /// Optional per-session observer (History: audio tee + segment timing). It sees every
+    /// batch on the decode thread; its failures never stop recognition.
+    /// </param>
+    public async Task StartAsync(AppSettings settings, IRecognitionTap? tap = null)
     {
         if (_recognizer is null || _pipeline is null || ModelState != ModelLifecycleState.Loaded)
             throw new InvalidOperationException("Model is not loaded. Call LoadModelAsync first.");
@@ -180,7 +227,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         };
         _captureThread.Start();
 
-        _processTask = Task.Run(() => ProcessLoop(pipeline));
+        _processTask = Task.Run(() => ProcessLoop(pipeline, tap));
     }
 
     public void Stop()
@@ -252,7 +299,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             languageConfigurable.TrySetLanguage(language);
     }
 
-    private Task ProcessLoop(IRecognitionPipeline pipeline)
+    private Task ProcessLoop(IRecognitionPipeline pipeline, IRecognitionTap? tap)
     {
         try
         {
@@ -265,11 +312,18 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
                 {
                     gotData = true;
                     if (_captureMuted)
+                    {
+                        // Muted audio reaches neither the recognizer nor the file; the
+                        // tap records the gap so wall-clock times can be rebuilt.
+                        InvokeTap(ref tap, t => t.OnMuted(batch.Length));
                         continue;
+                    }
 
+                    InvokeTap(ref tap, t => t.OnAudio(batch));
                     RecognitionStep step;
                     lock (_recognizerOperationGate)
                         step = pipeline.Process(batch);
+                    InvokeTap(ref tap, t => t.OnStep(batch.Length, step.Tail, step.Committed));
                     ApplyStep(step);
                 }
 
@@ -283,6 +337,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             RecognitionStep tail;
             lock (_recognizerOperationGate)
                 tail = pipeline.Flush();
+            InvokeTap(ref tap, t => t.OnFlush(tail.Committed));
             ApplyStep(tail);
 
             // Final pass: strip language tags AND normalize whitespace for clean output.
@@ -301,6 +356,22 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         return Task.CompletedTask;
     }
 
+    /// <summary>Calls the tap; a failing tap is dropped for the rest of the session.</summary>
+    private void InvokeTap(ref IRecognitionTap? tap, Action<IRecognitionTap> call)
+    {
+        if (tap is null)
+            return;
+        try
+        {
+            call(tap);
+        }
+        catch (Exception ex)
+        {
+            tap = null;
+            Error?.Invoke(new InvalidOperationException($"History capture stopped: {ex.Message}", ex));
+        }
+    }
+
     private static readonly PostProcessingChain PartialPostProcessing =
         new PostProcessingChain().Add(new LanguageTagStripper());
 
@@ -311,7 +382,8 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     /// One decoded batch: the text to show as the live partial, and the text (when any)
     /// this batch committed to the transcript.
     /// </summary>
-    private readonly record struct RecognitionStep(string? Display, string? Committed, bool IsUtteranceCommit)
+    /// <param name="Tail">The recognizer's revisable, uncommitted text after this batch.</param>
+    private readonly record struct RecognitionStep(string? Display, string? Committed, bool IsUtteranceCommit, string? Tail = null)
     {
         public static RecognitionStep Empty { get; } = new(null, null, false);
     }
@@ -368,7 +440,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
                 _committed.Append(committed);
             }
 
-            return new RecognitionStep(ComposeDisplay(_committed, result.Partial), committed, IsUtteranceCommit: committed is not null);
+            return new RecognitionStep(ComposeDisplay(_committed, result.Partial), committed, IsUtteranceCommit: committed is not null, result.Partial);
         }
     }
 
@@ -390,7 +462,8 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             if (!string.IsNullOrEmpty(raw))
                 _committed.Append(raw);
 
-            return new RecognitionStep(ComposeDisplay(_committed, recognizer.PartialText), raw, IsUtteranceCommit: false);
+            var partial = recognizer.PartialText;
+            return new RecognitionStep(ComposeDisplay(_committed, partial), raw, IsUtteranceCommit: false, partial);
         }
 
         public RecognitionStep Flush()
@@ -399,7 +472,9 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             if (!string.IsNullOrEmpty(tail))
                 _committed.Append(tail);
 
-            return RecognitionStep.Empty;
+            // Committed but not an utterance commit: nothing is raised for it (the final
+            // result carries the whole text); the History tap still sees the tail.
+            return new RecognitionStep(null, string.IsNullOrEmpty(tail) ? null : tail, IsUtteranceCommit: false);
         }
     }
 
@@ -479,6 +554,26 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             Error?.Invoke(ex);
         }
     }
+}
+
+/// <summary>
+/// Per-session observer of the decode loop (History: audio tee and segment timing).
+/// All calls arrive on the decode thread, in order; <see cref="RecognitionService.Stopped"/>
+/// is raised after the last one.
+/// </summary>
+public interface IRecognitionTap
+{
+    /// <summary>A batch about to be recognized (recognizer sample rate, mono).</summary>
+    void OnAudio(float[] batch);
+
+    /// <summary>A batch of <paramref name="samples"/> dropped because capture is muted.</summary>
+    void OnMuted(int samples);
+
+    /// <summary>The batch was recognized: its uncommitted tail and the raw text it committed.</summary>
+    void OnStep(int samples, string? tail, string? committed);
+
+    /// <summary>The stream was flushed at the end of the session.</summary>
+    void OnFlush(string? committed);
 }
 
 public enum ModelLifecycleState

@@ -11,5 +11,11 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
-  <application android:allowBackup="true" android:supportsRtl="true"></application>
+  <!-- Auto Backup stays on for settings, but recordings, transcripts, chats, the job queue
+       and models are excluded (Resources/xml/backup_rules.xml up to Android 11,
+       data_extraction_rules.xml from Android 12). -->
+  <application android:allowBackup="true"
+               android:fullBackupContent="@xml/backup_rules"
+               android:dataExtractionRules="@xml/data_extraction_rules"
+               android:supportsRtl="true"></application>
 </manifest>
