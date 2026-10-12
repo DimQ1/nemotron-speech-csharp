@@ -156,10 +156,11 @@ public sealed partial class ModelManagerViewModel : ObservableObject
             bytes += ModelStorage.SizeOf(defaultFolder);
         }
 
-        if (TranslationModelInfo.IsDownloaded)
+        // Every installed language model (E2B, and E4B / 12B on desktop).
+        foreach (var llm in LlmModelCatalog.All.Where(m => m.IsInstalled))
         {
             count++;
-            bytes += ModelStorage.SizeOf(TranslationModelInfo.LocalModelPath);
+            bytes += ModelStorage.SizeOf(llm.LocalPath);
         }
 
         return ModelsPageFormatter.DescribeInstalled(count, bytes);

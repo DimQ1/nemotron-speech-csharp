@@ -229,7 +229,7 @@
               <SymbolIcon Grid.Column="0" Symbol="Globe" />
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
                 <TextBlock Text="Live translation" TextWrapping="Wrap" />
-                <TextBlock Text="Gemma 4, on-device"
+                <TextBlock Text="{x:Bind ViewModel.LlmSubtitle, Mode=OneWay}"
                            Style="{StaticResource SecondaryLineStyle}" TextWrapping="Wrap" />
               </StackPanel>
               <ToggleSwitch Grid.Column="2" Style="{StaticResource ModeSwitchStyle}"

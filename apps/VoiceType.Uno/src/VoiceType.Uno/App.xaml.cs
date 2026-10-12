@@ -195,6 +195,12 @@ public partial class App : Application
                     });
                     // <<< Wave 2 / agent M
 
+#if DEBUG
+                    // [llm-ui] Debug stand-in with simulated downloads; keep this LAST so a real ILlmModelService wins.
+                    Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions
+                        .TryAddSingleton<ILlmModelService, FakeLlmModelService>(services);
+#endif
+
                     // ---- ViewModels ----
                     services.AddSingleton<MainViewModel>();
                 })

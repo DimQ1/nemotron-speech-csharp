@@ -217,6 +217,7 @@ public sealed partial class MainViewModel : ObservableObject
         _ = RunInBackgroundAsync(InitializeHotkeysAsync(), "Global hotkeys");
 
         RefreshModelBanners();
+        SubscribeLlmModels();
         RefreshQueueProgress();
 
         // Recordings history: queue badge and the menu summary.
@@ -515,11 +516,28 @@ public sealed partial class MainViewModel : ObservableObject
             _ => AsrModelBannerText
         };
 
-        IsTranslationModelPartial = !TranslationModelInfo.IsDownloaded && TranslationModelInfo.HasPartialDownload;
-        IsTranslationModelMissing = !TranslationModelInfo.IsDownloaded;
-        TranslationModelBannerText = IsTranslationModelPartial
-            ? "Translation model download is incomplete — re-download it to finish."
-            : "Translation model is not downloaded — translation will use the HTTP server fallback or stay off.";
+        if (LlmModels is { } llm)
+        {
+            // The banner is about the language model that is selected, whichever size it is.
+            var active = llm.Active;
+            var partial = !active.IsInstalled
+                && (File.Exists(active.LocalPath + ".part") || File.Exists(active.LocalPath + ".download"));
+            IsTranslationModelPartial = partial;
+            IsTranslationModelMissing = !active.IsInstalled;
+            TranslationModelBannerText = partial
+                ? LlmUiText.BannerPartial(active.Title)
+                : LlmUiText.BannerMissing(active.Title);
+            LlmSubtitle = LlmUiText.SideMenuSubtitle(active.Title);
+        }
+        else
+        {
+            IsTranslationModelPartial = !TranslationModelInfo.IsDownloaded && TranslationModelInfo.HasPartialDownload;
+            IsTranslationModelMissing = !TranslationModelInfo.IsDownloaded;
+            TranslationModelBannerText = IsTranslationModelPartial
+                ? "Translation model download is incomplete — re-download it to finish."
+                : "Translation model is not downloaded — translation will use the HTTP server fallback or stay off.";
+            LlmSubtitle = "Gemma 4, on-device";
+        }
 
         OnPropertyChanged(nameof(IsTranslationModelBannerVisible));
 
@@ -572,9 +590,42 @@ public sealed partial class MainViewModel : ObservableObject
         _scheduler.Post(RefreshModelBanners);
     }
 
-    /// <summary>Enqueues the translation model download into the shared queue (force re-download when partial).</summary>
+    /// <summary>The language-model service, or null when this build has none (E2B-only behaviour).</summary>
+    private static ILlmModelService? LlmModels => App.Services.GetService<ILlmModelService>();
+
+    /// <summary>Side-menu subtitle under "Live translation": the active language model.</summary>
+    [ObservableProperty]
+    private string _llmSubtitle = "Gemma 4, on-device";
+
+    private bool _llmSubscribed;
+
+    /// <summary>Keeps the banners and the subtitle in step when the model changes or a download finishes.</summary>
+    private void SubscribeLlmModels()
+    {
+        if (_llmSubscribed || LlmModels is not { } llm)
+            return;
+
+        _llmSubscribed = true;
+        var wasMissing = !llm.Active.IsInstalled;
+        llm.Changed += () => _scheduler.Post(() =>
+        {
+            RefreshModelBanners();
+            var missing = !llm.Active.IsInstalled;
+            if (wasMissing && !missing)
+                _translation.UpdateBackend(TranslationService.BackendKind.Native);
+            wasMissing = missing;
+        });
+    }
+
+    /// <summary>Downloads the active language model (the shared queue; force re-download when partial).</summary>
     public void EnqueueTranslationModelDownload()
     {
+        if (LlmModels is { } llm)
+        {
+            llm.StartDownload(llm.Active);
+            return;
+        }
+
         if (IsTranslationModelPartial)
             TranslationModelInfo.DeleteDownloaded();
 

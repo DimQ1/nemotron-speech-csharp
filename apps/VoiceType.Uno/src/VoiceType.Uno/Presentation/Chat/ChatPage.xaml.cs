@@ -195,10 +195,13 @@ public sealed partial class ChatPage : Page
             return;
         var downloading = _main?.IsQueueProgressVisible == true;
         ViewModel.CanDownload = !downloading && _main is not null;
-        ViewModel.ModelBannerTitle = downloading ? "Downloading Gemma…" : "Gemma is not installed";
+        var llm = App.Services.GetService<VoiceType.Uno.Services.ILlmModelService>();
+        var model = llm?.Active ?? VoiceType.Uno.Services.LlmModelCatalog.Default;
+        ViewModel.ModelBannerTitle = VoiceType.Uno.Services.LlmUiText.ChatMissingTitle(
+            llm is null ? "Gemma" : model.Title, downloading);
         ViewModel.ModelBannerDetail = downloading
             ? _main?.QueueProgressText ?? ""
-            : "Chat runs on this device. Download the Gemma 4 E2B model (about 2.4 GB) to ask questions.";
+            : VoiceType.Uno.Services.LlmUiText.ChatMissingDetail(model);
     }
 
     private void DownloadModel_Click(object sender, RoutedEventArgs e)

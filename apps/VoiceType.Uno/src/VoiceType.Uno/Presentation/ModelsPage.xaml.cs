@@ -3,6 +3,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using SpeechLib.ModelDownload;
+using VoiceType.Uno.Services;
 using Windows.System;
 
 namespace VoiceType.Uno.Presentation;
@@ -28,11 +29,26 @@ public sealed partial class ModelsPage : Page
 
         Models = new ModelManagerViewModel(downloads, dispatcher, main.CreateSettingsSnapshot, main.ApplySettingsAsync);
         TranslationModel = new TranslationModelCardViewModel(downloads, dispatcher, main.EnqueueTranslationModelDownload);
+        if (App.Services.GetService<ILlmModelService>() is { } llm)
+        {
+            LlmModels = new LlmModelsViewModel(llm, dispatcher, OperatingSystem.IsAndroid());
+            LlmModels.PropertyChanged += OnLlmPropertyChanged;
+        }
         Downloads = new DownloadsViewModel(downloads, dispatcher);
         TranslationModel.PropertyChanged += OnTranslationPropertyChanged;
 
         InitializeComponent();
+
+        // Without the model service the page keeps the single Gemma 4 E2B card.
+        LlmPanel.Visibility = LlmModels is null ? Visibility.Collapsed : Visibility.Visible;
+        LegacyTranslationPanel.Visibility = LlmModels is null ? Visibility.Visible : Visibility.Collapsed;
+        SyncCompute();
     }
+
+    /// <summary>Gemma tab: one card per language model of this device, or null when the service is not registered.</summary>
+    public LlmModelsViewModel? LlmModels { get; }
+
+    public string LlmSharedNote => LlmUiText.SharedModelNote;
 
     /// <summary>Speech tab: catalog cards.</summary>
     public ModelManagerViewModel Models { get; }
@@ -60,6 +76,11 @@ public sealed partial class ModelsPage : Page
         Models.Detach();
         TranslationModel.Detach();
         Downloads.Detach();
+        if (LlmModels is not null)
+        {
+            LlmModels.PropertyChanged -= OnLlmPropertyChanged;
+            LlmModels.Detach();
+        }
     }
 
     // ── Navigation ────────────────────────────────────────────────────────
@@ -136,6 +157,7 @@ public sealed partial class ModelsPage : Page
 
     private void SpeechCards_Loaded(object sender, RoutedEventArgs e) => ApplyCardColumns();
 
+    // The Gemma cards stay in one column: their descriptions read better full width.
     private void ApplyCardColumns()
     {
         if (SpeechCards?.ItemsPanelRoot is Controls.CardColumnsPanel panel)
@@ -179,13 +201,17 @@ public sealed partial class ModelsPage : Page
         ContentScroll.ChangeView(null, 0, null, disableAnimation: true);
 
         if (tab == ModelsTab.Translation)
+        {
             TranslationModel.Refresh();
+            LlmModels?.Refresh();
+        }
     }
 
     private void Refresh_Click(object sender, RoutedEventArgs e)
     {
         Models.Refresh();
         TranslationModel.Refresh();
+        LlmModels?.Refresh();
     }
 
     // The subtitle counts the translation model too.
@@ -258,7 +284,77 @@ public sealed partial class ModelsPage : Page
     private static ModelCardViewModel? CardOf(object sender)
         => (sender as FrameworkElement)?.DataContext as ModelCardViewModel;
 
-    // ── Translation card ──────────────────────────────────────────────────
+    // ── Gemma (language model) cards ──────────────────────────────────────
+
+    private async void LlmPrimary_Click(object sender, RoutedEventArgs e)
+    {
+        if (LlmModels is not null && LlmCardOf(sender) is { } card)
+            await LlmModels.RunPrimaryAsync(card);
+    }
+
+    /// <summary>"⋯": Delete (confirmed). Only offered for an installed model that is not in use.</summary>
+    private void LlmMore_Click(object sender, RoutedEventArgs e)
+    {
+        if (LlmModels is null || LlmCardOf(sender) is not { } card || sender is not FrameworkElement anchor)
+            return;
+
+        var menu = new MenuFlyout();
+        var delete = new MenuFlyoutItem { Text = "Delete", Icon = new SymbolIcon(Symbol.Delete) };
+        delete.Click += async (_, _) =>
+        {
+            if (await ConfirmDeleteAsync(card.Title, LlmUiText.DeleteConsequence(card.Model)))
+            {
+                LlmModels.Delete(card);
+                Models.Refresh();
+            }
+        };
+        menu.Items.Add(delete);
+        menu.ShowAt(anchor);
+    }
+
+    private void LlmDismissError_Click(object sender, RoutedEventArgs e) => LlmModels?.ClearError();
+
+    private static LlmModelCardViewModel? LlmCardOf(object sender)
+        => (sender as FrameworkElement)?.DataContext as LlmModelCardViewModel;
+
+    private bool _syncingCompute;
+
+    private async void Compute_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_syncingCompute || LlmModels is null)
+            return;
+
+        var gpu = ReferenceEquals(sender, GpuRadio);
+        await LlmModels.SetComputeAsync(gpu ? "gpu" : "cpu");
+        SyncCompute(); // a failed switch puts the segment back
+    }
+
+    private void OnLlmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(LlmModelsViewModel.IsGpu) or nameof(LlmModelsViewModel.IsComputeEnabled))
+            SyncCompute();
+    }
+
+    /// <summary>Mirrors the service's backend into the segment without raising a switch.</summary>
+    private void SyncCompute()
+    {
+        if (LlmModels is null || CpuRadio is null || GpuRadio is null)
+            return;
+
+        _syncingCompute = true;
+        try
+        {
+            CpuRadio.IsChecked = !LlmModels.IsGpu;
+            GpuRadio.IsChecked = LlmModels.IsGpu;
+            CpuRadio.IsEnabled = GpuRadio.IsEnabled = LlmModels.IsComputeEnabled;
+        }
+        finally
+        {
+            _syncingCompute = false;
+        }
+    }
+
+    // ── Translation card (fallback without the model service) ─────────────
 
     private void DownloadTranslation_Click(object sender, RoutedEventArgs e) => TranslationModel.Download();
 

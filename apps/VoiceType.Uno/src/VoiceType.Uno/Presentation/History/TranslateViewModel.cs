@@ -161,7 +161,10 @@ public sealed class TranslateViewModel : ObservableObject, IDisposable
     // Model state
     public bool ModelMissing => !_modelInstalled;
     public string ModelText => _modelText;
-    public bool CanDownloadModel => !_modelInstalled && _downloads.FindActive(TranslationModelInfo.Key) is null;
+    public bool CanDownloadModel => !_modelInstalled
+        && (App.Services.GetService<ILlmModelService>() is { } llm
+            ? llm.StateOf(llm.Active) == LlmModelState.NotInstalled
+            : _downloads.FindActive(TranslationModelInfo.Key) is null);
 
     // Job state
     public bool IsBusy => _job is not null;
@@ -234,6 +237,15 @@ public sealed class TranslateViewModel : ObservableObject, IDisposable
     private void UpdateModelState()
     {
         _modelInstalled = GemmaAvailability.IsInstalled;
+        if (App.Services.GetService<ILlmModelService>() is { } llm)
+        {
+            var active = llm.Active;
+            _modelText = llm.DownloadPercent(active) is { } pct
+                ? $"Downloading {active.Title}… {pct:F0}%"
+                : $"Translation runs on the device with {active.Title} ({DownloadProgressFormatter.FormatBytes(active.SizeBytes)}). Download it once, then translate any recording offline.";
+            return;
+        }
+
         var download = _downloads.FindActive(TranslationModelInfo.Key);
         _modelText = download is null
             ? "Translation runs on the device with Gemma 4 E2B (2.4 GB). Download it once, then translate any recording offline."

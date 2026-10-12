@@ -293,6 +293,96 @@
         </Grid>
       </DataTemplate>
 
+      <!-- One language model (Gemma tab) -->
+      <DataTemplate x:Key="LlmCardTemplate" x:DataType="presentation:LlmModelCardViewModel">
+        <Grid>
+          <Border Style="{StaticResource ModelCardStyle}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{x:Bind Title}" Style="{StaticResource CardTitleStyle}" />
+
+              <controls:ChipWrapPanel Spacing="4">
+                <Border Style="{StaticResource ChipStyle}">
+                  <TextBlock Text="{x:Bind SizeChip}" Style="{StaticResource ChipTextStyle}" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}">
+                  <TextBlock Text="{x:Bind ContextChip}" Style="{StaticResource ChipTextStyle}" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}"
+                        Background="{ThemeResource ModelsHintBrush}" BorderBrush="Transparent"
+                        Visibility="{x:Bind ShowRecommendedChip}">
+                  <TextBlock Text="★ Recommended" Style="{StaticResource ChipTextStyle}" FontWeight="SemiBold" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind ShowDesktopOnlyChip}">
+                  <TextBlock Text="Desktop only" Style="{StaticResource ChipTextStyle}" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                        Visibility="{x:Bind ShowInUseChip, Mode=OneWay}">
+                  <TextBlock Text="● In use" Style="{StaticResource ChipTextStyle}"
+                             Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind ShowInstalledChip, Mode=OneWay}">
+                  <TextBlock Text="installed" Style="{StaticResource ChipTextStyle}" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}" BorderBrush="{ThemeResource ModelsErrorBrush}"
+                        Visibility="{x:Bind ShowLowMemoryChip, Mode=OneWay}">
+                  <TextBlock Text="⚠ Low memory" Style="{StaticResource ChipTextStyle}"
+                             Foreground="{ThemeResource ModelsErrorBrush}" FontWeight="SemiBold" />
+                </Border>
+              </controls:ChipWrapPanel>
+
+              <TextBlock Text="{x:Bind Tagline}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{x:Bind Description}" Style="{StaticResource SecondaryTextStyle}" />
+              <TextBlock Text="{x:Bind RamText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
+              <TextBlock Text="{x:Bind RamWarningText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"
+                         Foreground="{ThemeResource ModelsErrorBrush}" Opacity="1"
+                         Visibility="{x:Bind ShowLowMemoryChip, Mode=OneWay}" />
+
+              <!-- Only while downloading: bar, "42% · 1.0 / 2.4 GB · 3.1 MB/s · 7 min" -->
+              <StackPanel Spacing="4" Visibility="{x:Bind ShowProgress, Mode=OneWay}">
+                <ProgressBar Maximum="100" Value="{x:Bind Percent, Mode=OneWay}" />
+                <TextBlock Text="{x:Bind RateText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
+              </StackPanel>
+
+              <!-- One primary action by state + the ⋯ menu -->
+              <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{x:Bind StatusText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"
+                           VerticalAlignment="Center" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="1" Content="{x:Bind ActionText, Mode=OneWay}"
+                        Style="{StaticResource AccentActionButtonStyle}"
+                        Click="LlmPrimary_Click"
+                        IsEnabled="{x:Bind ActionEnabled, Mode=OneWay}"
+                        Visibility="{x:Bind ShowAccentAction, Mode=OneWay}"
+                        AutomationProperties.Name="{x:Bind PrimaryAutomationName, Mode=OneWay}" />
+                <Button Grid.Column="1" Content="{x:Bind ActionText, Mode=OneWay}"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Click="LlmPrimary_Click"
+                        IsEnabled="{x:Bind ActionEnabled, Mode=OneWay}"
+                        Visibility="{x:Bind ShowPlainAction, Mode=OneWay}"
+                        AutomationProperties.Name="{x:Bind PrimaryAutomationName, Mode=OneWay}" />
+                <Button Grid.Column="2" Style="{StaticResource IconButtonStyle}" Width="44" Height="44"
+                        Click="LlmMore_Click"
+                        Visibility="{x:Bind CanDelete, Mode=OneWay}"
+                        AutomationProperties.Name="{x:Bind MoreAutomationName}"
+                        ToolTipService.ToolTip="More actions">
+                  <SymbolIcon Symbol="More" />
+                </Button>
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" BorderThickness="2"
+                  CornerRadius="8" IsHitTestVisible="False"
+                  Visibility="{x:Bind ShowInUseChip, Mode=OneWay}" />
+        </Grid>
+      </DataTemplate>
+
       <!-- One job (Downloads tab) -->
       <DataTemplate x:Key="DownloadItemTemplate" x:DataType="presentation:DownloadItemViewModel">
         <Border Style="{StaticResource ModelCardStyle}">
@@ -385,7 +475,7 @@
         </Grid.ColumnDefinitions>
         <RadioButton x:Name="SpeechTab" GroupName="ModelsTabs" Content="Speech"
                      Style="{StaticResource SegmentRadioButtonStyle}" Checked="Tab_Checked" />
-        <RadioButton x:Name="TranslationTab" Grid.Column="1" GroupName="ModelsTabs" Content="Translation"
+        <RadioButton x:Name="TranslationTab" Grid.Column="1" GroupName="ModelsTabs" Content="Gemma"
                      Style="{StaticResource SegmentRadioButtonStyle}" Checked="Tab_Checked" />
         <RadioButton x:Name="DownloadsTab" Grid.Column="2" GroupName="ModelsTabs"
                      Content="{x:Bind Downloads.TabLabel, Mode=OneWay}"
@@ -425,8 +515,83 @@
           <TextBlock Text="{x:Bind Models.StorageText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" FontSize="11" />
         </StackPanel>
 
-        <!-- Translation -->
+        <!-- Gemma: the on-device language model(s) -->
         <StackPanel x:Name="TranslationPane" Spacing="8" Visibility="Collapsed">
+          <StackPanel x:Name="LlmPanel" Spacing="8">
+            <Border Style="{StaticResource HintBorderStyle}">
+              <StackPanel>
+                <TextBlock Text="One on-device language model" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock FontSize="13" TextWrapping="Wrap"
+                           Text="Gemma (LiteRT-LM) translates, answers chat questions and writes titles. Nothing is sent to a server." />
+              </StackPanel>
+            </Border>
+
+            <!-- Switching progress -->
+            <Border Style="{StaticResource HintBorderStyle}" Visibility="{x:Bind LlmModels.IsLoading, Mode=OneWay}">
+              <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ProgressRing Width="24" Height="24" IsActive="{x:Bind LlmModels.IsLoading, Mode=OneWay}" />
+                <TextBlock Grid.Column="1" Text="{x:Bind LlmModels.LoadingText, Mode=OneWay}" FontSize="13"
+                           TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+              </Grid>
+            </Border>
+
+            <!-- Switch / load failure -->
+            <Border Style="{StaticResource HintBorderStyle}" Visibility="{x:Bind LlmModels.HasError, Mode=OneWay}">
+              <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{x:Bind LlmModels.ErrorText, Mode=OneWay}" FontSize="13" TextWrapping="Wrap"
+                           Foreground="{ThemeResource ModelsErrorBrush}" VerticalAlignment="Center"
+                           AutomationProperties.LiveSetting="Assertive" />
+                <Button Grid.Column="1" Content="Dismiss" Style="{StaticResource ActionButtonStyle}" Click="LlmDismissError_Click" />
+              </Grid>
+            </Border>
+
+            <ItemsControl x:Name="LlmCards" ItemsSource="{x:Bind LlmModels.Cards}"
+                          ItemTemplate="{StaticResource LlmCardTemplate}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <controls:CardColumnsPanel MinColumnWidth="300" MaxColumns="1" Spacing="8" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
+
+            <!-- Compute: CPU | GPU for the language model -->
+            <Border Style="{StaticResource ModelCardStyle}">
+              <StackPanel Spacing="8">
+                <TextBlock Text="Compute" Style="{StaticResource CardTitleStyle}" />
+                <Border Padding="2" CornerRadius="8" HorizontalAlignment="Stretch" MaxWidth="320"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                        Visibility="{x:Bind LlmModels.IsComputeChoiceAvailable}">
+                  <Grid ColumnSpacing="2">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <RadioButton x:Name="CpuRadio" GroupName="LlmCompute" Content="CPU"
+                                 Style="{StaticResource SegmentRadioButtonStyle}" Checked="Compute_Checked"
+                                 AutomationProperties.Name="Language model on the CPU" />
+                    <RadioButton x:Name="GpuRadio" Grid.Column="1" GroupName="LlmCompute" Content="GPU"
+                                 Style="{StaticResource SegmentRadioButtonStyle}" Checked="Compute_Checked"
+                                 AutomationProperties.Name="Language model on the GPU" />
+                  </Grid>
+                </Border>
+                <TextBlock Text="{x:Bind LlmModels.ComputeHint}" Style="{StaticResource SecondaryTextStyle}" />
+              </StackPanel>
+            </Border>
+
+            <TextBlock Style="{StaticResource SecondaryTextStyle}" FontSize="11" Text="{x:Bind LlmSharedNote}" />
+          </StackPanel>
+
+          <!-- Fallback when no ILlmModelService is registered: the single Gemma 4 E2B card -->
+          <StackPanel x:Name="LegacyTranslationPanel" Spacing="8" Visibility="Collapsed">
           <Border Style="{StaticResource HintBorderStyle}">
             <StackPanel>
               <TextBlock Text="Live translation runs on the device" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
@@ -488,6 +653,7 @@
 
           <TextBlock Style="{StaticResource SecondaryTextStyle}" FontSize="11"
                      Text="Turn on live translation from the menu on the main screen. The model is used for every target language." />
+          </StackPanel>
         </StackPanel>
 
         <!-- Downloads -->
@@ -517,7 +683,7 @@
             </StackPanel>
           </Border>
 
-          <TextBlock Text="No downloads yet. Pick a model on the Speech or Translation tab and press Download."
+          <TextBlock Text="No downloads yet. Pick a model on the Speech or Gemma tab and press Download."
                      Style="{StaticResource SecondaryTextStyle}" FontSize="13" Margin="0,8,0,0"
                      Visibility="{x:Bind Downloads.IsEmpty, Mode=OneWay}" />
 
