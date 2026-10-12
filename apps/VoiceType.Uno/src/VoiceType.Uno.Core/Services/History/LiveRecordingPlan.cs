@@ -100,7 +100,7 @@ public static class LiveRecordingMetadata
         {
             CatalogRepoId = fallbackRepoId,
             Folder = folder,
-            Title = fallbackTitle ?? (folder is null ? null : ModelCatalog.DescribeFolder(folder)),
+            Title = fallbackTitle ?? (folder is null ? null : KnownModels.Describe(folder)),
             Precision = GuessPrecision(folder),
             Family = family,
         };

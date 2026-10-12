@@ -39,6 +39,8 @@
       <TextBlock Text="LANGUAGE" Style="{StaticResource SheetSectionStyle}" />
       <ComboBox x:Name="LanguageBox" HorizontalAlignment="Stretch" MinHeight="44"
                 AutomationProperties.Name="Recognition language" />
+      <TextBlock x:Name="LanguageHint" Visibility="Collapsed" Style="{StaticResource SheetHintStyle}"
+                 Text="Parakeet detects the language itself — this choice does not apply to it." />
 
       <TextBlock Text="OPTIONS" Style="{StaticResource SheetSectionStyle}" />
       <Grid ColumnSpacing="12" MinHeight="44" Margin="0,4,0,0">

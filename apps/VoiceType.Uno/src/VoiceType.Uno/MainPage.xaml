@@ -259,8 +259,13 @@
                       HorizontalAlignment="Stretch"
                       Header="Recognition"
                       AutomationProperties.Name="Recognition language"
+                      IsEnabled="{x:Bind ViewModel.IsLanguageChoiceAvailable, Mode=OneWay}"
                       ItemsSource="{x:Bind ViewModel.LanguageOptions}"
                       SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}" />
+            <TextBlock Margin="16,-4,16,0" TextWrapping="Wrap"
+                       Style="{StaticResource SecondaryLineStyle}"
+                       Text="Parakeet detects the language itself."
+                       Visibility="{x:Bind ViewModel.IsLanguageChoiceHintVisible, Mode=OneWay}" />
 
             <TextBlock Text="MODELS" Style="{StaticResource SectionHeaderStyle}" />
             <Button Style="{StaticResource PaneItemButtonStyle}"

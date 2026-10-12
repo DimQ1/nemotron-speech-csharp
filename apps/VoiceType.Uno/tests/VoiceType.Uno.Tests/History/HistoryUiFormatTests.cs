@@ -1,3 +1,4 @@
+using VoiceType.Uno.Services;
 using VoiceType.Uno.History;
 using Xunit;
 
@@ -125,5 +126,26 @@ public class HistoryUiFormatTests
         Assert.Equal("No recordings yet", HistoryUiFormat.ListSubtitle(0, 0));
         Assert.Equal("1 recording · 1 KB", HistoryUiFormat.ListSubtitle(1, 1024));
         Assert.Equal("24 recordings · 1.2 GB", HistoryUiFormat.ListSubtitle(24, 1_288_490_189));
+    }
+
+    [Fact]
+    public void LongModel_ShouldShowTheDefaultModelTitleInsteadOfItsFolderName()
+    {
+        var byFolderOnly = new ModelInfo { Folder = KnownModels.DefaultFolder, Title = KnownModels.DefaultFolder };
+        var untitled = new ModelInfo { Folder = KnownModels.DefaultFolder };
+        var custom = new ModelInfo { Folder = "my-own-model", Title = "my-own-model" };
+
+        Assert.Equal(KnownModels.DefaultTitle, HistoryUiFormat.LongModel(byFolderOnly));
+        Assert.Equal(KnownModels.DefaultTitle, HistoryUiFormat.LongModel(untitled));
+        Assert.Equal("my-own-model", HistoryUiFormat.LongModel(custom));
+        Assert.Equal("Unknown model", HistoryUiFormat.LongModel(null));
+    }
+
+    [Fact]
+    public void KnownModels_ShouldDescribeTheDefaultAndFallBackToTheCatalogOrFolder()
+    {
+        Assert.Equal(KnownModels.DefaultTitle, KnownModels.Describe(KnownModels.DefaultFolder.ToUpperInvariant()));
+        Assert.Equal("no model selected", KnownModels.Describe(null));
+        Assert.Equal("some-custom-folder", KnownModels.Describe("some-custom-folder"));
     }
 }

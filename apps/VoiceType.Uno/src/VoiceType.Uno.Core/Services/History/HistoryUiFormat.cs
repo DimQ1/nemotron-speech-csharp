@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.History;
 
@@ -52,10 +53,16 @@ public static class HistoryUiFormat
     }
 
     /// <summary>Full model title for version cards; folder as a fallback.</summary>
-    public static string LongModel(ModelInfo? model) =>
-        model?.Title is { Length: > 0 } title ? title
-        : model?.Folder is { Length: > 0 } folder ? folder
-        : "Unknown model";
+    public static string LongModel(ModelInfo? model)
+    {
+        if (model is null)
+            return "Unknown model";
+        // Versions saved before the default model had a title carry its folder name as the title.
+        var folder = model.Folder;
+        if (folder is { Length: > 0 } && (string.IsNullOrWhiteSpace(model.Title) || string.Equals(model.Title, folder, StringComparison.OrdinalIgnoreCase)))
+            return KnownModels.Describe(folder);
+        return model.Title is { Length: > 0 } title ? title : "Unknown model";
+    }
 
     /// <summary>Upper-case language code of a version (detected, else requested unless auto); empty when unknown.</summary>
     public static string LanguageCode(LanguageInfo? language)

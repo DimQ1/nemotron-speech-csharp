@@ -32,7 +32,7 @@ public static class AsrModelFamilies
 public sealed record InstalledAsrModel(string Folder, string Path, ModelDescriptor? Descriptor, string Family)
 {
     /// <summary>Catalog title, or the folder name for a custom model.</summary>
-    public string Title => Descriptor?.Title ?? Folder;
+    public string Title => Descriptor?.Title ?? KnownModels.Describe(Folder);
 
     /// <summary>Catalog WER (CV17 ru+en), percent; null when not measured.</summary>
     public double? WerPercent => Descriptor?.Research.Wer?.TotalPercent;

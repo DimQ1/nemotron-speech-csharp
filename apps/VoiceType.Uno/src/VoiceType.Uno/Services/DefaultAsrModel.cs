@@ -17,7 +17,7 @@ internal static class DefaultAsrModel
     public const string RepoId = "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-opset24-c056-cpu";
 
     /// <summary>Catalog-style title shown in the downloads list.</summary>
-    public const string Title = "Nemotron 3.5 ASR · INT4 · 1.12s window";
+    public const string Title = KnownModels.DefaultTitle;
 
     /// <summary>Folder the model is installed into (the repo name, as before).</summary>
     public static string FolderName => RepoId[(RepoId.LastIndexOf('/') + 1)..];
@@ -26,10 +26,7 @@ internal static class DefaultAsrModel
     /// Display name of an installed model folder: the default model is not part of the
     /// catalog, so <see cref="ModelCatalog.DescribeFolder"/> alone would show its raw folder name.
     /// </summary>
-    public static string Describe(string? folderName) =>
-        string.Equals(folderName, FolderName, StringComparison.OrdinalIgnoreCase)
-            ? Title
-            : ModelCatalog.DescribeFolder(folderName);
+    public static string Describe(string? folderName) => KnownModels.Describe(folderName);
 
     /// <summary>Full path of the installed model folder.</summary>
     public static string FolderPath(string modelsRoot) => Path.Combine(modelsRoot, FolderName);

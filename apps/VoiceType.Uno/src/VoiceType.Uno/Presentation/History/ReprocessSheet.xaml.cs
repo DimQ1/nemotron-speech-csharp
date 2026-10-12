@@ -241,8 +241,19 @@ public sealed partial class ReprocessSheet : ContentDialog
             return;
         }
         var measured = ReprocessPlan.MeasuredRealTimeFactor(model.Folder, _recordings);
-        var estimate = ReprocessPlan.Estimate(_recordings, measured, model.RealTimeFactor);
-        EstimateText.Text = $"≈ {JobDisplay.FormatSpan(estimate)} on this device · runs from the Queue";
+        // The catalog speeds were measured on a desktop: scale them by how slow this device proved to be.
+        var slowdown = ReprocessPlan.DeviceSlowdown(
+            _recordings,
+            folder => _models.FirstOrDefault(m => string.Equals(m.Model.Folder, folder, StringComparison.OrdinalIgnoreCase)).Model?.RealTimeFactor,
+            OperatingSystem.IsAndroid() ? ReprocessPlan.PhoneSlowdown : 1.0);
+        var estimate = ReprocessPlan.Estimate(_recordings, measured, model.RealTimeFactor, slowdown);
+        var approximate = measured is null ? "≈ " : "";
+        EstimateText.Text = $"{approximate}{JobDisplay.FormatSpan(estimate)} on this device · runs from the Queue";
+
+        // Parakeet has no language input: the choice would be silently ignored, so it is disabled.
+        var languageChoice = ReprocessPlan.SupportsLanguageChoice(model.Family);
+        LanguageBox.IsEnabled = languageChoice;
+        LanguageHint.Visibility = languageChoice ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void UpdateStartEnabled()

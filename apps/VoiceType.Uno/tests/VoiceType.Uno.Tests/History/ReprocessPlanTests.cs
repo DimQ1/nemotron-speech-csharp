@@ -46,6 +46,57 @@ public class ReprocessPlanTests
     }
 
     [Fact]
+    public void DeviceSlowdown_ShouldUseTheMedianRatioOfMeasuredToCatalogSpeed()
+    {
+        // catalog 0.1 x 1.25 overhead = 0.125 expected; measured 0.5 -> 4x slower, measured 0.375 -> 3x.
+        var a = Recording(100, Version("v2", VersionKinds.Rerecognized, "p", rtf: 0.5), Version("v3", VersionKinds.Rerecognized, "p", rtf: 0.375),
+            Version("v4", VersionKinds.Rerecognized, "p", rtf: 0.625));
+
+        var slowdown = ReprocessPlan.DeviceSlowdown([a], folder => folder == "p" ? 0.1 : null, fallback: 9);
+
+        Assert.Equal(4.0, slowdown, 6);
+    }
+
+    [Fact]
+    public void DeviceSlowdown_ShouldFallBackWhenNothingWasMeasuredHere()
+    {
+        var live = Recording(60, Version("v1", VersionKinds.Live, "p"));
+
+        Assert.Equal(4.0, ReprocessPlan.DeviceSlowdown([live], _ => 0.1, ReprocessPlan.PhoneSlowdown));
+        Assert.Equal(1.0, ReprocessPlan.DeviceSlowdown([], _ => 0.1, 1.0));
+    }
+
+    [Fact]
+    public void DeviceSlowdown_ShouldNeverPromiseFasterThanTheCatalog()
+    {
+        var a = Recording(60, Version("v2", VersionKinds.Rerecognized, "p", rtf: 0.05));
+
+        Assert.Equal(1.0, ReprocessPlan.DeviceSlowdown([a], _ => 0.1, 7.0));
+    }
+
+    [Fact]
+    public void Estimate_ShouldScaleTheCatalogSpeedByTheDeviceSlowdownOnlyWhenNothingWasMeasured()
+    {
+        var a = Recording(100);
+
+        var baseline = ReprocessPlan.Estimate([a], null, 0.1).TotalSeconds;
+
+        Assert.Equal(baseline * 4, ReprocessPlan.Estimate([a], null, 0.1, deviceSlowdown: 4).TotalSeconds, 6);
+        Assert.Equal(TimeSpan.FromSeconds(60), ReprocessPlan.Estimate([a], 0.6, 0.1, deviceSlowdown: 4));
+        // no catalog speed -> the generic default is used as is
+        Assert.Equal(ReprocessPlan.Estimate([a], null, null).TotalSeconds, ReprocessPlan.Estimate([a], null, null, 4).TotalSeconds);
+    }
+
+    [Theory]
+    [InlineData("ParakeetTdt", false)]
+    [InlineData("parakeettdt", false)]
+    [InlineData("Nemotron", true)]
+    [InlineData("Qwen3", true)]
+    [InlineData(null, true)]
+    public void SupportsLanguageChoice_ShouldBeFalseOnlyForParakeet(string? family, bool expected) =>
+        Assert.Equal(expected, ReprocessPlan.SupportsLanguageChoice(family));
+
+    [Fact]
     public void NextVersionId_ShouldFollowTheHighestId() =>
         Assert.Equal("v5", ReprocessPlan.NextVersionId(Recording(1, Version("v1", VersionKinds.Live, null), Version("v4", VersionKinds.Edited, null))));
 }

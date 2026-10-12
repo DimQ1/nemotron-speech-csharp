@@ -407,6 +407,15 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     public string ModelDisplayName => DefaultAsrModel.Describe(Settings.SelectedModel);
 
+    /// <summary>
+    /// False while Parakeet is the active model: it detects the language itself, so the Recognition
+    /// language choice would be silently ignored and is disabled.
+    /// </summary>
+    public bool IsLanguageChoiceAvailable =>
+        ReprocessPlan.SupportsLanguageChoice(LiveRecordingMetadata.DetectFamily(Settings.ModelPath));
+
+    public bool IsLanguageChoiceHintVisible => !IsLanguageChoiceAvailable;
+
     [ObservableProperty]
     private double _downloadProgress;
 
@@ -516,6 +525,8 @@ public sealed partial class MainViewModel : ObservableObject
 
         // A download adopted into the settings changes the configured model.
         OnPropertyChanged(nameof(ModelDisplayName));
+        OnPropertyChanged(nameof(IsLanguageChoiceAvailable));
+        OnPropertyChanged(nameof(IsLanguageChoiceHintVisible));
     }
 
     /// <summary>Enqueues the ASR model download into the shared queue (force re-download when partial).</summary>
@@ -1111,6 +1122,8 @@ public sealed partial class MainViewModel : ObservableObject
                 ProjectSettingsSnapshot(newSettings);
                 RefreshModelBanners();
                 OnPropertyChanged(nameof(ModelDisplayName));
+                OnPropertyChanged(nameof(IsLanguageChoiceAvailable));
+                OnPropertyChanged(nameof(IsLanguageChoiceHintVisible));
             });
             _ = ReregisterHotkeysAsync();
 
