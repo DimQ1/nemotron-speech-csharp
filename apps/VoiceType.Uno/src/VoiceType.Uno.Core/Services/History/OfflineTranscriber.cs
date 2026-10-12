@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using SpeechLib;
+using SpeechLib.Models;
 using SpeechLib.PostProcessing;
 
 namespace VoiceType.Uno.History;
@@ -29,6 +30,13 @@ public sealed class OfflineTranscriptionOptions
     /// only after the end-of-utterance pause.
     /// </summary>
     public bool RefineBounds { get; init; } = true;
+
+    /// <summary>
+    /// Use the exact word times of the recognizer's decoder when it provides them
+    /// (<see cref="ITimedUtteranceRecognizer"/>): segment bounds come from the first and last word and
+    /// the words are marked <c>decoder</c>. False = always estimate (comparison / fallback).
+    /// </summary>
+    public bool UseDecoderTimings { get; init; } = true;
 
     /// <summary>Called after every batch (on the calling thread).</summary>
     public Action<OfflineProgress>? Progress { get; init; }
@@ -138,7 +146,7 @@ public static partial class OfflineTranscriber
                 // back from the commit by the number of words.
                 long minimum = (long)(TextTokens.SplitWords(result.Final).Count * WordSeconds * state.Rate);
                 long start = utteranceStart ?? Math.Max(lastCommit, speechEnd - minimum);
-                state.AddSegment(result.Final, start, Math.Max(speechEnd, Math.Min(end, start + minimum)));
+                state.AddSegment(result.Final, start, Math.Max(speechEnd, Math.Min(end, start + minimum)), result.FinalWords);
                 lastCommit = end;
                 utteranceStart = null;
                 state.RaiseCheckpoint(end);
@@ -157,7 +165,8 @@ public static partial class OfflineTranscriber
         if (!string.IsNullOrWhiteSpace(tailText))
         {
             long start = utteranceStart ?? lastCommit;
-            state.AddSegment(tailText, start, Math.Max(start, state.Total));
+            state.AddSegment(tailText, start, Math.Max(start, state.Total),
+                string.IsNullOrWhiteSpace(tail.Final) ? tail.PartialWords : tail.FinalWords);
         }
         state.RaiseProgress(state.Total);
     }
@@ -265,7 +274,7 @@ public static partial class OfflineTranscriber
         public OfflineTranscriptionOptions Options { get; }
         public List<TranscriptSegment> Segments { get; } = [];
 
-        public void AddSegment(string rawText, long startSample, long endSample)
+        public void AddSegment(string rawText, long startSample, long endSample, IReadOnlyList<WordTiming>? decoderWords = null)
         {
             foreach (Match match in LanguageTag().Matches(rawText))
             {
@@ -294,13 +303,32 @@ public static partial class OfflineTranscriber
             double start = Seconds(startSample), end = Seconds(Math.Min(endSample, Total));
             if (end < start)
                 end = start;
+            var textWords = TextTokens.SplitWords(text);
+            var exact = Options.UseDecoderTimings
+                ? DecoderWordTimings.Map(decoderWords, textWords, (double)Start / Rate)
+                : null;
+            if (exact is not null)
+            {
+                // Decoder alignment: the segment spans its first to its last word.
+                Segments.Add(new TranscriptSegment
+                {
+                    Index = Segments.Count,
+                    Start = exact[0].Start,
+                    End = Math.Max(exact[0].Start, exact[^1].End),
+                    Text = text,
+                    Words = exact,
+                    WordTiming = WordTimingKinds.Decoder,
+                });
+                return;
+            }
+
             Segments.Add(new TranscriptSegment
             {
                 Index = Segments.Count,
                 Start = start,
                 End = end,
                 Text = text,
-                Words = TranscriptTimings.Distribute(TextTokens.SplitWords(text), start, end),
+                Words = TranscriptTimings.Distribute(textWords, start, end),
                 WordTiming = WordTimingKinds.Estimated,
             });
         }
@@ -388,6 +416,11 @@ internal static class SpeechBounds
         double prevEnd = 0;
         foreach (var segment in segments)
         {
+            if (segment.WordTiming == WordTimingKinds.Decoder)
+            {
+                prevEnd = segment.End; // exact word times: nothing to refine
+                continue;
+            }
             var voiced = Voiced(levels, F(segment.Start - ContextBeforeSeconds), F(segment.End + ContextAfterSeconds));
             if (voiced is null)
             {
