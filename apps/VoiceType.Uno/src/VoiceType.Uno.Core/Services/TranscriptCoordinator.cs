@@ -116,6 +116,19 @@ public sealed class TranscriptCoordinator : IDisposable
         ResumeAfterCurrentText();
     }
 
+    /// <summary>
+    /// Empties the transcript (the Clear button). Treated like a manual edit to an empty
+    /// field: a queued partial is dropped and what the recognizer has produced so far
+    /// stays consumed, so a running session continues into the empty field instead of
+    /// bringing the cleared text back.
+    /// </summary>
+    public void Clear()
+    {
+        DropPendingPartial();
+        _composer.ContinueAfter("", _lastRecognizerText);
+        TextChanged?.Invoke("");
+    }
+
     private void ApplyPartial(string recognizerText)
     {
         _lastRecognizerText = recognizerText;

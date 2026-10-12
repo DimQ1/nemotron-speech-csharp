@@ -11,4 +11,10 @@ public interface IPlatformTextInjector
 
     /// <summary>Copy text to the system clipboard without pasting.</summary>
     void CopyToClipboard(string text);
+
+    /// <summary>
+    /// False where text cannot be typed into other apps (Android, macOS): the
+    /// "Inject text" mode is hidden there.
+    /// </summary>
+    bool CanInject => true;
 }

@@ -1,0 +1,506 @@
+{
+  "phone-idle": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-recording-translate": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "target",
+      "translate-all",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-drawer": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "drawer",
+    "checked": [
+      "d-close",
+      "d-inject",
+      "d-translate",
+      "d-manual",
+      "d-lang",
+      "d-models",
+      "d-downloads",
+      "d-settings",
+      "d-help"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-banner-download": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 752
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "banner-dl",
+      "clear",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-manual-keyboard": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 480
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "target",
+      "translate-all",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-small-320": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "banner-dl",
+      "clear",
+      "target",
+      "translate-all",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-small-keyboard": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 308
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "target",
+      "translate-all",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-small-drawer": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "drawer",
+    "checked": [
+      "d-close",
+      "d-inject",
+      "d-translate",
+      "d-manual",
+      "d-lang",
+      "d-models",
+      "d-downloads",
+      "d-settings",
+      "d-help"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-split-screen": {
+    "viewport": "320x420",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 372
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "banner-dl",
+      "tab-transcript",
+      "tab-translation",
+      "clear",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-split-screen-tr": {
+    "viewport": "320x420",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 372
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "tab-transcript",
+      "tab-translation",
+      "translate-all",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-landscape": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "target",
+      "translate-all",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-landscape-drawer": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "drawer",
+    "checked": [
+      "d-close",
+      "d-inject",
+      "d-translate",
+      "d-manual",
+      "d-lang",
+      "d-models",
+      "d-downloads",
+      "d-settings",
+      "d-help"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-models-speech": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "models",
+    "checked": [
+      "m-back",
+      "mt-speech",
+      "mt-translation",
+      "mt-downloads",
+      "p4-use",
+      "p4-more",
+      "p32-cancel",
+      "p8-dl",
+      "n4-use",
+      "n4-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-models-translation": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "models",
+    "checked": [
+      "m-back",
+      "mt-speech",
+      "mt-translation",
+      "mt-downloads",
+      "g-cancel"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-models-downloads": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "models",
+    "checked": [
+      "m-back",
+      "mt-speech",
+      "mt-translation",
+      "mt-downloads",
+      "q-clear",
+      "q1-cancel",
+      "q2-cancel",
+      "q3-remove",
+      "q3-retry",
+      "q4-remove"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-small-models": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "models",
+    "checked": [
+      "m-back",
+      "mt-speech",
+      "mt-translation",
+      "mt-downloads",
+      "p4-use",
+      "p4-more",
+      "p32-cancel",
+      "p8-dl",
+      "n4-use",
+      "n4-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-landscape-models": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "models",
+    "checked": [
+      "m-back",
+      "mt-speech",
+      "mt-translation",
+      "mt-downloads",
+      "q-clear",
+      "q1-cancel",
+      "q2-cancel",
+      "q3-remove",
+      "q3-retry",
+      "q4-remove"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "tablet-portrait": {
+    "viewport": "800x1280",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 800,
+      "b": 1232
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "target",
+      "translate-all",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-recording": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "target",
+      "translate-all",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-drawer": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "drawer",
+    "checked": [
+      "d-close",
+      "d-inject",
+      "d-translate",
+      "d-manual",
+      "d-lang",
+      "d-models",
+      "d-downloads",
+      "d-settings",
+      "d-help"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-models": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "models",
+    "checked": [
+      "m-back",
+      "mt-speech",
+      "mt-translation",
+      "mt-downloads",
+      "p4-use",
+      "p4-more",
+      "p32-cancel",
+      "p8-dl",
+      "n4-use",
+      "n4-more"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-min-window": {
+    "viewport": "480x560",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 480,
+      "b": 560
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "banner-dl",
+      "clear",
+      "target",
+      "translate-all",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-dark": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "target",
+      "translate-all",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  }
+}

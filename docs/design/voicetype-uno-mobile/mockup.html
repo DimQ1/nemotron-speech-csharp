@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VoiceType Uno mockup</title>
+<!--
+  VoiceType.Uno — main screen mockup (mobile + desktop).
+
+  The layout mirrors the proposed XAML one-to-one (see README.md in this folder):
+    Grid rows  = top app bar / banners / content (*) / bottom command bar
+    SplitView  = left overlay drawer with modes, models, settings, help
+    SafeArea   = simulated with the ?top= ?bottom= ?left= ?right= ?kb= insets
+
+  Query parameters (all optional):
+    drawer=1     open the side menu
+    rec=1        recording state            muted=1   muted state
+    tr=1         translation on             inject=1  inject text on
+    manual=1     manual input on            banner=1  "model missing" banner
+    dl=1         download progress strip    long=1    long transcript
+    showtr=1     translation tab selected (compact-height tab mode)
+    models=1     Models screen; mtab=speech|translation|downloads
+    top/bottom/left/right=<px>  system bar insets (status bar, gesture/nav bar)
+    kb=<px>      on-screen keyboard height (SafeArea SoftInput)
+    check=1      run the layout check and print the JSON report into #check
+
+  The layout check asserts for every interactive element ([data-hit]):
+    - it lies fully inside the safe viewport (viewport minus insets/keyboard),
+    - its hit target is >= 44x44 px (WCAG 2.5.5 / Fluent / Material 48dp),
+    - it does not intersect any other interactive element,
+    - the Record button is horizontally centred (|dx| <= 1 px).
+-->
+<style>
+  :root {
+    --bg: #f3f3f3;
+    --surface: #ffffff;
+    --surface-2: #f9f9f9;
+    --stroke: #e0e0e0;
+    --text: #1b1b1b;
+    --text-2: #5f5f5f;
+    --accent: #005fb8;
+    --accent-text: #ffffff;
+    --rec: #c42b1c;
+    --rec-ring: rgba(196, 43, 28, .25);
+    --caution-bg: #fff4ce;
+    --caution: #9d5d00;
+    --scrim: rgba(0, 0, 0, .4);
+    --chip-on: #dbe9f8;
+    --shadow: 0 8px 24px rgba(0,0,0,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #202020; --surface: #2b2b2b; --surface-2: #323232; --stroke: #3d3d3d;
+      --text: #ffffff; --text-2: #c5c5c5; --accent: #60cdff; --accent-text: #000000;
+      --rec: #ff99a4; --rec-ring: rgba(255, 153, 164, .25);
+      --caution-bg: #433519; --caution: #fce100; --chip-on: #1f3a52;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #202020; --surface: #2b2b2b; --surface-2: #323232; --stroke: #3d3d3d;
+    --text: #ffffff; --text-2: #c5c5c5; --accent: #60cdff; --accent-text: #000000;
+    --rec: #ff99a4; --rec-ring: rgba(255, 153, 164, .25);
+    --caution-bg: #433519; --caution: #fce100; --chip-on: #1f3a52;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 14px/20px "Segoe UI Variable Text", "Segoe UI", Roboto, system-ui, sans-serif;
+  }
+  button { font: inherit; color: inherit; }
+  svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7;
+        stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* System bars (simulated, not part of the app) */
+  .sysbar { position: fixed; z-index: 50; background: rgba(0,0,0,.08); pointer-events: none; }
+  .sysbar.top { left: 0; right: 0; top: 0; height: var(--inset-top); }
+  .sysbar.bottom { left: 0; right: 0; bottom: 0; height: var(--inset-bottom); }
+  .sysbar.right { top: 0; bottom: 0; right: 0; width: var(--inset-right); }
+  .sysbar.left { top: 0; bottom: 0; left: 0; width: var(--inset-left); }
+  .keyboard { position: fixed; z-index: 49; left: 0; right: 0; bottom: 0; height: var(--kb);
+              background: repeating-linear-gradient(90deg, #cfd3d8 0 34px, #c3c7cc 34px 36px);
+              display: none; }
+  body.is-kb .keyboard { display: block; }
+
+  /* ── Page root: Grid with SafeArea padding (Insets="Left,Top,Right,Bottom,SoftInput") ── */
+  .page {
+    position: fixed; inset: 0;
+    padding: var(--inset-top) var(--inset-right) max(var(--inset-bottom), var(--kb)) var(--inset-left);
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;   /* app bar / banners / content / command bar */
+  }
+
+  /* ── Row 0: top app bar ── */
+  /* Explicit rows, like Grid.Row in XAML: an empty/collapsed row never shifts the others */
+  .appbar { grid-row: 1; } .banners { grid-row: 2; } .content { grid-row: 3; } .cmdbar { grid-row: 4; }
+  .appbar {
+    display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 8px;
+    min-height: 56px; padding: 4px 8px 4px 4px;
+  }
+  .icon-btn {
+    width: 48px; height: 48px; border: 0; border-radius: 8px; background: transparent;
+    display: inline-grid; place-items: center; cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--surface-2); }
+  .title { min-width: 0; }
+  .title h1 { margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; }
+  .title p { margin: 0; font-size: 12px; line-height: 16px; color: var(--text-2);
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .state-pill {
+    font-variant-numeric: tabular-nums;
+    display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px;
+    border-radius: 14px; background: var(--surface); border: 1px solid var(--stroke);
+    font-size: 12px; white-space: nowrap;
+  }
+  .state-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-2); }
+  body.is-rec .state-pill .dot { background: var(--rec); animation: pulse 1.2s infinite; }
+  body.is-rec.is-muted .state-pill .dot { background: var(--caution); animation: none; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  /* ── Row 1: banners + download strip ── */
+  .banners { display: grid; gap: 8px; padding: 0 16px; }
+  .banners:empty { padding: 0; }
+  .banner {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center;
+    padding: 8px 8px 8px 12px; border-radius: 8px;
+    background: var(--caution-bg); border: 1px solid var(--caution);
+  }
+  .banner p { margin: 0; font-size: 13px; }
+  .text-btn {
+    min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 6px;
+    border: 1px solid var(--stroke); background: var(--surface); cursor: pointer;
+  }
+  .progress { font-size: 12px; color: var(--text-2); }
+  .progress .bar { height: 4px; border-radius: 2px; background: var(--stroke); margin-top: 4px; overflow: hidden; }
+  .progress .bar i { display: block; height: 100%; width: 42%; background: var(--accent); }
+
+  /* ── Row 2: content (transcript + optional translation) ── */
+  .content {
+    min-height: 0; padding: 8px 16px; display: grid; gap: 8px;
+    grid-template-rows: 1fr;  /* transcript only */
+  }
+  body.is-tr .content { grid-template-rows: minmax(96px, 1fr) minmax(96px, .8fr); }
+  /* Wide layout (VisualState Wide, >= 840 px): transcript and translation side by side */
+  @media (min-width: 840px) {
+    body.is-tr .content { grid-template-rows: 1fr; grid-template-columns: 1fr 1fr; }
+    .content { padding: 8px 24px; }
+    .banners { padding: 0 24px; }
+  }
+  /* Short landscape (< 480 px tall): side by side as well, never stacked */
+  @media (max-height: 479px) and (min-width: 560px) {
+    body.is-tr .content { grid-template-rows: 1fr; grid-template-columns: 1fr 1fr; }
+  }
+  .tabs { display: none; }
+  /* Compact height on a narrow window (Android split screen, < 520 x 560 px):
+     two stacked cards do not fit, so they share one slot and the card header
+     turns into a Transcript | Translation segmented control */
+  @media (max-height: 520px) and (max-width: 559px) {
+    body.is-tr:not(.is-kb) .content { grid-template-rows: 1fr; grid-template-columns: none; }
+    body.is-tr:not(.is-kb) .card { grid-row: 1; grid-column: 1; }
+    body.is-tr:not(.is-kb) .card header { min-height: 52px; }
+    body.is-tr:not(.is-kb) .card header > span:first-child,
+    body.is-tr:not(.is-kb) .card header > .lang-chip { visibility: hidden; }
+    body.is-tr:not(.is-kb) .tabs { display: grid; grid-row: 1; grid-column: 1; align-self: start; z-index: 1;
+      grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; margin: 2px 50px 0 2px;
+      border-radius: 8px; background: var(--surface-2); }
+    .tabs button { min-height: 44px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 13px; }
+    body:not(.is-showtr) .tabs button:first-child, body.is-showtr .tabs button:last-child { background: var(--surface); font-weight: 600; }
+    body.is-tr:not(.is-kb):not(.is-showtr) .translation { display: none; }
+    body.is-tr:not(.is-kb).is-showtr .transcript { display: none; }
+  }
+  /* Short viewport: one-line banner, progress strip without the caption */
+  @media (max-height: 520px) {
+    .banner { padding: 2px 2px 2px 12px; }
+    .banner p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .progress { font-size: 0; }
+    .progress .bar { margin-top: 0; }
+  }
+  .card {
+    min-height: 0; display: grid; grid-template-rows: auto 1fr; border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--stroke); overflow: hidden;
+  }
+  .card header {
+    display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 4px 0 12px;
+    font-size: 12px; color: var(--text-2); border-bottom: 1px solid var(--stroke);
+  }
+  .card header .sp { flex: 1; }
+  .card header .icon-btn { width: 44px; height: 44px; }
+  .card .body { overflow: auto; padding: 12px; font-size: 15px; line-height: 22px; }
+  .card .body .partial { color: var(--text-2); }
+  .placeholder { color: var(--text-2); }
+  body.is-manual .transcript { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .lang-chip {
+    display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 10px;
+    border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 12px; color: var(--text);
+  }
+
+  /* ── Row 3: bottom command bar — Grid columns "*, Auto, *" keep Record centred ── */
+  .cmdbar {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    column-gap: 24px; padding: 8px 16px 12px;
+    background: var(--bg);
+  }
+  .cmdbar .left { justify-self: end; }
+  .cmdbar .right { justify-self: start; }
+  .round-btn {
+    width: 48px; height: 48px; border-radius: 24px; border: 1px solid var(--stroke);
+    background: var(--surface); display: grid; place-items: center; cursor: pointer;
+  }
+  .round-btn[disabled] { opacity: .4; cursor: default; }
+  .record {
+    width: 72px; height: 72px; border-radius: 36px; border: 0; cursor: pointer;
+    background: var(--accent); color: var(--accent-text);
+    display: grid; place-items: center; box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  }
+  .record svg { width: 30px; height: 30px; }
+  body.is-rec .record { background: var(--rec); box-shadow: 0 0 0 8px var(--rec-ring); }
+  .record-wrap { display: grid; justify-items: center; gap: 4px; }
+  .record-caption { font-size: 12px; line-height: 16px; color: var(--text-2); white-space: nowrap; }
+  /* Short viewport (phone landscape, < 480 px): compact app bar and a 56 px Record button */
+  @media (max-height: 479px) {
+    .appbar { min-height: 48px; padding-top: 0; padding-bottom: 0; }
+    .cmdbar { padding: 4px 16px 8px; }
+    .record { width: 56px; height: 56px; border-radius: 28px; }
+    .record-caption { display: none; }
+  }
+  /* Same compact state while the on-screen keyboard is open (SafeArea SoftInput) */
+  body.is-kb .appbar { min-height: 48px; padding-top: 0; padding-bottom: 0; }
+  body.is-kb .cmdbar { padding: 4px 16px 8px; }
+  body.is-kb .record { width: 56px; height: 56px; border-radius: 28px; }
+  body.is-kb .record-caption { display: none; }
+  /* Keyboard open + translation on: the translation card collapses to its header
+     so the transcript being edited keeps the space */
+  body.is-kb.is-tr .content { grid-template-rows: 1fr auto; grid-template-columns: none; }
+  body.is-kb .translation { grid-template-rows: auto; }
+  body.is-kb .translation .body { display: none; }
+  body.is-kb .translation header { border-bottom: 0; }
+  .only-rec { display: none; } body.is-rec .only-rec { display: block; }
+  body.is-rec .only-idle { display: none; }
+
+  /* ── SplitView pane: overlay drawer ── */
+  .scrim { position: fixed; inset: 0; z-index: 20; background: var(--scrim); display: none; }
+  .drawer {
+    position: fixed; z-index: 21; top: 0; bottom: 0; left: 0;
+    width: min(320px, 85vw);
+    padding: var(--inset-top) 0 var(--inset-bottom) var(--inset-left);
+    background: var(--surface); box-shadow: var(--shadow);
+    transform: translateX(-105%);
+    display: grid; grid-template-rows: auto 1fr auto;
+  }
+  body.is-drawer .scrim { display: block; }
+  body.is-drawer .drawer { transform: none; }
+  body.is-anim .drawer { transition: transform .2s ease; }
+  .drawer .head { display: grid; grid-template-columns: 48px 1fr; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; min-height: 56px; }
+  .drawer .head b { font-size: 16px; }
+  .drawer .scroll { overflow: auto; padding: 0 8px 8px; }
+  .drawer h2 { margin: 16px 12px 4px; font-size: 12px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+  .item {
+    width: 100%; min-height: 48px; display: grid; grid-template-columns: 24px 1fr auto;
+    align-items: center; gap: 12px; padding: 4px 12px; border: 0; border-radius: 6px;
+    background: transparent; text-align: left; cursor: pointer;
+  }
+  .item:hover { background: var(--surface-2); }
+  .item small { display: block; font-size: 12px; line-height: 16px; color: var(--text-2); }
+  .switch { width: 40px; height: 20px; border-radius: 10px; border: 1px solid var(--text-2); position: relative; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-2); }
+  .item.on .switch { background: var(--accent); border-color: var(--accent); }
+  .item.on .switch::after { left: 23px; background: var(--accent-text); }
+  .badge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: var(--accent-text); font-size: 11px; line-height: 20px; text-align: center; }
+  .sub { padding-left: 36px; }
+  .select { display: grid; grid-template-columns: 1fr auto; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--stroke); background: var(--surface-2); }
+  .drawer .foot { border-top: 1px solid var(--stroke); padding: 4px 8px; }
+
+
+  /* -- Models screen: full-screen page (Frame navigation), replaces the
+        "Speech models" and "Model downloads" dialogs -- */
+  .models {
+    position: fixed; inset: 0; z-index: 30; background: var(--bg); display: none;
+    padding: var(--inset-top) var(--inset-right) var(--inset-bottom) var(--inset-left);
+    grid-template-rows: auto auto 1fr;
+  }
+  body.is-models .models { display: grid; }
+  .models .appbar { grid-row: auto; }
+  .m-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 2px; margin: 0 0 8px;
+            width: calc(100% - 32px); max-width: 760px; justify-self: center;
+            border-radius: 8px; background: var(--surface-2); border: 1px solid var(--stroke); }
+  .m-tabs button { min-height: 44px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 13px; }
+  .m-tabs button.sel { background: var(--surface); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .m-scroll { min-height: 0; overflow: auto; padding: 0 16px 16px; }
+  .m-inner { max-width: 760px; margin: 0 auto; }
+  .m-pane { display: none; gap: 8px; }
+  body.mt-speech .m-pane.speech, body.mt-translation .m-pane.translation, body.mt-downloads .m-pane.downloads { display: grid; }
+  .hint { padding: 10px 12px; border-radius: 8px; background: var(--chip-on); font-size: 13px; line-height: 18px; }
+  .hint b { display: block; }
+  .model { border-radius: 8px; background: var(--surface); border: 1px solid var(--stroke); padding: 12px; display: grid; gap: 8px; align-content: start; }
+  .model.inuse { border-color: var(--accent); }
+  .model h3 { margin: 0; font-size: 15px; line-height: 20px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 11px; line-height: 16px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--stroke); white-space: nowrap; }
+  .chip.acc { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .chip.rec { background: var(--chip-on); border-color: transparent; font-weight: 600; }
+  .tagline { margin: 0; font-size: 13px; color: var(--text-2); }
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .metrics div { font-size: 11px; line-height: 15px; color: var(--text-2); }
+  .metrics b { display: block; font-size: 13px; line-height: 18px; color: var(--text); font-weight: 600; }
+  .m-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .m-actions .grow { flex: 1; font-size: 12px; color: var(--text-2); min-width: 0; }
+  .btn { min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid var(--stroke);
+         background: var(--surface-2); cursor: pointer; white-space: nowrap; }
+  .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  .btn[disabled] { opacity: .5; cursor: default; }
+  .dl { display: grid; gap: 4px; }
+  .dl .bar { height: 4px; border-radius: 2px; background: var(--stroke); overflow: hidden; }
+  .dl .bar i { display: block; height: 100%; background: var(--accent); }
+  .dl .row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--text-2); }
+  .err { color: var(--rec); }
+  .m-foot { margin: 0; font-size: 11px; line-height: 15px; color: var(--text-2); padding: 4px 2px; }
+  .total { border-radius: 8px; background: var(--surface); border: 1px solid var(--stroke); padding: 12px; display: grid; gap: 6px; }
+  .m-pane .cards { display: grid; gap: 8px; }
+  /* Two columns of model cards on wide windows */
+  @media (min-width: 840px) { .m-pane.speech .cards { grid-template-columns: 1fr 1fr; } }
+
+  #check { display: none; }
+</style>
+</head>
+<body>
+<div class="sysbar top"></div><div class="sysbar bottom"></div>
+<div class="sysbar left"></div><div class="sysbar right"></div>
+<div class="keyboard"></div>
+
+<div class="page">
+  <!-- Row 0: top app bar -->
+  <header class="appbar">
+    <button class="icon-btn" data-hit="menu" aria-label="Open menu" onclick="toggle('drawer')">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <div class="title">
+      <h1>VoiceType</h1>
+      <p id="subtitle">Parakeet TDT INT4 · Auto</p>
+    </div>
+    <span class="state-pill" role="status" aria-live="polite"><span class="dot"></span><span id="state">Ready</span></span>
+  </header>
+
+  <!-- Row 1: banners / download progress -->
+  <section class="banners" id="banners"></section>
+
+  <!-- Row 2: transcript + translation -->
+  <main class="content">
+    <!-- Compact height (split screen): transcript and translation share one slot -->
+    <div class="tabs" role="tablist">
+      <button role="tab" data-hit="tab-transcript" onclick="setTab(false)">Transcript</button>
+      <button role="tab" data-hit="tab-translation" onclick="setTab(true)">Translation</button>
+    </div>
+    <article class="card transcript">
+      <header>
+        <span id="tLabel">Transcript</span><span class="sp"></span>
+        <button class="icon-btn" data-hit="clear" aria-label="Clear transcript">
+          <svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>
+        </button>
+      </header>
+      <div class="body" id="transcript"></div>
+    </article>
+    <article class="card translation" id="translationCard" hidden>
+      <header>
+        <span>Translation</span>
+        <button class="lang-chip" data-hit="target" aria-label="Translation target language">→ RU
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M6 9l6 6 6-6"/></svg></button>
+        <span class="sp"></span>
+        <button class="icon-btn" data-hit="translate-all" aria-label="Translate all">
+          <svg viewBox="0 0 24 24"><path d="M4 5h9M8.5 3v2M6 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/></svg>
+        </button>
+      </header>
+      <div class="body" id="translation"></div>
+    </article>
+  </main>
+
+  <!-- Row 3: bottom command bar -->
+  <footer class="cmdbar">
+    <button class="round-btn left" data-hit="mute" aria-label="Mute microphone" id="mute">
+      <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path class="only-rec" d="M4 4l16 16"/></svg>
+    </button>
+    <div class="record-wrap">
+      <button class="record" data-hit="record" aria-label="Start recording" id="record" onclick="toggle('rec')">
+        <svg viewBox="0 0 24 24" class="only-idle"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        <svg viewBox="0 0 24 24" class="only-rec" style="fill:currentColor;stroke:none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+      </button>
+      <span class="record-caption" id="caption">Tap to start</span>
+    </div>
+    <button class="round-btn right" data-hit="copy" aria-label="Copy transcript">
+      <svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>
+    </button>
+  </footer>
+</div>
+
+<!-- SplitView pane (DisplayMode=Overlay, light-dismiss) -->
+<div class="scrim" onclick="toggle('drawer')"></div>
+<nav class="drawer" aria-label="Main menu">
+  <div class="head">
+    <button class="icon-btn" data-hit="d-close" data-drawer aria-label="Close menu" onclick="toggle('drawer')">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <b>VoiceType</b>
+  </div>
+  <div class="scroll">
+    <h2>Mode</h2>
+    <button class="item" data-hit="d-inject" data-drawer data-mode="inject" onclick="toggle('inject')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h1M11 10h1M15 10h2M7 14h10"/></svg>
+      <span>Inject text<small>Type each phrase into the focused app</small></span><span class="switch"></span>
+    </button>
+    <button class="item" data-hit="d-translate" data-drawer data-mode="tr" onclick="toggle('tr')">
+      <svg viewBox="0 0 24 24"><path d="M4 5h9M8.5 3v2M6 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/></svg>
+      <span>Live translation<small>Gemma 4, on-device</small></span><span class="switch"></span>
+    </button>
+    <button class="item" data-hit="d-manual" data-drawer data-mode="manual" onclick="toggle('manual')">
+      <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>
+      <span>Manual input<small>Type or edit the transcript</small></span><span class="switch"></span>
+    </button>
+    <h2>Language</h2>
+    <div class="select" data-hit="d-lang" data-drawer>Recognition: Auto <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M6 9l6 6 6-6"/></svg></div>
+    <h2>Models</h2>
+    <button class="item" data-hit="d-models" data-drawer onclick="openModels('speech')">
+      <svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>
+      <span>Speech models<small>Parakeet TDT INT4 (recommended)</small></span><span></span>
+    </button>
+    <button class="item" data-hit="d-downloads" data-drawer onclick="openModels('downloads')">
+      <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+      <span>Downloads</span><span class="badge" id="dlBadge" hidden>1</span>
+    </button>
+  </div>
+  <div class="foot">
+    <button class="item" data-hit="d-settings" data-drawer>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>
+      <span>Settings</span><span></span>
+    </button>
+    <button class="item" data-hit="d-help" data-drawer>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg>
+      <span>Help</span><span></span>
+    </button>
+  </div>
+</nav>
+
+
+<!-- Models screen (full page): Speech | Translation | Downloads -->
+<section class="models" aria-label="Models">
+  <header class="appbar">
+    <button class="icon-btn" data-hit="m-back" aria-label="Back" onclick="toggle('models')">
+      <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="title"><h1>Models</h1><p>2 installed &middot; 1.4 GB used</p></div>
+    <span></span>
+  </header>
+  <div class="m-tabs" role="tablist">
+    <button role="tab" data-hit="mt-speech" data-tab="speech" onclick="setMTab('speech')">Speech</button>
+    <button role="tab" data-hit="mt-translation" data-tab="translation" onclick="setMTab('translation')">Translation</button>
+    <button role="tab" data-hit="mt-downloads" data-tab="downloads" onclick="setMTab('downloads')">Downloads &middot; 2</button>
+  </div>
+  <div class="m-scroll"><div class="m-inner">
+    <div class="m-pane speech">
+      <div class="hint"><b>Which model should I download?</b>Parakeet TDT INT4 &mdash; best accuracy with live text at a compact size. Pick INT8 for weaker CPUs.</div>
+      <div class="cards">
+        <article class="model inuse">
+          <h3>Parakeet TDT 0.6B v3</h3>
+          <div class="chips"><span class="chip">INT4</span><span class="chip rec">&#9733; Recommended</span><span class="chip acc">&#9679; In use</span></div>
+          <p class="tagline">Recommended &mdash; best accuracy, live text</p>
+          <div class="metrics"><div>Accuracy<b>WER 8.1%</b></div><div>Speed<b>&asymp;5.4&times; real-time</b></div><div>Download<b>697 MB</b></div></div>
+          <div class="m-actions"><span class="grow">Installed</span><button class="btn" disabled data-hit="p4-use">In use</button><button class="icon-btn" data-hit="p4-more" aria-label="More actions"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div>
+        </article>
+        <article class="model ">
+          <h3>Parakeet TDT 0.6B v3</h3>
+          <div class="chips"><span class="chip">FP32</span><span class="chip">most accurate</span></div>
+          <p class="tagline">Best accuracy, full precision</p>
+          <div class="metrics"><div>Accuracy<b>WER 8.0%</b></div><div>Speed<b>&asymp;5.3&times; real-time</b></div><div>Download<b>2.4 GB</b></div></div>
+          <div class="dl"><div class="bar"><i style="width:42%"></i></div><div class="row"><span>42% &middot; 1.0 / 2.4 GB</span><span>3.1 MB/s &middot; 7 min</span></div></div>
+          <div class="m-actions"><span class="grow">Downloading&hellip;</span><button class="btn" data-hit="p32-cancel">Cancel</button></div>
+        </article>
+        <article class="model ">
+          <h3>Parakeet TDT 0.6B v3</h3>
+          <div class="chips"><span class="chip">INT8</span><span class="chip">fastest</span></div>
+          <p class="tagline">Fastest Parakeet</p>
+          <div class="metrics"><div>Accuracy<b>WER 12.2%</b></div><div>Speed<b>&asymp;7.1&times; real-time</b></div><div>Download<b>640 MB</b></div></div>
+          <div class="m-actions"><span class="grow"></span><button class="btn primary" data-hit="p8-dl">Download</button></div>
+        </article>
+        <article class="model ">
+          <h3>Nemotron 3.5 ASR</h3>
+          <div class="chips"><span class="chip">INT4</span><span class="chip">1.12 s window</span></div>
+          <p class="tagline">Higher quality, low CPU load</p>
+          <div class="metrics"><div>Accuracy<b>WER 19.2%</b></div><div>Speed<b>&asymp;7.0&times; real-time</b></div><div>Download<b>757 MB</b></div></div>
+          <div class="m-actions"><span class="grow">Installed</span><button class="btn" data-hit="n4-use">Use</button><button class="icon-btn" data-hit="n4-more" aria-label="More actions"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div>
+        </article>
+      </div>
+      <p class="m-foot">Accuracy: word error rate on Common Voice 17 ru/en (lower is better). Speed: CPU throughput. Up to 2 downloads run in parallel; a downloaded model becomes the active one.</p>
+    </div>
+
+    <div class="m-pane translation">
+      <div class="hint"><b>Live translation runs on the device</b>Gemma 4 E2B (LiteRT-LM) translates the transcript sentence by sentence; nothing is sent to a server.</div>
+      <article class="model">
+        <h3>Gemma 4 E2B</h3>
+        <div class="chips"><span class="chip">LiteRT-LM</span><span class="chip">CPU</span></div>
+        <p class="tagline">gemma-4-E2B-it.litertlm &middot; litert-community</p>
+        <div class="dl"><div class="row"><span>Queued &mdash; starts when a download slot is free</span></div></div>
+        <div class="m-actions"><span class="grow"></span><button class="btn" data-hit="g-cancel">Cancel</button></div>
+      </article>
+    </div>
+
+    <div class="m-pane downloads">
+      <div class="total">
+        <div class="dl"><div class="row"><b style="color:var(--text)">2 active &middot; 1 failed</b><span>1.0 / 2.4 GB</span></div><div class="bar"><i style="width:42%"></i></div></div>
+        <div class="m-actions"><span class="grow">Up to 2 downloads in parallel</span><button class="btn" data-hit="q-clear">Clear finished</button></div>
+      </div>
+      <article class="model">
+        <h3>Parakeet TDT 0.6B v3 &middot; FP32</h3>
+        <div class="dl"><div class="bar"><i style="width:42%"></i></div><div class="row"><span>42% &middot; encoder.onnx.data</span><span>1.0 / 2.4 GB</span></div></div>
+        <div class="m-actions"><span class="grow">Downloading</span><button class="btn" data-hit="q1-cancel">Cancel</button></div>
+      </article>
+      <article class="model">
+        <h3>Translation model &middot; Gemma 4 E2B</h3>
+        <div class="dl"><div class="row"><span>Queued</span></div></div>
+        <div class="m-actions"><span class="grow"></span><button class="btn" data-hit="q2-cancel">Cancel</button></div>
+      </article>
+      <article class="model">
+        <h3>Nemotron 3.5 ASR &middot; INT4 &middot; 0.56 s</h3>
+        <div class="dl"><div class="row"><span class="err">Failed &mdash; network error, partial files kept</span></div></div>
+        <div class="m-actions"><span class="grow"></span><button class="btn" data-hit="q3-remove">Remove</button><button class="btn primary" data-hit="q3-retry">Retry</button></div>
+      </article>
+      <article class="model">
+        <h3>Parakeet TDT 0.6B v3 &middot; INT4</h3>
+        <div class="dl"><div class="row"><span>Completed &middot; 697 MB</span></div></div>
+        <div class="m-actions"><span class="grow"></span><button class="btn" data-hit="q4-remove">Remove</button></div>
+      </article>
+    </div>
+  </div></div>
+</section>
+
+<pre id="check"></pre>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const flags = ['drawer','rec','muted','tr','inject','manual','banner','dl','long','showtr','models'];
+  const px = k => (parseInt(q.get(k) || '0', 10) || 0) + 'px';
+  const root = document.documentElement.style;
+  root.setProperty('--inset-top', px('top'));
+  root.setProperty('--inset-bottom', px('bottom'));
+  root.setProperty('--inset-left', px('left'));
+  root.setProperty('--inset-right', px('right'));
+  root.setProperty('--kb', px('kb'));
+  if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme');
+  for (const f of flags) if (q.get(f) === '1') document.body.classList.add('is-' + f);
+  if (parseInt(q.get('kb') || '0', 10) > 0) document.body.classList.add('is-kb');
+
+  const SHORT = 'The meeting starts at ten. Please bring the quarterly report and the updated budget.';
+  const LONG = Array(8).fill(SHORT + ' We will also review the hiring plan for the next sprint.').join(' ');
+  const SHORT_RU = 'Встреча начнётся в десять. Пожалуйста, возьмите квартальный отчёт и обновлённый бюджет.';
+
+  function render() {
+    const b = document.body.classList;
+    const has = c => b.contains('is-' + c);
+    document.getElementById('translationCard').hidden = !has('tr');
+    // Continuous recording: one tap starts, one tap stops — no press-and-hold.
+    // The elapsed time makes it obvious that capture keeps running on its own.
+    document.getElementById('state').textContent = has('rec') ? (has('muted') ? 'Muted 12:34' : 'Rec 12:34') : 'Ready';
+    document.getElementById('caption').textContent = has('rec') ? (has('muted') ? 'Muted · tap to resume' : 'Tap to stop') : 'Tap to start';
+    document.getElementById('record').setAttribute('aria-label', has('rec') ? 'Stop recording' : 'Start recording');
+    document.getElementById('mute').disabled = !has('rec');
+    document.getElementById('tLabel').textContent = has('manual') ? 'Transcript · editing' : 'Transcript';
+    const modes = ['Parakeet TDT INT4', 'Auto'];
+    if (has('tr')) modes.push('→ RU');
+    if (has('inject')) modes.push('Inject');
+    document.getElementById('subtitle').textContent = modes.join(' · ');
+    for (const el of document.querySelectorAll('[data-mode]')) el.classList.toggle('on', has(el.dataset.mode));
+
+    const t = document.getElementById('transcript');
+    const text = has('long') ? LONG : (has('rec') || has('tr') ? SHORT : '');
+    t.innerHTML = text
+      ? text + (has('rec') && !has('muted') ? ' <span class="partial">we will also…</span>' : '')
+      : '<span class="placeholder">Press the microphone and start speaking.</span>';
+    document.getElementById('translation').innerHTML = has('long') ? Array(6).fill(SHORT_RU).join(' ') : SHORT_RU;
+
+    const banners = [];
+    if (has('banner')) banners.push('<div class="banner"><span>ⓘ</span><p>ASR model is not available — download it to start dictation.</p><button class="text-btn" data-hit="banner-dl">Download</button></div>');
+    if (has('dl')) banners.push('<div class="progress">Downloading Parakeet TDT INT4 · 42% · 180 / 430 MB<div class="bar"><i></i></div></div>');
+    document.getElementById('banners').innerHTML = banners.join('');
+    document.getElementById('dlBadge').hidden = !has('dl');
+  }
+  function setMTab(t) {
+    for (const c of ['speech', 'translation', 'downloads']) document.body.classList.toggle('mt-' + c, c === t);
+    for (const b of document.querySelectorAll('.m-tabs button')) b.classList.toggle('sel', b.dataset.tab === t);
+  }
+  function openModels(t) { document.body.classList.remove('is-drawer'); document.body.classList.add('is-models'); setMTab(t); }
+  setMTab(q.get('mtab') || 'speech');
+  function setTab(tr) { document.body.classList.toggle('is-showtr', tr); }
+  function toggle(f) { document.body.classList.add('is-anim'); document.body.classList.toggle('is-' + f); render(); }
+  render();
+
+  // ── Layout check: bounds, hit-target size, overlaps, centring ──────────────
+  function check() {
+    const vw = innerWidth, vh = innerHeight;
+    const n = k => parseInt(q.get(k) || '0', 10) || 0;
+    const safe = { l: n('left'), t: n('top'), r: vw - n('right'), b: vh - Math.max(n('bottom'), n('kb')) };
+    const modelsOpen = document.body.classList.contains('is-models');
+    const drawerOpen = !modelsOpen && document.body.classList.contains('is-drawer');
+    const visible = el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+    // Only the top-most layer is interactive: Models page > drawer > main screen.
+    const layer = el => el.closest('.models') ? 'models' : el.closest('.drawer') ? 'drawer' : 'main';
+    const active = modelsOpen ? 'models' : drawerOpen ? 'drawer' : 'main';
+    const els = [...document.querySelectorAll('[data-hit]')]
+      .filter(visible)
+      .filter(el => layer(el) === active);
+    const issues = [];
+    // Elements inside scrollable panes may legitimately extend past the pane;
+    // they only need to be reachable by scrolling, so the bounds test uses the
+    // scroll container's rect for them.
+    const scrollParent = el => { for (let p = el.parentElement; p; p = p.parentElement) { const s = getComputedStyle(p).overflowY; if ((s === 'auto' || s === 'scroll') && p.scrollHeight > p.clientHeight) return p; } return null; };
+
+    const clip = (r, el) => { const sp = scrollParent(el); if (!sp) return r; const c = sp.getBoundingClientRect();
+      const l = Math.max(r.left, c.left), t = Math.max(r.top, c.top), rr = Math.min(r.right, c.right), b = Math.min(r.bottom, c.bottom);
+      return { left: l, top: t, right: Math.max(l, rr), bottom: Math.max(t, b), width: Math.max(0, rr - l), height: Math.max(0, b - t) }; };
+    // Overlaps are tested on the visible part only: rows scrolled out of a pane are clipped by it.
+    const rects = els.map(el => ({ id: el.dataset.hit, r: el.getBoundingClientRect(), v: clip(el.getBoundingClientRect(), el), el }));
+
+    for (const { id, r, el } of rects) {
+      const sp = scrollParent(el);
+      const box = sp ? sp.getBoundingClientRect() : r;
+      const tol = 0.5;
+      if (!sp && (r.left < safe.l - tol || r.top < safe.t - tol || r.right > safe.r + tol || r.bottom > safe.b + tol))
+        issues.push(`${id}: outside safe area [${r.left|0},${r.top|0},${r.right|0},${r.bottom|0}] vs [${safe.l},${safe.t},${safe.r},${safe.b}]`);
+      if (sp && (box.left < safe.l - tol || box.top < safe.t - tol || box.right > safe.r + tol || box.bottom > safe.b + tol))
+        issues.push(`${id}: scroll container outside safe area`);
+      if (r.width < 44 - tol || r.height < 44 - tol)
+        issues.push(`${id}: hit target ${r.width.toFixed(0)}x${r.height.toFixed(0)} < 44x44`);
+    }
+    for (let i = 0; i < rects.length; i++)
+      for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i].v, c = rects[j].v;
+        const ox = Math.min(a.right, c.right) - Math.max(a.left, c.left);
+        const oy = Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top);
+        if (ox > 0.5 && oy > 0.5) issues.push(`${rects[i].id} overlaps ${rects[j].id} (${ox.toFixed(0)}x${oy.toFixed(0)})`);
+      }
+    if (active === 'main') {
+      const rec = rects.find(x => x.id === 'record');
+      if (rec) {
+        const dx = (rec.r.left + rec.r.right) / 2 - (safe.l + safe.r) / 2;
+        if (Math.abs(dx) > 1) issues.push(`record: not centred (dx=${dx.toFixed(1)})`);
+      }
+      // Content must keep usable height for the transcript.
+      const tc = document.querySelector('.transcript');
+      const t = visible(tc) ? tc.getBoundingClientRect() : { height: Infinity };
+      if (t.height < 96) issues.push(`transcript card too short: ${t.height.toFixed(0)} px`);
+      // Cards must stay between the app bar and the command bar (no overlap, no clipping).
+      const top = document.querySelector('.appbar').getBoundingClientRect().bottom;
+      const bottom = document.querySelector('.cmdbar').getBoundingClientRect().top;
+      for (const c of document.querySelectorAll('.card')) {
+        if (!visible(c)) continue;
+        const r = c.getBoundingClientRect();
+        if (r.top < top - 0.5 || r.bottom > bottom + 0.5) issues.push(`${c.className}: overlaps a bar [${r.top|0}-${r.bottom|0}] vs [${top|0}-${bottom|0}]`);
+        const body = c.querySelector('.body');
+        if (body && visible(body) && body.getBoundingClientRect().height < 40) issues.push(`${c.className}: text area ${body.getBoundingClientRect().height|0} px < 40`);
+      }
+    }
+    return { viewport: `${vw}x${vh}`, safe, layer: active, checked: rects.map(x => x.id), issues, ok: issues.length === 0 };
+  }
+  if (q.get('check') === '1') {
+    const report = JSON.stringify(check());
+    document.getElementById('check').textContent = report;
+    if (parent !== window) parent.postMessage(report, '*');
+  }
+</script>
+</body>
+</html>

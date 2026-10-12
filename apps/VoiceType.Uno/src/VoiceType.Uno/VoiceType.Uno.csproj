@@ -15,16 +15,16 @@
     <UnoSingleProject>true</UnoSingleProject>
 
     <!-- Display name -->
-    <ApplicationTitle>VoiceType.Uno</ApplicationTitle>
+    <ApplicationTitle>VoiceType</ApplicationTitle>
     <!-- App Identifier -->
     <ApplicationId>com.companyname.voicetype-uno</ApplicationId>
     <!-- Versions -->
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
     <!-- Package Publisher -->
-    <ApplicationPublisher>VoiceType.Uno</ApplicationPublisher>
+    <ApplicationPublisher>VoiceType</ApplicationPublisher>
     <!-- Package Description -->
-    <Description>VoiceType.Uno powered by Uno Platform.</Description>
+    <Description>VoiceType — on-device speech-to-text dictation.</Description>
 
     <!--
       UnoFeatures are used to quickly add and manage features enabled for your app.

@@ -6,5 +6,10 @@
   <uses-permission android:name="android.permission.INTERNET" />
   <!-- Post notifications (Android 13+), used for recording status -->
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- Keep recording with the screen off / another app in front: RecordingService is a
+       foreground service of type "microphone" holding a partial wake lock -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
   <application android:allowBackup="true" android:supportsRtl="true"></application>
 </manifest>

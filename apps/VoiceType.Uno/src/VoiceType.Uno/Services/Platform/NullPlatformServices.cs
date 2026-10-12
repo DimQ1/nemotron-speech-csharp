@@ -9,6 +9,18 @@ namespace VoiceType.Uno.Services.Platform;
 /// </summary>
 public sealed class NullTextInjector : IPlatformTextInjector
 {
+    public bool CanInject => false;
+
     public void Inject(string text) { }
-    public void CopyToClipboard(string text) { }
+
+    /// <summary>
+    /// Copies through the WinUI clipboard API, which Uno implements on every head
+    /// (Android ClipboardManager included). Must be called on the UI thread.
+    /// </summary>
+    public void CopyToClipboard(string text)
+    {
+        var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        package.SetText(text);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+    }
 }

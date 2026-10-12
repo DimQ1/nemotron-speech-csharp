@@ -22,6 +22,15 @@ internal static class DefaultAsrModel
     /// <summary>Folder the model is installed into (the repo name, as before).</summary>
     public static string FolderName => RepoId[(RepoId.LastIndexOf('/') + 1)..];
 
+    /// <summary>
+    /// Display name of an installed model folder: the default model is not part of the
+    /// catalog, so <see cref="ModelCatalog.DescribeFolder"/> alone would show its raw folder name.
+    /// </summary>
+    public static string Describe(string? folderName) =>
+        string.Equals(folderName, FolderName, StringComparison.OrdinalIgnoreCase)
+            ? Title
+            : ModelCatalog.DescribeFolder(folderName);
+
     /// <summary>Full path of the installed model folder.</summary>
     public static string FolderPath(string modelsRoot) => Path.Combine(modelsRoot, FolderName);
 

@@ -153,6 +153,34 @@ public class TranscriptCoordinatorTests
         Assert.False(timer.IsRunning);
     }
 
+    [Fact]
+    public void Clear_ShouldPublishAnEmptyTranscriptAndDropThePendingPartial()
+    {
+        var (coordinator, timer, published) = CreateCoordinator();
+        coordinator.BeginRecordingSession(clearTextOnSessionStart: false);
+        coordinator.OnFinalResult("hello world");
+        coordinator.OnPartialResult("hello world again");
+
+        coordinator.Clear();
+        timer.Tick();
+
+        Assert.Equal(["hello world", ""], published);
+        Assert.False(timer.IsRunning);
+    }
+
+    [Fact]
+    public void Clear_ShouldContinueTheRunningSessionIntoTheEmptyField()
+    {
+        var (coordinator, _, published) = CreateCoordinator("typed earlier");
+        coordinator.BeginRecordingSession(clearTextOnSessionStart: false);
+        coordinator.OnFinalResult("hello world");
+
+        coordinator.Clear();
+        coordinator.OnFinalResult("hello world next phrase");
+
+        Assert.Equal("next phrase", published[^1]);
+    }
+
     /// <summary>
     /// Wires a coordinator to a deterministic scheduler and a transcript field that
     /// behaves like the ViewModel's <c>FloatingText</c> (it is updated by the event).

@@ -7,9 +7,9 @@ using VoiceType.Uno.Services;
 namespace VoiceType.Uno.Presentation;
 
 /// <summary>
-/// ViewModel of the model manager: every downloadable ASR model as a card with
-/// its measured accuracy/speed/size, which of them is installed and which one is
-/// currently in use. Owns the download/use/delete actions for the cards.
+/// ViewModel of the Speech tab of the Models page: every downloadable ASR model as
+/// a card with its measured accuracy/speed/size, which of them is installed and
+/// which one is currently in use. Owns the download/use/delete actions for the cards.
 /// </summary>
 public sealed partial class ModelManagerViewModel : ObservableObject
 {
@@ -34,6 +34,10 @@ public sealed partial class ModelManagerViewModel : ObservableObject
             Cards.Add(new ModelCardViewModel(model, Ranking, this, dispatcher));
 
         Refresh();
+
+        // Downloads keep running when the page closes; reopening it shows their progress.
+        foreach (var card in Cards)
+            card.AttachToActiveJob();
     }
 
     public ModelRankingTable Ranking { get; }
@@ -62,7 +66,7 @@ public sealed partial class ModelManagerViewModel : ObservableObject
     }
 
     /// <summary>Catalog title of the model in use, or the raw folder name for custom models.</summary>
-    public string ActiveModelTitle => ModelCatalog.DescribeFolder(ActiveFolder);
+    public string ActiveModelTitle => DefaultAsrModel.Describe(ActiveFolder);
 
     public string InstalledText => InstalledCount == 0
         ? "No catalog model downloaded yet — the recommended one is a safe default."
@@ -86,11 +90,18 @@ public sealed partial class ModelManagerViewModel : ObservableObject
         : "";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStatus))]
     private string _statusText = "";
+
+    public bool HasStatus => !string.IsNullOrEmpty(StatusText);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(InstalledText))]
     private int _installedCount;
+
+    /// <summary>Page subtitle over every installed model (catalog + translation), e.g. "2 installed · 1.4 GB used".</summary>
+    [ObservableProperty]
+    private string _installedSummaryText = "";
 
     /// <summary>Folder configured in settings; empty means the default models root.</summary>
     private string ActiveFolder => _settingsProvider().SelectedModel ?? "";
@@ -115,6 +126,7 @@ public sealed partial class ModelManagerViewModel : ObservableObject
         }
 
         InstalledCount = Cards.Count(card => card.IsInstalled);
+        InstalledSummaryText = DescribeInstalled();
 
         OnPropertyChanged(nameof(ModelsRootPath));
         OnPropertyChanged(nameof(StorageText));
@@ -124,6 +136,40 @@ public sealed partial class ModelManagerViewModel : ObservableObject
         OnPropertyChanged(nameof(AccuracyLeaderText));
         OnPropertyChanged(nameof(SpeedLeaderText));
         OnPropertyChanged(nameof(SizeLeaderText));
+    }
+
+    /// <summary>
+    /// Counts the installed catalog models, the default model and the translation model and adds up
+    /// their size on disk (a handful of large files each, so the walk is cheap).
+    /// </summary>
+    private string DescribeInstalled()
+    {
+        var installed = Cards.Where(card => card.IsInstalled).ToList();
+        var bytes = installed.Sum(card => ModelStorage.SizeOf(Path.Combine(ModelsRootPath, card.FolderName)));
+        var count = installed.Count;
+
+        // The first-run default model lives outside the catalog.
+        var defaultFolder = DefaultAsrModel.FolderPath(ModelsRootPath);
+        if (Directory.Exists(defaultFolder))
+        {
+            count++;
+            bytes += ModelStorage.SizeOf(defaultFolder);
+        }
+
+        if (TranslationModelInfo.IsDownloaded)
+        {
+            count++;
+            bytes += ModelStorage.SizeOf(TranslationModelInfo.LocalModelPath);
+        }
+
+        return ModelsPageFormatter.DescribeInstalled(count, bytes);
+    }
+
+    /// <summary>Stops the cards' progress updates when the page closes; downloads keep running.</summary>
+    public void Detach()
+    {
+        foreach (var card in Cards)
+            card.Detach();
     }
 
     /// <summary>Queues a catalog variant into the shared download manager.</summary>

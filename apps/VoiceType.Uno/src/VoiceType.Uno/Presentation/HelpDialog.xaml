@@ -13,13 +13,24 @@
           <TextBlock TextWrapping="Wrap">
             <Run Text="1. On first start the recommended speech model downloads automatically." />
             <LineBreak />
-            <Run Text="2. Press " />
-            <Run Text="Start" FontWeight="SemiBold" />
-            <Run Text=" and speak — the transcript appears live in the main window." />
+            <Run Text="2. Tap the round " />
+            <Run Text="Record" FontWeight="SemiBold" />
+            <Run Text=" button at the bottom and speak — the transcript appears live. Recording " />
+            <Run Text="continues until you tap the button again; there is no need to hold it." />
             <LineBreak />
-            <Run Text="3. With " />
+            <Run Text="3. Open the menu " />
+            <Run Text="≡" FontWeight="SemiBold" />
+            <Run Text=" (top left) to switch modes — " />
             <Run Text="Inject text" FontWeight="SemiBold" />
-            <Run Text=" enabled, each final phrase is also typed into the focused window." />
+            <Run Text=" types each final phrase into the focused window, " />
+            <Run Text="Live translation" FontWeight="SemiBold" />
+            <Run Text=" adds a translation card, " />
+            <Run Text="Manual input" FontWeight="SemiBold" />
+            <Run Text=" lets you type or edit the transcript." />
+            <LineBreak />
+            <Run Text="4. The menu also holds the recognition language, speech models, downloads and " />
+            <Run Text="Settings" FontWeight="SemiBold" />
+            <Run Text="— the line under the title shows the active model and modes." />
           </TextBlock>
         </StackPanel>
       </Border>

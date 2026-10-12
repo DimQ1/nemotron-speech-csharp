@@ -1,0 +1,52 @@
+{
+  "360x800": {
+    "checked": [
+      "Open menu",
+      "Clear transcript",
+      "Mute microphone",
+      "Start recording",
+      "Copy transcript"
+    ],
+    "issues": []
+  },
+  "320x568": {
+    "checked": [
+      "Open menu",
+      "Clear transcript",
+      "Mute microphone",
+      "Start recording",
+      "Copy transcript"
+    ],
+    "issues": []
+  },
+  "800x360": {
+    "checked": [
+      "Open menu",
+      "Clear transcript",
+      "Mute microphone",
+      "Start recording",
+      "Copy transcript"
+    ],
+    "issues": []
+  },
+  "480x560": {
+    "checked": [
+      "Open menu",
+      "Clear transcript",
+      "Mute microphone",
+      "Start recording",
+      "Copy transcript"
+    ],
+    "issues": []
+  },
+  "1280x800": {
+    "checked": [
+      "Open menu",
+      "Clear transcript",
+      "Mute microphone",
+      "Start recording",
+      "Copy transcript"
+    ],
+    "issues": []
+  }
+}

@@ -3,213 +3,568 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:local="using:VoiceType.Uno"
       xmlns:utu="using:Uno.Toolkit.UI"
+      NavigationCacheMode="Required"
       Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-  <Grid Padding="16,16,16,8" RowSpacing="6">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="*" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="200" x:Name="TranslationRow" />
-      <RowDefinition Height="Auto" />
-    </Grid.RowDefinitions>
+  <!-- Layout (design docs/design/voicetype-uno-mobile §5): an overlay SplitView menu
+       over a four-row grid — top app bar / banners / content / command bar. Every
+       element names its Grid.Row, so a collapsed Auto row never shifts the others.
+       The adaptive states (Narrow / Wide / Short / Compact / Keyboard) combine width,
+       height and the on-screen keyboard, so MainPage.xaml.cs applies them from
+       MainLayout.Compute rather than from AdaptiveTriggers. -->
+  <Page.Resources>
+    <Style x:Key="PaneItemButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="MinHeight" Value="48" />
+      <Setter Property="Padding" Value="12,4" />
+    </Style>
+    <Style x:Key="IconButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="CharacterSpacing" Value="40" />
+      <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+      <Setter Property="Margin" Value="12,16,12,4" />
+    </Style>
+    <Style x:Key="SecondaryLineStyle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style x:Key="ModeSwitchStyle" TargetType="ToggleSwitch">
+      <Setter Property="OnContent" Value="" />
+      <Setter Property="OffContent" Value="" />
+      <Setter Property="MinWidth" Value="0" />
+      <!-- The switch is the hit target: stretch it to a >= 48 px touch row
+           (the template centres the knob vertically). -->
+      <Setter Property="MinHeight" Value="48" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+    <Style x:Key="BannerStyle" TargetType="Border">
+      <Setter Property="Background" Value="{ThemeResource SystemFillColorCautionBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{ThemeResource SystemFillColorCautionBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12,2,4,2" />
+    </Style>
+    <Style x:Key="CardStyle" TargetType="Border">
+      <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+      <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style x:Key="CardHeaderStyle" TargetType="Border">
+      <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="Padding" Value="12,0,0,0" />
+    </Style>
+    <Style x:Key="TabToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource DefaultToggleButtonStyle}">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+  </Page.Resources>
 
-    <!-- Status and quick settings. On narrow phone screens the row is wider
-         than the viewport — wrap it in a horizontal ScrollViewer so the combo
-         boxes and the Downloads/Help/Settings buttons stay reachable. -->
-    <ScrollViewer HorizontalScrollMode="Enabled"
-                  HorizontalScrollBarVisibility="Auto"
-                  VerticalScrollMode="Disabled"
-                  VerticalScrollBarVisibility="Disabled">
-    <Grid>
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-      </Grid.ColumnDefinitions>
-      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-        <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
-                   AutomationProperties.Name="Status"
-                   AutomationProperties.LiveSetting="Polite" />
-        <TextBlock Text="{x:Bind ViewModel.RecordingIndicator, Mode=OneWay}" Opacity="0.7" />
-      </StackPanel>
-      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
-          Margin="8,0,8,0" VerticalAlignment="Center">
-        <TextBlock Text="Language" Opacity="0.7" VerticalAlignment="Center" />
-        <ComboBox Width="112"
-          AutomationProperties.Name="Recognition language"
-          ItemsSource="{x:Bind ViewModel.LanguageOptions}"
-          SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}" />
-      </StackPanel>
-      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
-          Margin="0,0,8,0" VerticalAlignment="Center"
-          Visibility="{x:Bind ViewModel.IsTranslationVisible, Mode=OneWay}">
-        <TextBlock Text="Translate to" Opacity="0.7" VerticalAlignment="Center" />
-        <ComboBox Width="112"
-          AutomationProperties.Name="Translation target language"
-          ItemsSource="{x:Bind ViewModel.TranslationLanguageOptions}"
-          SelectedItem="{x:Bind ViewModel.TranslationTargetLanguage, Mode=TwoWay}" />
-        <Button Content="Translate all"
-          ToolTipService.ToolTip="Translate the whole transcript (live translation starts from the moment it is switched on)"
-          Command="{x:Bind ViewModel.TranslateAllCommand}" />
-      </StackPanel>
-      <Button Grid.Column="3" Content="Models" Click="Models_Click" Margin="10,0,0,0"
-              ToolTipService.ToolTip="Browse the downloadable speech models, see which one is best and switch between them" />
-      <Button Grid.Column="4" Content="Downloads" Click="Downloads_Click" Margin="10,0,0,0" />
-      <Button Grid.Column="5" Content="Help" Click="Help_Click" Margin="10,0,0,0" />
-      <Button Grid.Column="6" Content="Settings" Click="Settings_Click" Margin="10,0,0,0" />
-    </Grid>
-    </ScrollViewer>
+  <SplitView x:Name="Shell"
+             DisplayMode="Overlay"
+             OpenPaneLength="320"
+             IsPaneOpen="False">
+    <VisualStateManager.VisualStateGroups>
+      <!-- Record button + state pill. The ring is drawn inside the button's bounds. -->
+      <VisualStateGroup x:Name="RecordStates">
+        <VisualState x:Name="RecordIdle" />
+        <VisualState x:Name="RecordLive">
+          <VisualState.Setters>
+            <Setter Target="RecordRing.Visibility" Value="Visible" />
+            <Setter Target="RecordFill.Fill" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+            <Setter Target="RecordFill.Margin" Value="8" />
+            <Setter Target="PillDot.Fill" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+          </VisualState.Setters>
+        </VisualState>
+        <VisualState x:Name="RecordMuted">
+          <VisualState.Setters>
+            <Setter Target="RecordRing.Visibility" Value="Visible" />
+            <Setter Target="RecordFill.Fill" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+            <Setter Target="RecordFill.Margin" Value="8" />
+            <Setter Target="PillDot.Fill" Value="{ThemeResource SystemFillColorCautionBrush}" />
+          </VisualState.Setters>
+        </VisualState>
+      </VisualStateGroup>
+      <!-- Manual input: the editable transcript gets an accent frame. -->
+      <VisualStateGroup x:Name="InputModeStates">
+        <VisualState x:Name="SpeechInput" />
+        <VisualState x:Name="ManualInput">
+          <VisualState.Setters>
+            <Setter Target="TranscriptCard.BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+            <Setter Target="TranscriptCard.BorderThickness" Value="2" />
+          </VisualState.Setters>
+        </VisualState>
+      </VisualStateGroup>
+    </VisualStateManager.VisualStateGroups>
 
-    <!-- ASR model missing banner (matches the translation banner style) -->
-    <Border Grid.Row="1"
-            Visibility="{x:Bind ViewModel.IsAsrModelBannerVisible, Mode=OneWay}"
-            Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
-            BorderThickness="1"
-            BorderBrush="{ThemeResource SystemFillColorCautionBrush}"
-            Padding="8" CornerRadius="4">
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <TextBlock Text="ℹ" VerticalAlignment="Center" />
-        <TextBlock Text="{x:Bind ViewModel.AsrModelBannerText, Mode=OneWay}"
-                   VerticalAlignment="Center" TextWrapping="Wrap" />
-        <Button Content="Download" Click="DownloadAsrModel_Click" VerticalAlignment="Center" />
-      </StackPanel>
-    </Border>
-
-    <!-- Translation model missing banner -->
-    <Border Grid.Row="2"
-            Visibility="{x:Bind ViewModel.IsTranslationModelBannerVisible, Mode=OneWay}"
-            Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
-            BorderThickness="1"
-            BorderBrush="{ThemeResource SystemFillColorCautionBrush}"
-            Padding="8" CornerRadius="4">
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <TextBlock Text="ℹ" VerticalAlignment="Center" />
-        <TextBlock Text="{x:Bind ViewModel.TranslationModelBannerText, Mode=OneWay}"
-                   VerticalAlignment="Center" TextWrapping="Wrap" />
-        <Button Content="Download" Click="DownloadTranslationModel_Click" VerticalAlignment="Center" />
-      </StackPanel>
-    </Border>
-
-    <!-- Download queue aggregate progress -->
-    <StackPanel Grid.Row="3" Spacing="4"
-                Visibility="{x:Bind ViewModel.IsQueueProgressVisible, Mode=OneWay}">
-      <TextBlock Text="{x:Bind ViewModel.QueueProgressText, Mode=OneWay}"
-                 Opacity="0.7" FontSize="12" />
-      <ProgressBar Height="4"
-                   IsIndeterminate="{x:Bind ViewModel.IsModelDownloading, Mode=OneWay}"
-                   Value="{x:Bind ViewModel.QueueProgressPercent, Mode=OneWay}" />
-    </StackPanel>
-
-    <!-- Model status -->
-    <StackPanel Grid.Row="4" Spacing="4">
-      <TextBlock Text="{x:Bind ViewModel.ModelStatusText, Mode=OneWay}"
-                 Opacity="0.6" FontSize="12" />
-    </StackPanel>
-
-<!-- Transcript (resizable, shares space with translation).
-         Read-only by default; editable when the Manual input chip is on so text
-         typed by hand can be translated without dictation. -->
-    <ScrollViewer x:Name="TranscriptScroll" Grid.Row="5" BorderThickness="1"
-                   BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Padding="8">
-      <TextBox Text="{x:Bind ViewModel.FloatingText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-               AutomationProperties.Name="Transcript"
-               IsReadOnly="{x:Bind ViewModel.IsTranscriptReadOnly, Mode=OneWay}"
-               AcceptsReturn="True"
-               TextWrapping="Wrap"
-               BorderThickness="0"
-               Background="Transparent"
-               PlaceholderText="Transcript — enable Manual input to type text for translation" />
-    </ScrollViewer>
-
-    <!-- Draggable divider between transcript and translation (wide grab area) -->
-    <Border Grid.Row="6"
-            Height="24"
-            Background="Transparent"
-            Visibility="{x:Bind ViewModel.IsTranslationVisible, Mode=OneWay}"
-            PointerPressed="Divider_PointerPressed"
-            PointerMoved="Divider_PointerMoved"
-            PointerReleased="Divider_PointerReleased"
-            PointerCaptureLost="Divider_PointerReleased">
-      <Grid>
-        <Border Height="4"
-                VerticalAlignment="Center"
-                Background="{ThemeResource ControlStrokeColorDefaultBrush}"
-                CornerRadius="2" />
-        <!-- Grip dots so the divider reads as a draggable handle -->
-        <StackPanel Orientation="Horizontal" Spacing="4"
-                    HorizontalAlignment="Center" VerticalAlignment="Center">
-          <Ellipse Width="4" Height="4"
-                   Fill="{ThemeResource ControlStrokeColorDefaultBrush}" />
-          <Ellipse Width="4" Height="4"
-                   Fill="{ThemeResource ControlStrokeColorDefaultBrush}" />
-          <Ellipse Width="4" Height="4"
-                   Fill="{ThemeResource ControlStrokeColorDefaultBrush}" />
-        </StackPanel>
-      </Grid>
-    </Border>
-
-    <!-- Live translation (resizable height via the divider above) -->
-    <Border Grid.Row="7"
-            Visibility="{x:Bind ViewModel.IsTranslationVisible, Mode=OneWay}"
-            BorderThickness="1"
-            BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-            Padding="8"
-            MinHeight="80">
+    <!-- ── Menu (overlay pane, light dismiss) ── -->
+    <SplitView.Pane>
       <Grid>
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto" />
           <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <TextBlock Grid.Row="0" Text="{x:Bind ViewModel.TranslationStatusText, Mode=OneWay}"
-                   Opacity="0.6" FontSize="12" />
-        <ScrollViewer x:Name="TranslationScroll" Grid.Row="1">
-          <TextBlock Text="{x:Bind ViewModel.TranslatedText, Mode=OneWay}"
-                     AutomationProperties.Name="Translation"
-                     TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-        </ScrollViewer>
-      </Grid>
-    </Border>
 
-    <!-- Controls. Six buttons do not fit on a phone-width viewport, so the
-         row scrolls horizontally; on narrow screens the buttons also shrink to
-         a smaller MinWidth via utu:Responsive. Touch targets stay >=44px. -->
-    <ScrollViewer Grid.Row="8"
-                  HorizontalScrollMode="Enabled"
-                  HorizontalScrollBarVisibility="Hidden"
-                  VerticalScrollMode="Disabled"
-                  VerticalScrollBarVisibility="Disabled">
-    <StackPanel Orientation="Horizontal" Spacing="{utu:Responsive Narrow=8, Normal=12}" HorizontalAlignment="Center">
-      <Button Content="{x:Bind ViewModel.RecordButtonText, Mode=OneWay}"
-              Command="{x:Bind ViewModel.ToggleCommand}"
-              Style="{StaticResource AccentButtonStyle}"
-              MinWidth="{utu:Responsive Narrow=88, Normal=96}" Padding="16,8" />
-      <Button Content="Mute"
-              Command="{x:Bind ViewModel.ToggleMuteCommand}"
-              IsEnabled="{x:Bind ViewModel.IsRecording, Mode=OneWay}"
-              MinWidth="{utu:Responsive Narrow=64, Normal=80}" Padding="16,8" />
-      <Button Content="Copy"
-              Command="{x:Bind ViewModel.CopyCommand}"
-              MinWidth="{utu:Responsive Narrow=64, Normal=80}" Padding="16,8" />
-      <ToggleButton Content="Inject text"
-                    IsChecked="{x:Bind ViewModel.IsTextInjectionEnabled, Mode=TwoWay}"
-                    MinWidth="{utu:Responsive Narrow=96, Normal=110}" Padding="16,8" />
-      <ToggleButton Content="Translate"
-                    IsChecked="{x:Bind ViewModel.IsTranslationEnabled, Mode=TwoWay}"
-                    MinWidth="{utu:Responsive Narrow=96, Normal=110}" Padding="16,8" />
-      <!-- Chip: manual keyboard input mode for the transcript field.
-           Off by default (read-only transcript driven by speech). -->
-      <ToggleButton Content="Manual input"
-                    IsChecked="{x:Bind ViewModel.IsManualInputEnabled, Mode=TwoWay}"
-                    MinWidth="{utu:Responsive Narrow=104, Normal=120}" Padding="16,8" />
-    </StackPanel>
-    </ScrollViewer>
-  </Grid>
+        <Grid Grid.Row="0" MinHeight="56" Padding="4,4,8,4" ColumnSpacing="8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="48" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Button Grid.Column="0" Width="48" Height="48"
+                  Style="{StaticResource IconButtonStyle}"
+                  Click="CloseMenu_Click"
+                  AutomationProperties.Name="Close menu"
+                  ToolTipService.ToolTip="Close menu">
+            <SymbolIcon Symbol="GlobalNavigationButton" />
+          </Button>
+          <TextBlock Grid.Column="1" Text="VoiceType" FontSize="16" FontWeight="SemiBold"
+                     VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Scrolls on short screens; Settings / Help below stay pinned. -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+          <StackPanel Padding="8,0,8,8">
+            <TextBlock Text="MODE" Style="{StaticResource SectionHeaderStyle}" />
+
+            <Grid MinHeight="48" Padding="12,4" ColumnSpacing="12"
+                  Visibility="{x:Bind ViewModel.IsTextInjectionAvailable}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <SymbolIcon Grid.Column="0" Symbol="Keyboard" />
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="Inject text" TextWrapping="Wrap" />
+                <TextBlock Text="Type each phrase into the focused app"
+                           Style="{StaticResource SecondaryLineStyle}" TextWrapping="Wrap" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="2" Style="{StaticResource ModeSwitchStyle}"
+                            AutomationProperties.Name="Inject text"
+                            IsOn="{x:Bind ViewModel.IsTextInjectionEnabled, Mode=TwoWay}" />
+            </Grid>
+
+            <Grid MinHeight="48" Padding="12,4" ColumnSpacing="12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <SymbolIcon Grid.Column="0" Symbol="Globe" />
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="Live translation" TextWrapping="Wrap" />
+                <TextBlock Text="Gemma 4, on-device"
+                           Style="{StaticResource SecondaryLineStyle}" TextWrapping="Wrap" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="2" Style="{StaticResource ModeSwitchStyle}"
+                            AutomationProperties.Name="Live translation"
+                            IsOn="{x:Bind ViewModel.IsTranslationEnabled, Mode=TwoWay}" />
+            </Grid>
+
+            <Grid MinHeight="48" Padding="12,4" ColumnSpacing="12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <SymbolIcon Grid.Column="0" Symbol="Edit" />
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="Manual input" TextWrapping="Wrap" />
+                <TextBlock Text="Type or edit the transcript"
+                           Style="{StaticResource SecondaryLineStyle}" TextWrapping="Wrap" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="2" Style="{StaticResource ModeSwitchStyle}"
+                            AutomationProperties.Name="Manual input"
+                            IsOn="{x:Bind ViewModel.IsManualInputEnabled, Mode=TwoWay}" />
+            </Grid>
+
+            <TextBlock Text="LANGUAGE" Style="{StaticResource SectionHeaderStyle}" />
+            <ComboBox Margin="4,0" MinHeight="44"
+                      HorizontalAlignment="Stretch"
+                      Header="Recognition"
+                      AutomationProperties.Name="Recognition language"
+                      ItemsSource="{x:Bind ViewModel.LanguageOptions}"
+                      SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}" />
+
+            <TextBlock Text="MODELS" Style="{StaticResource SectionHeaderStyle}" />
+            <Button Style="{StaticResource PaneItemButtonStyle}"
+                    Click="SpeechModels_Click"
+                    AutomationProperties.Name="Speech models">
+              <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="24" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <SymbolIcon Grid.Column="0" Symbol="Library" />
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="Speech models" />
+                  <TextBlock Text="{x:Bind ViewModel.ModelDisplayName, Mode=OneWay}"
+                             Style="{StaticResource SecondaryLineStyle}"
+                             TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </Grid>
+            </Button>
+            <Button Style="{StaticResource PaneItemButtonStyle}"
+                    Click="Downloads_Click"
+                    AutomationProperties.Name="Downloads">
+              <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="24" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <SymbolIcon Grid.Column="0" Symbol="Download" />
+                <TextBlock Grid.Column="1" Text="Downloads" VerticalAlignment="Center" />
+                <Border Grid.Column="2" MinWidth="20" Height="20" Padding="6,0" CornerRadius="10"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Visibility="{x:Bind ViewModel.IsQueueActive, Mode=OneWay}">
+                  <TextBlock Text="{x:Bind ViewModel.ActiveDownloadCount, Mode=OneWay}"
+                             FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
+                             Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                </Border>
+              </Grid>
+            </Button>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Padding="8,4"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+          <StackPanel>
+            <Button Style="{StaticResource PaneItemButtonStyle}" Click="Settings_Click"
+                    AutomationProperties.Name="Settings">
+              <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="24" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <SymbolIcon Grid.Column="0" Symbol="Setting" />
+                <TextBlock Grid.Column="1" Text="Settings" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+            <Button Style="{StaticResource PaneItemButtonStyle}" Click="Help_Click"
+                    AutomationProperties.Name="Help">
+              <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="24" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <SymbolIcon Grid.Column="0" Symbol="Help" />
+                <TextBlock Grid.Column="1" Text="Help" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </SplitView.Pane>
+
+    <!-- ── Main screen ── -->
+    <Grid x:Name="LayoutRoot">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <!-- Row 0: top app bar — menu, title + mode summary, state pill -->
+      <Grid x:Name="TopBar" Grid.Row="0"
+            MinHeight="56" Padding="4,4,8,4" ColumnSpacing="8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="48" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <Button Grid.Column="0" Width="48" Height="48"
+                Style="{StaticResource IconButtonStyle}"
+                Click="Menu_Click"
+                AutomationProperties.Name="Open menu"
+                ToolTipService.ToolTip="Menu">
+          <SymbolIcon Symbol="GlobalNavigationButton" />
+        </Button>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock Text="VoiceType" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock Text="{x:Bind ViewModel.ModeSummary, Mode=OneWay}"
+                     Style="{StaticResource SecondaryLineStyle}"
+                     TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                     ToolTipService.ToolTip="{x:Bind ViewModel.ModeSummary, Mode=OneWay}" />
+        </StackPanel>
+        <Border Grid.Column="2" Height="28" Padding="10,0" CornerRadius="14"
+                VerticalAlignment="Center"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                ToolTipService.ToolTip="{x:Bind ViewModel.ModelStatusText, Mode=OneWay}">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Ellipse x:Name="PillDot" Width="8" Height="8" VerticalAlignment="Center"
+                     Fill="{ThemeResource TextFillColorSecondaryBrush}" />
+            <TextBlock Text="{x:Bind ViewModel.StatePillText, Mode=OneWay}"
+                       FontSize="12" VerticalAlignment="Center"
+                       AutomationProperties.Name="Status"
+                       AutomationProperties.LiveSetting="Polite" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- Row 1: status notice, model-missing banners, download queue progress -->
+      <StackPanel x:Name="BannerPanel" Grid.Row="1" Padding="16,0" Spacing="8">
+        <TextBlock x:Name="StatusNoticeText"
+                   Text="{x:Bind ViewModel.StatusNotice, Mode=OneWay}"
+                   Visibility="{x:Bind ViewModel.IsStatusNoticeVisible, Mode=OneWay}"
+                   Style="{StaticResource SecondaryLineStyle}"
+                   TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+
+        <Border Style="{StaticResource BannerStyle}"
+                Visibility="{x:Bind ViewModel.IsAsrModelBannerVisible, Mode=OneWay}">
+          <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="ℹ" VerticalAlignment="Center" />
+            <TextBlock x:Name="AsrBannerText" Grid.Column="1"
+                       Text="{x:Bind ViewModel.AsrModelBannerText, Mode=OneWay}"
+                       FontSize="13" VerticalAlignment="Center"
+                       TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                       Tapped="BannerText_Tapped"
+                       ToolTipService.ToolTip="Open model downloads" />
+            <Button Grid.Column="2" Content="Download" MinHeight="44"
+                    VerticalAlignment="Center"
+                    Click="DownloadAsrModel_Click" />
+          </Grid>
+        </Border>
+
+        <Border Style="{StaticResource BannerStyle}"
+                Visibility="{x:Bind ViewModel.IsTranslationModelBannerVisible, Mode=OneWay}">
+          <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="ℹ" VerticalAlignment="Center" />
+            <TextBlock x:Name="TranslationBannerText" Grid.Column="1"
+                       Text="{x:Bind ViewModel.TranslationModelBannerText, Mode=OneWay}"
+                       FontSize="13" VerticalAlignment="Center"
+                       TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                       Tapped="BannerText_Tapped"
+                       ToolTipService.ToolTip="Open model downloads" />
+            <Button Grid.Column="2" Content="Download" MinHeight="44"
+                    VerticalAlignment="Center"
+                    Click="DownloadTranslationModel_Click" />
+          </Grid>
+        </Border>
+
+        <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.IsQueueProgressVisible, Mode=OneWay}">
+          <TextBlock x:Name="QueueProgressCaption"
+                     Text="{x:Bind ViewModel.QueueProgressText, Mode=OneWay}"
+                     Style="{StaticResource SecondaryLineStyle}"
+                     TextTrimming="CharacterEllipsis" />
+          <ProgressBar Height="4"
+                       IsIndeterminate="{x:Bind ViewModel.IsModelDownloading, Mode=OneWay}"
+                       Value="{x:Bind ViewModel.QueueProgressPercent, Mode=OneWay}" />
+        </StackPanel>
+      </StackPanel>
+
+      <!-- Row 2: transcript and translation cards. Rows/columns and the card
+           placement are set by ApplyLayout in code-behind. -->
+      <Grid x:Name="ContentGrid" Grid.Row="2" Padding="16,8" RowSpacing="8" ColumnSpacing="0">
+        <Grid.RowDefinitions>
+          <RowDefinition x:Name="FirstCardRow" Height="*" MinHeight="96" />
+          <RowDefinition x:Name="SecondCardRow" Height="0.8*" MinHeight="96" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition x:Name="FirstCardColumn" Width="*" />
+          <ColumnDefinition x:Name="SecondCardColumn" Width="0" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Transcript: read-only by default, editable in manual input mode so text
+             typed by hand can be translated without dictation. -->
+        <Border x:Name="TranscriptCard" Grid.Row="0" Grid.Column="0" Style="{StaticResource CardStyle}">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border x:Name="TranscriptHeader" Grid.Row="0" Style="{StaticResource CardHeaderStyle}">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="TranscriptTitle" Grid.Column="0"
+                           Text="{x:Bind ViewModel.TranscriptHeader, Mode=OneWay}"
+                           Style="{StaticResource SecondaryLineStyle}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="1" Width="44" Height="44"
+                        Style="{StaticResource IconButtonStyle}"
+                        Command="{x:Bind ViewModel.ClearCommand}"
+                        AutomationProperties.Name="Clear transcript"
+                        ToolTipService.ToolTip="Clear transcript">
+                  <SymbolIcon Symbol="Delete" />
+                </Button>
+              </Grid>
+            </Border>
+            <ScrollViewer x:Name="TranscriptScroll" Grid.Row="1" Padding="4">
+              <TextBox Text="{x:Bind ViewModel.FloatingText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       AutomationProperties.Name="Transcript"
+                       IsReadOnly="{x:Bind ViewModel.IsTranscriptReadOnly, Mode=OneWay}"
+                       AcceptsReturn="True"
+                       TextWrapping="Wrap"
+                       FontSize="15"
+                       BorderThickness="0"
+                       Background="Transparent"
+                       PlaceholderText="Tap Record to dictate, or turn on Manual input in the menu to type" />
+            </ScrollViewer>
+          </Grid>
+        </Border>
+
+        <!-- Live translation: target language and "Translate all" live in the header -->
+        <Border x:Name="TranslationCard" Grid.Row="1" Grid.Column="0" Style="{StaticResource CardStyle}"
+                Visibility="Collapsed">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border x:Name="TranslationHeader" Grid.Row="0" Style="{StaticResource CardHeaderStyle}">
+              <Grid ColumnSpacing="4">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="TranslationTitle" Grid.Column="0" Text="Translation  →"
+                           Style="{StaticResource SecondaryLineStyle}" VerticalAlignment="Center" />
+                <ComboBox x:Name="TranslationTargetCombo" Grid.Column="1"
+                          MinWidth="72" MinHeight="40" VerticalAlignment="Center"
+                          BorderThickness="0" Background="Transparent"
+                          AutomationProperties.Name="Translation target language"
+                          ItemsSource="{x:Bind ViewModel.TranslationLanguageOptions}"
+                          SelectedItem="{x:Bind ViewModel.TranslationTargetLanguage, Mode=TwoWay}" />
+                <Button Grid.Column="3" Width="44" Height="44"
+                        Style="{StaticResource IconButtonStyle}"
+                        Command="{x:Bind ViewModel.TranslateAllCommand}"
+                        AutomationProperties.Name="Translate all"
+                        ToolTipService.ToolTip="Translate the whole transcript (live translation starts from the moment it is switched on)">
+                  <SymbolIcon Symbol="Globe" />
+                </Button>
+              </Grid>
+            </Border>
+            <Grid x:Name="TranslationBody" Grid.Row="1">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+              </Grid.RowDefinitions>
+              <TextBlock Grid.Row="0" Margin="12,6,12,0"
+                         Text="{x:Bind ViewModel.TranslationStatusText, Mode=OneWay}"
+                         Style="{StaticResource SecondaryLineStyle}"
+                         TextTrimming="CharacterEllipsis" />
+              <ScrollViewer x:Name="TranslationScroll" Grid.Row="1" Padding="12,6,12,12">
+                <TextBlock Text="{x:Bind ViewModel.TranslatedText, Mode=OneWay}"
+                           AutomationProperties.Name="Translation"
+                           FontSize="15"
+                           TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+              </ScrollViewer>
+            </Grid>
+          </Grid>
+        </Border>
+
+        <!-- Compact state (split screen): one card slot; this switch replaces the
+             card titles and picks the visible card. Leaves room for the card's action. -->
+        <Grid x:Name="CompactTabs" Grid.Row="0" Grid.Column="0"
+              VerticalAlignment="Top" Margin="2,2,50,0" Padding="2" ColumnSpacing="2"
+              CornerRadius="8"
+              Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+              Canvas.ZIndex="1" Visibility="Collapsed">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <ToggleButton x:Name="TranscriptTab" Grid.Column="0" Content="Transcript"
+                        Style="{StaticResource TabToggleStyle}" IsChecked="True"
+                        Click="CompactTab_Click" />
+          <ToggleButton x:Name="TranslationTab" Grid.Column="1" Content="Translation"
+                        Style="{StaticResource TabToggleStyle}"
+                        Click="CompactTab_Click" />
+        </Grid>
+      </Grid>
+
+      <!-- Row 3: command bar. Columns "*,Auto,*" keep Record exactly centred;
+           Mute and Copy hug it from both sides. System bars are kept out by the
+           window root (App.xaml.cs); this wrapper only lifts the bar above the
+           on-screen keyboard. It is a separate element because ApplyChrome sets
+           BottomBar.Padding, which would overwrite a SafeArea padding inset. -->
+      <Border Grid.Row="3" utu:SafeArea.Insets="SoftInput">
+      <Grid x:Name="BottomBar" ColumnSpacing="24" RowSpacing="4" Padding="16,8,16,12">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Button x:Name="MuteButton" Grid.Column="0"
+                HorizontalAlignment="Right" VerticalAlignment="Center"
+                Width="48" Height="48" CornerRadius="24" Padding="0"
+                Command="{x:Bind ViewModel.ToggleMuteCommand}"
+                IsEnabled="{x:Bind ViewModel.IsRecording, Mode=OneWay}"
+                AutomationProperties.Name="Mute microphone"
+                ToolTipService.ToolTip="Mute / unmute the microphone">
+          <SymbolIcon Symbol="Mute" />
+        </Button>
+
+          <Button x:Name="RecordButton" Grid.Column="1"
+                  Width="72" Height="72" CornerRadius="36" Padding="0"
+                  BorderThickness="0" Background="Transparent"
+                  HorizontalAlignment="Center"
+                  HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                  Command="{x:Bind ViewModel.ToggleCommand}"
+                  AutomationProperties.Name="{x:Bind ViewModel.RecordButtonText, Mode=OneWay}"
+                  ToolTipService.ToolTip="{x:Bind ViewModel.RecordButtonText, Mode=OneWay}">
+            <Grid>
+              <Ellipse x:Name="RecordRing" Visibility="Collapsed"
+                       Fill="{ThemeResource SystemFillColorCriticalBackgroundBrush}" />
+              <Ellipse x:Name="RecordFill" Fill="{ThemeResource AccentFillColorDefaultBrush}" />
+              <SymbolIcon Symbol="{x:Bind ViewModel.RecordSymbol, Mode=OneWay}"
+                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+            </Grid>
+          </Button>
+        <!-- Own row across all columns: a long caption ("Downloading model…") must not
+             widen the Record column and push Mute / Copy outwards. -->
+        <TextBlock x:Name="RecordCaptionText" Grid.Row="1" Grid.ColumnSpan="3"
+                   Text="{x:Bind ViewModel.RecordCaption, Mode=OneWay}"
+                   Style="{StaticResource SecondaryLineStyle}"
+                   HorizontalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+
+        <Button x:Name="CopyButton" Grid.Column="2"
+                HorizontalAlignment="Left" VerticalAlignment="Center"
+                Width="48" Height="48" CornerRadius="24" Padding="0"
+                Command="{x:Bind ViewModel.CopyCommand}"
+                AutomationProperties.Name="Copy transcript"
+                ToolTipService.ToolTip="Copy the transcript">
+          <SymbolIcon Symbol="Copy" />
+        </Button>
+      </Grid>
+      </Border>
+    </Grid>
+  </SplitView>
 </Page>

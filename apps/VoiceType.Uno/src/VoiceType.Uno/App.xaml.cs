@@ -102,6 +102,14 @@ public partial class App : Application
                     // (GNOME AppIndicator / KDE Plasma); Null elsewhere.
                     services.AddSingleton<ITrayIndicator>(_ =>
                         OperatingSystem.IsLinux() ? new LinuxTrayIndicator() : new NullTrayIndicator());
+                    // Background recording: Android silences the mic for background apps, so a
+                    // "microphone" foreground service + wake lock runs while recording
+                    // (Platforms/Android/RecordingService.cs). Desktop heads need nothing.
+#if __ANDROID__
+                    services.AddSingleton<IRecordingKeepAlive, VoiceType.Uno.Droid.AndroidRecordingKeepAlive>();
+#else
+                    services.AddSingleton<IRecordingKeepAlive, NullRecordingKeepAlive>();
+#endif
                     // Live translation via LiteRT-LM. Two engines, picked from settings:
                     //   native — in-process model (LiteRtLmSharp natives, no sidecar;
                     //            win-x64 + linux-x64), preferred; falls back to http
@@ -132,13 +140,23 @@ public partial class App : Application
 
         // Do not repeat app initialization when the Window already has content,
         // just ensure that the window is active
-        if (MainWindow.Content is not Frame rootFrame)
+        var rootFrame = (MainWindow.Content as Grid)?.Children.OfType<Frame>().FirstOrDefault();
+        if (rootFrame is null)
         {
             // Create a Frame to act as the navigation context and navigate to the first page
             rootFrame = new Frame();
 
-            // Place the frame in the current Window
-            MainWindow.Content = rootFrame;
+            // System bars (status bar, navigation/gesture bar, cut-outs) are kept out once,
+            // here on a root that is never reloaded. Insets on the pages themselves were
+            // lost: page code sets Padding on resize, and SafeArea applies its inset
+            // through that same Padding.
+            var shell = new Grid
+            {
+                Background = (Microsoft.UI.Xaml.Media.Brush)Resources["ApplicationPageBackgroundThemeBrush"],
+                Children = { rootFrame }
+            };
+            global::Uno.Toolkit.UI.SafeArea.SetInsets(shell, global::Uno.Toolkit.UI.SafeArea.InsetMask.VisibleBounds);
+            MainWindow.Content = shell;
         }
 
         if (rootFrame.Content == null)
@@ -152,5 +170,7 @@ public partial class App : Application
         MainWindow.Activate();
         // Apply the app icon now that the native window handle exists.
         MainWindow.SetWindowIcon();
+        // The Skia desktop head otherwise shows the template's "Uno Platform" caption.
+        MainWindow.Title = "VoiceType";
     }
 }

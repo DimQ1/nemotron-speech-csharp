@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.Diagnostics;
+using Microsoft.UI.Xaml.Controls;
 using SpeechLib.ModelDownload;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -24,6 +27,24 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ITrayIndicator _tray;
     private readonly TranslationService _translation;
     private readonly IUiScheduler _scheduler;
+    private readonly IRecordingKeepAlive _keepAlive;
+
+    // Session timer: drives the "Rec mm:ss" pill and the recording notification. The
+    // scheduler only offers one-shot timers, so each tick re-arms it while recording.
+    private static readonly TimeSpan SessionTickInterval = TimeSpan.FromSeconds(1);
+    private readonly IUiTimer _sessionTimer;
+    private readonly Stopwatch _sessionClock = new();
+    private bool _isKeepAliveStarted;
+
+    private const string ListeningStatus = "Listening...";
+    private const string MutedStatus = "Muted (audio discarded)";
+
+    // Status lines that only echo the recording state, which the pill already shows;
+    // anything else (errors, "download a model" hints) is surfaced under the top bar.
+    private static readonly HashSet<string> RoutineStatuses = new(StringComparer.Ordinal)
+    {
+        "Ready", ListeningStatus, MutedStatus
+    };
 
     // Speech-to-transcript merging (throttled partials, manual-input hand-off, "speech
     // continues after the text already in the field") lives in the coordinator; this
@@ -58,7 +79,8 @@ public sealed partial class MainViewModel : ObservableObject
         IPlatformTextInjector textInjector,
         ITrayIndicator tray,
         TranslationService translation,
-        IUiScheduler scheduler)
+        IUiScheduler scheduler,
+        IRecordingKeepAlive keepAlive)
     {
         _recognition = recognition;
         _settingsStore = settingsStore;
@@ -68,6 +90,8 @@ public sealed partial class MainViewModel : ObservableObject
         _tray = tray;
         _translation = translation;
         _scheduler = scheduler;
+        _keepAlive = keepAlive;
+        _sessionTimer = scheduler.CreateOneShotTimer(SessionTickInterval, OnSessionTick);
         _transcript = new TranscriptCoordinator(scheduler, () => FloatingText ?? "");
 
         _selectedLanguage = Settings.Language;
@@ -91,7 +115,7 @@ public sealed partial class MainViewModel : ObservableObject
         };
         _transcript.FinalCommitted += text =>
         {
-            if (IsTextInjectionEnabled && !string.IsNullOrEmpty(text))
+            if (IsTextInjectionEnabled && IsTextInjectionAvailable && !string.IsNullOrEmpty(text))
                 InjectOffUiThread(text);
 
             if (IsTranslationEnabled)
@@ -148,6 +172,11 @@ public sealed partial class MainViewModel : ObservableObject
         // (icon click) toggles recording like the main button.
         _tray.Activated += () => _scheduler.Post(() => _ = ToggleAsync());
         _ = RunInBackgroundAsync(_tray.InitializeAsync(), "Tray indicator");
+
+        // Recording notification actions (Android foreground service; no-op elsewhere).
+        // Raised on any thread, so both hop onto the UI thread first.
+        _keepAlive.StopRequested += () => _scheduler.Post(StopRecording);
+        _keepAlive.MuteToggleRequested += () => _scheduler.Post(ToggleMute);
 
         // Live translation: stream transcript deltas through the LiteRT-LM
         // server; translated text is displayed (and injectable) alongside the
@@ -322,6 +351,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _isModelLoading;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAsrModelBannerVisible))]
     private bool _isModelDownloading;
 
     [ObservableProperty]
@@ -335,7 +365,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// ("Parakeet TDT 0.6B v3 — 4-bit (INT4)") when the folder is a known variant,
     /// otherwise the raw folder name.
     /// </summary>
-    public string ModelDisplayName => ModelCatalog.DescribeFolder(Settings.SelectedModel);
+    public string ModelDisplayName => DefaultAsrModel.Describe(Settings.SelectedModel);
 
     [ObservableProperty]
     private double _downloadProgress;
@@ -354,6 +384,15 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool IsQueueProgressVisible => IsQueueActive;
 
+    private int _activeDownloadCount;
+
+    /// <summary>Badge on the menu's Downloads row.</summary>
+    public int ActiveDownloadCount
+    {
+        get => _activeDownloadCount;
+        private set => SetProperty(ref _activeDownloadCount, value);
+    }
+
     // ── Model availability banners ──────────────────────────────────────────
 
     [ObservableProperty]
@@ -363,7 +402,9 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _asrModelBannerText = "ASR model is not available — download it to start dictation.";
 
-    public bool IsAsrModelBannerVisible => IsAsrModelMissing;
+    // While the model is already downloading, the queue progress row says so —
+    // offering "Download" again would only confuse.
+    public bool IsAsrModelBannerVisible => IsAsrModelMissing && !IsModelDownloading;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsTranslationModelBannerVisible))]
@@ -385,6 +426,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var progress = DownloadProgressFormatter.DescribeQueue(_downloads.Totals);
         IsQueueActive = progress.IsActive;
+        ActiveDownloadCount = _downloads.Totals.Active;
         QueueProgressPercent = progress.Percent;
         QueueProgressText = progress.Text;
     }
@@ -401,7 +443,11 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(RecordButtonText));
     }
 
-    private void RefreshModelBanners()
+    /// <summary>
+    /// Re-reads which models are on disk and updates the "model missing" banners; called
+    /// on return from the Models page, where models can be downloaded or deleted.
+    /// </summary>
+    public void RefreshModelBanners()
     {
         // Check the configured/asr path integrity so a broken or partially
         // downloaded model is reported as "re-download" rather than "missing".
@@ -427,6 +473,9 @@ public sealed partial class MainViewModel : ObservableObject
             : "Translation model is not downloaded — translation will use the HTTP server fallback or stay off.";
 
         OnPropertyChanged(nameof(IsTranslationModelBannerVisible));
+
+        // A download adopted into the settings changes the configured model.
+        OnPropertyChanged(nameof(ModelDisplayName));
     }
 
     /// <summary>Enqueues the ASR model download into the shared queue (force re-download when partial).</summary>
@@ -566,15 +615,74 @@ public sealed partial class MainViewModel : ObservableObject
     public IReadOnlyList<string> TranslationLanguageOptions { get; } =
         SpeechLib.Translation.TranslationLanguages.All.Select(l => l.Code).ToList();
 
-    public string RecordButtonText => IsModelDownloading
-        ? "Downloading model..."
-        : IsModelLoading
-        ? "Loading model..."
-        : IsRecording ? "Stop" : "Start";
+    // ── Main screen projections (formatting rules live in VoiceType.Uno.Core) ──
 
-    public string RecordingIndicator => IsRecording
-        ? (IsCaptureMuted ? "Muted" : "Recording...")
-        : "Idle";
+    public RecordingPhase RecordingPhase => RecordingStatusFormatter.GetPhase(
+        IsModelDownloading, IsModelLoading, IsRecording, IsCaptureMuted);
+
+    /// <summary>Accessible name of the Record button (it shows an icon only).</summary>
+    public string RecordButtonText => RecordingStatusFormatter.GetButtonName(RecordingPhase);
+
+    /// <summary>Caption under the Record button.</summary>
+    public string RecordCaption => RecordingStatusFormatter.GetCaption(RecordingPhase);
+
+    public Symbol RecordSymbol => RecordingStatusFormatter.GetGlyph(RecordingPhase) == RecordGlyph.Stop
+        ? Symbol.Stop
+        : Symbol.Microphone;
+
+    /// <summary>State pill in the top bar: "Ready", "Rec 12:34", "Muted 12:34", …</summary>
+    public string StatePillText => RecordingStatusFormatter.GetPillText(RecordingPhase, _sessionClock.Elapsed);
+
+    /// <summary>Subtitle under the title: model · language · → target · Inject.</summary>
+    public string ModeSummary => ModeSummaryFormatter.Format(
+        ModelDisplayName,
+        SelectedLanguage,
+        IsTranslationEnabled ? TranslationTargetLanguage : null,
+        IsTextInjectionEnabled && IsTextInjectionAvailable);
+
+    /// <summary>False on platforms that cannot type into other apps; hides the mode.</summary>
+    public bool IsTextInjectionAvailable => _textInjector.CanInject;
+
+    public string TranscriptHeader => IsManualInputEnabled ? "Transcript · editing" : "Transcript";
+
+    /// <summary>Errors and hints from <see cref="StatusText"/>; empty for routine recording states.</summary>
+    public string StatusNotice => RoutineStatuses.Contains(StatusText) ? "" : StatusText;
+
+    public bool IsStatusNoticeVisible => StatusNotice.Length > 0;
+
+    /// <summary>Keeps the derived display properties in step with their inputs.</summary>
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        switch (e.PropertyName)
+        {
+            case nameof(IsRecording):
+            case nameof(IsCaptureMuted):
+            case nameof(IsModelLoading):
+            case nameof(IsModelDownloading):
+                OnPropertyChanged(nameof(RecordingPhase));
+                OnPropertyChanged(nameof(RecordButtonText));
+                OnPropertyChanged(nameof(RecordCaption));
+                OnPropertyChanged(nameof(RecordSymbol));
+                OnPropertyChanged(nameof(StatePillText));
+                break;
+            case nameof(ModelDisplayName):
+            case nameof(SelectedLanguage):
+            case nameof(IsTranslationEnabled):
+            case nameof(TranslationTargetLanguage):
+            case nameof(IsTextInjectionEnabled):
+                OnPropertyChanged(nameof(ModeSummary));
+                UpdateKeepAliveNotice();
+                break;
+            case nameof(IsManualInputEnabled):
+                OnPropertyChanged(nameof(TranscriptHeader));
+                break;
+            case nameof(StatusText):
+                OnPropertyChanged(nameof(StatusNotice));
+                OnPropertyChanged(nameof(IsStatusNoticeVisible));
+                break;
+        }
+    }
 
     [RelayCommand]
     private async Task ToggleAsync()
@@ -583,7 +691,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _recognition.SetMuted(false);
             IsCaptureMuted = false;
-            StatusText = "Listening...";
+            StatusText = ListeningStatus;
             return;
         }
 
@@ -620,7 +728,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             await _recognition.StartAsync(Settings);
             IsRecording = true;
-            StatusText = "Listening...";
+            StatusText = ListeningStatus;
             _tray.SetRecording(true);
         }
         catch (Exception ex)
@@ -630,6 +738,13 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>Stops the session outright (notification Stop), even while muted.</summary>
+    private void StopRecording()
+    {
+        if (IsRecording)
+            _recognition.Stop();
+    }
+
     [RelayCommand]
     private void ToggleMute()
     {
@@ -637,8 +752,7 @@ public sealed partial class MainViewModel : ObservableObject
         var muted = !IsCaptureMuted;
         _recognition.SetMuted(muted);
         IsCaptureMuted = muted;
-        StatusText = muted ? "Muted (audio discarded)" : "Listening...";
-        OnPropertyChanged(nameof(RecordingIndicator));
+        StatusText = muted ? MutedStatus : ListeningStatus;
     }
 
     /// <summary>Translates the whole current transcript (live translation otherwise starts when it is switched on).</summary>
@@ -665,20 +779,108 @@ public sealed partial class MainViewModel : ObservableObject
             _textInjector.CopyToClipboard(FloatingText);
     }
 
-    partial void OnIsRecordingChanged(bool value)
+    /// <summary>
+    /// Empties the transcript through the coordinator, like a manual edit, so a running
+    /// session continues into the empty field. The translation of the cleared text goes too.
+    /// </summary>
+    [RelayCommand]
+    private void Clear()
     {
-        OnPropertyChanged(nameof(RecordButtonText));
-        OnPropertyChanged(nameof(RecordingIndicator));
+        _transcript.Clear();
+        if (!IsTranslationEnabled)
+            return;
+
+        _translation.Reset();
+        TranslatedText = "";
+        _translation.StartFrom("");
     }
 
-    partial void OnIsCaptureMutedChanged(bool value) =>
-        OnPropertyChanged(nameof(RecordingIndicator));
+    // ── Recording session: timer + keep-alive ───────────────────────────────
+    // Every stop path (button, notification, hotkey, capture error, model reload)
+    // ends in IsRecording = false, so the session is tied to that property.
 
-    partial void OnIsModelLoadingChanged(bool value) =>
-        OnPropertyChanged(nameof(RecordButtonText));
+    partial void OnIsRecordingChanged(bool value)
+    {
+        if (value)
+            BeginSession();
+        else
+            EndSession();
+    }
 
-    partial void OnIsModelDownloadingChanged(bool value) =>
-        OnPropertyChanged(nameof(RecordButtonText));
+    partial void OnIsCaptureMutedChanged(bool value) => UpdateKeepAliveNotice();
+
+    private void BeginSession()
+    {
+        _sessionClock.Restart();
+        _sessionTimer.Start();
+
+        try
+        {
+            _keepAlive.Start(CreateRecordingNotice());
+            _isKeepAliveStarted = true;
+        }
+        catch (Exception ex)
+        {
+            // Recording still works in the foreground; only background capture is lost.
+            StatusText = $"Background recording unavailable: {ex.Message}";
+        }
+    }
+
+    private void EndSession()
+    {
+        _sessionTimer.Stop();
+        _sessionClock.Reset();
+
+        // A new session starts unmuted; the recognizer would keep its mute flag otherwise.
+        if (IsCaptureMuted)
+        {
+            _recognition.SetMuted(false);
+            IsCaptureMuted = false;
+        }
+
+        if (!_isKeepAliveStarted)
+            return;
+
+        _isKeepAliveStarted = false;
+        try
+        {
+            _keepAlive.Stop();
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Recording notification error: {ex.Message}";
+        }
+    }
+
+    private void OnSessionTick()
+    {
+        if (!IsRecording)
+            return;
+
+        OnPropertyChanged(nameof(StatePillText));
+        UpdateKeepAliveNotice();
+        _sessionTimer.Start();
+    }
+
+    private void UpdateKeepAliveNotice()
+    {
+        if (!_isKeepAliveStarted)
+            return;
+
+        try
+        {
+            _keepAlive.Update(CreateRecordingNotice());
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Recording notification error: {ex.Message}";
+        }
+    }
+
+    private RecordingNotice CreateRecordingNotice() => new(
+        RecordingStatusFormatter.GetNoticeTitle(IsCaptureMuted),
+        ModeSummary,
+        IsCaptureMuted);
 
     partial void OnIsTextInjectionEnabledChanged(bool value) =>
         Persist(s => s.IsTextInjectionEnabled = value);
@@ -872,7 +1074,7 @@ public sealed partial class MainViewModel : ObservableObject
         _scheduler.Post(() =>
         {
             IsRecording = true;
-            StatusText = "Listening...";
+            StatusText = ListeningStatus;
             _tray.SetRecording(true);
         });
     }

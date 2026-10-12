@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using SpeechLib.ModelDownload;
 using VoiceType.Uno.Presentation;
 using VoiceType.Uno.Services;
@@ -7,29 +8,42 @@ namespace VoiceType.Uno;
 
 public sealed partial class MainPage : Page
 {
-    private const double DefaultTranslationHeight = 200;
+    private const double MaxPaneWidth = 320;
+    private const double MaxPaneWidthRatio = 0.85;
 
-    private double _translationRowHeight = DefaultTranslationHeight;
+    private MainLayout _layout;
+    private bool _isKeyboardOpen;
+    private bool _compactShowsTranslation;
+    private bool _platformHooksAttached;
 
     public MainPage()
     {
         this.InitializeComponent();
         DataContext = App.Services.GetRequiredService<MainViewModel>();
-        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
 
-        // The row is only resized on visibility changes; apply the initial state too,
-        // or with translation off the transcript loses the row's 200 px at startup.
-        UpdateTranslationRowHeight();
+        // NavigationCacheMode="Required" keeps this instance across trips to the Models
+        // page, so the singleton view model is subscribed exactly once.
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        SizeChanged += (_, _) => ApplyLayout();
+        Loaded += OnLoaded;
 
 #if DEBUG
-        // Smoke-test hooks (Linux/WSLg verification): VOICETYPE_OPEN_MODEL_MANAGER=1
-        // opens the model manager once the page has a XamlRoot, and
-        // VOICETYPE_AUTO_DOWNLOAD_MODEL=<catalog folder> downloads one model through
-        // the shared queue and logs the outcome.
+        // Smoke-test hook (Linux/WSLg verification): VOICETYPE_OPEN_MODEL_MANAGER=1 opens
+        // the Models page once the page is loaded, and VOICETYPE_AUTO_DOWNLOAD_MODEL=<catalog
+        // folder> downloads one model through the shared queue and logs the outcome.
         if (Environment.GetEnvironmentVariable("VOICETYPE_OPEN_MODEL_MANAGER") == "1"
             || Environment.GetEnvironmentVariable("VOICETYPE_AUTO_DOWNLOAD_MODEL") is { Length: > 0 })
             Loaded += OnSmokeTestLoaded;
 #endif
+    }
+
+    protected override void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+
+        // Models may have been downloaded or deleted on the Models page.
+        if (e.NavigationMode == Microsoft.UI.Xaml.Navigation.NavigationMode.Back)
+            ViewModel.RefreshModelBanners();
     }
 
 #if DEBUG
@@ -42,8 +56,8 @@ public sealed partial class MainPage : Page
 
         if (Environment.GetEnvironmentVariable("VOICETYPE_OPEN_MODEL_MANAGER") == "1")
         {
-            Console.WriteLine("[VoiceType.Uno] Smoke hook: opening the model manager");
-            _ = ShowModelManagerAsync();
+            Console.WriteLine("[VoiceType.Uno] Smoke hook: opening the Models page");
+            OpenModelsPage(ModelsTab.Speech);
         }
     }
 
@@ -97,14 +111,31 @@ public sealed partial class MainPage : Page
 
     public MainViewModel ViewModel => (MainViewModel)DataContext;
 
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        AttachPlatformHooks();
+        ApplyLayout();
+        UpdateVisualStates(useTransitions: false);
+    }
+
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainViewModel.IsTranslationVisible))
-            UpdateTranslationRowHeight();
-        else if (e.PropertyName == nameof(MainViewModel.FloatingText) && ViewModel.IsAutoScrollEnabled)
-            DispatcherQueue.TryEnqueue(() => ScrollToEnd(TranscriptScroll));
-        else if (e.PropertyName == nameof(MainViewModel.TranslatedText) && ViewModel.IsAutoScrollEnabled)
-            DispatcherQueue.TryEnqueue(() => ScrollToEnd(TranslationScroll));
+        switch (e.PropertyName)
+        {
+            case nameof(MainViewModel.IsTranslationVisible):
+                ApplyLayout();
+                break;
+            case nameof(MainViewModel.RecordingPhase):
+            case nameof(MainViewModel.IsManualInputEnabled):
+                UpdateVisualStates(useTransitions: true);
+                break;
+            case nameof(MainViewModel.FloatingText) when ViewModel.IsAutoScrollEnabled:
+                DispatcherQueue.TryEnqueue(() => ScrollToEnd(TranscriptScroll));
+                break;
+            case nameof(MainViewModel.TranslatedText) when ViewModel.IsAutoScrollEnabled:
+                DispatcherQueue.TryEnqueue(() => ScrollToEnd(TranslationScroll));
+                break;
+        }
     }
 
     /// <summary>
@@ -120,142 +151,296 @@ public sealed partial class MainPage : Page
         scroll.ChangeView(null, double.MaxValue, null);
     }
 
-    /// <summary>
-    /// The translation row is pixel-sized so the divider can resize it. When
-    /// translation is toggled off, collapse the row to zero so no empty band
-    /// remains; when toggled on, restore the user's chosen height.
-    /// </summary>
-    private void UpdateTranslationRowHeight()
+    private void UpdateVisualStates(bool useTransitions)
     {
-        if (ViewModel.IsTranslationVisible)
+        var recordState = ViewModel.RecordingPhase switch
         {
-            TranslationRow.Height = new GridLength(Math.Max(80, _translationRowHeight));
+            RecordingPhase.Recording => "RecordLive",
+            RecordingPhase.Muted => "RecordMuted",
+            _ => "RecordIdle"
+        };
+        VisualStateManager.GoToState(this, recordState, useTransitions);
+        VisualStateManager.GoToState(this, ViewModel.IsManualInputEnabled ? "ManualInput" : "SpeechInput", useTransitions);
+    }
+
+    // ── Adaptive layout (design §5.6) ─────────────────────────────────────────
+
+    /// <summary>
+    /// Applies the adaptive state for the current window size, translation and keyboard.
+    /// The state is computed by <see cref="MainLayout.Compute"/> (unit-tested in the core
+    /// project) because it combines width, height and the keyboard, which AdaptiveTriggers
+    /// cannot express.
+    /// </summary>
+    private void ApplyLayout()
+    {
+        var width = ActualWidth;
+        var height = ActualHeight;
+        if (width <= 0 || height <= 0)
+            return;
+
+        Shell.OpenPaneLength = Math.Min(MaxPaneWidth, width * MaxPaneWidthRatio);
+
+        _layout = MainLayout.Compute(width, height, ViewModel.IsTranslationVisible, _isKeyboardOpen);
+        ApplyChrome(_layout);
+        ApplyCards(_layout.Cards);
+    }
+
+    private void ApplyChrome(MainLayout layout)
+    {
+        var compact = layout.IsCompactChrome;
+        TopBar.MinHeight = compact ? 48 : 56;
+        TopBar.Padding = compact ? new Thickness(4, 0, 8, 0) : new Thickness(4, 4, 8, 4);
+
+        var recordSize = compact ? 56 : 72;
+        RecordButton.Width = recordSize;
+        RecordButton.Height = recordSize;
+        RecordButton.CornerRadius = new CornerRadius(recordSize / 2.0);
+        RecordCaptionText.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        BottomBar.Padding = compact ? new Thickness(16, 4, 16, 8) : new Thickness(16, 8, 16, 12);
+
+        var side = layout.SidePadding;
+        BannerPanel.Padding = new Thickness(side, 0, side, 0);
+        ContentGrid.Padding = new Thickness(side, 8, side, 8);
+
+        // Short windows: one-line banners and a progress strip without its caption.
+        foreach (var banner in new[] { AsrBannerText, TranslationBannerText })
+        {
+            banner.MaxLines = layout.IsCompactBanner ? 1 : 0;
+            banner.TextWrapping = layout.IsCompactBanner ? TextWrapping.NoWrap : TextWrapping.Wrap;
         }
-        else
+        QueueProgressCaption.Visibility = layout.IsCompactBanner ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void ApplyCards(CardArrangement cards)
+    {
+        // Defaults: one column, transcript in the first row, everything visible.
+        var secondRowHeight = new GridLength(0);
+        double secondRowMinHeight = 0;
+        var secondColumnWidth = new GridLength(0);
+        double rowSpacing = 0, columnSpacing = 0;
+        int translationRow = 0, translationColumn = 0;
+        var showTranscript = true;
+        var showTranslation = true;
+        var showTranslationBody = true;
+        var showTabs = false;
+
+        switch (cards)
         {
-            if (TranslationRow.Height.IsAbsolute)
-                _translationRowHeight = TranslationRow.Height.Value;
-            TranslationRow.Height = new GridLength(0);
+            case CardArrangement.TranscriptOnly:
+                showTranslation = false;
+                break;
+            case CardArrangement.Stacked:
+                secondRowHeight = new GridLength(0.8, GridUnitType.Star);
+                secondRowMinHeight = 96;
+                rowSpacing = 8;
+                translationRow = 1;
+                break;
+            case CardArrangement.SideBySide:
+                secondColumnWidth = new GridLength(1, GridUnitType.Star);
+                columnSpacing = 8;
+                translationColumn = 1;
+                break;
+            case CardArrangement.Tabbed:
+                showTabs = true;
+                showTranscript = !_compactShowsTranslation;
+                showTranslation = _compactShowsTranslation;
+                break;
+            case CardArrangement.TranslationCollapsed:
+                secondRowHeight = GridLength.Auto;
+                rowSpacing = 8;
+                translationRow = 1;
+                showTranslationBody = false;
+                break;
+        }
+
+        FirstCardRow.MinHeight = cards == CardArrangement.Stacked ? 96 : 0;
+        SecondCardRow.Height = secondRowHeight;
+        SecondCardRow.MinHeight = secondRowMinHeight;
+        SecondCardColumn.Width = secondColumnWidth;
+        ContentGrid.RowSpacing = rowSpacing;
+        ContentGrid.ColumnSpacing = columnSpacing;
+
+        Grid.SetRow(TranslationCard, translationRow);
+        Grid.SetColumn(TranslationCard, translationColumn);
+        TranscriptCard.Visibility = showTranscript ? Visibility.Visible : Visibility.Collapsed;
+        TranslationCard.Visibility = showTranslation ? Visibility.Visible : Visibility.Collapsed;
+        TranslationBody.Visibility = showTranslationBody ? Visibility.Visible : Visibility.Collapsed;
+        TranslationHeader.BorderThickness = showTranslationBody ? new Thickness(0, 0, 0, 1) : new Thickness(0);
+
+        // Compact: the segmented switch sits over the card header, so the header
+        // titles are hidden (kept in layout so the header keeps its height).
+        CompactTabs.Visibility = showTabs ? Visibility.Visible : Visibility.Collapsed;
+        var titleOpacity = showTabs ? 0 : 1;
+        TranscriptTitle.Opacity = titleOpacity;
+        TranslationTitle.Opacity = titleOpacity;
+        TranslationTargetCombo.Visibility = showTabs ? Visibility.Collapsed : Visibility.Visible;
+        var headerHeight = showTabs ? 52 : 44;
+        TranscriptHeader.MinHeight = headerHeight;
+        TranslationHeader.MinHeight = headerHeight;
+        TranscriptTab.IsChecked = !_compactShowsTranslation;
+        TranslationTab.IsChecked = _compactShowsTranslation;
+    }
+
+    private void CompactTab_Click(object sender, RoutedEventArgs e)
+    {
+        _compactShowsTranslation = ReferenceEquals(sender, TranslationTab);
+        ApplyCards(_layout.Cards);
+    }
+
+    // ── Platform hooks: on-screen keyboard and system back ────────────────────
+
+    /// <summary>
+    /// Subscribes to the input pane (Keyboard state) and the system back button (closes
+    /// the menu first). Both are per-view services that heads without them (WinUI 3
+    /// desktop, some Skia hosts) report by throwing, so each is guarded.
+    /// </summary>
+    private void AttachPlatformHooks()
+    {
+        if (_platformHooksAttached)
+            return;
+        _platformHooksAttached = true;
+
+#if !VOICE_TYPE_WINDOWS
+        try
+        {
+            var inputPane = Windows.UI.ViewManagement.InputPane.GetForCurrentView();
+            inputPane.Showing += (_, _) => SetKeyboardOpen(true);
+            inputPane.Hiding += (_, _) => SetKeyboardOpen(false);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[VoiceType.Uno] Input pane unavailable: {ex.Message}");
+        }
+
+        try
+        {
+            Windows.UI.Core.SystemNavigationManager.GetForCurrentView().BackRequested += OnBackRequested;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[VoiceType.Uno] System back unavailable: {ex.Message}");
+        }
+#endif
+    }
+
+    private void SetKeyboardOpen(bool isOpen)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_isKeyboardOpen == isOpen)
+                return;
+            _isKeyboardOpen = isOpen;
+            ApplyLayout();
+        });
+    }
+
+#if !VOICE_TYPE_WINDOWS
+    private void OnBackRequested(object? sender, Windows.UI.Core.BackRequestedEventArgs e)
+    {
+        if (!Shell.IsPaneOpen)
+            return;
+
+        Shell.IsPaneOpen = false;
+        e.Handled = true;
+    }
+#endif
+
+    // ── Menu ──────────────────────────────────────────────────────────────────
+
+    private void Menu_Click(object sender, RoutedEventArgs e) => Shell.IsPaneOpen = true;
+
+    private void CloseMenu_Click(object sender, RoutedEventArgs e) => Shell.IsPaneOpen = false;
+
+    /// <summary>
+    /// Closes the menu before a dialog or page opens: one content dialog per XamlRoot,
+    /// and the SplitView's light-dismiss layer must not stay under the dialog.
+    /// </summary>
+    private async Task ClosePaneAsync()
+    {
+        if (!Shell.IsPaneOpen)
+            return;
+
+        var closed = new TaskCompletionSource();
+        void OnPaneClosed(SplitView sender, object args) => closed.TrySetResult();
+
+        Shell.PaneClosed += OnPaneClosed;
+        try
+        {
+            Shell.IsPaneOpen = false;
+            // Some heads skip the close animation; never wait for long.
+            await Task.WhenAny(closed.Task, Task.Delay(400));
+        }
+        finally
+        {
+            Shell.PaneClosed -= OnPaneClosed;
         }
     }
+
+    private async void SpeechModels_Click(object sender, RoutedEventArgs e)
+    {
+        await ClosePaneAsync();
+        OpenModelsPage(ModelsTab.Speech);
+    }
+
+    private async void Downloads_Click(object sender, RoutedEventArgs e)
+    {
+        await ClosePaneAsync();
+        OpenModelsPage(ModelsTab.Downloads);
+    }
+
+    private void OpenModelsPage(ModelsTab tab) => Frame?.Navigate(typeof(ModelsPage), tab);
 
     private async void Settings_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new SettingsDialog(ViewModel.CreateSettingsSnapshot())
-        {
-            XamlRoot = XamlRoot
-        };
-
-        var result = await dialog.ShowAsync();
-
-        // The dialog closes itself when the user asks for the model manager, so
-        // pending edits are saved first and the manager opens afterwards (WinUI
-        // allows a single content dialog per XamlRoot at a time).
-        if (result == ContentDialogResult.Primary || dialog.OpenModelManagerRequested)
-            await ViewModel.ApplySettingsAsync(dialog.ViewModel.BuildSettings());
-
-        if (dialog.OpenModelManagerRequested)
-            await ShowModelManagerAsync();
-    }
-
-    private async void Models_Click(object sender, RoutedEventArgs e)
-        => await ShowModelManagerAsync();
-
-    private async Task ShowModelManagerAsync()
-    {
         try
         {
-            var dialog = new ModelManagerDialog(
-                ViewModel.CreateSettingsSnapshot,
-                ViewModel.ApplySettingsAsync)
+            await ClosePaneAsync();
+
+            var dialog = new SettingsDialog(ViewModel.CreateSettingsSnapshot())
             {
                 XamlRoot = XamlRoot
             };
 
-            await dialog.ShowAsync();
-            dialog.ViewModel.Refresh();
+            var result = await dialog.ShowAsync();
+
+            // The dialog closes itself when the user asks for the model manager, so
+            // pending edits are saved first and the Models page opens afterwards.
+            if (result == ContentDialogResult.Primary || dialog.OpenModelManagerRequested)
+                await ViewModel.ApplySettingsAsync(dialog.ViewModel.BuildSettings());
+
+            if (dialog.OpenModelManagerRequested)
+                OpenModelsPage(ModelsTab.Speech);
         }
         catch (Exception ex)
         {
             // ContentDialog throws when another dialog is already open on the same
-            // XamlRoot; report it instead of losing the exception in a discard.
-            Console.WriteLine($"[VoiceType.Uno] Model manager could not be shown: {ex}");
+            // XamlRoot; report it instead of losing the exception in async void.
+            Console.WriteLine($"[VoiceType.Uno] Settings could not be shown: {ex}");
         }
     }
 
     private async void Help_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new HelpDialog { XamlRoot = XamlRoot };
-        await dialog.ShowAsync();
+        try
+        {
+            await ClosePaneAsync();
+            var dialog = new HelpDialog { XamlRoot = XamlRoot };
+            await dialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[VoiceType.Uno] Help could not be shown: {ex}");
+        }
     }
 
-    private async void Downloads_Click(object sender, RoutedEventArgs e)
-    {
-        // Single-window UX on every platform: the shared DownloadsView is shown
-        // in a ContentDialog (Windows, desktop and Android alike).
-        var view = new DownloadsView();
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Content = view,
-            CloseButtonText = "Close",
-            DefaultButton = ContentDialogButton.Close
-        };
-        await dialog.ShowAsync();
-        view.DetachViewModel();
-    }
+    // ── Banners ───────────────────────────────────────────────────────────────
+
+    private void BannerText_Tapped(object sender, TappedRoutedEventArgs e)
+        => OpenModelsPage(ModelsTab.Downloads);
 
     private void DownloadAsrModel_Click(object sender, RoutedEventArgs e)
         => ViewModel.EnqueueAsrModelDownload();
 
     private void DownloadTranslationModel_Click(object sender, RoutedEventArgs e)
         => ViewModel.EnqueueTranslationModelDownload();
-
-    // ── Resizable divider between transcript and translation ───────────────
-    // GridSplitter (CommunityToolkit v7 Uno port) is not compatible with the
-    // WinUI 3 head, so the divider is dragged manually: capture the pointer,
-    // measured by dragging the divider: the transcript row is star-sized and
-    // absorbs the space the translation row gains/loses.
-
-    private bool _dividerDragging;
-    private double _dividerStartY;
-    private double _dividerStartTranslationHeight;
-
-    private void Divider_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        if (sender is not Microsoft.UI.Xaml.FrameworkElement element)
-            return;
-
-        _dividerDragging = true;
-        _dividerStartY = e.GetCurrentPoint(this).Position.Y;
-        _dividerStartTranslationHeight = TranslationRow.Height.Value;
-        element.CapturePointer(e.Pointer);
-        e.Handled = true;
-    }
-
-    private void Divider_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        if (!_dividerDragging)
-            return;
-
-        var currentY = e.GetCurrentPoint(this).Position.Y;
-        var delta = currentY - _dividerStartY;
-
-        // Dragging down grows the transcript, so the translation shrinks;
-        // dragging up grows the translation. Clamp to sensible bounds.
-        var newHeight = Math.Clamp(_dividerStartTranslationHeight - delta, 80, 400);
-        TranslationRow.Height = new GridLength(newHeight);
-        _translationRowHeight = newHeight;
-        e.Handled = true;
-    }
-
-    private void Divider_PointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        if (sender is not Microsoft.UI.Xaml.FrameworkElement element)
-            return;
-
-        _dividerDragging = false;
-        element.ReleasePointerCapture(e.Pointer);
-        e.Handled = true;
-    }
 }
