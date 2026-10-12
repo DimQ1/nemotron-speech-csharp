@@ -45,6 +45,11 @@ public sealed class AppSettings
     /// default) or "gpu" (WebGPU delegate). Applies only to the "native" engine.
     /// </summary>
     public string TranslationComputeBackend { get; set; } = "cpu";
+    /// <summary>
+    /// Id of the language model (<see cref="LlmModelCatalog"/>) the shared engine runs for translation, chat,
+    /// titles and summaries. Falls back to the default model while the selected one is not installed.
+    /// </summary>
+    public string LlmModelId { get; set; } = LlmModelCatalog.DefaultId;
     /// <summary>Base URL of the LiteRT-LM server (gemma-translator topology), used by the "http" backend.</summary>
     public string TranslationServerUrl { get; set; } = "http://localhost:9379";
     /// <summary>

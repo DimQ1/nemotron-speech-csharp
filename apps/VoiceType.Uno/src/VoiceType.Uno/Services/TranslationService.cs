@@ -66,7 +66,10 @@ public sealed class TranslationService : IDisposable, IAsyncDisposable
     public BackendKind Backend => _backend;
 
     /// <summary>True when the native .litertlm model is present on disk.</summary>
-    public bool IsNativeModelAvailable => TranslationModelInfo.IsDownloaded;
+    public bool IsNativeModelAvailable => NativeModelInstalled;
+
+    /// <summary>The shared engine's selected language model is on disk (any model, not only the default E2B).</summary>
+    private bool NativeModelInstalled => _llmHost?.IsModelInstalled ?? TranslationModelInfo.IsDownloaded;
 
     /// <summary>Target language as a code ("ru") or a name ("Russian"); the prompt always gets the name.</summary>
     public void SetTargetLanguage(string language)
@@ -134,10 +137,34 @@ public sealed class TranslationService : IDisposable, IAsyncDisposable
             return;
 
         _computeBackend = normalized;
+        ApplyComputeBackendToSharedHost(normalized);
         if (_activeEngine == BackendKind.Native)
             ResetEngine();
 
         Log($"compute backend -> {normalized}");
+    }
+
+    /// <summary>
+    /// The shared host owns the engine and its compute backend, so the setting has to reach it: it unloads the
+    /// engine and the next request loads it on the new backend (a no-op when the host already runs it).
+    /// </summary>
+    private void ApplyComputeBackendToSharedHost(string backend)
+    {
+        if (_llmHost is not SpeechLib.Llm.ILlmHostConfiguration configuration)
+            return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var current = configuration.Settings;
+                await configuration.ReconfigureAsync(current with { Backend = backend }).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Log($"applying compute backend {backend} to the shared host failed: {ex.Message}");
+            }
+        });
     }
 
     /// <summary>
@@ -192,7 +219,7 @@ public sealed class TranslationService : IDisposable, IAsyncDisposable
     {
         // Native engine (preferred): in-process, offline, no sidecar. Falls back to the
         // HTTP server when the model is not downloaded.
-        if (_backend == BackendKind.Native && TranslationModelInfo.IsDownloaded)
+        if (_backend == BackendKind.Native && NativeModelInstalled)
             return await ConnectNativeAsync(cancellationToken).ConfigureAwait(false);
 
         return await ConnectHttpAsync(cancellationToken).ConfigureAwait(false);
@@ -225,7 +252,7 @@ public sealed class TranslationService : IDisposable, IAsyncDisposable
 
     private async Task<ITextTranslator> ConnectHttpAsync(CancellationToken cancellationToken)
     {
-        StatusChanged?.Invoke(_backend == BackendKind.Native && !TranslationModelInfo.IsDownloaded
+        StatusChanged?.Invoke(_backend == BackendKind.Native && !NativeModelInstalled
             ? "Model not downloaded — falling back to translation server..."
             : "Connecting to translation server...");
 

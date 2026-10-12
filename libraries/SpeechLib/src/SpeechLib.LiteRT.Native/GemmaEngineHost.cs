@@ -26,13 +26,14 @@ namespace SpeechLib.LiteRT.Native;
 /// holds, and rebuild it by replay otherwise.</item>
 /// </list>
 /// </remarks>
-public sealed class GemmaEngineHost : ILlmHost
+public sealed class GemmaEngineHost : ILlmHost, ILlmHostConfiguration
 {
     private const int MaxPreemptionsPerRequest = 200;
 
-    private readonly GemmaEngineHostOptions _options;
-    private readonly Func<IGemmaEngine> _engineFactory;
-    private readonly Func<bool> _isInstalled;
+    // Replaced as a whole by a reconfigure job (the worker loop is the only writer); readers see a consistent snapshot.
+    private volatile GemmaEngineHostOptions _options;
+    private readonly Func<GemmaEngineHostOptions, IGemmaEngine> _engineFactory;
+    private readonly Func<GemmaEngineHostOptions, bool> _isInstalled;
 
     private readonly object _lock = new();
     private readonly List<Job> _queue = [];
@@ -54,18 +55,26 @@ public sealed class GemmaEngineHost : ILlmHost
     private readonly Task _loop;
     private long _lastActivityTimestamp = Stopwatch.GetTimestamp();
     private volatile bool _samplerDisabled;
+    private int _pendingReconfigures;
 
     /// <summary>Creates the host for the real model. The engine itself loads at the first request.</summary>
     public GemmaEngineHost(GemmaEngineHostOptions options)
-        : this(options, () => NativeGemmaEngine.Load(options), () => File.Exists(options.ModelPath))
+        : this(options, NativeGemmaEngine.Load, current => File.Exists(current.ModelPath))
     {
     }
 
     internal GemmaEngineHost(GemmaEngineHostOptions options, Func<IGemmaEngine> engineFactory, Func<bool>? isInstalled = null)
+        : this(options, _ => (engineFactory ?? throw new ArgumentNullException(nameof(engineFactory)))(),
+            isInstalled is null ? null : _ => isInstalled())
+    {
+    }
+
+    internal GemmaEngineHost(
+        GemmaEngineHostOptions options, Func<GemmaEngineHostOptions, IGemmaEngine> engineFactory, Func<GemmaEngineHostOptions, bool>? isInstalled)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _engineFactory = engineFactory ?? throw new ArgumentNullException(nameof(engineFactory));
-        _isInstalled = isInstalled ?? (() => true);
+        _isInstalled = isInstalled ?? (_ => true);
         _loop = Task.Run(RunLoopAsync);
     }
 
@@ -76,13 +85,52 @@ public sealed class GemmaEngineHost : ILlmHost
     {
         get
         {
-            try { return _isInstalled(); }
+            try { return _isInstalled(_options); }
             catch { return false; }
         }
     }
 
     /// <inheritdoc />
     public int ContextTokens => _options.MaxNumTokens;
+
+    /// <inheritdoc />
+    public LlmHostSettings Settings
+    {
+        get
+        {
+            var current = _options;
+            return new LlmHostSettings(current.ModelPath, current.Backend, current.MaxNumTokens);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task ReconfigureAsync(LlmHostSettings settings, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        if (string.IsNullOrWhiteSpace(settings.ModelPath))
+            throw new ArgumentException("The model path is empty.", nameof(settings));
+        if (settings.ContextTokens < 512)
+            throw new ArgumentOutOfRangeException(nameof(settings), "The context window must be at least 512 tokens.");
+
+        var backend = string.IsNullOrWhiteSpace(settings.Backend) ? "cpu" : settings.Backend.Trim().ToLowerInvariant();
+        var normalized = settings with { Backend = backend };
+        if (normalized == Settings && Volatile.Read(ref _pendingReconfigures) == 0)
+            return Task.CompletedTask;
+
+        var job = new Job(LlmPriority.Live, request: null, CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+        {
+            Done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously),
+            Reconfigure = normalized,
+        };
+        Interlocked.Increment(ref _pendingReconfigures);
+        _ = job.Done.Task.ContinueWith(_ =>
+        {
+            Interlocked.Decrement(ref _pendingReconfigures);
+            job.Caller.Dispose();
+        }, TaskScheduler.Default);
+        Enqueue(job);
+        return job.Done.Task.WaitAsync(cancellationToken);
+    }
 
     /// <inheritdoc />
     public LlmHostStatus Status
@@ -106,6 +154,9 @@ public sealed class GemmaEngineHost : ILlmHost
                 return _engine is not null;
         }
     }
+
+    /// <summary>Why the engine runs on the CPU although the GPU was requested; null when it runs as requested.</summary>
+    public string? BackendFallbackReason { get; private set; }
 
     /// <summary>How long the last engine load took; null before the first load.</summary>
     public TimeSpan? LastLoadDuration { get; private set; }
@@ -295,11 +346,13 @@ public sealed class GemmaEngineHost : ILlmHost
             job.CallerRegistration = job.CallerToken.Register(() => OnCallerCancelled(job));
 
             var running = _running;
-            if (running is { PreemptRequested: false } && job.Priority < running.Priority && running.Preempt is not null)
+            if (running is { PreemptRequested: false } && (job.Priority < running.Priority || job.Reconfigure is not null) && running.Preempt is not null)
             {
                 running.PreemptRequested = true;
                 preempt = running.Preempt;
-                _detail = job.Priority == LlmPriority.Live
+                _detail = job.Reconfigure is not null
+                    ? "Waiting for the current generation to stop (switching the language model)"
+                    : job.Priority == LlmPriority.Live
                     ? "Waiting for the current generation to reach a cancel point (live translation is next)"
                     : "Waiting for the current generation to reach a cancel point";
             }
@@ -394,8 +447,11 @@ public sealed class GemmaEngineHost : ILlmHost
         Job? best = null;
         foreach (var candidate in _queue)
         {
-            if (best is null || candidate.Priority < best.Priority
-                || (candidate.Priority == best.Priority && candidate.Seq < best.Seq))
+            if (best is null
+                || (candidate.Reconfigure is not null && best.Reconfigure is null)
+                || ((candidate.Reconfigure is null) == (best.Reconfigure is null)
+                    && (candidate.Priority < best.Priority
+                        || (candidate.Priority == best.Priority && candidate.Seq < best.Seq))))
                 best = candidate;
         }
 
@@ -474,6 +530,13 @@ public sealed class GemmaEngineHost : ILlmHost
             var ct = linked.Token;
             try
             {
+                if (job.Reconfigure is { } settings)
+                {
+                    ApplySettings(settings);
+                    job.Complete();
+                    return;
+                }
+
                 if (job.Unload)
                 {
                     UnloadEngine();
@@ -546,6 +609,14 @@ public sealed class GemmaEngineHost : ILlmHost
 
     private void Requeue(Job job)
     {
+        if (job.Priority == LlmPriority.Live && job.Emitted.Length > 0)
+        {
+            // Only a model switch preempts a Live request. Its text was already streamed and cannot be taken back.
+            DropActive(job);
+            job.Fail(new LlmUnavailableException("The language model was switched while this request was running."));
+            return;
+        }
+
         if (job.Priority == LlmPriority.Interactive && job.Request is not null)
         {
             if (job.Segment.Length > 0)
@@ -567,6 +638,8 @@ public sealed class GemmaEngineHost : ILlmHost
             {
                 // Preempted again before the continuation produced text: resume from the same capture.
                 job.Snapshot ??= job.ResumedFrom;
+                if (job.Snapshot is null)
+                    job.TextResume = true;
             }
         }
 
@@ -606,7 +679,20 @@ public sealed class GemmaEngineHost : ILlmHost
         IGemmaEngine engine;
         try
         {
-            engine = await Task.Run(_engineFactory).ConfigureAwait(false);
+            var current = _options;
+            try
+            {
+                engine = await Task.Run(() => _engineFactory(current)).ConfigureAwait(false);
+            }
+            catch (Exception gpuFailure) when (current.Backend == "gpu")
+            {
+                // No usable GPU driver (WebGPU/Vulkan): run on the CPU instead of leaving the model unusable.
+                // The requested backend stays "gpu" so the Models page still shows the user's choice.
+                Log($"gpu backend failed to load ({gpuFailure.Message}); falling back to cpu");
+                var cpu = current.With(current.ModelPath, "cpu", current.MaxNumTokens);
+                engine = await Task.Run(() => _engineFactory(cpu)).ConfigureAwait(false);
+                BackendFallbackReason = "The GPU backend failed to load: " + gpuFailure.Message;
+            }
         }
         catch (Exception ex)
         {
@@ -626,6 +712,32 @@ public sealed class GemmaEngineHost : ILlmHost
         }
 
         return engine;
+    }
+
+    private void ApplySettings(LlmHostSettings settings)
+    {
+        // Drops the live conversations and the engine first: the old engine holds the old model's memory.
+        UnloadEngine();
+        lock (_lock)
+        {
+            // Snapshots of interrupted answers belong to the engine that was just disposed.
+            foreach (var queued in _queue)
+            {
+                if (queued.Snapshot is not null || queued.ResumedFrom is not null)
+                {
+                    queued.Snapshot = null;
+                    queued.ResumedFrom = null;
+                    queued.TextResume = true;
+                }
+            }
+        }
+
+        _options = _options.With(settings.ModelPath, settings.Backend, settings.ContextTokens);
+        _samplerDisabled = false; // a different backend may implement the sampler
+        BackendFallbackReason = null;
+        lock (_lock)
+            _unavailableReason = null;
+        Log($"reconfigured: model={settings.ModelPath}, backend={settings.Backend}, context={settings.ContextTokens}");
     }
 
     private void UnloadEngine()
@@ -677,7 +789,7 @@ public sealed class GemmaEngineHost : ILlmHost
             var gotChunk = false;
             try
             {
-                var continuing = job.Snapshot is not null;
+                var continuing = job.Snapshot is not null || job.TextResume;
                 var (conversation, sendText, chat) = Acquire(job, engine, useSampler ? sampler : null);
                 job.ActiveConv = conversation;
                 job.ActiveChat = chat;
@@ -738,6 +850,22 @@ public sealed class GemmaEngineHost : ILlmHost
             var resumed = engine.Resume(snapshot);
             var resumedChat = key is null ? null : Register(key, resumed, plan.System, plan.History);
             return (resumed, _options.ContinuationPrompt, resumedChat);
+        }
+
+        if (job.TextResume)
+        {
+            // The engine was replaced while this answer was interrupted: a snapshot belongs to the old engine, so
+            // rebuild the conversation from text (turns + the reply so far as a model turn) and continue it.
+            job.TextResume = false;
+            var turns = new List<LlmMessage>(plan.History)
+            {
+                new(LlmRole.User, plan.FinalUser),
+                new(LlmRole.Assistant, job.Emitted.ToString()),
+            };
+            var maxTokens = job.Request.Sampling?.MaxOutputTokens is > 0 and var limit ? limit : _options.DefaultMaxOutputTokens;
+            var rebuilt = engine.CreateConversation(new GemmaConversationSpec(plan.System, turns, maxTokens, sampler));
+            var rebuiltChat = key is null ? null : Register(key, rebuilt, plan.System, plan.History);
+            return (rebuilt, _options.ContinuationPrompt, rebuiltChat);
         }
 
         if (key is not null)
@@ -1008,6 +1136,7 @@ public sealed class GemmaEngineHost : ILlmHost
         public Plan? Plan { get; init; }
         public TaskCompletionSource? Done { get; init; }
         public bool Unload { get; init; }
+        public LlmHostSettings? Reconfigure { get; init; }
         public CancellationTokenRegistration CallerRegistration { get; set; }
 
         // Set while running (under the host lock).
@@ -1019,6 +1148,7 @@ public sealed class GemmaEngineHost : ILlmHost
         public StringBuilder Segment { get; } = new();
         public IGemmaSnapshot? Snapshot { get; set; }
         public IGemmaSnapshot? ResumedFrom { get; set; }
+        public bool TextResume { get; set; }
         public IGemmaConversation? ActiveConv { get; set; }
         public LiveChat? ActiveChat { get; set; }
         public int Preemptions { get; set; }

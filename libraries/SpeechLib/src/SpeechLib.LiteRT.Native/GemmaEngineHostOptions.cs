@@ -54,4 +54,21 @@ public sealed class GemmaEngineHostOptions
     /// <summary>The user turn sent to continue an interactive answer that was preempted mid-way.</summary>
     public string ContinuationPrompt { get; init; } =
         "Continue your previous answer exactly where it stopped. Do not repeat anything you already wrote and do not add an introduction.";
+
+    /// <summary>A copy with the runtime-switchable values replaced (keep in step with the properties above).</summary>
+    internal GemmaEngineHostOptions With(string modelPath, string backend, int maxNumTokens) => new()
+    {
+        ModelPath = modelPath,
+        Backend = backend,
+        NumThreads = NumThreads,
+        MaxNumTokens = maxNumTokens,
+        Cache = Cache,
+        LogLevel = LogLevel,
+        IdleUnloadAfter = IdleUnloadAfter,
+        MaxLiveConversations = MaxLiveConversations,
+        DefaultMaxOutputTokens = DefaultMaxOutputTokens,
+        LiveNoRepeatNgramSize = LiveNoRepeatNgramSize,
+        Diagnostics = Diagnostics,
+        ContinuationPrompt = ContinuationPrompt,
+    };
 }

@@ -3,21 +3,22 @@ namespace VoiceType.Uno.Services;
 using SpeechLib.ModelDownload;
 
 /// <summary>
-/// Static metadata for the LiteRT translation model (Gemma 4 E2B IT in
-/// <c>.litertlm</c> format), used by the in-process native translation backend.
+/// Static metadata for the default LiteRT language model (Gemma 4 E2B IT in
+/// <c>.litertlm</c> format): a thin view over <see cref="LlmModelCatalog.Default"/>, kept for the first-run banner,
+/// the translate page and the E2B card. The other models are managed by <see cref="ILlmModelService"/>.
 /// Mirrors VoiceType.WinUI TranslationModelInfo but resolves the path through
 /// the cross-platform <see cref="AppPaths"/> (XDG data dir on Linux).
 /// </summary>
 public static class TranslationModelInfo
 {
     /// <summary>Job key: one download for the translation model at a time.</summary>
-    public const string Key = "translation-model";
+    public static string Key => LlmModelCatalog.DownloadKey(LlmModelCatalog.Default);
 
     /// <summary>Hugging Face repo that hosts the LiteRT-LM model.</summary>
-    public const string RepoId = "litert-community/gemma-4-E2B-it-litert-lm";
+    public static string RepoId => LlmModelCatalog.Default.RepoId;
 
     /// <summary>Exact file to download from the repo.</summary>
-    public const string FileName = "gemma-4-E2B-it.litertlm";
+    public static string FileName => LlmModelCatalog.Default.FileName;
 
     /// <summary>
     /// Compute backend. The LiteRT C API has no CUDA support; on Linux "gpu" maps

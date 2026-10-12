@@ -515,8 +515,9 @@ public sealed partial class MainViewModel : ObservableObject
             _ => AsrModelBannerText
         };
 
-        IsTranslationModelPartial = !TranslationModelInfo.IsDownloaded && TranslationModelInfo.HasPartialDownload;
-        IsTranslationModelMissing = !TranslationModelInfo.IsDownloaded;
+        var anyLanguageModel = LlmModelCatalog.All.Any(m => m.IsInstalled); // the default E2B or a larger Gemma
+        IsTranslationModelPartial = !anyLanguageModel && TranslationModelInfo.HasPartialDownload;
+        IsTranslationModelMissing = !anyLanguageModel;
         TranslationModelBannerText = IsTranslationModelPartial
             ? "Translation model download is incomplete — re-download it to finish."
             : "Translation model is not downloaded — translation will use the HTTP server fallback or stay off.";
