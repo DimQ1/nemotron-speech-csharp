@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using SpeechLib.Models;
 
 namespace VoiceType.Uno.History;
 
@@ -105,7 +106,13 @@ public sealed partial class LiveSegmentTimer
     /// ~4 s), so the segment start is moved back to the start of the voiced stretch the
     /// first partial belongs to.
     /// </param>
-    public void OnBatch(int samples, string? tail, string? committed, double? levelDb = null)
+    /// <param name="committedWords">
+    /// Exact word timings of <paramref name="committed"/> from the recognizer's decoder (seconds on the
+    /// session's sample timeline), when it provides them: the segment gets <c>decoder</c> word times
+    /// and spans its first to last word.
+    /// </param>
+    public void OnBatch(int samples, string? tail, string? committed, double? levelDb = null,
+        IReadOnlyList<WordTiming>? committedWords = null)
     {
         if (samples < 0)
             throw new ArgumentOutOfRangeException(nameof(samples));
@@ -128,7 +135,7 @@ public sealed partial class LiveSegmentTimer
             {
                 var lagged = batchEnd - ToSamples(_commitLagSeconds);
                 var end = _lastActivityEnd is { } activity ? Math.Min(lagged, activity) : lagged;
-                CloseSegment(committed!, _openStart, end, batchEnd);
+                CloseSegment(committed!, _openStart, end, batchEnd, committedWords);
             }
         }
         else if (hasCommit)
@@ -157,13 +164,13 @@ public sealed partial class LiveSegmentTimer
     }
 
     /// <summary>Text the recognizer produced when the stream was flushed (end of session).</summary>
-    public void OnFlush(string? committed)
+    public void OnFlush(string? committed, IReadOnlyList<WordTiming>? committedWords = null)
     {
         DetectLanguage(committed);
         if (_utteranceCommits)
         {
             if (!string.IsNullOrWhiteSpace(committed))
-                CloseSegment(committed, _openStart, _lastActivityEnd ?? Position, Position);
+                CloseSegment(committed, _openStart, _lastActivityEnd ?? Position, Position, committedWords);
         }
         else
         {
@@ -225,7 +232,8 @@ public sealed partial class LiveSegmentTimer
         CloseSegment(text, _openStart, end, limit);
     }
 
-    private void CloseSegment(string rawText, long? openStart, long end, long limit)
+    private void CloseSegment(string rawText, long? openStart, long end, long limit,
+        IReadOnlyList<WordTiming>? decoderWords = null)
     {
         var text = CleanText(rawText);
         if (text.Length == 0)
@@ -234,7 +242,27 @@ public sealed partial class LiveSegmentTimer
             return;
         }
 
-        var wordCount = Math.Max(1, TextTokens.SplitWords(text).Count);
+        var textWords = TextTokens.SplitWords(text);
+        if (DecoderWordTimings.Map(decoderWords, textWords) is { } exact)
+        {
+            // Exact decoder alignment: no estimate from batches needed.
+            var first = exact[0].Start;
+            var last = Math.Max(first, exact[^1].End);
+            _segments.Add(new TranscriptSegment
+            {
+                Index = _segments.Count,
+                Start = first,
+                End = last,
+                Text = text,
+                Words = exact,
+                WordTiming = WordTimingKinds.Decoder,
+            });
+            _lastClosedEnd = Math.Max(_lastClosedEnd, (long)Math.Round(last * SampleRate));
+            ResetOpen();
+            return;
+        }
+
+        var wordCount = Math.Max(1, textWords.Count);
         end = Math.Clamp(end, _lastClosedEnd, limit);
         long start;
         if (openStart is { } open)

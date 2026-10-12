@@ -101,6 +101,60 @@ public sealed class E2E_ParakeetStreamingTests
     }
 
     [ParakeetOnnxFact]
+    public void WordTimings_StreamingFinalWordsAgreeWithOfflineAndStayOnTheAudioTimeline()
+    {
+        using var recognizer = new ParakeetTdtRecognizer(ParakeetTestModel.Locate()!);
+        var clip = ParakeetTestModel.LoadWav("0001.wav");
+        const double gapSeconds = 3.0;
+        var gap = new float[(int)(gapSeconds * 16000)];
+        var rng = new Random(7);
+        for (var i = 0; i < gap.Length; i++)
+            gap[i] = (float)((rng.NextDouble() - 0.5) * 0.0008); // room tone, as a pause between recordings
+
+        // Two copies of the clip, 3 s of silence apart (and 3 s of silence in front): exercises the silence
+        // gate, the fresh decoder state after a pause, onset context and trimmed audio.
+        var audio = gap.Concat(clip).Concat(gap).Concat(clip).Concat(gap).ToArray();
+        var second = gapSeconds + clip.Length / 16000.0 + gapSeconds;
+
+        var offline = recognizer.TranscribeWords(clip);
+        Assert.NotEmpty(offline);
+
+        foreach (var chunk in new[] { 0.32, 1.0 })
+        {
+            using var streaming = new ParakeetTdtRecognizer(ParakeetTestModel.Locate()!, chunkSeconds: chunk);
+            var words = new List<SpeechLib.Models.WordTiming>();
+            foreach (var (batch, _) in Batches(audio, streaming.SampleRate))
+                if (streaming.ProcessUtterance(batch).FinalWords is { } final)
+                    words.AddRange(final);
+            if (streaming.FlushUtterance().FinalWords is { } tail)
+                words.AddRange(tail);
+
+            // Ordered, inside the audio, positive length.
+            Assert.All(words, w => Assert.InRange(w.EndSeconds - w.StartSeconds, 0, 5));
+            for (var i = 1; i < words.Count; i++)
+                Assert.True(words[i].StartSeconds >= words[i - 1].StartSeconds, $"chunk {chunk}: word {i} starts before word {i - 1}");
+            Assert.InRange(words[^1].EndSeconds, 0, audio.Length / 16000.0 + 0.1);
+
+            // Each copy has the words of the offline decode, shifted by its position on the timeline.
+            foreach (var shift in new[] { gapSeconds, second })
+            {
+                var near = words.Where(w => w.StartSeconds >= shift - 1 && w.StartSeconds < shift + clip.Length / 16000.0 + 1).ToList();
+                var distance = WordDistance(
+                    offline.Select(w => Normalize(w.Word).FirstOrDefault() ?? "").ToArray(),
+                    near.Select(w => Normalize(w.Word).FirstOrDefault() ?? "").ToArray());
+                Assert.True(distance <= Math.Max(2, offline.Count / 5), $"chunk {chunk}: copy at {shift:F1}s differs from the offline words by {distance}");
+
+                // Median start difference per matched word position (by index when the counts agree).
+                if (near.Count == offline.Count)
+                {
+                    var diffs = near.Select((w, i) => Math.Abs(w.StartSeconds - shift - offline[i].StartSeconds)).OrderBy(d => d).ToList();
+                    Assert.True(diffs[diffs.Count / 2] <= 0.25, $"chunk {chunk}: median start shift {diffs[diffs.Count / 2]:F2}s at copy {shift:F1}s");
+                }
+            }
+        }
+    }
+
+    [ParakeetOnnxFact]
     public void ResetStreamingState_DropsBufferedAudioAndPreview()
     {
         using var recognizer = new ParakeetTdtRecognizer(ParakeetTestModel.Locate()!);
@@ -166,6 +220,11 @@ internal static class ParakeetTestModel
 
     public static string? Locate()
     {
+        // PARAKEET_TDT_MODEL_DIR: a quantization folder outside the repository (e.g. a worktree's shared models).
+        if (Environment.GetEnvironmentVariable("PARAKEET_TDT_MODEL_DIR") is { Length: > 0 } custom
+            && File.Exists(Path.Combine(custom, "encoder-model.onnx")))
+            return custom;
+
         var root = FindRepositoryRoot();
         if (root is null)
             return null;
@@ -181,8 +240,10 @@ internal static class ParakeetTestModel
 
     public static float[] LoadWav(string fileName)
     {
-        var root = FindRepositoryRoot() ?? throw new DirectoryNotFoundException("Repository root not found.");
-        var bytes = File.ReadAllBytes(Path.Combine(root, "Test-Audio", "cv17", "en", fileName));
+        var root = Environment.GetEnvironmentVariable("SPEECHLIB_TEST_AUDIO") is { Length: > 0 } custom
+            ? custom
+            : Path.Combine(FindRepositoryRoot() ?? throw new DirectoryNotFoundException("Repository root not found."), "Test-Audio");
+        var bytes = File.ReadAllBytes(Path.Combine(root, "cv17", "en", fileName));
 
         // 16 kHz mono PCM16 fixtures: locate the data chunk and scale to float.
         var position = 12;

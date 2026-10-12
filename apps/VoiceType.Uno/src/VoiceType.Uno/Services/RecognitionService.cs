@@ -323,7 +323,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
                     RecognitionStep step;
                     lock (_recognizerOperationGate)
                         step = pipeline.Process(batch);
-                    InvokeTap(ref tap, t => t.OnStep(batch.Length, step.Tail, step.Committed));
+                    InvokeTap(ref tap, t => t.OnStep(batch.Length, step.Tail, step.Committed, step.CommittedWords));
                     ApplyStep(step);
                 }
 
@@ -337,7 +337,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             RecognitionStep tail;
             lock (_recognizerOperationGate)
                 tail = pipeline.Flush();
-            InvokeTap(ref tap, t => t.OnFlush(tail.Committed));
+            InvokeTap(ref tap, t => t.OnFlush(tail.Committed, tail.CommittedWords));
             ApplyStep(tail);
 
             // Final pass: strip language tags AND normalize whitespace for clean output.
@@ -383,7 +383,9 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     /// this batch committed to the transcript.
     /// </summary>
     /// <param name="Tail">The recognizer's revisable, uncommitted text after this batch.</param>
-    private readonly record struct RecognitionStep(string? Display, string? Committed, bool IsUtteranceCommit, string? Tail = null)
+    private readonly record struct RecognitionStep(
+        string? Display, string? Committed, bool IsUtteranceCommit, string? Tail = null,
+        IReadOnlyList<SpeechLib.Models.WordTiming>? CommittedWords = null)
     {
         public static RecognitionStep Empty { get; } = new(null, null, false);
     }
@@ -440,7 +442,8 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
                 _committed.Append(committed);
             }
 
-            return new RecognitionStep(ComposeDisplay(_committed, result.Partial), committed, IsUtteranceCommit: committed is not null, result.Partial);
+            return new RecognitionStep(ComposeDisplay(_committed, result.Partial), committed, IsUtteranceCommit: committed is not null, result.Partial,
+                committed is null ? null : result.FinalWords);
         }
     }
 
@@ -574,6 +577,16 @@ public interface IRecognitionTap
 
     /// <summary>The stream was flushed at the end of the session.</summary>
     void OnFlush(string? committed);
+
+    /// <summary>
+    /// <see cref="OnStep(int, string?, string?)"/> with the decoder's word timings of the committed
+    /// text (recognizers that provide them, seconds on the session's sample timeline); null otherwise.
+    /// </summary>
+    void OnStep(int samples, string? tail, string? committed, IReadOnlyList<SpeechLib.Models.WordTiming>? committedWords) =>
+        OnStep(samples, tail, committed);
+
+    /// <summary><see cref="OnFlush(string?)"/> with the decoder's word timings of the committed text.</summary>
+    void OnFlush(string? committed, IReadOnlyList<SpeechLib.Models.WordTiming>? committedWords) => OnFlush(committed);
 }
 
 public enum ModelLifecycleState

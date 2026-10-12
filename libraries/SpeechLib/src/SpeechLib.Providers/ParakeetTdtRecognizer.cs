@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using SpeechLib.Models;
 
 namespace SpeechLib.ParakeetTdt;
 
@@ -38,8 +39,16 @@ namespace SpeechLib.ParakeetTdt;
 /// is contiguous. Trailing silence closes the utterance without waiting for the next
 /// word: once the last committed token is older than <c>stopHistoryEou</c> and the
 /// preview holds no speech, the held text is finalized.</para>
+/// <para><b>Word timings.</b> The decoder's per-token frame positions leave the recognizer as
+/// <see cref="StreamingResult.FinalWords"/> / <see cref="StreamingResult.PartialWords"/> and
+/// <see cref="TranscribeWords"/> (<see cref="ITimedUtteranceRecognizer"/>): every token carries the
+/// absolute sample of the 80 ms encoder frame that emitted it (window start + frame × 1280, so
+/// chunking, left/right/onset context, trimmed audio and skipped silence do not shift it) up to the
+/// end of its TDT duration; words group tokens at '▁' markers. The raw positions are early by up to
+/// ~300 ms for the first word after a pause and late by up to ~300 ms for a sentence-final word, so
+/// they are snapped to the speech energy by <see cref="TokenTimingRefiner"/> (<c>refineTimings</c>).</para>
 /// </summary>
-public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteranceStreamingRecognizer
+public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, ITimedUtteranceRecognizer
 {
     private static readonly Regex DecodeSpacePattern = new(@"\A\s|\s\B|(\s)\b", RegexOptions.Compiled);
 
@@ -130,6 +139,14 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
     private readonly StringBuilder _partial = new();      // committed, not yet finalized text since the last EoU
     private readonly StringBuilder _pendingFinal = new(); // utterances finalized during the current step
 
+    // Token alignment (ITimedUtteranceRecognizer): positions in absolute samples of the stream.
+    private List<TimedWordBuilder.RawToken> _stepTokens = new();     // committed tokens of the last step (parallel to its ids)
+    private List<TimedWordBuilder.RawToken> _previewTokens = new();  // revisable tail (parallel to _previewIds)
+    private readonly List<TimedWordBuilder.RawToken> _partialTokens = new();      // parallel to _partial
+    private readonly List<TimedWordBuilder.RawToken> _pendingFinalTokens = new(); // parallel to _pendingFinal
+    private long _lastTokenStartSample = long.MinValue;  // start of the last committed token (energy refinement context)
+    private readonly bool _refineTimings;
+
     /// <inheritdoc />
     public int SampleRate => 16000;
 
@@ -185,6 +202,8 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
     /// need more right context than words inside a sentence (see <see cref="Step"/>).</param>
     /// <param name="onsetContextSeconds">Future audio the first word of an utterance needs
     /// before it is committed; later words use <paramref name="rightContextSeconds"/>.</param>
+    /// <param name="refineTimings">Snap the decoder's token / word times to the speech energy
+    /// of the audio (<see cref="TokenTimingRefiner"/>); false = raw encoder-frame positions.</param>
     public ParakeetTdtRecognizer(
         string modelDir,
         double chunkSeconds = DefaultChunkSeconds,
@@ -194,8 +213,10 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
         string executionProvider = "cpu",
         bool previewPartials = true,
         double silenceContextSeconds = DefaultSilenceContextSeconds,
-        double onsetContextSeconds = DefaultOnsetContextSeconds)
+        double onsetContextSeconds = DefaultOnsetContextSeconds,
+        bool refineTimings = true)
     {
+        _refineTimings = refineTimings;
         var dir = Path.GetFullPath(modelDir);
         if (!Directory.Exists(dir))
             throw new DirectoryNotFoundException($"Model directory not found: {dir}");
@@ -320,7 +341,33 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
         _emittedAnyText = false;
         _partial.Clear();
         _pendingFinal.Clear();
+        _stepTokens = new();
+        _previewTokens = new();
+        _partialTokens.Clear();
+        _pendingFinalTokens.Clear();
+        _lastTokenStartSample = long.MinValue;
     }
+
+    /// <inheritdoc />
+    public IReadOnlyList<WordTiming> TranscribeWords(float[] waveform)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var encodings = Encode(waveform);
+        var state = new DecoderState(_blankIdx);
+        var decoded = DecodeFrames(encodings, 0, encodings.Length, 0, state);
+        return BuildWords(RefineTokens(decoded.Timed, waveform, 0, long.MinValue));
+    }
+
+    /// <summary>Snaps token positions to the speech energy of the audio they lie in (see <see cref="TokenTimingRefiner"/>).</summary>
+    private List<TimedWordBuilder.RawToken> RefineTokens(
+        List<TimedWordBuilder.RawToken> tokens, ReadOnlySpan<float> audio, long audioStartSample, long previousStart) =>
+        _refineTimings && tokens.Count > 0
+            ? TokenTimingRefiner.Refine(tokens, id => _wordStartIds.Contains(id), audio, audioStartSample, previousStart)
+            : tokens;
+
+    private List<WordTiming> BuildWords(IReadOnlyList<TimedWordBuilder.RawToken> tokens) =>
+        TimedWordBuilder.Build(tokens, SampleRate, id => _wordStartIds.Contains(id),
+            id => _vocab.TryGetValue(id, out var piece) ? piece : "");
 
     /// <summary>Transcribe a complete 16 kHz mono float waveform (independent of the streaming state).</summary>
     public string Transcribe(float[] waveform)
@@ -357,6 +404,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
     {
         var committed = new List<int>();
         _eouSplits = new List<int>();
+        _stepTokens = new();
         _lastTokenCount = 0;
 
         // Adaptive step rate: never step more often than the previous step took to compute,
@@ -371,6 +419,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
         if (open <= 0)
         {
             _previewIds.Clear();
+            _previewTokens = new();
             return committed;
         }
 
@@ -436,6 +485,9 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
             }
 
             committed = decoded.Tokens;
+            _stepTokens = RefineTokens(decoded.Timed, window, windowStartAbs, _lastTokenStartSample);
+            if (_stepTokens.Count > 0)
+                _lastTokenStartSample = _stepTokens[^1].StartSample;
             _eouSplits = decoded.EouSplits;
             nextFrame = decoded.NextFrame;
 
@@ -468,8 +520,13 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
         }
 
         _previewIds.Clear();
+        _previewTokens = new();
         if (preview && nextFrame < totalFrames)
-            _previewIds.AddRange(DecodeFrames(encodings, nextFrame, totalFrames, windowStartAbs, scratch).Tokens);
+        {
+            var tail = DecodeFrames(encodings, nextFrame, totalFrames, windowStartAbs, scratch);
+            _previewIds.AddRange(tail.Tokens);
+            _previewTokens = RefineTokens(tail.Timed, window, windowStartAbs, _lastTokenStartSample);
+        }
 
         _lastTokenCount = committed.Count;
         _lastStepSeconds = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds;
@@ -644,6 +701,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
         var segment = ids.Skip(start).Take(end - start).ToList();
         var text = Detokenize(segment);
         if (text.Length == 0) return;
+        _partialTokens.AddRange(_stepTokens.GetRange(start, end - start));
 
         bool startsWord = _wordStartIds.Contains(segment[0]);
         bool needSpace = _partial.Length > 0 && startsWord;
@@ -658,13 +716,24 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
         if (_pendingFinal.Length > 0) _pendingFinal.Append(' ');
         _pendingFinal.Append(_partial);
         _partial.Clear();
+        _pendingFinalTokens.AddRange(_partialTokens);
+        _partialTokens.Clear();
     }
 
     private StreamingResult TakeResult()
     {
         var final = _pendingFinal.Length > 0 ? _pendingFinal.ToString() : null;
+        var finalWords = final is null ? null : BuildWords(_pendingFinalTokens);
         _pendingFinal.Clear();
-        return new StreamingResult(PartialWithPreview(), final) { Stable = _partial.ToString() };
+        _pendingFinalTokens.Clear();
+        var partialTokens = new List<TimedWordBuilder.RawToken>(_partialTokens);
+        partialTokens.AddRange(_previewTokens);
+        return new StreamingResult(PartialWithPreview(), final)
+        {
+            Stable = _partial.ToString(),
+            FinalWords = finalWords,
+            PartialWords = BuildWords(partialTokens),
+        };
     }
 
     /// <summary>The committed-but-unfinalized utterance text followed by the revisable preview.</summary>
@@ -796,8 +865,10 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
     /// <param name="LastTokenEnd">First frame after the last emitted token's duration (the frame
     /// the decoder moved to right after emitting it), or −1 when no token was emitted.</param>
     /// <param name="NextFrame">Frame the decoder would visit next (may exceed the decoded range).</param>
+    /// <param name="Timed">The tokens with absolute sample positions (emitting frame to end of its duration).</param>
     private readonly record struct DecodeOutput(
-        List<int> Tokens, List<int> EouSplits, int LastTokenEnd, int NextFrame);
+        List<int> Tokens, List<int> EouSplits, int LastTokenEnd, int NextFrame,
+        List<TimedWordBuilder.RawToken> Timed);
 
     private float[][] Encode(float[] waveform)
     {
@@ -819,6 +890,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
     {
         var tokens = new List<int>();
         var splits = new List<int>();
+        var timed = new List<TimedWordBuilder.RawToken>();
         int lastTokenEnd = -1;
 
         int t = startFrame;
@@ -831,6 +903,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
             // logits = [vocab (vocabSize)] + [duration (decoderDim - vocabSize)]
             int token = ArgMax(logits, 0, _vocabSize);
             int duration = ArgMax(logits, _vocabSize, logits.Length - _vocabSize);
+            int emitFrame = t;
 
             if (TraceEnabled)
             {
@@ -851,6 +924,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
                 state.LastEmitSample = absSample;
 
                 tokens.Add(token);
+                timed.Add(new TimedWordBuilder.RawToken(token, 0, 0)); // positions filled below
                 state.State1 = nextState1;
                 state.State2 = nextState2;
                 state.LastToken = token;
@@ -872,11 +946,25 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, IUtteran
             }
 
             if (token != _blankIdx)
+            {
                 lastTokenEnd = t;
+                // The frame that emitted the token up to the end of its duration (at least that frame).
+                timed[^1] = PositionToken(token, windowStartSample, emitFrame, t);
+            }
         }
 
-        return new DecodeOutput(tokens, splits, lastTokenEnd, t);
+        return new DecodeOutput(tokens, splits, lastTokenEnd, t, timed);
     }
+
+    /// <summary>
+    /// Absolute sample positions of a token: from the start of the encoder frame that emitted it
+    /// (<paramref name="emitFrame"/>, relative to the window that starts at <paramref name="windowStartSample"/>)
+    /// to the frame the decoder moved to after its duration (<paramref name="nextFrame"/>), at least one frame long.
+    /// </summary>
+    internal static TimedWordBuilder.RawToken PositionToken(int token, long windowStartSample, int emitFrame, int nextFrame) =>
+        new(token,
+            windowStartSample + (long)emitFrame * SamplesPerFrame,
+            windowStartSample + (long)Math.Max(nextFrame, emitFrame + 1) * SamplesPerFrame);
 
     private static SessionOptions CreateSessionOptions(string executionProvider)
     {
