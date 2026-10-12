@@ -25,3 +25,4 @@ root so existing Store and website links keep working.
 - WinUI migration plan: `plans/voicetype-winui3-migration-plan.md`
 - VoiceType.Uno mobile redesign (design, mockup, overlap check): `design/voicetype-uno-mobile/README.md`
 - VoiceType.Uno recordings history (design only: playback, Gemma chat, translation, versioned re-recognition): `design/voicetype-uno-history/README.md`
+- Gemma engine (LiteRT-LM / LiteRtLmSharp): measurements and how to improve it, with a patch for a second engine: `research/litert/engine-improvements.md`

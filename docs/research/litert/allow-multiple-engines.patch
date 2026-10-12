@@ -1,0 +1,64 @@
+diff --git a/LiteRtLmSharp/LiteRtEngine.cs b/LiteRtLmSharp/LiteRtEngine.cs
+index bacf07f..65b2bce 100644
+--- a/LiteRtLmSharp/LiteRtEngine.cs
++++ b/LiteRtLmSharp/LiteRtEngine.cs
+@@ -44,6 +44,20 @@ public sealed class LiteRtEngine : IDisposable
+     /// guard is only active when this is known.</summary>
+     internal int MaxNumTokens { get; }
+ 
++    /// <summary>
++    /// Opt-in: allow more than one live engine per process. Off by default (the historical rule: a second
++    /// <see cref="Load"/> throws). Measured on win-x64 (natives v0.13.1, v0.14.0, v0.16.0, v0.18.0; CPU and
++    /// GPU) and linux-x64 (v0.16.0) two or three simultaneously alive engines load, generate in parallel and
++    /// dispose independently without hanging. Each engine costs its own KV cache and activation memory;
++    /// generation on different engines runs truly in parallel (CPU cores are shared), whereas conversations
++    /// of one engine are serialized by the native runtime. Set before the first <see cref="Load"/>.
++    /// </summary>
++    public static bool AllowMultipleEngines
++    {
++        get => EngineLiveness.AllowMultiple;
++        set => EngineLiveness.AllowMultiple = value;
++    }
++
+     /// <summary>Sets the global minimum log level (0=VERBOSE … 5=FATAL, 1000=SILENT).</summary>
+     /// <exception cref="DllNotFoundException">The native LiteRT-LM library could not be loaded; the
+     /// message names the fix (the missing <c>LiteRtLmSharp.runtime.&lt;rid&gt;</c> package, or a system
+diff --git a/LiteRtLmSharp/Native/Handles.cs b/LiteRtLmSharp/Native/Handles.cs
+index e8df315..7615bbe 100644
+--- a/LiteRtLmSharp/Native/Handles.cs
++++ b/LiteRtLmSharp/Native/Handles.cs
+@@ -35,12 +35,30 @@ internal sealed class EngineSettingsHandle(nint handle) : LiteRtLmHandle(handle)
+ internal static class EngineLiveness
+ {
+     private static int s_live;
++    private static volatile bool s_allowMultiple;
+ 
+-    /// <summary>Tries to take the single engine slot; returns false if one is already live.</summary>
+-    public static bool TryAcquire() => Interlocked.CompareExchange(ref s_live, 1, 0) == 0;
++    /// <summary>When true, any number of engines may be alive at once (opt-in; see
++    /// <see cref="LiteRtEngine.AllowMultipleEngines"/>).</summary>
++    public static bool AllowMultiple { get => s_allowMultiple; set => s_allowMultiple = value; }
+ 
+-    /// <summary>Frees the engine slot.</summary>
+-    public static void Release() => Interlocked.Exchange(ref s_live, 0);
++    /// <summary>Takes an engine slot: always succeeds in multi-engine mode, otherwise only when no engine is live.</summary>
++    public static bool TryAcquire()
++    {
++        if (s_allowMultiple)
++        {
++            Interlocked.Increment(ref s_live);
++            return true;
++        }
++        return Interlocked.CompareExchange(ref s_live, 1, 0) == 0;
++    }
++
++    /// <summary>Frees an engine slot (never below zero).</summary>
++    public static void Release()
++    {
++        int cur;
++        do { cur = Volatile.Read(ref s_live); if (cur <= 0) return; }
++        while (Interlocked.CompareExchange(ref s_live, cur - 1, cur) != cur);
++    }
+ }
+ 
+ internal sealed class EngineHandle(nint handle) : LiteRtLmHandle(handle)
