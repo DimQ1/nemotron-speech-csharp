@@ -103,7 +103,8 @@ internal partial class ChatJsonContext : JsonSerializerContext;
 
 /// <summary>
 /// Per-chunk and per-section summaries of a recording version, kept next to it in
-/// <c>analysis/&lt;version&gt;.chunks.json</c> so every chat (and the summarize jobs) reuse them.
+/// <c>analysis/&lt;version&gt;.chat-summaries.json</c> so every chat reuses them. (The summarize jobs keep their own
+/// <c>&lt;version&gt;.chunks.json</c> / <c>.summary.json</c>; unifying the two pipelines is a follow-up.)
 /// Keys carry a content hash and the prompt version, so a changed transcript or prompt never reads stale text.
 /// </summary>
 public sealed class RecordingSummaryCache(RecordingStore recordings) : ISummaryCache
@@ -164,6 +165,6 @@ public sealed class RecordingSummaryCache(RecordingStore recordings) : ISummaryC
     private string? PathFor(string recordingId, string versionId)
     {
         var folder = recordings.TryGetFolder(recordingId);
-        return folder is null ? null : Path.Combine(folder, AnalysisFolder, versionId + ".chunks.json");
+        return folder is null ? null : Path.Combine(folder, AnalysisFolder, versionId + ".chat-summaries.json");
     }
 }

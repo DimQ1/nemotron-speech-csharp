@@ -319,7 +319,7 @@ public class ChatServiceTests : IDisposable
 
         await CollectAsync(_service.SendAsync(chat.Id, "Summarize this recording"));
 
-        var cache = Path.Combine(_recordings.TryGetFolder(id)!, "analysis", "v1.chunks.json");
+        var cache = Path.Combine(_recordings.TryGetFolder(id)!, "analysis", "v1.chat-summaries.json");
         Assert.True(File.Exists(cache));
         var calls = _host.Requests.Count;
 
