@@ -24,10 +24,12 @@
     <Project Path="libraries/SpeechLib/src/SpeechLib.LiteRT.Native/SpeechLib.LiteRT.Native.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.AudioStorage/SpeechLib.AudioStorage.csproj" />
     <Project Path="libraries/SpeechLib/src/SpeechLib.Agents/SpeechLib.Agents.csproj" />
+    <Project Path="libraries/SpeechLib/src/SpeechLib.Diarization/SpeechLib.Diarization.csproj" />
   </Folder>
   <Folder Name="/libraries/SpeechLib/tests/">
     <Project Path="libraries/SpeechLib/tests/SpeechLib.Agents.Tests/SpeechLib.Agents.Tests.csproj" />
     <Project Path="libraries/SpeechLib/tests/SpeechLib.AudioStorage.Tests/SpeechLib.AudioStorage.Tests.csproj" />
+    <Project Path="libraries/SpeechLib/tests/SpeechLib.Diarization.Tests/SpeechLib.Diarization.Tests.csproj" />
     <Project Path="libraries/SpeechLib/tests/SpeechLib.LiteRT.Native.Tests/SpeechLib.LiteRT.Native.Tests.csproj" />
     <Project Path="libraries/SpeechLib/tests/SpeechLib.ModelDownload.Tests/SpeechLib.ModelDownload.Tests.csproj" />
     <Project Path="libraries/SpeechLib/tests/SpeechLib.ParakeetTdt.Tests/SpeechLib.ParakeetTdt.Tests.csproj" />
@@ -35,6 +37,7 @@
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/BenchmarkSuite1/BenchmarkSuite1.csproj" />
+    <Project Path="tools/DiarizationEval/DiarizationEval.csproj" />
     <Project Path="tools/TmpInspect/TmpInspect.csproj" />
     <Project Path="tools/WerEval/WerEval.csproj" />
   </Folder>
