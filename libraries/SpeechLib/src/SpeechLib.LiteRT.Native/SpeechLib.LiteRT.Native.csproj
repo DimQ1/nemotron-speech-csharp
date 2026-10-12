@@ -14,19 +14,28 @@
 
   <ItemGroup>
     <!--
-      LiteRtLmSharp pins the LiteRT-LM C API to native v0.14.0, which is
-      validated on Windows x64 CPU/GPU. The upstream v0.16.0 C API prebuilt
-      heap-corrupts on plain-chat CPU decode with Gemma 4 (liteRT-LM #2149),
-      so we do NOT hand-roll P/Invoke against that prebuilt.
+      LiteRtLmSharp 1.3.0 = native LiteRT-LM v0.18.0 (Google's official C API prebuilts), validated on
+      Windows x64 CPU/GPU. 1.2.0 was native v0.16.0, which is also safe, but the v0.18.0 line carries the
+      engine-usage improvements this app relies on (see docs/research/litert/engine-improvements.md): a
+      non-blocking conversation.TokenCountCached, Snapshot()/Resume() for continuing after a cancellation,
+      an opt-in LiteRtEngine.AllowMultipleEngines, and a readable LiteRtSamplerNotSupportedException for
+      the Greedy/TopK samplers the CPU backend does not implement.
 
-      Runtime packages are RID-selected at publish time: win-x64 for Windows
-      builds, linux-x64 (validated on real hardware, CPU + WebGPU->Vulkan GPU)
-      for Linux builds, android-arm64 (OpenCL/WebGPU accelerators) for Android.
+      The packages come from this fork's GitHub Packages feed (DimQ1/LiteRtLmSharp, published by
+      .github/workflows/publish-github-packages.yml) because 1.3.0 is not on nuget.org: upstream publishes
+      through Trusted Publishing and has released only up to 1.2.0. GitHub Packages requires an
+      authenticated read even for public packages, so restoring this project needs a token with
+      read:packages in the GITHUB_PACKAGES_TOKEN environment variable (see nuget.config at the repo root
+      and the project README).
+
+      Runtime packages are RID-selected at publish time: win-x64 for Windows builds, linux-x64 (validated
+      on real hardware, CPU + WebGPU->Vulkan GPU) for Linux builds, android-arm64 (OpenCL/WebGPU
+      accelerators) for Android.
     -->
-    <PackageReference Include="LiteRtLmSharp" Version="1.2.0" />
-    <PackageReference Include="LiteRtLmSharp.runtime.win-x64" Version="1.2.0" />
-    <PackageReference Include="LiteRtLmSharp.runtime.linux-x64" Version="1.2.0" />
-    <PackageReference Include="LiteRtLmSharp.runtime.android-arm64" Version="1.2.0" />
+    <PackageReference Include="LiteRtLmSharp" Version="1.3.0" />
+    <PackageReference Include="LiteRtLmSharp.runtime.win-x64" Version="1.3.0" />
+    <PackageReference Include="LiteRtLmSharp.runtime.linux-x64" Version="1.3.0" />
+    <PackageReference Include="LiteRtLmSharp.runtime.android-arm64" Version="1.3.0" />
   </ItemGroup>
 
 </Project>

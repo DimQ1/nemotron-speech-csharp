@@ -24,10 +24,14 @@ public sealed class LiteRTLmNativeTranslator : ITextTranslator
     private readonly LiteRtEngine _engine;
     private readonly LiteRtSendOptions? _sendOptions;
 
-    // The native CPU engine has been seen to refuse an explicit sampler under memory
-    // pressure ("Sampler type: 3 not implemented yet"). When a send fails before the
-    // first token, it is retried once with the model's own sampler and the explicit
-    // one stays off for the rest of this engine's life.
+    // The CPU backend of LiteRT-LM v0.18.0 implements only the TopP sampler, so a conversation asking for
+    // Greedy is created and then fails its FIRST send with "UNIMPLEMENTED: Sampler type: 3 not implemented
+    // yet" — it is a missing sampler, not memory pressure (verified on v0.16.0/v0.18.0 with 8-10 GB free).
+    // That failed conversation stays unusable, so the retry starts a NEW conversation without the explicit
+    // sampler (the model's own top-k 40 / temperature 1.0 applies), and the explicit sampler stays off for
+    // the rest of this engine's life. Note the native quirk behind that retry: once a send has completed on
+    // the engine, later sampler parameters are accepted and silently ignored, so "it works after the retry"
+    // never means Greedy was applied.
     private volatile bool _samplerDisabled;
 
     public LiteRTLmNativeTranslator(LiteRTLmNativeOptions options)
@@ -107,7 +111,9 @@ public sealed class LiteRTLmNativeTranslator : ITextTranslator
         }
     }
 
-    /// <summary>Exception filter: turns the explicit sampler off once and allows one retry.</summary>
+    /// <summary>Exception filter: turns the explicit sampler off once and allows one retry. The retry runs on
+    /// a fresh conversation without explicit sampler parameters, because the sampler failure consumes the
+    /// conversation it happened on.</summary>
     private bool DisableSamplerForRetry()
     {
         if (_samplerDisabled || !_options.Greedy)

@@ -1,9 +1,31 @@
 # SpeechLib.LiteRT.Native
 
 In-process translation with a Gemma 4 model in `.litertlm` format, loaded through
-LiteRT-LM via the [LiteRtLmSharp](https://github.com/OrihuelaConde/LiteRtLmSharp)
-binding (1.2.0, native LiteRT-LM v0.16.0). No sidecar server: the model runs inside
-the application process.
+LiteRT-LM via the [LiteRtLmSharp](https://github.com/DimQ1/LiteRtLmSharp) fork
+(1.3.0, native LiteRT-LM v0.18.0 — published on the fork's GitHub Packages feed; upstream
+publishes only up to 1.2.0 / native v0.16.0 on nuget.org). No sidecar server: the model runs
+inside the application process.
+
+## Restoring the packages
+
+LiteRtLmSharp 1.3.0 is not on nuget.org (upstream publishes only up to 1.2.0), so its `.nupkg` files are
+fetched once from the fork's public `v1.3.0` release into a local folder feed that the root
+[nuget.config](../../../../nuget.config) maps the `LiteRtLmSharp*` packages to — no token and no GitHub
+CLI involved:
+
+```powershell
+pwsh tools/scripts/fetch-litertlmsharp-feed.ps1   # once per clone (CI does the same before building)
+dotnet build NemotronSpeech.slnx -c Release
+```
+
+The packages are also published to the fork's GitHub Packages feed
+(`https://nuget.pkg.github.com/DimQ1/index.json`); consuming that feed directly instead needs a token
+with the `read:packages` scope, because GitHub requires an authenticated read even for public packages.
+See [nuget-feed/litertlmsharp/README.md](../../../../nuget-feed/litertlmsharp/README.md) for both paths.
+
+To fall back to the released engine, pin the four `LiteRtLmSharp*` references in
+[SpeechLib.LiteRT.Native.csproj](SpeechLib.LiteRT.Native.csproj) back to `1.2.0` (native v0.16.0) — that
+version restores from nuget.org, and the mapping still allows it.
 
 ## Model
 
@@ -20,9 +42,16 @@ the application process.
 
 - system prompt from `SpeechLib.Translation.TranslationPrompt` (shared with the HTTP backend):
   translate a live speech transcript as-is, reply with the translation only;
-- **greedy decoding** (`LiteRTLmNativeOptions.Greedy`, default on): the model file's own
-  sampler (top-k 40, top-p 0.95, temperature 1.0) made every draft pass differ and cost
-  about twice the decode time;
+- **an explicit `Greedy` sampler** (`LiteRTLmNativeOptions.Greedy`, default on). The CPU backend
+  does not implement it: the first send of the first conversation fails with
+  `UNIMPLEMENTED: Sampler type: 3` (reported as `LiteRtSamplerNotSupportedException` in
+  LiteRtLmSharp 1.3.0), the translator retries once on a fresh conversation without an explicit
+  sampler — the model file's own sampler (top-k 40, top-p 0.95, temperature 1.0) — and stops
+  asking for Greedy for the life of the engine. Measured on native v0.18.0: it is a missing
+  sampler, not memory pressure, and once a send has completed on the engine the runtime accepts
+  and silently ignores later sampler parameters. `LiteRtSamplerParams.NearGreedy` (top-p 0.5,
+  temperature 0.1) is the supported profile closest to greedy if Greedy is ever dropped — its
+  translation quality and latency have not been measured yet;
 - **no-repeat n-gram** of 8 tokens on the reply (`NoRepeatNgramSize`) stops decode loops;
 - when the request carries the previous sentence and its translation
   (`TranslationRequest.PreviousSource/PreviousTranslation`, supplied by

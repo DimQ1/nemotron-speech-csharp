@@ -25,6 +25,12 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Fetch the LiteRtLmSharp feed (release assets, no token)
+        # LiteRtLmSharp 1.3.0 is not on nuget.org: this pulls the packages from the
+        # fork's public v1.3.0 release into the local folder feed nuget.config maps them to.
+        shell: pwsh
+        run: pwsh tools/scripts/fetch-litertlmsharp-feed.ps1
+
       - name: Install Android workload
         run: dotnet workload install android
 
