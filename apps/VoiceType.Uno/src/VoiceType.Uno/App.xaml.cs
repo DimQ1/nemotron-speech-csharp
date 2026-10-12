@@ -147,8 +147,21 @@ public partial class App : Application
                             : TranslationService.BackendKind.Native;
                         return new TranslationService(
                             new LiteRTLmOptions { BaseUrl = settings.TranslationServerUrl },
-                            backend);
+                            backend,
+                            sp.GetRequiredService<SpeechLib.Llm.ILlmHost>()); // M: live translation on the shared engine
                     });
+
+                    // >>> Wave 2 / agent M: the process's ONE on-device Gemma engine. Everything that needs the
+                    // LLM (live translation, chat, saved-transcript translation, titles) takes ILlmHost and never
+                    // touches LiteRtLmSharp directly: the host loads the model lazily (3.2 GB at 4096 tokens),
+                    // unloads it when idle and schedules Live > Interactive > Background.
+                    services.AddSingleton<SpeechLib.Llm.ILlmHost>(_ => new SpeechLib.LiteRT.Native.GemmaEngineHost(
+                        new SpeechLib.LiteRT.Native.GemmaEngineHostOptions
+                        {
+                            ModelPath = TranslationModelInfo.LocalModelPath,
+                            Backend = TranslationModelInfo.Backend,
+                        }));
+                    // <<< Wave 2 / agent M
 
                     // ---- ViewModels ----
                     services.AddSingleton<MainViewModel>();

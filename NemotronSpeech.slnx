@@ -26,6 +26,7 @@
   </Folder>
   <Folder Name="/libraries/SpeechLib/tests/">
     <Project Path="libraries/SpeechLib/tests/SpeechLib.AudioStorage.Tests/SpeechLib.AudioStorage.Tests.csproj" />
+    <Project Path="libraries/SpeechLib/tests/SpeechLib.LiteRT.Native.Tests/SpeechLib.LiteRT.Native.Tests.csproj" />
     <Project Path="libraries/SpeechLib/tests/SpeechLib.ModelDownload.Tests/SpeechLib.ModelDownload.Tests.csproj" />
     <Project Path="libraries/SpeechLib/tests/SpeechLib.ParakeetTdt.Tests/SpeechLib.ParakeetTdt.Tests.csproj" />
     <Project Path="libraries/SpeechLib/tests/SpeechLib.Tests/SpeechLib.Tests.csproj" />

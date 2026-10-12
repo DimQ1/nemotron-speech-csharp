@@ -10,8 +10,11 @@ namespace SpeechLib.LiteRT.Native;
 /// </summary>
 public sealed class LiteRTLmNativeOptions
 {
-    /// <summary>Path to the <c>.litertlm</c> model file.</summary>
-    public required string ModelPath { get; init; }
+    /// <summary>
+    /// Path to the <c>.litertlm</c> model file. Required when the translator creates its own engine host; unused (it may
+    /// stay empty) when the translator runs over a shared <c>ILlmHost</c>, which owns the model path.
+    /// </summary>
+    public string ModelPath { get; init; } = "";
 
     /// <summary>Compute backend: <c>"cpu"</c> (default) or <c>"gpu"</c>.</summary>
     public string Backend { get; init; } = "cpu";
@@ -26,7 +29,8 @@ public sealed class LiteRTLmNativeOptions
     public int MaxTokens { get; init; } = 256;
 
     /// <summary>
-    /// Model context window (max tokens). The translations are short ASR
+    /// Model context window (max tokens) of the engine the translator creates for itself (a shared host uses its own
+    /// setting). The translations are short ASR
     /// sentences (a few hundred chars at most), so a large window is mostly
     /// padding that only costs memory and prefill time on CPU. Kept modest at
     /// 2048 so the constant per-call overhead stays low.
@@ -34,9 +38,9 @@ public sealed class LiteRTLmNativeOptions
     public int MaxContextTokens { get; init; } = 2048;
 
     /// <summary>
-    /// Greedy (argmax) decoding. Translation wants the single most likely rendering;
-    /// the model file's own sampler (top-k 40 / top-p 0.95 / temperature 1.0) makes
-    /// every draft pass come out slightly different and roughly doubles decode time.
+    /// Kept for source compatibility; it has no effect. The CPU backend implements only the top-p sampler, so an
+    /// explicit Greedy request always failed and fell back to the model file's own sampler (top-k 40 / top-p 0.95 /
+    /// temperature 1.0). The engine host therefore requests no explicit sampler at all.
     /// </summary>
     public bool Greedy { get; init; } = true;
 

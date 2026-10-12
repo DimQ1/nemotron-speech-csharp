@@ -13,6 +13,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The scheduler is tested against a fake engine (IGemmaEngine) without the model. -->
+    <InternalsVisibleTo Include="SpeechLib.LiteRT.Native.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!--
       LiteRtLmSharp 1.3.0 = native LiteRT-LM v0.18.0 (Google's official C API prebuilts), validated on
       Windows x64 CPU/GPU. 1.2.0 was native v0.16.0, which is also safe, but the v0.18.0 line carries the

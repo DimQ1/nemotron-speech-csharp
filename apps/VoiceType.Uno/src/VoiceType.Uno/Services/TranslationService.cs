@@ -1,6 +1,7 @@
 using SpeechLib;
 using SpeechLib.LiteRT;
 using SpeechLib.LiteRT.Native;
+using SpeechLib.Llm;
 using SpeechLib.Translation;
 
 namespace VoiceType.Uno.Services;
@@ -17,15 +18,19 @@ public sealed class TranslationService : IDisposable, IAsyncDisposable
 
     private readonly LiveTranslationSession _session;
     private readonly LiteRTLmOptions _baseOptions;
+    // The app's single Gemma engine (GemmaEngineHost). Live translation runs on it at Live priority; null only in
+    // tests/tools that build the service without DI, in which case the translator creates a private host.
+    private readonly ILlmHost? _llmHost;
     private volatile string _serverUrl;
     private volatile BackendKind _backend;
     private volatile string _computeBackend = "cpu";
     private volatile string _additionalSystemPrompt = "";
     private volatile BackendKind _activeEngine;
 
-    public TranslationService(LiteRTLmOptions options, BackendKind backend = BackendKind.Native)
+    public TranslationService(LiteRTLmOptions options, BackendKind backend = BackendKind.Native, ILlmHost? llmHost = null)
     {
         _baseOptions = options ?? throw new ArgumentNullException(nameof(options));
+        _llmHost = llmHost;
         _serverUrl = options.BaseUrl;
         _backend = backend;
         _session = new LiveTranslationSession(
@@ -199,14 +204,19 @@ public sealed class TranslationService : IDisposable, IAsyncDisposable
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var backend = _computeBackend;
         Log($"connecting native: modelPath={TranslationModelInfo.LocalModelPath}, backend={backend}");
-        var translator = await Task.Run(() => (ITextTranslator)new LiteRTLmNativeTranslator(new LiteRTLmNativeOptions
+        var nativeOptions = new LiteRTLmNativeOptions
         {
             ModelPath = TranslationModelInfo.LocalModelPath,
             Backend = backend,
             LogLevel = LiteRTLmLogLevel.Warning,
             MaxTokens = _baseOptions.MaxTokens,
             AdditionalSystemPrompt = _additionalSystemPrompt,
-        }), cancellationToken).ConfigureAwait(false);
+        };
+        // With the shared host the translator is a cheap Live-priority client (the host owns the engine, its
+        // compute backend and its lifetime); without one it loads a private engine as before.
+        var translator = await Task.Run(() => (ITextTranslator)(_llmHost is null
+            ? new LiteRTLmNativeTranslator(nativeOptions)
+            : new LiteRTLmNativeTranslator(_llmHost, nativeOptions)), cancellationToken).ConfigureAwait(false);
 
         _activeEngine = BackendKind.Native;
         Log($"native connected in {sw.ElapsedMilliseconds} ms");
