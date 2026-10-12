@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Presentation.Chat;
 using Windows.ApplicationModel.DataTransfer;
 using VirtualKey = Windows.System.VirtualKey;
 
@@ -69,7 +70,13 @@ public sealed partial class RecordingPage : Page
         base.OnNavigatedTo(e);
         HistoryServices.Recordings.Changed += OnStoreChanged;
         HistoryServices.Deletes.Changed += OnDeletesChanged;
-        if (e.Parameter is string id && id.Length > 0)
+        if (e.Parameter is RecordingTarget target)
+        {
+            // Chat citation: open the cited version and show the passage (design §4.4).
+            await ReloadAsync(target.VersionId, target.RecordingId);
+            ShowCitedPassage(target.SeekSeconds);
+        }
+        else if (e.Parameter is string id && id.Length > 0)
             await ReloadAsync(null, id);
     }
 
@@ -84,6 +91,7 @@ public sealed partial class RecordingPage : Page
 
     private void Page_Loaded(object sender, RoutedEventArgs e)
     {
+        AskGemmaHeaderButton.IsEnabled = AskGemmaTabButton.IsEnabled = AddToChatTabButton.IsEnabled = ChatServices.IsSupported;
         Player.PositionChanged += OnPlayerPosition;
         if (!_isEmbedded)
             SubscribeSystemBack();
@@ -141,6 +149,71 @@ public sealed partial class RecordingPage : Page
         Header.Padding = isShort ? new Thickness(4, 0, 4, 0) : new Thickness(4);
         TabsBar.Margin = isShort ? new Thickness(16, 0, 16, 4) : new Thickness(16, 0, 16, 8);
         ChangedLabel.Visibility = ActualWidth < 360 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    // ── Chats with Gemma (design §4.3, §4.4) ──────────────────────────────
+
+    /// <summary>Opens the transcript at a cited time: selects the segment, scrolls to it and seeks the player.</summary>
+    private void ShowCitedPassage(double? seconds)
+    {
+        if (seconds is not { } at)
+            return;
+        SelectTab(RecordingTab.Transcript);
+        if (ViewModel.HasAudio)
+            Player.Seek(TimeSpan.FromSeconds(at));
+        var index = ViewModel.SegmentAt(at);
+        _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () => Highlight(index, scroll: true));
+    }
+
+    private async void AskGemma_Click(object sender, RoutedEventArgs e) =>
+        await ChatServices.AskAboutAsync(XamlRoot, [RecordingId]);
+
+    private async void AddToChat_Click(object sender, RoutedEventArgs e) => await AddToChatAsync();
+
+    private async Task AddToChatAsync()
+    {
+        if (ChatServices.Current is not { } service)
+            return;
+        if (await ChatDialogs.PickChatAsync(XamlRoot, RecordingId) is not { } choice)
+            return;
+        if (choice.ChatId is not { } chatId)
+        {
+            await ChatServices.AskAboutAsync(XamlRoot, [RecordingId]);
+            return;
+        }
+        try
+        {
+            await Task.Run(() => service.AddSource(chatId, RecordingId));
+        }
+        catch (Exception ex)
+        {
+            await HistoryDialogs.ShowMessageAsync(XamlRoot, "Could not add the recording", ex.Message);
+            return;
+        }
+        ChatServices.OpenChat(XamlRoot, chatId);
+    }
+
+    private void ChatCard_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is ChatCardViewModel card)
+            ChatServices.OpenChat(XamlRoot, card.Id);
+    }
+
+    private void ChatCardMore_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ChatCardViewModel card)
+            return;
+        var menu = new MenuFlyout();
+        menu.Items.Add(Item("Open", Symbol.OpenFile, () => { ChatServices.OpenChat(XamlRoot, card.Id); return Task.CompletedTask; }));
+        var remove = Item("Remove this recording from the chat", Symbol.Delete, async () =>
+        {
+            if (ChatServices.Current is { } service)
+                await Task.Run(() => service.RemoveSource(card.Id, RecordingId));
+            await ReloadAsync(ViewModel.ViewedVersionId);
+        });
+        remove.IsEnabled = card.SourceCount > 1; // a chat keeps at least one recording
+        menu.Items.Add(remove);
+        menu.ShowAt((FrameworkElement)sender);
     }
 
     // ── Tabs ──────────────────────────────────────────────────────────────
@@ -252,6 +325,9 @@ public sealed partial class RecordingPage : Page
         edit.IsEnabled = ViewModel.HasSegments;
         menu.Items.Add(edit);
         menu.Items.Add(Item("Export…", Symbol.Save, () => ExportAsync(ViewModel.ViewedVersionId)));
+        var addToChat = Item("Add to chat…", Symbol.Add, AddToChatAsync);
+        addToChat.IsEnabled = ChatServices.IsSupported;
+        menu.Items.Add(addToChat);
         var reprocess = Item("Re-recognize…", Symbol.Refresh, ReprocessAsync);
         reprocess.IsEnabled = ViewModel.HasAudio;
         menu.Items.Add(reprocess);

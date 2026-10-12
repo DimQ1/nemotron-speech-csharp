@@ -58,6 +58,9 @@ public sealed class SegmentViewModel : ObservableObject
 
 public sealed class ChatCardViewModel
 {
+    public string Id { get; init; } = "";
+    public int SourceCount { get; init; }
+    public string AutomationName => HistoryUiFormat.Join(Title, Meta, LastLine);
     public required string Title { get; init; }
     public required string Meta { get; init; }
     public required string LastLine { get; init; }
@@ -407,12 +410,12 @@ public sealed class RecordingViewModel : ObservableObject
         {
             var others = chat.Sources.Count - 1;
             var who = others <= 0 ? "Only this recording" : HistoryUiFormat.Count(chat.Sources.Count, "recording");
-            var meta = HistoryUiFormat.Join(who, HistoryUiFormat.Count(chat.Messages.Count, "message"),
+            var meta = HistoryUiFormat.Join(who, HistoryUiFormat.Count(ChatUiFormat.CountMessages(chat), "message"),
                 chat.UpdatedAt.ToLocalTime().ToString("d MMM HH:mm", CultureInfo.InvariantCulture));
             var last = chat.Messages.LastOrDefault(m => m.Role == ChatRoles.Assistant)?.Text.Trim() ?? "";
             if (last.Length > 140)
                 last = last[..140].TrimEnd() + "…";
-            ChatCards.Add(new ChatCardViewModel { Title = string.IsNullOrWhiteSpace(chat.Title) ? "Chat" : chat.Title, Meta = meta, LastLine = last });
+            ChatCards.Add(new ChatCardViewModel { Id = chat.Id, SourceCount = chat.Sources.Count, Title = string.IsNullOrWhiteSpace(chat.Title) ? "Chat" : chat.Title, Meta = meta, LastLine = last });
         }
     }
 
