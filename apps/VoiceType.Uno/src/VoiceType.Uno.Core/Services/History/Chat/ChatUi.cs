@@ -120,13 +120,18 @@ public static class ChatUiFormat
         };
 
     /// <summary><c>Weekly sync 03:20</c>; a deleted recording reads <c>Deleted recording 03:20</c>.</summary>
-    public static string CitationLabel(ChatCitation citation, Func<string, string?> titleOf)
+    public static string CitationLabel(ChatCitation citation, Func<string, string?> titleOf, bool singleRecording = false)
     {
         ArgumentNullException.ThrowIfNull(citation);
         ArgumentNullException.ThrowIfNull(titleOf);
         var title = titleOf(citation.RecordingId);
         title = string.IsNullOrWhiteSpace(title) ? "Deleted recording" : Shorten(title.Trim(), CitationTitleMax);
-        return title + " " + HistoryUiFormat.SegmentTime(citation.StartSec);
+        var time = HistoryUiFormat.SegmentTime(citation.StartSec);
+        if (string.IsNullOrWhiteSpace(citation.Speaker))
+            return title + " " + time;
+        // With speakers: "Weekly sync · Anna 03:20", and just "Anna 03:20" in a chat about one recording.
+        var speaker = Shorten(citation.Speaker.Trim(), 24);
+        return singleRecording ? speaker + " " + time : title + " · " + speaker + " " + time;
     }
 
     public static string Shorten(string text, int max) =>
@@ -263,13 +268,13 @@ public static class ChatUiThread
         return items;
     }
 
-    public static IReadOnlyList<ChatCitationChip> Chips(IEnumerable<ChatCitation> citations, Func<string, string?> titleOf)
+    public static IReadOnlyList<ChatCitationChip> Chips(IEnumerable<ChatCitation> citations, Func<string, string?> titleOf, bool singleRecording = false)
     {
         var chips = new List<ChatCitationChip>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var c in citations)
         {
-            var label = ChatUiFormat.CitationLabel(c, titleOf);
+            var label = ChatUiFormat.CitationLabel(c, titleOf, singleRecording);
             if (!seen.Add(c.RecordingId + "|" + label))
                 continue;
             var exists = titleOf(c.RecordingId) is not null;

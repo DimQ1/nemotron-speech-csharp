@@ -10,7 +10,8 @@ public static class TranscriptExport
     /// <c>[hh:mm:ss] text</c> per segment. With a translation, the translated line follows
     /// each segment (indented under the text) and segments are separated by a blank line.
     /// </summary>
-    public static string ToText(TranscriptDocument transcript, TranslationDocument? translation = null)
+    public static string ToText(
+        TranscriptDocument transcript, TranslationDocument? translation = null, IReadOnlyDictionary<int, string>? speakers = null)
     {
         ArgumentNullException.ThrowIfNull(transcript);
         var sb = new StringBuilder();
@@ -22,7 +23,7 @@ public static class TranscriptExport
             first = false;
 
             var stamp = $"[{FormatClock(segment.Start)}] ";
-            sb.Append(stamp).Append(segment.Text.Trim()).Append('\n');
+            sb.Append(stamp).Append(Prefix(speakers, segment)).Append(segment.Text.Trim()).Append('\n');
             var translated = translation?.TextFor(segment.Index)?.Trim();
             if (!string.IsNullOrEmpty(translated))
                 sb.Append(' ', stamp.Length).Append(translated).Append('\n');
@@ -31,7 +32,8 @@ public static class TranscriptExport
     }
 
     /// <summary>SubRip subtitles (video players, VLC); the translation, if given, as a second line.</summary>
-    public static string ToSrt(TranscriptDocument transcript, TranslationDocument? translation = null)
+    public static string ToSrt(
+        TranscriptDocument transcript, TranslationDocument? translation = null, IReadOnlyDictionary<int, string>? speakers = null)
     {
         ArgumentNullException.ThrowIfNull(transcript);
         var sb = new StringBuilder();
@@ -42,7 +44,7 @@ public static class TranscriptExport
             var end = segment.End > segment.Start ? segment.End : segment.Start + 1.0;
             sb.Append(n.ToString(CultureInfo.InvariantCulture)).Append('\n');
             sb.Append(FormatSrtTime(segment.Start)).Append(" --> ").Append(FormatSrtTime(end)).Append('\n');
-            sb.Append(segment.Text.Trim()).Append('\n');
+            sb.Append(Prefix(speakers, segment)).Append(segment.Text.Trim()).Append('\n');
             var translated = translation?.TextFor(segment.Index)?.Trim();
             if (!string.IsNullOrEmpty(translated))
                 sb.Append(translated).Append('\n');
@@ -55,7 +57,8 @@ public static class TranscriptExport
     /// LRC synced lyrics (music players). An empty timed line clears the display after a
     /// segment when the next one starts more than a second later, and after the last one.
     /// </summary>
-    public static string ToLrc(TranscriptDocument transcript, string? title = null, double? durationSec = null)
+    public static string ToLrc(
+        TranscriptDocument transcript, string? title = null, double? durationSec = null, IReadOnlyDictionary<int, string>? speakers = null)
     {
         ArgumentNullException.ThrowIfNull(transcript);
         var sb = new StringBuilder();
@@ -71,13 +74,45 @@ public static class TranscriptExport
         for (var i = 0; i < segments.Count; i++)
         {
             var segment = segments[i];
-            sb.Append('[').Append(FormatLrcTime(segment.Start)).Append(']').Append(segment.Text.Trim()).Append('\n');
+            sb.Append('[').Append(FormatLrcTime(segment.Start)).Append(']').Append(Prefix(speakers, segment)).Append(segment.Text.Trim()).Append('\n');
             var isLast = i == segments.Count - 1;
             if (segment.End > segment.Start && (isLast || segments[i + 1].Start - segment.End > 1.0))
                 sb.Append('[').Append(FormatLrcTime(segment.End)).Append("]\n");
         }
         return sb.ToString();
     }
+
+    /// <summary>
+    /// Markdown document: title, date, then one paragraph per segment, <c>**[hh:mm:ss] Anna:** text</c> (the name only when the
+    /// version has speakers); a translation follows each segment as a quote.
+    /// </summary>
+    public static string ToMarkdown(
+        RecordingManifest manifest, TranscriptDocument transcript, TranslationDocument? translation = null,
+        IReadOnlyDictionary<int, string>? speakers = null)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(transcript);
+        var sb = new StringBuilder();
+        sb.Append("# ").Append(manifest.EffectiveTitle).Append("\n\n");
+        sb.Append(manifest.StartedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)).Append("\n");
+        foreach (var segment in NonEmpty(transcript))
+        {
+            sb.Append("\n**[").Append(FormatClock(segment.Start)).Append(']');
+            if (speakers is not null && speakers.TryGetValue(segment.Index, out var name))
+                sb.Append(' ').Append(name).Append(':');
+            sb.Append("** ").Append(segment.Text.Trim()).Append('\n');
+            var translated = translation?.TextFor(segment.Index)?.Trim();
+            if (!string.IsNullOrEmpty(translated))
+                sb.Append("\n> ").Append(translated).Append('\n');
+        }
+        return sb.ToString();
+    }
+
+    /// <summary><c>Anna: </c> for a segment with a known speaker, else nothing.</summary>
+    private static string Prefix(IReadOnlyDictionary<int, string>? speakers, TranscriptSegment segment) =>
+        speakers is not null && speakers.TryGetValue(segment.Index, out var name) && !string.IsNullOrWhiteSpace(name)
+            ? name.Trim() + ": "
+            : "";
 
     /// <summary><c>hh:mm:ss</c> (hours not capped at 24).</summary>
     public static string FormatClock(double seconds)
@@ -179,7 +214,11 @@ public static class ChatExport
         var title = recordings.TryGetValue(citation.RecordingId, out var m)
             ? m.EffectiveTitle
             : "Recording " + citation.RecordingId;
-        return $"[{title} {TranscriptExport.FormatShort(citation.StartSec)}]";
+        var time = TranscriptExport.FormatShort(citation.StartSec);
+        // [Weekly sync · Anna 03:20] when the cited line had a speaker.
+        return string.IsNullOrWhiteSpace(citation.Speaker)
+            ? $"[{title} {time}]"
+            : $"[{title} · {citation.Speaker.Trim()} {time}]";
     }
 
     private static string RoleName(string role) => role switch
@@ -225,12 +264,13 @@ public static class ExportFiles
     /// </summary>
     public static IReadOnlyList<string> WriteSubtitles(
         string directory, string baseName, TranscriptDocument transcript,
-        string? title = null, double? durationSec = null, TranslationDocument? translation = null)
+        string? title = null, double? durationSec = null, TranslationDocument? translation = null,
+        IReadOnlyDictionary<int, string>? speakers = null)
     {
         var srt = Path.Combine(directory, baseName + ".srt");
         var lrc = Path.Combine(directory, baseName + ".lrc");
-        WriteText(srt, TranscriptExport.ToSrt(transcript, translation));
-        WriteText(lrc, TranscriptExport.ToLrc(transcript, title, durationSec));
+        WriteText(srt, TranscriptExport.ToSrt(transcript, translation, speakers));
+        WriteText(lrc, TranscriptExport.ToLrc(transcript, title, durationSec, speakers));
         return [srt, lrc];
     }
 }

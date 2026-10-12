@@ -123,6 +123,69 @@ public sealed class JobQueue
         return EnqueueCore(kind, ids, parameters, condition, priority, batchId: "b" + NewHex());
     }
 
+    /// <summary>One step of a chain: a job kind and its parameters.</summary>
+    public sealed record ChainStep(HistoryJobKind Kind, JobParameters Parameters);
+
+    /// <summary>
+    /// Queues one Reprocess chain (design 11.4): ordinary jobs in order, each <see cref="HistoryJob.DependsOn"/> the previous
+    /// one, sharing a <see cref="HistoryJob.ChainId"/>, the condition and the priority. Returns the jobs in step order.
+    /// </summary>
+    public IReadOnlyList<HistoryJob> EnqueueChain(
+        string recordingId, IReadOnlyList<ChainStep> steps, JobCondition? condition = null,
+        int priority = JobPriorities.Normal, string? batchId = null) =>
+        EnqueueChains([(recordingId, steps)], condition, priority, batchId).SelectMany(c => c).ToList();
+
+    /// <summary>
+    /// Several chains in one write, one per recording, inserted one after another so the FIFO order takes chain A to its
+    /// end before chain B starts (A2 comes before B1).
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<HistoryJob>> EnqueueChains(
+        IReadOnlyList<(string RecordingId, IReadOnlyList<ChainStep> Steps)> chains,
+        JobCondition? condition = null, int priority = JobPriorities.Normal, string? batchId = null)
+    {
+        ArgumentNullException.ThrowIfNull(chains);
+        ThrowIfReadOnly();
+        var result = new List<IReadOnlyList<HistoryJob>>();
+        lock (_gate)
+        {
+            var now = _time.GetLocalNow();
+            foreach (var (recordingId, steps) in chains)
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(recordingId);
+                if (steps.Count == 0 || steps.Any(st => st.Kind == HistoryJobKind.Unknown))
+                    throw new ArgumentException("A chain needs at least one known step.", nameof(chains));
+                var chainId = "ch" + NewHex();
+                var added = new List<HistoryJob>();
+                HistoryJob? previous = null;
+                foreach (var step in steps)
+                {
+                    var job = new HistoryJob
+                    {
+                        Id = "j" + NewHex(),
+                        Kind = step.Kind,
+                        BatchId = batchId,
+                        ChainId = chainId,
+                        DependsOn = previous?.Id,
+                        RecordingId = recordingId,
+                        Parameters = HistoryJson.Clone(step.Parameters, HistoryJsonContext.Default.JobParameters),
+                        Priority = priority,
+                        Condition = condition is null ? JobCondition.Now() : HistoryJson.Clone(condition, HistoryJsonContext.Default.JobCondition),
+                        State = JobState.Queued,
+                        CreatedAt = now,
+                        UpdatedAt = now,
+                    };
+                    _document.Jobs.Add(job);
+                    added.Add(Copy(job));
+                    previous = job;
+                }
+                result.Add(added);
+            }
+            Save();
+        }
+        Changed?.Invoke();
+        return result;
+    }
+
     private List<HistoryJob> EnqueueCore(
         HistoryJobKind kind, List<string> recordingIds, JobParameters? parameters,
         JobCondition? condition, int priority, string? batchId)
@@ -177,6 +240,7 @@ public sealed class JobQueue
             j.State = JobState.Cancelled;
             j.Checkpoint = null;
             j.FinishedAt = _time.GetLocalNow();
+            CancelDependants(j.Id);
         });
 
     /// <summary>Failed or cancelled → queued again, progress, checkpoint and error cleared.</summary>
@@ -188,6 +252,7 @@ public sealed class JobQueue
             j.Checkpoint = null;
             j.Error = null;
             j.FinishedAt = null;
+            RestoreDependants(j.Id);
         });
 
     /// <summary>
@@ -221,6 +286,33 @@ public sealed class JobQueue
         Changed?.Invoke();
         return true;
     }
+
+    public int PauseChain(string chainId) => ForChain(chainId, Pause);
+    public int ResumeChain(string chainId) => ForChain(chainId, Resume);
+
+    /// <summary>
+    /// Cancels the unfinished steps of a chain, last step first, so none of them is mistaken for a casualty of a failed
+    /// predecessor (that would let a later Retry of an earlier step bring it back).
+    /// </summary>
+    public int CancelChain(string chainId) => ForChain(chainId, Cancel, reverse: true);
+
+    /// <summary>Replaces the start condition of every unfinished step of a chain ("Edit schedule", "Run now").</summary>
+    public int SetChainCondition(string chainId, JobCondition condition) =>
+        ForChain(chainId, id => SetCondition(id, condition));
+
+    /// <summary>The jobs of one chain in step order.</summary>
+    public IReadOnlyList<HistoryJob> ChainJobs(string chainId)
+    {
+        lock (_gate)
+            return _document.Jobs.Where(j => j.ChainId == chainId).Select(Copy).ToList();
+    }
+
+    /// <summary>
+    /// Records that the "make current at the end of the chain" of a re-recognition step was handled, so it is not repeated
+    /// after the user chose another version.
+    /// </summary>
+    public bool MarkChainApplied(string jobId) =>
+        Transition(jobId, j => j.ChainApplied != true, j => j.ChainApplied = true);
 
     public int PauseBatch(string batchId) => ForBatch(batchId, Pause);
     public int ResumeBatch(string batchId) => ForBatch(batchId, Resume);
@@ -286,8 +378,14 @@ public sealed class JobQueue
         {
             if (IsReadOnly)
                 return 0;
+            // A finished step of a chain that is still running stays (the end of the chain needs the re-recognition's result),
+            // and so does a re-recognition whose "make current at the end" has not been carried out yet.
+            var pendingChains = _document.Jobs.Where(j => j.ChainId is not null && !j.IsFinished).Select(j => j.ChainId!).ToHashSet();
             removed = _document.Jobs.RemoveAll(j =>
-                j.State is JobState.Completed or JobState.Cancelled || (includeFailed && j.State == JobState.Failed));
+                (j.State is JobState.Completed or JobState.Cancelled || (includeFailed && j.State == JobState.Failed))
+                && !(j.ChainId is not null && pendingChains.Contains(j.ChainId))
+                && !(j.Kind == HistoryJobKind.Rerecognize && j.State == JobState.Completed
+                     && j.Parameters.MakeCurrentAtChainEnd == true && j.ChainApplied != true));
             if (removed > 0)
                 Save();
         }
@@ -363,6 +461,7 @@ public sealed class JobQueue
             j.Checkpoint = null;
             j.Error = null;
             j.FinishedAt = _time.GetLocalNow();
+            HandOverVersion(j);
         });
 
     public bool Fail(string jobId, string error) =>
@@ -371,6 +470,7 @@ public sealed class JobQueue
             j.State = JobState.Failed;
             j.Error = error;
             j.FinishedAt = _time.GetLocalNow();
+            CancelDependants(j.Id);
         });
 
     // ── Internals ───────────────────────────────────────────────────────────
@@ -398,6 +498,65 @@ public sealed class JobQueue
         }
         Changed?.Invoke();
         return true;
+    }
+
+    /// <summary>Error text of steps cancelled because an earlier step failed or was cancelled.</summary>
+    public const string PreviousStepFailed = "previous step failed";
+
+    /// <summary>
+    /// A step that failed or was cancelled takes the unfinished steps that depend on it (transitively) down with it; they get
+    /// <see cref="PreviousStepFailed"/> so <see cref="Retry"/> of the failed step can bring them back. Under the lock.
+    /// </summary>
+    private void CancelDependants(string jobId)
+    {
+        foreach (var dependant in _document.Jobs.Where(d => d.DependsOn == jobId && !d.IsFinished).ToList())
+        {
+            dependant.State = JobState.Cancelled;
+            dependant.Checkpoint = null;
+            dependant.Error = PreviousStepFailed;
+            dependant.FinishedAt = _time.GetLocalNow();
+            dependant.UpdatedAt = dependant.FinishedAt.Value;
+            CancelDependants(dependant.Id);
+        }
+    }
+
+    /// <summary>Retry of a step restores the steps that were cancelled because of it (and only those).</summary>
+    private void RestoreDependants(string jobId)
+    {
+        foreach (var dependant in _document.Jobs.Where(d => d.DependsOn == jobId
+                     && d.State == JobState.Cancelled && d.Error == PreviousStepFailed).ToList())
+        {
+            dependant.State = JobState.Queued;
+            dependant.Progress = 0;
+            dependant.Checkpoint = null;
+            dependant.Error = null;
+            dependant.FinishedAt = null;
+            dependant.UpdatedAt = _time.GetLocalNow();
+            RestoreDependants(dependant.Id);
+        }
+    }
+
+    /// <summary>
+    /// A finished step tells the next one which version it works on: the version a re-recognition created, or the one the
+    /// step itself worked on (so Diarize and Analyze of a chain always handle the chain's version, not the current one).
+    /// </summary>
+    private void HandOverVersion(HistoryJob completed)
+    {
+        var version = completed.Kind == HistoryJobKind.Rerecognize ? completed.ResultId : completed.Parameters.SourceVersion;
+        if (version is null)
+            return;
+        foreach (var dependant in _document.Jobs.Where(d => d.DependsOn == completed.Id && d.Parameters.SourceVersion is null))
+            dependant.Parameters.SourceVersion = version;
+    }
+
+    private int ForChain(string chainId, Func<string, bool> action, bool reverse = false)
+    {
+        List<string> ids;
+        lock (_gate)
+            ids = _document.Jobs.Where(j => j.ChainId == chainId).Select(j => j.Id).ToList();
+        if (reverse)
+            ids.Reverse();
+        return ids.Count(action);
     }
 
     private int ForBatch(string batchId, Func<string, bool> action)

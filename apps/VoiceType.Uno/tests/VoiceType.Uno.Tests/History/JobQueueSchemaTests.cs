@@ -26,7 +26,7 @@ public class JobQueueSchemaTests : IDisposable
           "paused": false,
           "futureField": { "x": 1 },
           "jobs": [
-            { "id": "j1", "kind": "diarize", "recordingId": "aaaaaa", "state": "running",
+            { "id": "j1", "kind": "identifyMusic", "recordingId": "aaaaaa", "state": "running",
               "chainId": "ch1", "parameters": { "diarization": { "preset": "offline" } },
               "condition": { "kind": "atTime", "windowStart": "01:00:00", "windowEnd": "06:00:00", "requireCharging": true } },
             { "id": "j2", "kind": "rerecognize", "recordingId": "bbbbbb", "state": "queued", "dependsOn": "j1" }

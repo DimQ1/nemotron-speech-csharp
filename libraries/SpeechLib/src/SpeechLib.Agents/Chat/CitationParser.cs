@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace SpeechLib.Agents;
 
 /// <summary>A validated reference from an answer into a recording.</summary>
-public sealed record ParsedCitation(string Alias, string RecordingId, string VersionId, double StartSec, double? EndSec, string Quote);
+public sealed record ParsedCitation(string Alias, string RecordingId, string VersionId, double StartSec, double? EndSec, string Quote, string? Speaker = null);
 
 /// <summary>The answer text with invalid citation markers removed, plus the citations that survived validation.</summary>
 public sealed record ParsedAnswer(string Text, IReadOnlyList<ParsedCitation> Citations);
@@ -101,7 +101,7 @@ public static partial class CitationParser
 
                 rendered.Add($"[{source.Alias} {TimeText.Format(snapped.Start)}]");
                 if (seen.Add((source.Alias, (long)Math.Round(snapped.Start * 100))))
-                    citations.Add(new ParsedCitation(source.Alias, source.RecordingId, source.VersionId, snapped.Start, end, quote));
+                    citations.Add(new ParsedCitation(source.Alias, source.RecordingId, source.VersionId, snapped.Start, end, quote, snapped.Speaker));
             }
 
             if (rendered.Count > 0)

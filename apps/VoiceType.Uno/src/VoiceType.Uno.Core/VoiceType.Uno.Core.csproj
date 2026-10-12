@@ -17,6 +17,10 @@
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.ModelDownload\SpeechLib.ModelDownload.csproj" />
     <!-- Chat core (agent N): Microsoft Agent Framework over ILlmHost, retrieval, citations -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Agents\SpeechLib.Agents.csproj" />
+    <!-- Speaker diarization (ONNX): runs, SpeakerAssigner, model locator -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Diarization\SpeechLib.Diarization.csproj" />
+    <!-- Stored recording audio decoder (Ogg Opus / WAV) for the Diarize job -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.AudioStorage\SpeechLib.AudioStorage.csproj" />
   </ItemGroup>
 
   <ItemGroup>

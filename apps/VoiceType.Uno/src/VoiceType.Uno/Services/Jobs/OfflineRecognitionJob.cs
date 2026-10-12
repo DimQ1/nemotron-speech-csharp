@@ -141,6 +141,10 @@ public sealed class OfflineRecognitionJob : IJobExecutor
             },
             Settings = settings,
             App = CurrentApp(),
+            // The chain that made this version (written once; the version stays immutable).
+            Origin = job.ChainId is null
+                ? null
+                : new VersionOrigin { ChainId = job.ChainId, Trigger = parameters.Origin, Steps = parameters.ChainSteps },
             Stats = new VersionStats
             {
                 Rtf = decodedSeconds > 0 ? Math.Round(watch.Elapsed.TotalSeconds / decodedSeconds, 3) : null,

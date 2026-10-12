@@ -47,7 +47,8 @@ internal sealed class ChatSourceCatalog(string chatId, ChatStore chats, Recordin
 
     private IReadOnlyList<TranscriptLine> LinesOf(string recordingId, string versionId)
     {
-        var key = recordingId + "@" + versionId;
+        // A rename or merge changes the names the prompt shows, so the cache key carries the speaker state.
+        var key = recordingId + "@" + versionId + "#" + SpeakerLabels.Signature(recordings.Get(recordingId)?.Manifest, versionId);
         lock (_gate)
         {
             if (_lines.TryGetValue(key, out var cached))
@@ -56,9 +57,12 @@ internal sealed class ChatSourceCatalog(string chatId, ChatStore chats, Recordin
             try
             {
                 var doc = recordings.LoadTranscript(recordingId, versionId);
+                // Speaker names of the version's current layer ("Anna: text" in the prompt); none without a layer.
+                var speakers = SpeakerLabels.ForVersion(recordings, recordingId, versionId);
                 lines = doc.Segments
                     .Where(s => !string.IsNullOrWhiteSpace(s.Text))
-                    .Select(s => new TranscriptLine(s.Start, s.End > s.Start ? s.End : s.Start, s.Text.Trim()))
+                    .Select(s => new TranscriptLine(s.Start, s.End > s.Start ? s.End : s.Start, s.Text.Trim(),
+                        speakers is not null && speakers.TryGetValue(s.Index, out var name) ? name : null))
                     .ToList();
             }
             catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or KeyNotFoundException or DirectoryNotFoundException)
