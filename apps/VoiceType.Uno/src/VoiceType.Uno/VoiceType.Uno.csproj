@@ -75,6 +75,8 @@
     <!-- Windows audio capture (WASAPI) via NAudio 3.0.1 — portable TFM (net10.0), so
          it links into both heads; PulseAudio is selected at runtime on Linux. -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Audio.NAudio3\SpeechLib.Audio.NAudio3.csproj" />
+    <!-- Recordings history audio: Ogg Opus / WAV writers, offline reader, streaming playback reader -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.AudioStorage\SpeechLib.AudioStorage.csproj" />
   </ItemGroup>
 
 </Project>
