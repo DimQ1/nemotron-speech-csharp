@@ -68,14 +68,14 @@ public class LlmUiTests
         var card = Build("gemma-4-12b", LlmModelState.Installed, freeGb: 8);
         Assert.True(card.RamLow);
         Assert.Contains(card.Chips, c => c.Kind == LlmUiChipKind.Warning);
-        Assert.Contains("12 GB", card.RamText);
+        Assert.Contains("14 GB", card.RamText);
     }
 
     [Fact]
     public void Build_ShouldNotWarnWhenRamIsUnknownOrEnough()
     {
         Assert.False(Build("gemma-4-12b", LlmModelState.Installed, freeGb: null).RamLow);
-        Assert.False(Build("gemma-4-12b", LlmModelState.Installed, freeGb: 12).RamLow);
+        Assert.False(Build("gemma-4-12b", LlmModelState.Installed, freeGb: 14).RamLow);
     }
 
     [Fact]
