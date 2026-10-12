@@ -36,6 +36,7 @@ public sealed partial class RecordingPage : Page
         InitializeComponent();
         // Translate tab: a tap on a bilingual row moves the player (the tab shows the player too).
         TranslateView.SeekRequested += seconds => Player.Seek(TimeSpan.FromSeconds(seconds));
+        InitializeSpeakers();
         _reloadTimer = _dispatcher.CreateTimer();
         _reloadTimer.Interval = TimeSpan.FromMilliseconds(400);
         _reloadTimer.IsRepeating = false;
@@ -72,6 +73,7 @@ public sealed partial class RecordingPage : Page
         base.OnNavigatedTo(e);
         HistoryServices.Recordings.Changed += OnStoreChanged;
         HistoryServices.Deletes.Changed += OnDeletesChanged;
+        SubscribeSpeakers();
         if (e.Parameter is RecordingTarget target)
         {
             // Chat citation: open the cited version and show the passage (design §4.4).
@@ -87,6 +89,7 @@ public sealed partial class RecordingPage : Page
         base.OnNavigatedFrom(e);
         HistoryServices.Recordings.Changed -= OnStoreChanged;
         HistoryServices.Deletes.Changed -= OnDeletesChanged;
+        UnsubscribeSpeakers();
         UnsubscribeSystemBack();
         _reloadTimer.Stop();
     }
@@ -106,6 +109,7 @@ public sealed partial class RecordingPage : Page
         // Embedded pages are dropped by the host without a navigation event.
         HistoryServices.Recordings.Changed -= OnStoreChanged;
         HistoryServices.Deletes.Changed -= OnDeletesChanged;
+        UnsubscribeSpeakers();
         UnsubscribeSystemBack();
         _reloadTimer.Stop();
     }
@@ -123,6 +127,8 @@ public sealed partial class RecordingPage : Page
             if (ViewModel.ViewedTranscript is { } viewed && Player.Duration > TimeSpan.Zero)
                 Player.SetTicks(VoiceType.Uno.Services.Playback.PlaybackCursor.SegmentTicks(viewed.Segments, Player.Duration));
         }
+        UpdateSpeakerBar();
+        UpdatePlayerTurns();
         if (ViewModel.IsDiffView)
             await RenderDiffAsync();
     }
@@ -152,6 +158,7 @@ public sealed partial class RecordingPage : Page
         Header.Padding = isShort ? new Thickness(4, 0, 4, 0) : new Thickness(4);
         TabsBar.Margin = isShort ? new Thickness(16, 0, 16, 4) : new Thickness(16, 0, 16, 8);
         ChangedLabel.Visibility = ActualWidth < 360 ? Visibility.Collapsed : Visibility.Visible;
+        UpdateSpeakerBar();
     }
 
     // ── Chats with Gemma (design §4.3, §4.4) ──────────────────────────────
@@ -255,7 +262,11 @@ public sealed partial class RecordingPage : Page
     private void OnPlayerPosition(TimeSpan position)
     {
         if (ViewModel.IsTranscriptTab)
+        {
+            if (SkipOtherSpeakers(position))
+                return;
             Highlight(ViewModel.SegmentAt(position.TotalSeconds), scroll: true);
+        }
         else if (ViewModel.IsTranslateTab)
             TranslateView.OnPlayerPosition(position);
     }
@@ -320,6 +331,181 @@ public sealed partial class RecordingPage : Page
             await dialog.RunAsync(XamlRoot);
     }
 
+    // ── Speakers (design §10.8) ───────────────────────────────────────────
+
+    private IReadOnlyList<double> _turnStarts = [];
+    private ISpeakerService? _speakerService;
+
+    private void InitializeSpeakers()
+    {
+        SpeakerBar.DataContext = ViewModel;
+        SpeakerBar.OpenSheetRequested += async (_, _) => await ShowSpeakersSheetAsync();
+        SpeakerBar.FilterRequested += id => ViewModel.SetFilter(id);
+        SpeakerBar.DetectRequested += async (_, _) => await DetectSpeakersAsync();
+        SpeakerBar.OpenModelsRequested += (_, _) => OpenSpeakersModels();
+        SpeakerBar.ColorWordsRequested += on => ViewModel.ColorWords = on;
+        ViewModel.SpeakersChanged += () =>
+        {
+            UpdateSpeakerBar();
+            UpdatePlayerTurns();
+        };
+    }
+
+    private void SubscribeSpeakers()
+    {
+        UnsubscribeSpeakers();
+        _speakerService = SpeakerServices.Current;
+        if (_speakerService is not null)
+            _speakerService.Changed += OnSpeakerServiceChanged;
+        try
+        {
+            HistoryServices.Jobs.Changed += OnJobsChanged;
+        }
+        catch (InvalidOperationException)
+        {
+            // no queue in this host
+        }
+    }
+
+    private void UnsubscribeSpeakers()
+    {
+        if (_speakerService is not null)
+            _speakerService.Changed -= OnSpeakerServiceChanged;
+        _speakerService = null;
+        try
+        {
+            HistoryServices.Jobs.Changed -= OnJobsChanged;
+        }
+        catch (InvalidOperationException)
+        {
+            // no queue in this host
+        }
+    }
+
+    private void OnSpeakerServiceChanged(string recordingId)
+    {
+        if (recordingId != RecordingId)
+            return;
+        _dispatcher.TryEnqueue(async () =>
+        {
+            try
+            {
+                await ViewModel.RefreshSpeakersAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[VoiceType.Uno] Speakers refresh failed: {ex.Message}");
+            }
+        });
+    }
+
+    private void OnJobsChanged() => _dispatcher.TryEnqueue(() => ViewModel.RefreshDetect());
+
+    private void UpdateSpeakerBar()
+    {
+        // A low window (landscape phone) has no room for the bar above the list: it scrolls with the transcript.
+        var host = ActualHeight > 0 && ActualHeight < 480 ? SpeakerBarScrollHost : SpeakerBarHost;
+        if (!ReferenceEquals(SpeakerBar.Parent, host))
+        {
+            (SpeakerBar.Parent as Panel)?.Children.Remove(SpeakerBar);
+            host.Children.Add(SpeakerBar);
+        }
+        SpeakerBar.Update(ViewModel, ActualWidth, ActualHeight);
+        var service = SpeakerServices.Current;
+        DetectSpeakersButton.Visibility = service is null ? Visibility.Collapsed : Visibility.Visible;
+        var detect = ViewModel.Detect;
+        DetectSpeakersLabel.Text = detect.Kind switch
+        {
+            SpeakerDetectKind.Queued or SpeakerDetectKind.Running => SpeakerDetectUi.ChipText(detect),
+            SpeakerDetectKind.NoModel => "Detect speakers (needs a model)",
+            _ => ViewModel.HasLayer ? "Detect speakers again…" : "Detect speakers…",
+        };
+        DetectSpeakersButton.IsEnabled = ViewModel.HasAudio && detect.Kind is not (SpeakerDetectKind.Queued or SpeakerDetectKind.Running);
+    }
+
+    /// <summary>With a speaker filter the player's ±10 s buttons jump between that speaker's turns.</summary>
+    private void UpdatePlayerTurns()
+    {
+        if (ViewModel.IsFilterActive && ViewModel.Layer is { } layer)
+        {
+            _turnStarts = ViewModel.FilterTurnStarts;
+            var starts = _turnStarts;
+            Player.SetTurnSkip(
+                (position, direction) => direction < 0 ? SpeakersUi.PreviousTurn(starts, position) : SpeakersUi.NextTurn(starts, position),
+                SpeakersUi.NameOf(layer, ViewModel.FilterPersonId));
+        }
+        else
+        {
+            _turnStarts = [];
+            Player.SetTurnSkip(null, null);
+        }
+    }
+
+    /// <summary>While a filter is active and playing, the playhead leaves other speakers' segments for the next turn.</summary>
+    private bool SkipOtherSpeakers(TimeSpan position)
+    {
+        if (!ViewModel.IsFilterActive || !Player.IsPlaying)
+            return false;
+        var index = ViewModel.SegmentAt(position.TotalSeconds);
+        if (index < 0 || index >= ViewModel.Segments.Count || !ViewModel.Segments[index].IsHidden)
+            return false;
+        if (SpeakersUi.NextTurn(_turnStarts, position.TotalSeconds) is { } next)
+            Player.Seek(TimeSpan.FromSeconds(next));
+        else
+            Player.Pause();
+        return true;
+    }
+
+    private async Task ShowSpeakersSheetAsync()
+    {
+        if (ViewModel.ViewedVersionId is not { } version || !ViewModel.HasLayer)
+            return;
+        var sheet = await SpeakersSheet.ShowAsync(XamlRoot, RecordingId, version);
+        if (sheet is null)
+            return;
+        if (sheet.FilterRequest is { } person)
+            ViewModel.SetFilter(person);
+        if (sheet.DetectAgainRequested)
+        {
+            // With the chain adapter, "Detect again…" is the Reprocess sheet with the Speech step off; without it, detect at once.
+            if (SpeakerServices.Chain is not null)
+                await HistoryDialogs.ShowSafeAsync(new ReprocessSheet([RecordingId], speakersOnly: true) { XamlRoot = XamlRoot });
+            else
+                await DetectSpeakersAsync();
+        }
+        await ViewModel.RefreshSpeakersAsync();
+    }
+
+    private async void SpeakerHeader_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is SegmentViewModel { SpeakerId: { } person } && ViewModel.ViewedVersionId is { } version)
+            await SpeakersSheet.RenameAsync(XamlRoot, RecordingId, version, person);
+    }
+
+    private async void DetectSpeakers_Click(object sender, RoutedEventArgs e) => await DetectSpeakersAsync();
+
+    private async Task DetectSpeakersAsync(string? versionId = null)
+    {
+        if (SpeakerServices.Current is not { } service)
+            return;
+        if (!service.IsModelAvailable)
+        {
+            OpenSpeakersModels();
+            return;
+        }
+        var version = versionId ?? ViewModel.ViewedVersionId;
+        if (version is null)
+            return;
+        var job = SpeakerServices.Detect(RecordingId, version, runNow: true);
+        if (job is null)
+            await HistoryDialogs.ShowMessageAsync(XamlRoot, "Speaker detection did not start",
+                "It is already queued for this recording, or the audio is missing.");
+        ViewModel.RefreshDetect();
+    }
+
+    private void OpenSpeakersModels() =>
+        VoiceType.Uno.Presentation.Chat.ChatServices.RootFrame(XamlRoot)?.Navigate(typeof(VoiceType.Uno.Presentation.ModelsPage), VoiceType.Uno.Presentation.ModelsTab.Speakers);
+
     // ── Header ⋯ ──────────────────────────────────────────────────────────
 
     private void More_Click(object sender, RoutedEventArgs e)
@@ -336,6 +522,13 @@ public sealed partial class RecordingPage : Page
         var reprocess = Item("Re-recognize…", Symbol.Refresh, ReprocessAsync);
         reprocess.IsEnabled = ViewModel.HasAudio;
         menu.Items.Add(reprocess);
+        if (SpeakerServices.Current is not null)
+        {
+            var speakers = Item(ViewModel.HasLayer ? "Speakers…" : "Detect speakers…", Symbol.People,
+                () => ViewModel.HasLayer ? ShowSpeakersSheetAsync() : DetectSpeakersAsync());
+            speakers.IsEnabled = ViewModel.HasLayer || ViewModel.HasAudio;
+            menu.Items.Add(speakers);
+        }
         menu.Items.Add(new MenuFlyoutSeparator());
         menu.Items.Add(Item("Delete", Symbol.Delete, DeleteRecordingAsync));
         menu.ShowAt((FrameworkElement)sender);
@@ -477,6 +670,12 @@ public sealed partial class RecordingPage : Page
             await ReloadAsync(card.Id);
         }));
         menu.Items.Add(Item("Export…", Symbol.Save, () => ExportAsync(card.Id)));
+        if (SpeakerServices.Current is not null)
+        {
+            var detect = Item(card.HasSpeakers ? "Detect speakers again…" : "Detect speakers…", Symbol.People, () => DetectSpeakersAsync(card.Id));
+            detect.IsEnabled = ViewModel.HasAudio;
+            menu.Items.Add(detect);
+        }
         var delete = Item(card.IsCurrent ? "Delete (make another version current first)" : "Delete version",
             Symbol.Delete, () => DeleteVersionAsync(card));
         delete.IsEnabled = !card.IsCurrent;

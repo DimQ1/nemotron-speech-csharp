@@ -206,6 +206,48 @@
           </Grid>
         </Border>
 
+        <!-- Speakers (Nemotron 3 Diarization): automatic detection after Stop, CPU threads -->
+        <StackPanel x:Name="SpeakersGroup" Visibility="Collapsed">
+          <TextBlock Text="SPEAKERS" Style="{StaticResource HistorySectionHeaderStyle}" />
+          <Border Style="{StaticResource HistoryCardStyle}">
+            <StackPanel>
+              <Grid Style="{StaticResource RowGridStyle}" RowSpacing="4">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="24" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <FontIcon Glyph="&#xE716;" FontSize="18" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                  <TextBlock Text="Detect speakers after Stop" TextWrapping="Wrap" />
+                  <TextBlock x:Name="AutoSpeakersDetail" Style="{StaticResource HistorySecondaryStyle}" />
+                </StackPanel>
+                <ComboBox x:Name="AutoSpeakersCombo" Grid.Column="2" MinHeight="44" MinWidth="112" VerticalAlignment="Center"
+                          AutomationProperties.Name="Detect speakers after Stop" SelectionChanged="AutoSpeakers_SelectionChanged" />
+              </Grid>
+              <Border Style="{StaticResource RowDividerStyle}" />
+              <Grid Style="{StaticResource RowGridStyle}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="24" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <FontIcon Glyph="&#xE950;" FontSize="18" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                  <TextBlock Text="CPU threads" TextWrapping="Wrap" />
+                  <TextBlock x:Name="ThreadsDetail" Style="{StaticResource HistorySecondaryStyle}" />
+                </StackPanel>
+                <ComboBox x:Name="ThreadsCombo" Grid.Column="2" MinHeight="44" MinWidth="112" VerticalAlignment="Center"
+                          AutomationProperties.Name="CPU threads for speaker detection" SelectionChanged="Threads_SelectionChanged" />
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
         <Border Style="{StaticResource HistoryCardStyle}" Margin="0,24,0,0">
           <Button Style="{StaticResource HistoryRowButtonStyle}" MinHeight="56" Click="DeleteAll_Click"
                   AutomationProperties.Name="Delete all history">

@@ -45,6 +45,9 @@ public sealed class HistorySettings
     /// <summary>Let Gemma write a title for every saved recording (low-priority job; needs the translation model).</summary>
     public bool AutoTitles { get; set; } = true;
 
+    /// <summary>STUB (agent X2; X1's definition wins at merge): speaker detection settings.</summary>
+    public HistorySpeakerSettings Speakers { get; set; } = new();
+
     [JsonIgnore]
     public bool KeepAudioForever => AudioRetentionDays <= 0;
 
@@ -55,5 +58,10 @@ public sealed class HistorySettings
     public bool ShouldSaveRecording(bool injectTextWasOn) =>
         Enabled && (!injectTextWasOn || SaveInjectDictations);
 
-    public HistorySettings Clone() => (HistorySettings)MemberwiseClone();
+    public HistorySettings Clone()
+    {
+        var clone = (HistorySettings)MemberwiseClone();
+        clone.Speakers = Speakers.Clone();
+        return clone;
+    }
 }

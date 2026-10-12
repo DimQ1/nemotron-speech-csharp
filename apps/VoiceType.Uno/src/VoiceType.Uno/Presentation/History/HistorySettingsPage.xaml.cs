@@ -78,6 +78,14 @@ public sealed partial class HistorySettingsPage : Page
             var qualityIndex = Math.Max(0, _qualities.ToList().FindIndex(q => q.Value == h.AudioQuality));
             Fill(QualityCombo, _qualities.Select(c => c.Label), qualityIndex);
             QualityDetail.Text = _qualities[qualityIndex].Detail ?? "";
+
+            // Speakers group (settings keys: History.Speakers.AfterStop / ThreadsHint).
+            SpeakersGroup.Visibility = SpeakerServices.Current is null ? Visibility.Collapsed : Visibility.Visible;
+            Fill(AutoSpeakersCombo, AutoChoices.Select(SpeakersModelsUi.AfterStopLabel), Math.Max(0, AutoChoices.ToList().IndexOf(h.Speakers.AfterStop)));
+            AutoSpeakersDetail.Text = SpeakersModelsUi.AfterStopHint;
+            Fill(ThreadsCombo, SpeakersModelsUi.ThreadChoices.Select(SpeakersModelsUi.ThreadsLabel),
+                Math.Max(0, SpeakersModelsUi.ThreadChoices.ToList().IndexOf(h.Speakers.ThreadsHint)));
+            ThreadsDetail.Text = SpeakersModelsUi.ThreadsHintText;
         }
         finally
         {
@@ -165,6 +173,24 @@ public sealed partial class HistorySettingsPage : Page
         QualityDetail.Text = choice.Detail ?? "";
         if (!_loading)
             HistoryServices.UpdateHistorySettings(h => h.AudioQuality = choice.Value);
+    }
+
+    private static readonly SpeakerAutoDetect[] AutoChoices = [SpeakerAutoDetect.Off, SpeakerAutoDetect.Best];
+
+    private void AutoSpeakers_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || AutoSpeakersCombo.SelectedIndex < 0)
+            return;
+        var value = AutoChoices[AutoSpeakersCombo.SelectedIndex];
+        HistoryServices.UpdateHistorySettings(h => h.Speakers.AfterStop = value);
+    }
+
+    private void Threads_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || ThreadsCombo.SelectedIndex < 0)
+            return;
+        var threads = SpeakersModelsUi.ThreadChoices[ThreadsCombo.SelectedIndex];
+        HistoryServices.UpdateHistorySettings(h => h.Speakers.ThreadsHint = threads);
     }
 
     private async void DeleteAll_Click(object sender, RoutedEventArgs e)

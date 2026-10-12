@@ -28,6 +28,7 @@ public sealed partial class PlayerBar : UserControl
     private bool _updatingSlider;
     private DateTime _ignorePlayerPositionUntil;
     private int _loadVersion;
+    private Func<double, int, double?>? _turnNavigator;
 
     public PlayerBar()
     {
@@ -197,11 +198,51 @@ public sealed partial class PlayerBar : UserControl
         else Play();
     }
 
-    private void OnBackClick(object sender, RoutedEventArgs e) =>
+    private void OnBackClick(object sender, RoutedEventArgs e)
+    {
+        if (_turnNavigator is not null)
+        {
+            SeekToTurn(-1);
+            return;
+        }
         Seek(PlaybackCursor.Skip(_position, -PlaybackCursor.SkipInterval, _duration));
+    }
 
-    private void OnForwardClick(object sender, RoutedEventArgs e) =>
+    private void OnForwardClick(object sender, RoutedEventArgs e)
+    {
+        if (_turnNavigator is not null)
+        {
+            SeekToTurn(1);
+            return;
+        }
         Seek(PlaybackCursor.Skip(_position, PlaybackCursor.SkipInterval, _duration));
+    }
+
+    private void SeekToTurn(int direction)
+    {
+        if (_turnNavigator?.Invoke(_position.TotalSeconds, direction) is { } seconds)
+            Seek(TimeSpan.FromSeconds(seconds));
+    }
+
+    /// <summary>
+    /// Skip-by-turn mode (speaker filter): the −10 / +10 s buttons become "Previous / Next turn by <paramref name="speakerName"/>".
+    /// <paramref name="navigator"/> gets the position in seconds and −1 / +1 and returns the turn start to jump to, or null
+    /// when there is none. Pass null to return to ±10 s. Everything else about the control is unchanged.
+    /// </summary>
+    public void SetTurnSkip(Func<double, int, double?>? navigator, string? speakerName)
+    {
+        _turnNavigator = navigator;
+        var turn = navigator is not null;
+        BackIcon.Symbol = turn ? Symbol.Previous : Symbol.Undo;
+        ForwardIcon.Symbol = turn ? Symbol.Next : Symbol.Redo;
+        BackSeconds.Visibility = ForwardSeconds.Visibility = turn ? Visibility.Collapsed : Visibility.Visible;
+        var back = turn ? $"Previous turn by {speakerName}" : "Back 10 seconds";
+        var forward = turn ? $"Next turn by {speakerName}" : "Forward 10 seconds";
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(BackButton, back);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(ForwardButton, forward);
+        ToolTipService.SetToolTip(BackButton, back);
+        ToolTipService.SetToolTip(ForwardButton, forward);
+    }
 
     private void OnSpeedClick(object sender, RoutedEventArgs e)
     {

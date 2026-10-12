@@ -5,5 +5,6 @@ public enum ModelsTab
 {
     Speech,
     Translation,
-    Downloads
+    Downloads,
+    Speakers
 }

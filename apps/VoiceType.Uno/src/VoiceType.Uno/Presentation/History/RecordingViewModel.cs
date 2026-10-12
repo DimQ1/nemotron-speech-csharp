@@ -13,7 +13,7 @@ public enum RecordingTab
 }
 
 /// <summary>One transcript segment (read and edit mode).</summary>
-public sealed class SegmentViewModel : ObservableObject
+public sealed partial class SegmentViewModel : ObservableObject
 {
     private bool _isCurrent;
     private string _editText;
@@ -27,6 +27,7 @@ public sealed class SegmentViewModel : ObservableObject
         Text = segment.Text.Trim();
         _editText = Text;
         TimeText = HistoryUiFormat.SegmentTime(segment.Start);
+        WordTimingKind = segment.WordTiming;
     }
 
     /// <summary>Position in the version's segment list (edit texts are passed in this order).</summary>
@@ -35,7 +36,7 @@ public sealed class SegmentViewModel : ObservableObject
     public double End { get; }
     public string TimeText { get; }
     public string Text { get; }
-    public string AutomationName => TimeText + " " + Text;
+    public string AutomationName => SpeakerPrefix + TimeText + " " + Text;
 
     public bool IsCurrent
     {
@@ -68,7 +69,7 @@ public sealed class ChatCardViewModel
 }
 
 /// <summary>One card of the Versions tab.</summary>
-public sealed class VersionCardViewModel : ObservableObject
+public sealed partial class VersionCardViewModel : ObservableObject
 {
     private string _diffText = "";
 
@@ -147,7 +148,7 @@ public sealed class VersionChoice
 /// chats that include the recording and the versions list. Store access runs on the
 /// thread pool; properties change on the UI thread.
 /// </summary>
-public sealed class RecordingViewModel : ObservableObject
+public sealed partial class RecordingViewModel : ObservableObject
 {
     private readonly RecordingStore _store;
     private readonly ChatStore _chats;
@@ -331,6 +332,7 @@ public sealed class RecordingViewModel : ObservableObject
         OnPropertyChanged(nameof(IsDiffView));
         OnPropertyChanged(nameof(IsPlayerVisible));
         OnPropertyChanged(nameof(IsNoAudioLineVisible));
+        OnPropertyChanged(nameof(IsSpeakerBarVisible));
     }
 
     // ── Loading ───────────────────────────────────────────────────────────
@@ -397,9 +399,11 @@ public sealed class RecordingViewModel : ObservableObject
                 Segments.Add(new SegmentViewModel(i, _viewed.Segments[i]));
         }
 
+        await LoadSpeakersAsync(recordingId);
         BuildChats();
         BuildVersions();
         RaiseAll();
+        RaiseSpeakers();
         _ = ComputeVersionDiffsAsync();
     }
 
@@ -431,7 +435,9 @@ public sealed class RecordingViewModel : ObservableObject
                      .OrderByDescending(v => VersionNumber(v.Id)))
         {
             var chats = _chatRecords.Count(c => c.Sources.Exists(s => s.RecordingId == RecordingId && s.VersionId == version.Id));
-            Versions.Add(new VersionCardViewModel(version, _manifest, chats, now));
+            var card = new VersionCardViewModel(version, _manifest, chats, now);
+            card.SetSpeakers(_layers.GetValueOrDefault(version.Id));
+            Versions.Add(card);
         }
         foreach (var version in _manifest.Versions.OrderBy(v => VersionNumber(v.Id)))
             VersionChoices.Add(new VersionChoice(version));

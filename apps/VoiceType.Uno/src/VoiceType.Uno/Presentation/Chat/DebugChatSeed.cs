@@ -73,6 +73,14 @@ internal static class DebugChatSeed
         {
             frame.Navigate(typeof(ChatsPage));
         }
+        else if (target == "history-settings")
+        {
+            frame.Navigate(typeof(VoiceType.Uno.Presentation.History.HistorySettingsPage));
+        }
+        else if (target == "models-speakers")
+        {
+            frame.Navigate(typeof(ModelsPage), ModelsTab.Speakers);
+        }
         else if (target.StartsWith("chats:", StringComparison.Ordinal))
         {
             var part = target[6..];
@@ -127,8 +135,33 @@ internal static class DebugChatSeed
             }, doc);
         }
         store.Rename(entry.Id, title);
-        store.FinishRecording(entry.Id, started.AddSeconds(seconds));
+        // A silent WAV (8 kHz mono) so the player, Reprocess and Detect speakers are enabled in the sandbox.
+        var audio = new AudioInfo { File = "audio.wav", Codec = "pcm16", SampleRate = 8000, Channels = 1, DurationSec = seconds };
+        if (store.TryGetFolder(entry.Id) is { } folder)
+            audio.Bytes = WriteSilentWav(Path.Combine(folder, audio.File), seconds, audio.SampleRate);
+        store.FinishRecording(entry.Id, started.AddSeconds(seconds), audio);
         return entry.Id;
+    }
+
+    private static long WriteSilentWav(string path, double seconds, int sampleRate)
+    {
+        var dataBytes = (int)(seconds * sampleRate) * 2;
+        using var file = File.Create(path);
+        using var writer = new BinaryWriter(file);
+        writer.Write("RIFF"u8);
+        writer.Write(36 + dataBytes);
+        writer.Write("WAVEfmt "u8);
+        writer.Write(16);
+        writer.Write((short)1);
+        writer.Write((short)1);
+        writer.Write(sampleRate);
+        writer.Write(sampleRate * 2);
+        writer.Write((short)2);
+        writer.Write((short)16);
+        writer.Write("data"u8);
+        writer.Write(dataBytes);
+        file.SetLength(44 + dataBytes);
+        return file.Length;
     }
 
     private static TranscriptDocument Transcript(string title, double seconds)

@@ -120,13 +120,15 @@ public static class ChatUiFormat
         };
 
     /// <summary><c>Weekly sync 03:20</c>; a deleted recording reads <c>Deleted recording 03:20</c>.</summary>
-    public static string CitationLabel(ChatCitation citation, Func<string, string?> titleOf)
+    public static string CitationLabel(ChatCitation citation, Func<string, string?> titleOf, string? speaker = null)
     {
         ArgumentNullException.ThrowIfNull(citation);
         ArgumentNullException.ThrowIfNull(titleOf);
         var title = titleOf(citation.RecordingId);
         title = string.IsNullOrWhiteSpace(title) ? "Deleted recording" : Shorten(title.Trim(), CitationTitleMax);
-        return title + " " + HistoryUiFormat.SegmentTime(citation.StartSec);
+        var time = HistoryUiFormat.SegmentTime(citation.StartSec);
+        // With a speaker layer the chip names who said it: "Weekly sync · Anna 03:20" (design §10.8).
+        return string.IsNullOrWhiteSpace(speaker) ? title + " " + time : title + " · " + speaker.Trim() + " " + time;
     }
 
     public static string Shorten(string text, int max) =>
@@ -236,7 +238,8 @@ public static class ChatUiFormat
 /// <summary>Builds the thread of a chat: groups runs of the same sender and resolves citation chips.</summary>
 public static class ChatUiThread
 {
-    public static IReadOnlyList<ChatThreadItem> Build(ChatRecord chat, Func<string, string?> titleOf)
+    public static IReadOnlyList<ChatThreadItem> Build(ChatRecord chat, Func<string, string?> titleOf,
+        Func<ChatCitation, string?>? speakerOf = null)
     {
         ArgumentNullException.ThrowIfNull(chat);
         ArgumentNullException.ThrowIfNull(titleOf);
@@ -258,18 +261,20 @@ public static class ChatUiThread
                 ShowRoleLabel: !isEvent && previous != kind,
                 ShowTime: !isEvent && next != kind,
                 IsIncomplete: kind == ChatThreadKind.Assistant && ChatUiFormat.IsIncomplete(m),
-                Citations: kind == ChatThreadKind.Assistant ? Chips(m.Citations, titleOf) : []));
+                Citations: kind == ChatThreadKind.Assistant ? Chips(m.Citations, titleOf, speakerOf) : []));
         }
         return items;
     }
 
-    public static IReadOnlyList<ChatCitationChip> Chips(IEnumerable<ChatCitation> citations, Func<string, string?> titleOf)
+    /// <param name="speakerOf">Name of who said the cited passage when the version has a speaker layer; looked up at render time.</param>
+    public static IReadOnlyList<ChatCitationChip> Chips(IEnumerable<ChatCitation> citations, Func<string, string?> titleOf,
+        Func<ChatCitation, string?>? speakerOf = null)
     {
         var chips = new List<ChatCitationChip>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var c in citations)
         {
-            var label = ChatUiFormat.CitationLabel(c, titleOf);
+            var label = ChatUiFormat.CitationLabel(c, titleOf, speakerOf?.Invoke(c));
             if (!seen.Add(c.RecordingId + "|" + label))
                 continue;
             var exists = titleOf(c.RecordingId) is not null;

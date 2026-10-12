@@ -58,8 +58,8 @@
                 AutomationProperties.Name="Back 10 seconds"
                 ToolTipService.ToolTip="Back 10 seconds">
           <Grid>
-            <SymbolIcon Symbol="Undo" />
-            <TextBlock Text="10" FontSize="8" FontWeight="SemiBold"
+            <SymbolIcon x:Name="BackIcon" Symbol="Undo" />
+            <TextBlock x:Name="BackSeconds" Text="10" FontSize="8" FontWeight="SemiBold"
                        HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,2,0,0" />
           </Grid>
         </Button>
@@ -83,8 +83,8 @@
                 AutomationProperties.Name="Forward 10 seconds"
                 ToolTipService.ToolTip="Forward 10 seconds">
           <Grid>
-            <SymbolIcon Symbol="Redo" />
-            <TextBlock Text="10" FontSize="8" FontWeight="SemiBold"
+            <SymbolIcon x:Name="ForwardIcon" Symbol="Redo" />
+            <TextBlock x:Name="ForwardSeconds" Text="10" FontSize="8" FontWeight="SemiBold"
                        HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,2,0,0" />
           </Grid>
         </Button>

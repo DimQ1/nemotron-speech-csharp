@@ -203,7 +203,13 @@ public sealed class ChatViewModel : ObservableObject
         _store = store;
         _service = service;
         if (service is not null)
-            QuickPrompts = [.. service.QuickPrompts.Select(p => new QuickPromptViewModel(p))];
+        {
+            var prompts = service.QuickPrompts.ToList();
+            // "Who said what" needs a speaker layer: offered where the speaker service exists (design §10.8).
+            if (VoiceType.Uno.Presentation.History.SpeakerServices.Current is not null && prompts.TrueForAll(p => p.Id != "who-said-what"))
+                prompts.Add(new QuickPrompt("who-said-what", SpeakersModelsUi.QuickPrompt, SpeakersModelsUi.QuickPromptInstruction));
+            QuickPrompts = [.. prompts.Select(p => new QuickPromptViewModel(p))];
+        }
         RefreshModelState();
     }
 
@@ -439,7 +445,7 @@ public sealed class ChatViewModel : ObservableObject
             return versions.GetValueOrDefault(id);
         }
 
-        var items = ChatUiThread.Build(chat, TitleOf);
+        var items = ChatUiThread.Build(chat, TitleOf, VoiceType.Uno.Presentation.History.SpeakerCitations.NameOf);
         var sources = chat.Sources.Select(s =>
         {
             var title = TitleOf(s.RecordingId);
@@ -570,7 +576,7 @@ public sealed class ChatViewModel : ObservableObject
                         break;
                     case ChatEvent.Completed done:
                         completed = true;
-                        answer.Complete(done.Message, ChatUiThread.Chips(done.Message.Citations, ChatServicesStore.TitleOf));
+                        answer.Complete(done.Message, ChatUiThread.Chips(done.Message.Citations, ChatServicesStore.TitleOf, VoiceType.Uno.Presentation.History.SpeakerCitations.NameOf));
                         break;
                     case ChatEvent.Failed fail:
                         failed = true;

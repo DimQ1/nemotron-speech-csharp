@@ -199,6 +199,13 @@ public partial class App : Application
                     // [llm-ui] Debug stand-in with simulated downloads; keep this LAST so a real ILlmModelService wins.
                     Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions
                         .TryAddSingleton<ILlmModelService, FakeLlmModelService>(services);
+                    // [speakers-ui] Debug stand-ins for the speaker service and the Reprocess chain; a real registration above wins.
+                    Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions
+                        .TryAddSingleton<VoiceType.Uno.History.ISpeakerService>(services,
+                            sp => new Presentation.History.FakeSpeakerService(sp.GetRequiredService<VoiceType.Uno.History.RecordingStore>()));
+                    Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions
+                        .TryAddSingleton<VoiceType.Uno.History.IReprocessChainEnqueuer>(services,
+                            sp => new Presentation.History.FakeReprocessChainEnqueuer(sp.GetRequiredService<VoiceType.Uno.History.JobQueue>()));
 #endif
 
                     // ---- ViewModels ----
