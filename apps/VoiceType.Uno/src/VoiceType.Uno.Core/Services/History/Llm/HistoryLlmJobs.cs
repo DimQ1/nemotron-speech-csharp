@@ -36,12 +36,62 @@ public static class HistoryLlmJobs
             priority: regenerate ? JobPriorities.Normal : JobPriorities.Low);
     }
 
-    /// <summary>Queues the map-reduce summary of a version (chat preparation). Returns the waiting job when there is one.</summary>
+    /// <summary>
+    /// Queues the map-reduce summary of a version (chat preparation). Returns the waiting job when there is one; a
+    /// waiting job of lower priority than <paramref name="priority"/> that has not started is replaced by one at the
+    /// wanted priority (its finished chunks are in the shared cache, so nothing is lost).
+    /// </summary>
     public static HistoryJob EnqueueSummarize(JobQueue queue, string recordingId, string? sourceVersion = null, int priority = JobPriorities.Low)
     {
         var existing = FindUnfinished(queue.Jobs, recordingId, HistoryJobKind.Summarize, j => j.Parameters.SourceVersion == sourceVersion);
+        if (existing is not null && existing.Priority < priority && existing.State is JobState.Queued or JobState.Waiting)
+        {
+            queue.Cancel(existing.Id);
+            existing = null;
+        }
         return existing ?? queue.Enqueue(HistoryJobKind.Summarize, recordingId,
             new JobParameters { SourceVersion = sourceVersion }, priority: priority);
+    }
+
+    /// <summary>Recordings longer than this get their summaries prepared in the background (shorter ones fit a chat window whole).</summary>
+    public const double PrepareChatMinSeconds = 300;
+
+    /// <summary>
+    /// After a recording was saved: queues a Background <c>summarize</c> job when the recording is longer than
+    /// <see cref="PrepareChatMinSeconds"/>, the Gemma model is installed and the History › Titles by Gemma switch
+    /// (<see cref="HistorySettings.AutoTitles"/>, the one "let Gemma prepare my recordings" toggle) is on. Duplicates are
+    /// merged by <see cref="EnqueueSummarize"/>. Never throws.
+    /// </summary>
+    public static void TryEnqueueSummarizeAfterSave(JobQueue queue, RecordingStore recordings, string recordingId, HistorySettings settings, bool modelInstalled)
+    {
+        if (!ShouldAutoTitle(settings, modelInstalled) || queue.IsReadOnly)
+            return;
+        try
+        {
+            var manifest = recordings.Get(recordingId)?.Manifest;
+            if (manifest?.CurrentVersion is { } version && manifest.Audio?.DurationSec > PrepareChatMinSeconds)
+                EnqueueSummarize(queue, recordingId, version, JobPriorities.Low);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            Console.WriteLine($"[VoiceType.Uno] Summary job was not queued: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// "Preparing the recording… 3/12" for a recording whose summarize job is queued or running, else null.
+    /// The numbers come from the shared chunks document (finished chunks of the total + the reduce step).
+    /// </summary>
+    public static string? PreparationText(JobQueue queue, RecordingStore recordings, string recordingId, string versionId)
+    {
+        var job = FindUnfinished(queue.Jobs, recordingId, HistoryJobKind.Summarize, j => j.Parameters.SourceVersion is null || j.Parameters.SourceVersion == versionId);
+        if (job is null)
+            return null;
+        var chunks = new AnalysisStore(recordings).LoadChunks(recordingId, versionId);
+        if (chunks is null || chunks.Chunks.Count == 0)
+            return "Preparing the recording…";
+        var done = chunks.Chunks.Count(c => !string.IsNullOrWhiteSpace(c.Summary));
+        return string.Create(CultureInfo.InvariantCulture, $"Preparing the recording… {done}/{chunks.Chunks.Count + 1}");
     }
 
     /// <summary>Title jobs run after a save only when the setting is on and the model is installed.</summary>

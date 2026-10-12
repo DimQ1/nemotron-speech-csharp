@@ -308,19 +308,21 @@ public class ChatServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Summaries_ShouldBeCachedNextToTheRecording()
+    public async Task Summaries_ShouldBeCachedInTheSharedAnalysisFiles()
     {
         var segments = Enumerable.Range(0, 120)
             .Select(i => ((double)i * 8, (double)i * 8 + 7.5, $"Sentence number {i} about the quarterly budget and hiring plan topic{i}."))
             .ToArray();
         var id = AddRecording("Long one", segments);
         var chat = _service.CreateChat([id]);
-        _host.Responder = r => r.Messages.Count == 1 ? "Short summary." : "Final answer [S1 00:00].";
+        _host.Responder = r => r.Messages[0].Text.StartsWith("You summarize", StringComparison.Ordinal) ? "Short summary." : "Final answer [S1 00:00].";
 
         await CollectAsync(_service.SendAsync(chat.Id, "Summarize this recording"));
 
-        var cache = Path.Combine(_recordings.TryGetFolder(id)!, "analysis", "v1.chat-summaries.json");
-        Assert.True(File.Exists(cache));
+        var chunks = new AnalysisStore(_recordings).LoadChunks(id, "v1")!;
+        Assert.True(chunks.Complete);
+        Assert.All(chunks.Chunks, c => Assert.Equal("Short summary.", c.Summary));
+        Assert.False(File.Exists(Path.Combine(_recordings.TryGetFolder(id)!, "analysis", "v1.chat-summaries.json")));
         var calls = _host.Requests.Count;
 
         await CollectAsync(_service.SendAsync(chat.Id, "Summarize this recording once more"));

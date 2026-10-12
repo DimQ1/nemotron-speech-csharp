@@ -21,6 +21,28 @@ public sealed class AnalysisStore
 
     public static string SummaryFile(string versionId) => $"{Folder}/{versionId}.summary.json";
 
+    /// <summary>
+    /// The chat-only cache of earlier builds (<c>vN.chat-summaries.json</c>), superseded by the two files above.
+    /// Never read any more; deleted with its version and the first time the shared cache of the version is opened.
+    /// </summary>
+    public static string LegacyChatSummariesFile(string versionId) => $"{Folder}/{versionId}.chat-summaries.json";
+
+    /// <summary>Deletes the legacy chat cache of <paramref name="versionId"/> (pure cache: Gemma rebuilds it). Never throws.</summary>
+    public void DeleteLegacyChatSummaries(string recordingId, string versionId)
+    {
+        var folder = _store.TryGetFolder(recordingId);
+        if (folder is null)
+            return;
+        try
+        {
+            File.Delete(Path.Combine(folder, LegacyChatSummariesFile(versionId)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Left behind: it is ignored anyway.
+        }
+    }
+
     /// <summary>Identity of a transcript text for cache validity.</summary>
     public static string HashText(string text) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..32].ToLowerInvariant();

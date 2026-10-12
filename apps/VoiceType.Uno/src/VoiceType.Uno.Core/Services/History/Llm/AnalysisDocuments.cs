@@ -20,7 +20,7 @@ public sealed class AnalysisChunksDocument
     public const int CurrentSchema = 1;
 
     /// <summary>Bump when the summary prompt changes; older files are rebuilt.</summary>
-    public const int CurrentPromptVersion = 1;
+    public const int CurrentPromptVersion = SpeechLib.Agents.SummaryDefaults.PromptVersion;
 
     public int Schema { get; set; } = CurrentSchema;
 

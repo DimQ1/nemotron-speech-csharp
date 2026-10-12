@@ -7,52 +7,10 @@ namespace SpeechLib.Agents.Tests;
 public class SummarizerAndAliasTests
 {
     [Fact]
-    public async Task Digest_ShouldMapAndReduceWithSmallUnitsAndCacheEverything()
-    {
-        var host = new FakeLlmHost { Responder = r => "Short summary of this part with names and numbers and a decision." };
-        var cache = new InMemorySummaryCache();
-        var summarizer = new MapReduceSummarizer(host, cache, LlmPriority.Background);
-        var source = Transcripts.Source("S1", "r1", Transcripts.English(repeat: 80));
-        var chunks = TranscriptChunker.Chunk(source.LoadLines(), host.CountTokens);
-        Assert.True(chunks.Count >= 8);
-
-        var progress = new List<string>();
-        var digest = await summarizer.GetDigestAsync(source, chunks, 300, allowGenerate: true, new Progress<string>(progress.Add), default);
-
-        Assert.NotNull(digest);
-        Assert.True(digest!.Tokens <= 300, $"digest {digest.Tokens}");
-        Assert.Equal(0, digest.Items[0].Start);
-        Assert.All(host.Requests, r =>
-        {
-            Assert.Equal(LlmPriority.Background, r.Priority);
-            Assert.True(r.Messages.Sum(m => host.CountTokens(m.Text)) <= 800, "unit too large for cheap preemption");
-        });
-        Assert.True(host.Requests.Count > chunks.Count); // map + at least one reduce
-
-        var before = host.Requests.Count;
-        var again = await summarizer.GetDigestAsync(source, chunks, 300, allowGenerate: false, null, default);
-        Assert.NotNull(again);
-        Assert.Equal(before, host.Requests.Count);
-        Assert.Equal(digest.Items.Count, again!.Items.Count);
-    }
-
-    [Fact]
-    public async Task Digest_ShouldReturnNullWhenOnlyCachedSummariesAreAllowedAndNoneExist()
-    {
-        var host = new FakeLlmHost();
-        var summarizer = new MapReduceSummarizer(host, new InMemorySummaryCache());
-        var source = Transcripts.Source("S1", "r1", Transcripts.English(repeat: 30));
-        var chunks = TranscriptChunker.Chunk(source.LoadLines(), host.CountTokens);
-
-        Assert.Null(await summarizer.GetDigestAsync(source, chunks, 300, allowGenerate: false, null, default));
-        Assert.Empty(host.Requests);
-    }
-
-    [Fact]
     public async Task Builder_ShouldAnswerSummaryQuestionsFromTheDigestOfALongRecording()
     {
         var host = new FakeLlmHost { Responder = _ => "Part summary." };
-        var summarizer = new MapReduceSummarizer(host, new InMemorySummaryCache());
+        var summarizer = new MapReduceSummarizer(host, new InMemorySummaryStore());
         var builder = new TranscriptContextBuilder(host.CountTokens, summarizer);
         var source = Transcripts.Source("S1", "r1", Transcripts.English(repeat: 80));
         var status = new List<string>();

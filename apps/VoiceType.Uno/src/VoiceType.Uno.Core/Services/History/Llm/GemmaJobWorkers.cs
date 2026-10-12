@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using SpeechLib.Agents;
 using SpeechLib.Llm;
 using SpeechLib.Translation;
 
@@ -225,36 +226,27 @@ public sealed class AutoTitleJobWorker
 }
 
 /// <summary>
-/// <c>summarize</c> job: map-reduce summary pieces of a transcript version, cached under <c>analysis/</c> for chats
-/// (<see cref="AnalysisChunksDocument"/>, <see cref="AnalysisSummaryDocument"/>). One chunk = one unit.
+/// <c>summarize</c> job: the map-reduce summary of a transcript version, cached under <c>analysis/</c>
+/// (<see cref="AnalysisChunksDocument"/>, <see cref="AnalysisSummaryDocument"/>). It runs the same
+/// <see cref="MapReduceSummarizer"/> over the same <see cref="AnalysisSummaryStore"/> as chat, at Background
+/// priority: one chunk = one unit, saved before the next starts, so a cancelled job resumes at the next chunk and
+/// chat reuses whatever the job finished (and the other way round).
 /// </summary>
 public sealed class SummarizeJobWorker
 {
-    /// <summary>Chunk size in transcript tokens: with the instructions a map request is ≈ 700 prompt tokens.</summary>
-    public const int ChunkTokens = 560;
+    /// <summary>Chunk size in transcript tokens (<see cref="SummaryDefaults.ChunkTokens"/>).</summary>
+    public const int ChunkTokens = SummaryDefaults.ChunkTokens;
 
     /// <summary>Tokens of partial summaries reduced in one request.</summary>
-    public const int ReduceBatchTokens = 620;
-
-    private const string MapPrompt =
-        "You summarize one part of the transcript of a voice recording. Write 2 to 4 short sentences (at most 100 words) " +
-        "with the key facts: who, what, decisions, numbers, dates, names. After each fact copy the [mm:ss] marker of " +
-        "the line where it was said. Write in the same language as the transcript. Reply with the summary only.";
-
-    private const string ReducePrompt =
-        "You combine the summaries of consecutive parts of one voice recording into a single summary of 4 to 6 sentences " +
-        "(at most 160 words). Keep the key facts and the [mm:ss] markers. Write in the same language as the summaries. " +
-        "Reply with the summary only.";
+    public const int ReduceBatchTokens = SummaryDefaults.ReduceBatchTokens;
 
     private readonly RecordingStore _store;
-    private readonly AnalysisStore _analysis;
     private readonly ILlmHost _host;
     private readonly TimeProvider _time;
 
     public SummarizeJobWorker(RecordingStore store, ILlmHost host, TimeProvider? time = null)
     {
         _store = store;
-        _analysis = new AnalysisStore(store);
         _host = host;
         _time = time ?? TimeProvider.System;
     }
@@ -269,183 +261,38 @@ public sealed class SummarizeJobWorker
         if (manifest.FindVersion(versionId) is null)
             throw new InvalidOperationException($"Transcript {versionId} no longer exists.");
 
-        var transcript = _store.LoadTranscript(job.RecordingId, versionId);
-        var hash = AnalysisStore.HashText(TranscriptDocument.JoinSegments(transcript.Segments));
-        var chunkTexts = TranscriptChunker.Split(transcript.Segments, _host.CountTokens, ChunkTokens);
-
-        var document = _analysis.LoadChunks(job.RecordingId, versionId);
-        if (document is null || !document.Matches(versionId, hash, ChunkTokens) || document.Chunks.Count != chunkTexts.Count)
-        {
-            var now = _time.GetUtcNow();
-            document = new AnalysisChunksDocument
-            {
-                Version = versionId,
-                TextHash = hash,
-                ChunkTokens = ChunkTokens,
-                Model = GemmaJobs.ModelName,
-                CreatedAt = now,
-                UpdatedAt = now,
-                Chunks = chunkTexts.Select(c => c.Chunk).ToList(),
-            };
-            _analysis.SaveChunks(job.RecordingId, document);
-        }
-
         using var watch = GemmaJobs.WatchHost(_host, sink);
-        var total = document.Chunks.Count + 1; // + the reduce step
-        for (var i = 0; i < document.Chunks.Count; i++)
+        var summarizer = new MapReduceSummarizer(_host, new AnalysisSummaryStore(_store, _time), LlmPriority.Background);
+        var target = new SummaryTarget(job.RecordingId, versionId, () => []);
+        await summarizer.EnsureAsync(target, unit =>
         {
-            var chunk = document.Chunks[i];
-            if (!string.IsNullOrWhiteSpace(chunk.Summary))
-                continue;
-            cancellationToken.ThrowIfCancellationRequested();
-
-            chunk.Summary = await GenerateAsync(MapPrompt, chunkTexts[i].Text, 200, cancellationToken).ConfigureAwait(false);
-            document.UpdatedAt = _time.GetUtcNow();
-            document.Complete = document.Chunks.All(c => !string.IsNullOrWhiteSpace(c.Summary));
-            _analysis.SaveChunks(job.RecordingId, document);
-            sink.Progress((double)(i + 1) / total);
-            sink.Checkpoint(new JobCheckpoint { Unit = i + 1 });
-        }
-
-        var summary = _analysis.LoadSummary(job.RecordingId, versionId);
-        if (summary is null || !summary.Matches(versionId, hash) || summary.ChunkCount != document.Chunks.Count)
-        {
-            var text = await ReduceAsync(document.Chunks.Select(c => c.Summary!).ToList(), cancellationToken).ConfigureAwait(false);
-            _analysis.SaveSummary(job.RecordingId, new AnalysisSummaryDocument
-            {
-                Version = versionId,
-                TextHash = hash,
-                Model = GemmaJobs.ModelName,
-                CreatedAt = _time.GetUtcNow(),
-                ChunkCount = document.Chunks.Count,
-                Text = text,
-            });
-        }
+            sink.Progress((double)unit.Done / unit.Total);
+            sink.Checkpoint(new JobCheckpoint { Unit = unit.Done });
+        }, cancellationToken).ConfigureAwait(false);
         sink.Progress(1);
         return versionId;
     }
-
-    /// <summary>Reduces partial summaries in batches of <see cref="ReduceBatchTokens"/> until one is left.</summary>
-    private async Task<string> ReduceAsync(List<string> pieces, CancellationToken cancellationToken)
-    {
-        if (pieces.Count == 0)
-            return "";
-        while (pieces.Count > 1)
-        {
-            var next = new List<string>();
-            var batch = new List<string>();
-            var tokens = 0;
-            async Task FlushAsync()
-            {
-                if (batch.Count == 0)
-                    return;
-                next.Add(batch.Count == 1
-                    ? batch[0]
-                    : await GenerateAsync(ReducePrompt, string.Join("\n", batch), 260, cancellationToken).ConfigureAwait(false));
-                batch.Clear();
-                tokens = 0;
-            }
-
-            foreach (var piece in pieces)
-            {
-                var cost = _host.CountTokens(piece);
-                if (batch.Count > 0 && tokens + cost > ReduceBatchTokens)
-                    await FlushAsync().ConfigureAwait(false);
-                batch.Add(piece);
-                tokens += cost;
-            }
-            await FlushAsync().ConfigureAwait(false);
-            if (next.Count >= pieces.Count)
-                break; // nothing merged (each piece alone fills a batch): stop instead of looping
-            pieces = next;
-        }
-        return string.Join(" ", pieces);
-    }
-
-    private async Task<string> GenerateAsync(string system, string user, int maxOutputTokens, CancellationToken cancellationToken)
-    {
-        var request = new LlmRequest(LlmPriority.Background,
-            [new LlmMessage(LlmRole.System, system), new LlmMessage(LlmRole.User, user)],
-            new LlmSampling(Temperature: 0.2, TopP: 0.5, MaxOutputTokens: maxOutputTokens));
-        for (var attempt = 1; ; attempt++)
-        {
-            try
-            {
-                var text = TranslationOutputCleaner.Clean(await _host.GenerateAsync(request, cancellationToken).ConfigureAwait(false));
-                if (text.Length == 0)
-                    throw new InvalidOperationException("Gemma returned an empty summary.");
-                return text;
-            }
-            catch (LlmUnavailableException)
-            {
-                throw;
-            }
-            catch (Exception) when (!cancellationToken.IsCancellationRequested && attempt < 3)
-            {
-                await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken).ConfigureAwait(false);
-            }
-        }
-    }
 }
 
-/// <summary>Cuts a transcript at segment boundaries into chunks of about a given number of tokens, with <c>[mm:ss]</c> lines.</summary>
+/// <summary>Cuts a transcript at segment boundaries into chunks of about a given number of tokens, with <c>[mm:ss]</c> lines (<see cref="SummaryChunker"/>).</summary>
 public static class TranscriptChunker
 {
     public sealed record Piece(AnalysisChunk Chunk, string Text);
 
-    public static List<Piece> Split(IReadOnlyList<TranscriptSegment> segments, Func<string, int> countTokens, int targetTokens)
-    {
-        var pieces = new List<Piece>();
-        var lines = new StringBuilder();
-        AnalysisChunk? chunk = null;
-
-        void Close()
-        {
-            if (chunk is null)
-                return;
-            pieces.Add(new Piece(chunk, lines.ToString().TrimEnd()));
-            chunk = null;
-            lines.Clear();
-        }
-
-        foreach (var segment in segments)
-        {
-            var text = segment.Text?.Trim() ?? "";
-            if (text.Length == 0)
-                continue;
-            var line = $"[{Clock(segment.Start)}] {text}";
-            var tokens = countTokens(line);
-            // A segment longer than a whole chunk is cut by words (its tail is dropped from the prompt, not from the file).
-            if (tokens > targetTokens)
+    public static List<Piece> Split(IReadOnlyList<TranscriptSegment> segments, Func<string, int> countTokens, int targetTokens) =>
+        SummaryChunker
+            .Split(segments.Select(s => new SegmentText(s.Index, s.Start, s.End, s.Text)).ToList(), countTokens, targetTokens)
+            .Select(p => new Piece(new AnalysisChunk
             {
-                var keep = (int)((long)line.Length * (targetTokens - 4) / tokens);
-                var cut = line.LastIndexOf(' ', Math.Min(keep, line.Length - 1));
-                line = line[..(cut > 0 ? cut : keep)] + " …";
-                tokens = targetTokens;
-            }
-            if (chunk is not null && chunk.Tokens + tokens > targetTokens)
-                Close();
-
-            chunk ??= new AnalysisChunk
-            {
-                Index = pieces.Count,
-                FromSegment = segment.Index,
-                StartSec = segment.Start,
-            };
-            chunk.ToSegment = segment.Index;
-            chunk.EndSec = segment.End;
-            chunk.Tokens += tokens;
-            lines.Append(line).Append('\n');
-        }
-        Close();
-        return pieces;
-    }
+                Index = p.Index,
+                FromSegment = p.FromSegment,
+                ToSegment = p.ToSegment,
+                StartSec = p.StartSec,
+                EndSec = p.EndSec,
+                Tokens = p.Tokens,
+            }, p.Text))
+            .ToList();
 
     /// <summary><c>05:16</c> or <c>1:02:03</c>.</summary>
-    public static string Clock(double seconds)
-    {
-        var total = (long)Math.Max(0, seconds);
-        long h = total / 3600, m = total % 3600 / 60, s = total % 60;
-        return h > 0 ? $"{h}:{m:00}:{s:00}" : $"{m:00}:{s:00}";
-    }
+    public static string Clock(double seconds) => TimeText.Format(seconds);
 }
