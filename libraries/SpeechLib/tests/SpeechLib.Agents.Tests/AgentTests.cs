@@ -149,6 +149,40 @@ public class AgentTests
     }
 
     [Fact]
+    public void ContextBudget_ShouldGrowWithTheWindowAndStillFit()
+    {
+        var small = ContextBudget.ForWindow(4096);
+        var large = ContextBudget.ForWindow(8192);
+
+        Assert.True(large.MaxContextTokens > small.MaxContextTokens);
+        Assert.True(large.HistoryTokens > small.HistoryTokens);
+        Assert.True(large.AnswerTokens >= small.AnswerTokens);
+        var worst = large.AnswerTokens + large.HistoryTokens + large.MaxContextTokens + 400 + 100 + large.OverheadTokens;
+        Assert.True(worst <= 8192, $"worst case {worst} exceeds 8192");
+    }
+
+    [Fact]
+    public async Task Run_ShouldFollowTheHostContextWindowPerTurn()
+    {
+        var (host, _, agent) = Create(englishRepeat: 200);
+        var session = await agent.CreateSessionAsync();
+
+        await AskAsync(agent, session, "What about topic7 and the hiring plan?");
+        var smallExcerpt = host.Requests[^1].Messages[^1].Text.Length;
+
+        host.ContextTokensValue = 8192; // the user switched to a bigger model between two turns
+        await AskAsync(agent, session, "What about topic7 and the hiring plan?");
+        var largeExcerpt = host.Requests[^1].Messages[^1].Text.Length;
+
+        Assert.True(largeExcerpt > smallExcerpt * 1.5, $"excerpt {smallExcerpt} -> {largeExcerpt} did not grow with the window");
+        foreach (var request in host.Requests)
+        {
+            var prompt = request.Messages.Sum(m => host.CountTokens(m.Text) + 6);
+            Assert.True(ContextBudget.ForWindow(host.ContextTokensValue).TotalFor(prompt) <= 8192);
+        }
+    }
+
+    [Fact]
     public async Task Run_ShouldKeepThePartialTextWhenCancelled()
     {
         var (host, _, agent) = Create();

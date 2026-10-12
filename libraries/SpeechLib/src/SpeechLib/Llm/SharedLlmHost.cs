@@ -6,7 +6,7 @@ namespace SpeechLib.Llm;
 /// host therefore cannot shut the engine down for everybody else; only the owner that created the real host
 /// (the DI container at app shutdown) disposes it.
 /// </summary>
-public sealed class SharedLlmHost(ILlmHost inner) : ILlmHost
+public sealed class SharedLlmHost(ILlmHost inner) : ILlmHost, ILlmHostConfiguration
 {
     private readonly ILlmHost _inner = inner ?? throw new ArgumentNullException(nameof(inner));
 
@@ -40,6 +40,17 @@ public sealed class SharedLlmHost(ILlmHost inner) : ILlmHost
 
     public Task PreloadAsync(CancellationToken cancellationToken = default, LlmPriority priority = LlmPriority.Background) =>
         _inner.PreloadAsync(cancellationToken, priority);
+
+    /// <inheritdoc />
+    public LlmHostSettings Settings => Configuration.Settings;
+
+    /// <inheritdoc />
+    public Task ReconfigureAsync(LlmHostSettings settings, CancellationToken cancellationToken = default) =>
+        Configuration.ReconfigureAsync(settings, cancellationToken);
+
+    private ILlmHostConfiguration Configuration =>
+        _inner as ILlmHostConfiguration
+        ?? throw new NotSupportedException("The wrapped LLM host cannot be reconfigured at runtime.");
 
     /// <summary>Ignored: the shared host lives until its owner disposes the real instance.</summary>
     public ValueTask DisposeAsync()

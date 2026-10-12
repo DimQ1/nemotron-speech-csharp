@@ -431,4 +431,38 @@ public sealed class Real_GemmaEngineHostTests(ITestOutputHelper output)
         var again = await TimedAsync(host, Translate(Sentence));
         Log($"[E] request after unload (reload inside): first chunk {again.FirstChunkMs:N0} ms, total {again.TotalMs:N0} ms; load {host.LastLoadDuration!.Value.TotalMilliseconds:N0} ms; private {Mb():N0} MB");
     }
+
+    [RealModelFact]
+    public async Task Real_H_ReconfigureWhileAnAnswerStreamsShouldContinueOnTheNewEngine()
+    {
+        await using var host = NewHost();
+        await host.PreloadAsync();
+        Assert.Equal(4096, host.ContextTokens);
+
+        var answer = new StringBuilder();
+        var chat = new LlmRequest(LlmPriority.Interactive,
+            [new LlmMessage(LlmRole.User, "Count from one to forty in words, separated by commas.")],
+            new LlmSampling(MaxOutputTokens: 200), ConversationKey: "switch-chat");
+        var started = new TaskCompletionSource();
+        var consumer = Task.Run(async () =>
+        {
+            await foreach (var piece in host.GenerateStreamAsync(chat))
+            {
+                lock (answer)
+                    answer.Append(piece);
+                if (answer.Length > 20)
+                    started.TrySetResult();
+            }
+        });
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(60));
+
+        var sw = Stopwatch.StartNew();
+        await host.ReconfigureAsync(new LlmHostSettings(ModelPath, "cpu", 2048)); // same file, other window: forces a real reload
+        Log($"[H] reconfigure took {sw.Elapsed.TotalMilliseconds:N0} ms; ContextTokens {host.ContextTokens}; private {Mb():N0} MB");
+        await consumer.WaitAsync(TimeSpan.FromMinutes(3));
+
+        Assert.Equal(2048, host.ContextTokens);
+        Log($"[H] answer across the switch: {answer}");
+        Assert.Contains("forty", answer.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
 }

@@ -181,19 +181,35 @@ public partial class App : Application
                     // The container owns the real GemmaEngineHost (and disposes it at shutdown). Components get ILlmHost
                     // = SharedLlmHost, whose DisposeAsync is a no-op, so no component can shut the engine down for the
                     // others by disposing "its" host.
-                    services.AddSingleton(_ => new SpeechLib.LiteRT.Native.GemmaEngineHost(
-                        new SpeechLib.LiteRT.Native.GemmaEngineHostOptions
-                        {
-                            ModelPath = TranslationModelInfo.LocalModelPath,
-                            Backend = TranslationModelInfo.Backend,
-                            Diagnostics = LogHostDiagnostics,
-                        }));
+                    services.AddSingleton(sp =>
+                    {
+                        // The selected language model (falls back to the default while it is not installed), its
+                        // context window and the CPU/GPU choice come from the settings; ILlmModelService switches them live.
+                        var settings = sp.GetRequiredService<SettingsStore>().Current;
+                        var model = LlmModelCatalog.Resolve(settings.LlmModelId);
+                        return new SpeechLib.LiteRT.Native.GemmaEngineHost(
+                            new SpeechLib.LiteRT.Native.GemmaEngineHostOptions
+                            {
+                                ModelPath = model.LocalPath,
+                                MaxNumTokens = model.ContextTokens,
+                                Backend = LlmModelService.NormalizeBackend(settings.TranslationComputeBackend),
+                                Diagnostics = LogHostDiagnostics,
+                            });
+                    });
                     services.AddSingleton<SpeechLib.Llm.ILlmHost>(sp => new SpeechLib.Llm.SharedLlmHost(
                         sp.GetRequiredService<SpeechLib.LiteRT.Native.GemmaEngineHost>())
                     {
                         OnIgnoredDispose = LogHostDiagnostics,
                     });
                     // <<< Wave 2 / agent M
+                    // >>> larger Gemma: model catalog state, downloads and live switching over the shared host
+                    services.AddSingleton<SpeechLib.Llm.ILlmHostConfiguration>(sp =>
+                        sp.GetRequiredService<SpeechLib.LiteRT.Native.GemmaEngineHost>());
+                    services.AddSingleton<ILlmModelService>(sp => new LlmModelService(
+                        sp.GetRequiredService<SettingsStore>(),
+                        sp.GetRequiredService<ModelDownloadManager>(),
+                        sp.GetRequiredService<SpeechLib.Llm.ILlmHostConfiguration>()));
+                    // <<< larger Gemma
 
 #if DEBUG
                     // [llm-ui] Debug stand-in with simulated downloads; keep this LAST so a real ILlmModelService wins.

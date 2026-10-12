@@ -54,6 +54,8 @@ internal sealed class FakeGemmaEngine : IGemmaEngine
     {
         using var _ = Operation();
         var s = (FakeSnapshot)snapshot;
+        if (!ReferenceEquals(s.Owner, this))
+            throw new ObjectDisposedException("engine", "The snapshot belongs to another engine.");
         var turns = new List<LlmMessage>(s.Turns);
         if (!string.IsNullOrEmpty(s.Partial))
             turns.Add(new LlmMessage(LlmRole.Assistant, s.Partial));
@@ -83,7 +85,7 @@ internal sealed class FakeGemmaEngine : IGemmaEngine
     }
 }
 
-internal sealed record FakeSnapshot(GemmaConversationSpec Spec, IReadOnlyList<LlmMessage> Turns, string? Partial) : IGemmaSnapshot;
+internal sealed record FakeSnapshot(GemmaConversationSpec Spec, IReadOnlyList<LlmMessage> Turns, string? Partial, FakeGemmaEngine Owner) : IGemmaSnapshot;
 
 internal sealed class FakeConversation(FakeGemmaEngine engine, GemmaConversationSpec spec, List<LlmMessage> turns) : IGemmaConversation
 {
@@ -100,7 +102,7 @@ internal sealed class FakeConversation(FakeGemmaEngine engine, GemmaConversation
     public int TokenCountCached => Turns.Sum(t => t.Text.Length) / 4;
     public bool IsContextFull => FullFlag;
 
-    public IGemmaSnapshot Snapshot(string? partialResponse) => new FakeSnapshot(Spec, [.. Turns], partialResponse);
+    public IGemmaSnapshot Snapshot(string? partialResponse) => new FakeSnapshot(Spec, [.. Turns], partialResponse, engine);
 
     public async IAsyncEnumerable<string> SendStreamingAsync(
         string userText, GemmaSendSpec send, [EnumeratorCancellation] CancellationToken cancellationToken)
