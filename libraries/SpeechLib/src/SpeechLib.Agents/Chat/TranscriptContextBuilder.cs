@@ -88,9 +88,9 @@ public sealed class TranscriptContextBuilder
         {
             var share = Math.Max(60, (int)(budgetTokens * 0.9) / active.Count);
             var text = new StringBuilder();
-            foreach (var (source, chunks) in perSource)
+            foreach (var (source, _) in perSource)
             {
-                var digest = await _summarizer.GetDigestAsync(source, chunks, share, allowGenerate: true, progress, cancellationToken).ConfigureAwait(false);
+                var digest = await _summarizer.GetDigestAsync(source, share, allowGenerate: true, progress, cancellationToken).ConfigureAwait(false);
                 if (digest is null || digest.Items.Count == 0)
                     continue;
                 text.Append("Summary of ").Append(source.Alias)
@@ -109,9 +109,9 @@ public sealed class TranscriptContextBuilder
         {
             var digestShare = Math.Max(60, budgetTokens / 4 / active.Count);
             var digests = new List<(ChatSourceDocument Source, Digest Digest)>();
-            foreach (var (source, chunks) in perSource)
+            foreach (var (source, _) in perSource)
             {
-                var digest = await _summarizer.GetDigestAsync(source, chunks, digestShare, allowGenerate: false, null, cancellationToken).ConfigureAwait(false);
+                var digest = await _summarizer.GetDigestAsync(source, digestShare, allowGenerate: false, null, cancellationToken).ConfigureAwait(false);
                 if (digest is null)
                 {
                     digests.Clear();

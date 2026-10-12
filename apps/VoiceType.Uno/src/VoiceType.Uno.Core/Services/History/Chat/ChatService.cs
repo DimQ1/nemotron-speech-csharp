@@ -22,17 +22,19 @@ public sealed class ChatService : IChatService
     private readonly RecordingStore _recordings;
     private readonly ChatStore _chats;
     private readonly ILlmHost _host;
-    private readonly ISummaryCache _summaries;
+    private readonly ISummaryStore _summaries;
+    private readonly JobQueue? _jobs;
     private readonly TimeProvider _time;
     private readonly Lock _gate = new();
     private readonly Dictionary<string, ChatRuntime> _runtimes = new(StringComparer.Ordinal);
 
-    public ChatService(RecordingStore recordings, ChatStore chats, ILlmHost host, ISummaryCache? summaries = null, TimeProvider? timeProvider = null)
+    public ChatService(RecordingStore recordings, ChatStore chats, ILlmHost host, ISummaryStore? summaries = null, TimeProvider? timeProvider = null, JobQueue? jobs = null)
     {
         _recordings = recordings ?? throw new ArgumentNullException(nameof(recordings));
         _chats = chats ?? throw new ArgumentNullException(nameof(chats));
         _host = host ?? throw new ArgumentNullException(nameof(host));
-        _summaries = summaries ?? new RecordingSummaryCache(recordings);
+        _summaries = summaries ?? new AnalysisSummaryStore(recordings, timeProvider);
+        _jobs = jobs;
         _time = timeProvider ?? TimeProvider.System;
         QuickPrompts = ChatPrompts.QuickPrompts.Select(p => new QuickPrompt(p.Id, p.Label, p.Prompt)).ToList();
     }
@@ -59,6 +61,8 @@ public sealed class ChatService : IChatService
         var chat = _chats.Create(title, sources);
         foreach (var (recordingId, versionId) in sources)
             chat = LogSourceEvent(chat.Id, ChatSourceEvents.AddedKind, recordingId, versionId) ?? chat;
+        foreach (var (recordingId, versionId) in sources)
+            PrepareSummaries(recordingId, versionId);
         return chat;
     }
 
@@ -72,6 +76,7 @@ public sealed class ChatService : IChatService
             return before;
 
         _chats.AddSource(chatId, recordingId, version);
+        PrepareSummaries(recordingId, version);
         return LogSourceEvent(chatId, ChatSourceEvents.AddedKind, recordingId, version) ?? _chats.Get(chatId)!;
     }
 
@@ -97,6 +102,7 @@ public sealed class ChatService : IChatService
         if (chat.Sources.Find(s => s.RecordingId == recordingId)?.VersionId == version)
             return chat;
         _chats.AddSource(chatId, recordingId, version); // moves the existing source
+        PrepareSummaries(recordingId, version);
         return LogSourceEvent(chatId, ChatSourceEvents.VersionChangedKind, recordingId, version) ?? _chats.Get(chatId)!;
     }
 
@@ -210,6 +216,8 @@ public sealed class ChatService : IChatService
 
             var count = chat.Sources.Count;
             output.TryWrite(new ChatEvent.Status(count == 1 ? "Reading the recording…" : $"Reading {count} recordings…"));
+            if (PreparationStatus(chat) is { } preparing)
+                output.TryWrite(new ChatEvent.Status(preparing));
 
             var session = await EnsureSessionAsync(runtime, chat, before, ct).ConfigureAwait(false);
             _host.StatusChanged += OnHostStatus;
@@ -358,6 +366,49 @@ public sealed class ChatService : IChatService
             }
         }
         return turns;
+    }
+
+    // ---- shared summaries (one pipeline with the summarize job) ----
+
+    /// <summary>
+    /// Makes sure a long recording's summaries are being prepared: queues the Background <c>summarize</c> job at the
+    /// highest Background priority when the whole-recording summary is missing. The job and chat share one cache
+    /// (<see cref="AnalysisSummaryStore"/>), so a first "summarize" question finds the chunks already done.
+    /// Never throws: without it the first question computes the missing chunks itself.
+    /// </summary>
+    private void PrepareSummaries(string recordingId, string versionId)
+    {
+        if (_jobs is null || _jobs.IsReadOnly || !_host.IsModelInstalled)
+            return;
+        try
+        {
+            var manifest = _recordings.Get(recordingId)?.Manifest;
+            if (manifest is null || manifest.Audio?.DurationSec is not > HistoryLlmJobs.PrepareChatMinSeconds)
+                return;
+            if (_summaries.LoadSummary(new SummaryTarget(recordingId, versionId, () => [])) is not null)
+                return;
+            HistoryLlmJobs.EnqueueSummarize(_jobs, recordingId, versionId, JobPriorities.High);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            Console.WriteLine($"[VoiceType.Uno] Summary job was not queued: {ex.Message}");
+        }
+    }
+
+    /// <summary>"Preparing the recording… 3/12" while a summarize job of one of the chat's sources is waiting or running.</summary>
+    public string? PreparationStatus(string chatId) =>
+        _chats.Get(chatId) is { } chat ? PreparationStatus(chat) : null;
+
+    private string? PreparationStatus(ChatRecord chat)
+    {
+        if (_jobs is null)
+            return null;
+        foreach (var source in chat.Sources)
+        {
+            if (HistoryLlmJobs.PreparationText(_jobs, _recordings, source.RecordingId, source.VersionId) is { } text)
+                return text;
+        }
+        return null;
     }
 
     // ---- aliases ----

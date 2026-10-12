@@ -34,8 +34,6 @@ public static partial class ChatPrompts
     // Bump when the wording of a summarisation prompt changes: cached summaries are keyed by it.
     private const string TranscriptLanguage = " Answer in the language of the transcript.";
 
-    public const string SummaryPromptVersion = "s2";
-
     public static IReadOnlyList<QuickPromptText> QuickPrompts { get; } =
     [
         new("summary", "Summary",
@@ -115,15 +113,4 @@ public static partial class ChatPrompts
 
     public static string Shorten(string text, int max) =>
         text.Length <= max ? text : text[..(max - 1)].TrimEnd() + "…";
-
-    // ---- map-reduce summarisation prompts (each unit stays within about 500-800 prompt tokens) ----
-
-    public static string ChunkSummaryPrompt(string plainText) =>
-        "Summarize this part of a recording transcript in 2 short sentences. Keep names, numbers, dates, decisions and tasks. " +
-        "Write in the same language as the text. Output only the summary.\n\nText:\n" + plainText;
-
-    public static string GroupSummaryPrompt(IEnumerable<string> summaries) =>
-        "These are summaries of consecutive parts of one recording. Merge them into one summary of 3 short sentences, keeping the most important facts, names, numbers, decisions and tasks. " +
-        "Write in the same language as the text. Output only the summary.\n\nParts:\n" +
-        string.Join("\n", summaries.Select((s, i) => $"{i + 1}. {s}"));
 }

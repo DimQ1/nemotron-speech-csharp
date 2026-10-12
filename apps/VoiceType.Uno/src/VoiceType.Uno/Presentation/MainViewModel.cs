@@ -845,6 +845,9 @@ public sealed partial class MainViewModel : ObservableObject
         // Gemma title as a low-priority job (only with History › Titles by Gemma on and the model installed).
         if (outcome.RecordingId is { } savedId)
             HistoryLlmJobs.TryEnqueueAutoTitleAfterSave(_jobs, savedId, _settingsStore.Current.History, Services.Jobs.GemmaAvailability.IsInstalled);
+        // Chat preparation: map-reduce summaries of a long recording, shared with chat (same toggle).
+        if (outcome.RecordingId is { } preparedId)
+            HistoryLlmJobs.TryEnqueueSummarizeAfterSave(_jobs, _recordings, preparedId, _settingsStore.Current.History, Services.Jobs.GemmaAvailability.IsInstalled);
 
         _scheduler.Post(() =>
         {

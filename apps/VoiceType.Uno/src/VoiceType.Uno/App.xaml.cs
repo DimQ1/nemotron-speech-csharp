@@ -99,7 +99,8 @@ public partial class App : Application
                     services.AddSingleton<IChatService>(sp => new ChatService(
                         sp.GetRequiredService<RecordingStore>(),
                         sp.GetRequiredService<ChatStore>(),
-                        sp.GetRequiredService<SpeechLib.Llm.ILlmHost>()));
+                        sp.GetRequiredService<SpeechLib.Llm.ILlmHost>(),
+                        jobs: sp.GetRequiredService<JobQueue>()));
                     services.AddSingleton(_ =>
                     {
                         AppPaths.EnsureJobsDir();

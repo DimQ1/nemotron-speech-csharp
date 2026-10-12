@@ -22,36 +22,6 @@ public interface IChatSourceCatalog
     IReadOnlyList<ChatSourceDocument> GetSources();
 }
 
-/// <summary>Per-chunk and per-section summaries, cached by the caller so every chat reuses them.</summary>
-public interface ISummaryCache
-{
-    string? Get(string recordingId, string versionId, string key);
-
-    void Set(string recordingId, string versionId, string key, string summary);
-}
-
-public sealed class InMemorySummaryCache : ISummaryCache
-{
-    private readonly Dictionary<string, string> _map = new(StringComparer.Ordinal);
-
-    public int Count
-    {
-        get { lock (_map) return _map.Count; }
-    }
-
-    public string? Get(string recordingId, string versionId, string key)
-    {
-        lock (_map)
-            return _map.GetValueOrDefault(recordingId + "|" + versionId + "|" + key);
-    }
-
-    public void Set(string recordingId, string versionId, string key, string summary)
-    {
-        lock (_map)
-            _map[recordingId + "|" + versionId + "|" + key] = summary;
-    }
-}
-
 /// <summary>
 /// Source aliases of one chat. Aliases are handed out in order and are never reused; removing a source keeps
 /// its alias (so old answers stay valid), re-adding the same recording gets the same alias back.

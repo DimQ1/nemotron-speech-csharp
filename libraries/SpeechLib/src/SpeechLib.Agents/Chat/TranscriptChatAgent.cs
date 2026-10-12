@@ -26,7 +26,7 @@ public sealed class TranscriptChatAgent : IDisposable
         ILlmHost host,
         IChatSourceCatalog catalog,
         string conversationKey,
-        ISummaryCache? summaryCache = null,
+        ISummaryStore? summaryStore = null,
         ContextBudget? budget = null)
     {
         _host = host ?? throw new ArgumentNullException(nameof(host));
@@ -34,7 +34,7 @@ public sealed class TranscriptChatAgent : IDisposable
         var effective = () => budget ?? ContextBudget.ForWindow(host.ContextTokens > 0 ? host.ContextTokens : 4096);
 
         _client = new LlmChatClient(host, conversationKey, LlmPriority.Interactive, budget);
-        var summarizer = new MapReduceSummarizer(host, summaryCache ?? new InMemorySummaryCache(), LlmPriority.Interactive);
+        var summarizer = new MapReduceSummarizer(host, summaryStore ?? new InMemorySummaryStore(), LlmPriority.Interactive);
         var builder = new TranscriptContextBuilder(host.CountTokens, summarizer);
 
         _history = new InMemoryChatHistoryProvider(new InMemoryChatHistoryProviderOptions
