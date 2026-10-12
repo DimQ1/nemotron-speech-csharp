@@ -3,12 +3,13 @@
 Downloads the LiteRtLmSharp packages this repository consumes into a local NuGet folder feed.
 
 .DESCRIPTION
-`SpeechLib.LiteRT.Native` references LiteRtLmSharp 1.3.0 (native LiteRT-LM v0.18.0), which is not on
-nuget.org: it is published from the fork https://github.com/DimQ1/LiteRtLmSharp to its GitHub Packages
-feed, and the same .nupkg files are attached to the fork's `v<version>` GitHub release. GitHub Packages
-requires an authenticated read even for public packages, so this script uses the release assets
-instead — plain HTTPS, no token, no GitHub CLI — and drops them into the local folder feed that
-nuget.config maps the LiteRtLmSharp* packages to.
+`SpeechLib.LiteRT.Native` references LiteRtLmSharp 1.4.0 (native LiteRT-LM v0.18.0), the fork's build
+with the engine-usage improvements this repository uses — upstream's own 1.3.0 on nuget.org is a
+different build without them. It is published from the fork https://github.com/DimQ1/LiteRtLmSharp to
+its GitHub Packages feed, and the same .nupkg files are attached to the fork's `v<version>` GitHub
+release. GitHub Packages requires an authenticated read even for public packages, so this script uses
+the release assets instead — plain HTTPS, no token, no GitHub CLI — and drops them into the local
+folder feed that nuget.config maps the LiteRtLmSharp* packages to.
 
 Run once after cloning (and in CI before building a project that consumes SpeechLib.LiteRT.Native):
 
@@ -23,7 +24,7 @@ the published feed with a `read:packages` token.
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = '1.3.0',
+    [string]$Version = '1.4.0',
     [string]$Repo = 'DimQ1/LiteRtLmSharp',
     [string]$Destination,
     # Package ids to fetch; empty = the ones this repository references (see the switch below).
@@ -40,7 +41,7 @@ $ErrorActionPreference = 'Stop'
 # package plus the win-x64 / linux-x64 / android-arm64 runtime packages (apps publish per RID).
 $referencedPackages = @('LiteRtLmSharp', 'LiteRtLmSharp.runtime.win-x64', 'LiteRtLmSharp.runtime.linux-x64',
                         'LiteRtLmSharp.runtime.android-arm64')
-# Everything the 1.3.0 release carries (kept in sync with the runtime packages in LiteRtLmSharp.slnx).
+# Everything the 1.4.0 release carries (kept in sync with the runtime packages in LiteRtLmSharp.slnx).
 $everyPackage = @('LiteRtLmSharp', 'LiteRtLmSharp.Extensions.AI', 'LiteRtLmSharp.SemanticKernel') +
     @('win-x64', 'linux-x64', 'linux-arm64', 'android-arm64', 'android-x64', 'osx-arm64') |
     ForEach-Object { if ($_ -like 'LiteRtLmSharp*') { $_ } else { "LiteRtLmSharp.runtime.$_" } }

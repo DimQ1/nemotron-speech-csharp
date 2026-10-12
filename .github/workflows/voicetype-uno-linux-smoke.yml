@@ -37,8 +37,8 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Fetch the LiteRtLmSharp feed (release assets, no token)
-        # LiteRtLmSharp 1.3.0 is not on nuget.org: this pulls the packages from the
-        # fork's public v1.3.0 release into the local folder feed nuget.config maps them to.
+        # LiteRtLmSharp 1.4.0 comes from the fork (upstream's own 1.3.0 lacks these improvements):
+        # this pulls its packages from the public v1.4.0 release into the folder feed nuget.config maps to.
         shell: pwsh
         run: pwsh tools/scripts/fetch-litertlmsharp-feed.ps1
 

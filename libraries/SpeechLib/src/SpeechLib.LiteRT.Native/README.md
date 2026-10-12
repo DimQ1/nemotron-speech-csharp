@@ -2,14 +2,15 @@
 
 In-process translation with a Gemma 4 model in `.litertlm` format, loaded through
 LiteRT-LM via the [LiteRtLmSharp](https://github.com/DimQ1/LiteRtLmSharp) fork
-(1.3.0, native LiteRT-LM v0.18.0 — published on the fork's GitHub Packages feed; upstream
-publishes only up to 1.2.0 / native v0.16.0 on nuget.org). No sidecar server: the model runs
-inside the application process.
+(1.4.0, native LiteRT-LM v0.18.0 — the fork's build, which carries the engine-usage improvements this
+repository uses; upstream's own 1.3.0 is a different build without them). No sidecar server: the model
+runs inside the application process.
 
 ## Restoring the packages
 
-LiteRtLmSharp 1.3.0 is not on nuget.org (upstream publishes only up to 1.2.0), so its `.nupkg` files are
-fetched once from the fork's public `v1.3.0` release into a local folder feed that the root
+The fork's 1.4.0 is not on nuget.org — upstream's 1.3.0 there has the same native version but not the
+improvements — so its `.nupkg` files are fetched once from the fork's public `v1.4.0` release into a
+local folder feed that the root
 [nuget.config](../../../../nuget.config) maps the `LiteRtLmSharp*` packages to — no token and no GitHub
 CLI involved:
 
@@ -45,7 +46,7 @@ version restores from nuget.org, and the mapping still allows it.
 - **an explicit `Greedy` sampler** (`LiteRTLmNativeOptions.Greedy`, default on). The CPU backend
   does not implement it: the first send of the first conversation fails with
   `UNIMPLEMENTED: Sampler type: 3` (reported as `LiteRtSamplerNotSupportedException` in
-  LiteRtLmSharp 1.3.0), the translator retries once on a fresh conversation without an explicit
+  LiteRtLmSharp 1.4.0), the translator retries once on a fresh conversation without an explicit
   sampler — the model file's own sampler (top-k 40, top-p 0.95, temperature 1.0) — and stops
   asking for Greedy for the life of the engine. Measured on native v0.18.0: it is a missing
   sampler, not memory pressure, and once a send has completed on the engine the runtime accepts

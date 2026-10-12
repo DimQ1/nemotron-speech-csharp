@@ -5,8 +5,8 @@ namespace SpeechLib.LiteRT.Native;
 
 /// <summary>
 /// Configuration for the in-process LiteRT-LM translator: it loads a Gemma 4
-/// model in <c>.litertlm</c> format directly (via LiteRtLmSharp 1.2, native
-/// LiteRT-LM v0.16), without an HTTP server.
+/// model in <c>.litertlm</c> format directly (via LiteRtLmSharp 1.4.0, native
+/// LiteRT-LM v0.18.0), without an HTTP server.
 /// </summary>
 public sealed class LiteRTLmNativeOptions
 {

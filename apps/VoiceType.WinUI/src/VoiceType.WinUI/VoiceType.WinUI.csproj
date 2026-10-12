@@ -260,8 +260,8 @@
   <PropertyGroup>
     <!-- Keep in sync with the LiteRtLmSharp* PackageReference versions in
          libraries/SpeechLib/src/SpeechLib.LiteRT.Native/SpeechLib.LiteRT.Native.csproj
-         (1.3.0 = native LiteRT-LM v0.18.0, from the fork's GitHub Packages feed). -->
-    <_LiteRtRuntimeVersion>1.3.0</_LiteRtRuntimeVersion>
+         (1.4.0 = native LiteRT-LM v0.18.0, the fork's build, restored from the local folder feed). -->
+    <_LiteRtRuntimeVersion>1.4.0</_LiteRtRuntimeVersion>
     <_LiteRtNativeDir>$(USERPROFILE)\.nuget\packages\litertlmsharp.runtime.win-x64\$(_LiteRtRuntimeVersion)\runtimes\win-x64\native\</_LiteRtNativeDir>
   </PropertyGroup>
 
