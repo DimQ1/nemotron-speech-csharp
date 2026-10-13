@@ -13,8 +13,8 @@ Primary target platform: **Linux (Ubuntu, X11)**. Windows/macOS desktop work thr
 | Microphone capture on Linux (PulseAudio-compatible server: ALSA `default` and Pulse sources, 16 kHz mono) | ✅ Implemented |
 | ONNX Runtime GenAI model inference (CPU EP) | ✅ Via SpeechLib.Nemotron (`-p:GpuArch=CPU`) |
 | Global hotkeys on Linux (Wayland + X11) | ✅ `VoiceType.Hotkeys` library — XDG GlobalShortcuts portal (xdg-desktop-portal ≥ 1.18, GNOME 44+/KDE Plasma 5.27+); Null fallback on older compositors |
-| Text injection on Linux | ✅ `LinuxTextInjector` — clipboard (wl-copy / xclip / xsel) + synthetic paste chord (XTest on X11, ydotool on Wayland, xdotool fallback); paste chord configurable in Settings |
-| Text injection on Windows (WinUI 3 head) | ✅ `WindowsTextInjector` — SendInput + user32 clipboard (parity with VoiceType.WinUI) |
+| Text injection on Linux | ✅ `LinuxTextInjector` — types straight into the focused window, clipboard untouched: XTest on X11 (any layout, Unicode via scratch keycodes), ydotool on Wayland (ASCII only), xdotool fallback. Only text the backend cannot type (non-ASCII on ydotool) goes through clipboard (wl-copy / xclip / xsel) + paste chord |
+| Text injection on Windows (WinUI 3 head) | ✅ `WindowsTextInjector` — SendInput Unicode key events typed into the focused window, clipboard untouched (parity with VoiceType.WinUI's SendInput strategy); user32 clipboard only for the Copy action |
 | Loopback ("WhatYouHear") capture on Linux | ✅ `PulseAudioSourceFactory` — `@DEFAULT_MONITOR@`; Mic / Loopback / Mix modes |
 | Live translation (LiteRT-LM, Gemma 4) | ✅ In-process native backend via SpeechLib.LiteRT.Native (LiteRtLmSharp natives ship for win-x64 **and linux-x64** — no sidecar/server needed); HTTP backend (SpeechLib.LiteRT) as fallback when the model is not downloaded |
 | Model downloader (auto-download on first run + button in Settings) | ✅ Ported |

@@ -114,6 +114,7 @@ public sealed partial class MainViewModel : ObservableObject
         _transcript = new TranscriptCoordinator(scheduler, () => FloatingText ?? "");
 
         _selectedLanguage = Settings.Language;
+        ConfigureTextInjector(Settings);
         IsTextInjectionEnabled = Settings.IsTextInjectionEnabled;
         IsAutoScrollEnabled = Settings.IsAutoScrollEnabled;
         AlwaysOnTop = Settings.AlwaysOnTop;
@@ -362,22 +363,27 @@ public sealed partial class MainViewModel : ObservableObject
     private void Persist(Action<AppSettings> mutate) =>
         _settingsStore.Post(mutate, ex => _scheduler.Post(() => StatusText = $"Settings error: {ex.Message}"));
 
+    // Tail of the injection queue: every Inject continues the previous one.
+    private Task _injectTail = Task.CompletedTask;
+
     /// <summary>
-    /// Text injection can block for ~80 ms on Linux (clipboard-owner hand-off plus a
-    /// synthetic paste chord). Run it off the UI thread so the transcript stays
-    /// responsive while the keystroke is delivered.
+    /// Text is typed key by key into the focused window, which takes a while for a long
+    /// sentence. Run it off the UI thread so the transcript stays responsive, and chain
+    /// the calls so consecutive sentences reach the target in the order they were
+    /// recognized instead of racing on the thread pool.
     /// </summary>
-    private void InjectOffUiThread(string text) => _ = Task.Run(() =>
-    {
-        try
+    private void InjectOffUiThread(string text) =>
+        _injectTail = _injectTail.ContinueWith(_ =>
         {
-            _textInjector.Inject(text);
-        }
-        catch (Exception ex)
-        {
-            _scheduler.Post(() => StatusText = $"Injection error: {ex.Message}");
-        }
-    });
+            try
+            {
+                _textInjector.Inject(text);
+            }
+            catch (Exception ex)
+            {
+                _scheduler.Post(() => StatusText = $"Injection error: {ex.Message}");
+            }
+        }, TaskScheduler.Default);
 
     private void OnHotkeyPressed(int id)
     {
@@ -1443,14 +1449,19 @@ public sealed partial class MainViewModel : ObservableObject
             if (settings.TranslationEnabled)
                 _ = _translation.EnsureConnectedAsync();
 
-            if (_textInjector is LinuxTextInjector linuxInjector
-                && !string.IsNullOrWhiteSpace(settings.PasteChord))
-                linuxInjector.PasteChord = settings.PasteChord.Trim();
+            ConfigureTextInjector(settings);
         }
         finally
         {
             _isProjectingSettingsSnapshot = false;
         }
+    }
+
+    /// <summary>Hands the Typing options (type or paste, paste shortcut) to the platform injector.</summary>
+    private void ConfigureTextInjector(AppSettings settings)
+    {
+        _textInjector.Mode = SettingsText.InjectionModeOf(settings.TextInjectionMethod);
+        _textInjector.PasteChord = SettingsText.NormalizePasteChord(settings.PasteChord);
     }
 
     private void SetModelPreparationState(bool loading, bool downloading, string status)

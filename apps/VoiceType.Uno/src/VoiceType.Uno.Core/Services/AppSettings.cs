@@ -78,7 +78,15 @@ public sealed class AppSettings
     public string TranslationSystemPrompt { get; set; } = "";
 
     /// <summary>
-    /// Key chord synthesized after setting the clipboard during text injection.
+    /// How a finished phrase reaches the focused window: "type" sends it as key presses (the
+    /// clipboard is not touched), "paste" puts it on the clipboard and sends <see cref="PasteChord"/>.
+    /// Anything else reads as "type".
+    /// </summary>
+    public string TextInjectionMethod { get; set; } = "type";
+
+    /// <summary>
+    /// Key chord synthesized after setting the clipboard when <see cref="TextInjectionMethod"/> is
+    /// "paste" (also the fallback where typing is impossible, e.g. non-ASCII text under ydotool).
     /// "Ctrl+V" works for most apps; terminals often need "Ctrl+Shift+V" or
     /// "Shift+Insert".
     /// </summary>

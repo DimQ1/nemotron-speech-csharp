@@ -23,8 +23,8 @@ Scope: complete the Linux-first port of VoiceType on Uno Platform (Skia Desktop 
 | Session detection (Wayland/X11) | Done | Services/Platform/Linux/LinuxSession.cs |
 | Clipboard backends (wl-copy / xclip / xsel) | Done | Services/Platform/Linux/LinuxClipboard.cs |
 | Keyboard backends (XTest libXtst / ydotool / xdotool) | Done | Services/Platform/Linux/LinuxKeyboard.cs |
-| Injector coordinator (clipboard + paste chord, typing fallback) | Done | Services/Platform/Linux/LinuxTextInjector.cs |
-| Windows parity injector (SendInput + clipboard) | Done | Services/Platform/WindowsTextInjector.cs |
+| Injector coordinator (direct typing; clipboard + paste chord only when the backend cannot type the text) | Done | Services/Platform/Linux/LinuxTextInjector.cs |
+| Windows injector (SendInput direct typing, same as VoiceType.WinUI) | Done | Services/Platform/WindowsTextInjector.cs |
 | Paste chord configurable in Settings (terminals: Ctrl+Shift+V) | Done | AppSettings.PasteChord + SettingsDialog |
 | DI registration per-OS | Done | App.xaml.cs |
 

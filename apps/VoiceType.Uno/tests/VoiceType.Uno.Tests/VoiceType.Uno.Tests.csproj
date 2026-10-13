@@ -33,4 +33,15 @@
     <Compile Include="..\..\src\VoiceType.Uno\Services\Jobs\SpeakerJobExecutors.cs" Link="Jobs\SpeakerJobExecutors.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Linux text injection is plain C# (the libX11 P/Invokes only bind when called): the injector's choice
+         between typing and pasting runs against fake backends, the X11 typist's pure helpers are tested directly. -->
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Platform\IPlatformTextInjector.cs" Link="Platform\IPlatformTextInjector.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Platform\WindowsTextInjector.cs" Link="Platform\WindowsTextInjector.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Platform\Linux\LinuxTextInjector.cs" Link="Platform\Linux\LinuxTextInjector.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Platform\Linux\LinuxKeyboard.cs" Link="Platform\Linux\LinuxKeyboard.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Platform\Linux\LinuxClipboard.cs" Link="Platform\Linux\LinuxClipboard.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Platform\Linux\LinuxSession.cs" Link="Platform\Linux\LinuxSession.cs" />
+  </ItemGroup>
+
 </Project>

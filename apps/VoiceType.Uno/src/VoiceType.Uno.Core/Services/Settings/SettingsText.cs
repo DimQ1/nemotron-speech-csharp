@@ -143,6 +143,23 @@ public static class SettingsText
     public static string NormalizeGemmaCompute(string? stored) =>
         string.Equals(stored?.Trim(), "gpu", StringComparison.OrdinalIgnoreCase) ? "gpu" : "cpu";
 
+    public const string InjectionType = "type";
+    public const string InjectionPaste = "paste";
+
+    /// <summary>How a phrase gets into the focused window: <c>type</c> = key presses, <c>paste</c> = clipboard + shortcut.</summary>
+    public static IReadOnlyList<SettingsOption> InjectionMethodOptions { get; } =
+    [
+        new(InjectionType, "Type the text", "Sent as key presses · the clipboard is not touched"),
+        new(InjectionPaste, "Paste from the clipboard", "For apps that ignore typed keys · the phrase stays on the clipboard"),
+    ];
+
+    /// <summary>The method a stored value selects; anything but <c>paste</c> is <c>type</c>.</summary>
+    public static string NormalizeInjectionMethod(string? stored) =>
+        string.Equals(stored?.Trim(), InjectionPaste, StringComparison.OrdinalIgnoreCase) ? InjectionPaste : InjectionType;
+
+    public static TextInjectionMode InjectionModeOf(string? stored) =>
+        NormalizeInjectionMethod(stored) == InjectionPaste ? TextInjectionMode.Paste : TextInjectionMode.Type;
+
     public static IReadOnlyList<SettingsOption> PasteChordOptions { get; } =
     [
         new("Ctrl+V", "Ctrl+V", "Most apps"),
@@ -227,7 +244,11 @@ public static class SettingsText
             SettingsSection.Translation => settings.TranslationEnabled
                 ? $"Into {TargetTitle(settings.TranslationTargetLanguage)} · Gemma {(NormalizeEngine(settings.TranslationBackend) == EngineHttp ? "on a local server" : "on this device")}"
                 : "Off",
-            SettingsSection.Typing => settings.IsTextInjectionEnabled ? $"On · paste with {NormalizePasteChord(settings.PasteChord)}" : "Off",
+            SettingsSection.Typing => !settings.IsTextInjectionEnabled
+                ? "Off"
+                : InjectionModeOf(settings.TextInjectionMethod) == TextInjectionMode.Paste
+                    ? $"On · paste with {NormalizePasteChord(settings.PasteChord)}"
+                    : "On · typed as key presses",
             SettingsSection.Hotkeys => HotkeyText.Summary(settings),
             _ => GeneralSummary(settings, context.Android),
         };
@@ -289,7 +310,11 @@ public static class SettingsText
     public static bool IsValidServerUrl(string? text) =>
         Uri.TryCreate(text?.Trim(), UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
-    public const string TypingCaption = "VoiceType puts the phrase on the clipboard and sends the shortcut, so the phrase stays on the clipboard.";
+    /// <summary>The note under the Typing options for the chosen method.</summary>
+    public static string TypingCaptionFor(string? method) =>
+        NormalizeInjectionMethod(method) == InjectionPaste
+            ? "VoiceType puts the phrase on the clipboard and sends the shortcut, so the phrase stays on the clipboard."
+            : "VoiceType types the phrase key by key, so your clipboard stays as it is. If an app ignores it, choose Paste.";
 
     public const string ResetSubtitle = "Folders, models and history are not touched";
 

@@ -28,6 +28,7 @@ public static class SettingsDefaults
         settings.TranslationBackend = d.TranslationBackend;
         settings.TranslationServerUrl = d.TranslationServerUrl;
         settings.TranslationSystemPrompt = d.TranslationSystemPrompt;
+        settings.TextInjectionMethod = d.TextInjectionMethod;
         settings.PasteChord = d.PasteChord;
         settings.ToggleHotkey = d.ToggleHotkey;
         settings.MuteHotkey = d.MuteHotkey;

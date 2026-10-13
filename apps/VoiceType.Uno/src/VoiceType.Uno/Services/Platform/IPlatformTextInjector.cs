@@ -2,11 +2,15 @@ namespace VoiceType.Uno.Services.Platform;
 
 /// <summary>
 /// Platform abstraction for injecting transcribed text into the focused window.
-/// WinUI uses SendInput/clipboard; Linux uses XTest (X11) or clipboard fallback.
+/// Windows types it with SendInput; Linux types it with XTest (X11) or ydotool (Wayland)
+/// and pastes through the clipboard only where typing is impossible.
 /// </summary>
 public interface IPlatformTextInjector
 {
-    /// <summary>Inject text into the currently focused input field.</summary>
+    /// <summary>
+    /// Type text into the currently focused input field as synthetic key events,
+    /// without touching the clipboard. May block while the keys are delivered.
+    /// </summary>
     void Inject(string text);
 
     /// <summary>Copy text to the system clipboard without pasting.</summary>
@@ -17,4 +21,13 @@ public interface IPlatformTextInjector
     /// "Inject text" mode is hidden there.
     /// </summary>
     bool CanInject => true;
+
+    /// <summary>
+    /// How <see cref="Inject"/> delivers text: typed key by key (default) or pasted through the
+    /// clipboard. Set from the settings; injectors without a choice ignore it.
+    /// </summary>
+    TextInjectionMode Mode { get => TextInjectionMode.Type; set { } }
+
+    /// <summary>Shortcut sent in paste mode ("Ctrl+V", "Ctrl+Shift+V", "Shift+Insert"). Set from the settings.</summary>
+    string PasteChord { get => "Ctrl+V"; set { } }
 }

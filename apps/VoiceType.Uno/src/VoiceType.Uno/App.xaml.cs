@@ -205,9 +205,10 @@ public partial class App : Application
                         OperatingSystem.IsWindows()
                             ? (IGlobalHotkeyService)new WindowsGlobalHotkeyService()
                             : new NullGlobalHotkeyService());
-                    // Text injection: SendInput+clipboard on Windows; on Linux the
-                    // injector picks clipboard (wl-copy/xclip/xsel) + keyboard
-                    // (XTest on X11, ydotool on Wayland) backends per session.
+                    // Text injection: typed straight into the focused window. Windows
+                    // uses SendInput; on Linux the injector picks the keyboard backend
+                    // (XTest on X11, ydotool on Wayland) per session, with the clipboard
+                    // (wl-copy/xclip/xsel) + paste chord only as fallback.
                     services.AddSingleton<IPlatformTextInjector>(_ =>
                         OperatingSystem.IsWindows() ? new WindowsTextInjector()
                         : OperatingSystem.IsLinux() ? new LinuxTextInjector()

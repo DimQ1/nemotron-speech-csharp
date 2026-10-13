@@ -82,6 +82,42 @@ public class SettingsTextTests
         Assert.Equal("Ctrl+Alt+V", custom[^1].Value);
     }
 
+    [Theory]
+    [InlineData("type", "type")]
+    [InlineData("paste", "paste")]
+    [InlineData("PASTE", "paste")]
+    [InlineData(" paste ", "paste")]
+    [InlineData("", "type")]
+    [InlineData(null, "type")]
+    [InlineData("clipboard", "type")]
+    public void NormalizeInjectionMethod_ShouldBePasteOnlyForPaste(string? stored, string expected)
+    {
+        Assert.Equal(expected, SettingsText.NormalizeInjectionMethod(stored));
+        Assert.Equal(expected == "paste" ? TextInjectionMode.Paste : TextInjectionMode.Type, SettingsText.InjectionModeOf(stored));
+    }
+
+    [Fact]
+    public void AppSettings_ShouldTypeByDefault_AndOldSettingsFilesStayTyping()
+    {
+        Assert.Equal("type", new AppSettings().TextInjectionMethod);
+        var old = System.Text.Json.JsonSerializer.Deserialize<AppSettings>("""{ "PasteChord": "Shift+Insert" }""")!;
+        Assert.Equal(TextInjectionMode.Type, SettingsText.InjectionModeOf(old.TextInjectionMethod));
+    }
+
+    [Fact]
+    public void InjectionMethodOptions_ShouldOfferTypeAndPaste()
+    {
+        Assert.Equal(["type", "paste"], SettingsText.InjectionMethodOptions.Select(o => o.Value));
+    }
+
+    [Fact]
+    public void TypingCaptionFor_ShouldDescribeTheChosenMethod()
+    {
+        Assert.Contains("types the phrase key by key", SettingsText.TypingCaptionFor("type"));
+        Assert.Contains("stays on the clipboard", SettingsText.TypingCaptionFor("paste"));
+        Assert.Equal(SettingsText.TypingCaptionFor("type"), SettingsText.TypingCaptionFor("nonsense"));
+    }
+
     [Fact]
     public void NearestRepetition_ShouldSnapToTheOfferedValues()
     {
@@ -190,6 +226,8 @@ public class SettingsTextTests
         var settings = new AppSettings { IsTextInjectionEnabled = true, PasteChord = "Ctrl+Shift+V", ToggleHotkey = "Ctrl+Alt+R", AudioSource = "Mix" };
         var context = new SettingsText.SubtitleContext(false);
 
+        Assert.Equal("On · typed as key presses", SettingsText.Subtitle(SettingsSection.Typing, settings, context));
+        settings.TextInjectionMethod = "paste";
         Assert.Equal("On · paste with Ctrl+Shift+V", SettingsText.Subtitle(SettingsSection.Typing, settings, context));
         Assert.Equal("Ctrl+Alt+R starts and stops", SettingsText.Subtitle(SettingsSection.Hotkeys, settings, context));
         Assert.Equal("Microphone + system audio", SettingsText.Subtitle(SettingsSection.Audio, settings, context));
@@ -254,6 +292,7 @@ public class SettingsTextTests
             ModelsRootPath = @"D:\Models", SessionsPath = @"D:\Rec", PendingSessionsPath = @"E:\Rec", SelectedModel = "m", ModelPath = @"D:\Models\asr\m",
             ExecutionProvider = "webgpu:hp", Language = "de", AudioSource = "Mix", UseVad = false, RepetitionPenalty = 1.5,
             ToggleHotkey = "Ctrl+Alt+R", TranslationEnabled = true, TranslationBackend = "http", AlwaysOnTop = false, AutoStartRecognition = true,
+            TextInjectionMethod = "paste", PasteChord = "Shift+Insert",
         };
         current.History.AudioRetentionDays = 7;
 
@@ -266,6 +305,8 @@ public class SettingsTextTests
         Assert.Equal("Ctrl+Shift+V", fresh.ToggleHotkey);
         Assert.False(fresh.TranslationEnabled);
         Assert.Equal("native", fresh.TranslationBackend);
+        Assert.Equal("type", fresh.TextInjectionMethod);
+        Assert.Equal("Ctrl+V", fresh.PasteChord);
         Assert.True(fresh.AlwaysOnTop);
         Assert.False(fresh.AutoStartRecognition);
         Assert.Equal(@"D:\Models", fresh.ModelsRootPath);

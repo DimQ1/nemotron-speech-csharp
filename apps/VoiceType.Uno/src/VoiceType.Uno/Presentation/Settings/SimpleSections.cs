@@ -26,9 +26,14 @@ internal sealed class AudioSection : SettingsSectionView
     }
 }
 
-/// <summary>Typing into apps (desktop): switch, paste shortcut. "Stop when focus moves" is not shown: the Uno app does not read that setting.</summary>
+/// <summary>
+/// Typing into apps (desktop): switch, how the phrase is inserted (typed or pasted), and the paste shortcut,
+/// which only matters in paste mode. "Stop when focus moves" is not shown: the Uno app does not read that setting.
+/// </summary>
 internal sealed class TypingSection : SettingsSectionView
 {
+    private StackPanel? _pasteHost;
+
     public TypingSection(SettingsContext context) : base(context)
     {
     }
@@ -40,17 +45,43 @@ internal sealed class TypingSection : SettingsSectionView
 
         var toggle = SettingsRows.Switch(live.IsTextInjectionEnabled, "Type into other apps", on => Ctx.Change(s => s.IsTextInjectionEnabled = on));
         stack.Children.Add(SettingsRows.Card(
-            SettingsRows.Row(SettingsRows.Icon(Symbol.Keyboard), "Type into other apps", "Each finished phrase is pasted into the focused window", toggle)));
+            SettingsRows.Row(SettingsRows.Icon(Symbol.Keyboard), "Type into other apps", "Each finished phrase goes into the focused window", toggle)));
 
-        stack.Children.Add(SettingsRows.SectionHeader("Paste shortcut"));
-        var current = SettingsText.NormalizePasteChord(live.PasteChord);
-        var radios = SettingsText.PasteChordOptionsFor(live.PasteChord)
-            .Select(o => (UIElement)SettingsRows.Radio(this, "paste", o, string.Equals(o.Value, current, StringComparison.OrdinalIgnoreCase),
-                value => Ctx.Change(s => s.PasteChord = value)))
+        stack.Children.Add(SettingsRows.SectionHeader("How to insert"));
+        var method = SettingsText.NormalizeInjectionMethod(live.TextInjectionMethod);
+        var methods = SettingsText.InjectionMethodOptions
+            .Select(o => (UIElement)SettingsRows.Radio(this, "method", o, o.Value == method, value =>
+            {
+                Ctx.Change(s => s.TextInjectionMethod = value);
+                BuildPaste(value);
+            }))
             .ToArray();
-        stack.Children.Add(SettingsRows.Card(radios));
-        stack.Children.Add(SettingsRows.Note(SettingsText.TypingCaption));
+        stack.Children.Add(SettingsRows.Card(methods));
+
+        _pasteHost = new StackPanel();
+        stack.Children.Add(_pasteHost);
+        BuildPaste(method);
         return stack;
+    }
+
+    /// <summary>The paste shortcut (only in paste mode) and the note for the chosen method.</summary>
+    private void BuildPaste(string method)
+    {
+        if (_pasteHost is null)
+            return;
+        _pasteHost.Children.Clear();
+
+        if (SettingsText.NormalizeInjectionMethod(method) == SettingsText.InjectionPaste)
+        {
+            _pasteHost.Children.Add(SettingsRows.SectionHeader("Paste shortcut"));
+            var current = SettingsText.NormalizePasteChord(Ctx.Live.PasteChord);
+            var radios = SettingsText.PasteChordOptionsFor(Ctx.Live.PasteChord)
+                .Select(o => (UIElement)SettingsRows.Radio(this, "paste", o, string.Equals(o.Value, current, StringComparison.OrdinalIgnoreCase),
+                    value => Ctx.Change(s => s.PasteChord = value)))
+                .ToArray();
+            _pasteHost.Children.Add(SettingsRows.Card(radios));
+        }
+        _pasteHost.Children.Add(SettingsRows.Note(SettingsText.TypingCaptionFor(method)));
     }
 }
 
