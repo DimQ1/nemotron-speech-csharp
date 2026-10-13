@@ -28,11 +28,20 @@ User data is stored under `~/.local/share/VoiceType`.
 
 ## Optional integration tools
 
-For text injection, install the tools appropriate for your desktop session:
+VoiceType types dictated text straight into the focused window and leaves the clipboard alone.
+
+- **X11 / XWayland**: nothing to install. Typing uses libXtst (installed with the package), any keyboard layout,
+  Unicode included.
+- **Wayland (native windows)**: `sudo apt install ydotool`, with the `ydotoold` daemon running and your user in the
+  `input` group. ydotool types ASCII only, so text with other characters (for example Russian) is pasted
+  through the clipboard instead; for that install `wl-clipboard`.
+
+Settings › Typing can switch the whole app to **Paste from the clipboard** (for apps that ignore typed
+keys; needs `xclip` or `xsel` on X11, `wl-clipboard` on Wayland):
 
 ```bash
 sudo apt install wl-clipboard ydotool  # Wayland
-sudo apt install xclip xdotool         # X11
+sudo apt install xclip                 # X11, only for Paste mode
 ```
 
 ## Remove
