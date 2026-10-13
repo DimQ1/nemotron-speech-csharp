@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VoiceType Settings mockup</title>
+<!--
+  VoiceType.Uno — Settings mockup (phone, tablet, desktop). See README.md in this folder.
+
+  Settings is a page, not a ContentDialog:
+    < 840 px   hub list of sections → section page (Back returns to the hub)
+    >= 840 px  two panes: section list 300 px on the left, section page (<= 720 px) on the right
+
+  Query parameters (all optional):
+    page=hub|storage|speech|audio|translation|typing|hotkeys|general
+                 hub = the section list (on wide windows it shows storage on the right)
+    os=android   Android head: no desktop-only sections (typing, hotkeys, window), folders are read-only
+    sheet=move   the question after the system folder picker ("Move … to the new folder?")
+    kind=models|recordings|data    which folder the sheet / state is about (default models)
+    drive=same|other|nested        sheet=move: new folder on the same drive (Move on restart),
+                                   another drive (no automatic copy), or inside the current folder
+    state=pending|incomplete       pending = a move waits for the restart (PendingModelsRoot),
+                                   incomplete = the start-up move could not finish (ModelStorageNote)
+    rec=1        hotkeys: the first shortcut field is recording keys; conflict=1 a shortcut is taken
+    srv=1        translation: "Local server" engine chosen
+    adv=1        speech: advanced section expanded
+    top/bottom/left/right=<px>  system bar insets   kb=<px>  on-screen keyboard height
+    theme=light|dark   check=1  run the layout check, report JSON into #check
+
+  Layout check — for every interactive element ([data-hit]) of the top-most layer:
+    1. inside the safe viewport (inside a scroll pane: the pane must be inside it),
+    2. hit target >= 44x44 px,
+    3. no intersection with another interactive element (visible part in scroll panes),
+    4. its label is not clipped (scrollWidth <= clientWidth),
+    5. folder paths are never clipped: every .path box shows the whole path (wraps, no ellipsis),
+    6. the section page keeps a reading area >= 96 px (>= 72 px on short landscape windows).
+-->
+<style>
+  :root {
+    --bg: #f3f3f3; --surface: #ffffff; --surface-2: #f9f9f9; --stroke: #e0e0e0;
+    --text: #1b1b1b; --text-2: #5f5f5f; --accent: #005fb8; --accent-text: #ffffff;
+    --caution-bg: #fff4ce; --caution: #9d5d00; --danger: #c42b1c; --ok: #0f7b0f;
+    --info-bg: #dbe9f8; --scrim: rgba(0, 0, 0, .4); --chip-on: #dbe9f8;
+    --seg-models: #005fb8; --seg-rec: #8764b8; --seg-data: #00a2ad; --seg-free: #e0e0e0;
+    --shadow: 0 8px 24px rgba(0,0,0,.18); --mono: "Cascadia Mono", Consolas, "Roboto Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #202020; --surface: #2b2b2b; --surface-2: #323232; --stroke: #3d3d3d;
+      --text: #ffffff; --text-2: #c5c5c5; --accent: #60cdff; --accent-text: #000000;
+      --caution-bg: #433519; --caution: #fce100; --danger: #ff99a4; --ok: #6ccb5f;
+      --info-bg: #1f3a52; --chip-on: #1f3a52;
+      --seg-models: #60cdff; --seg-rec: #b69ce0; --seg-data: #4fd1d9; --seg-free: #3d3d3d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #202020; --surface: #2b2b2b; --surface-2: #323232; --stroke: #3d3d3d;
+    --text: #ffffff; --text-2: #c5c5c5; --accent: #60cdff; --accent-text: #000000;
+    --caution-bg: #433519; --caution: #fce100; --danger: #ff99a4; --ok: #6ccb5f;
+    --info-bg: #1f3a52; --chip-on: #1f3a52;
+    --seg-models: #60cdff; --seg-rec: #b69ce0; --seg-data: #4fd1d9; --seg-free: #3d3d3d;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--text);
+         font: 14px/20px "Segoe UI Variable Text", "Segoe UI", Roboto, system-ui, sans-serif; }
+  button, input, textarea { font: inherit; color: inherit; }
+  svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7;
+        stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* System bars (simulated) */
+  .sysbar { position: fixed; z-index: 60; background: rgba(0,0,0,.08); pointer-events: none; }
+  .sysbar.top { left: 0; right: 0; top: 0; height: var(--inset-top); }
+  .sysbar.bottom { left: 0; right: 0; bottom: 0; height: var(--inset-bottom); }
+  .sysbar.right { top: 0; bottom: 0; right: 0; width: var(--inset-right); }
+  .sysbar.left { top: 0; bottom: 0; left: 0; width: var(--inset-left); }
+  .keyboard { position: fixed; z-index: 59; left: 0; right: 0; bottom: 0; height: var(--kb); display: none;
+              background: repeating-linear-gradient(90deg, #cfd3d8 0 34px, #c3c7cc 34px 36px); }
+  body.is-kb .keyboard { display: block; }
+
+  /* ── Page: SafeArea grid, app bar + body ── */
+  .page { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr;
+          padding: var(--inset-top) var(--inset-right) max(var(--inset-bottom), var(--kb)) var(--inset-left); }
+  .appbar { display: grid; grid-template-columns: 48px 1fr; align-items: center; gap: 8px;
+            min-height: 56px; padding: 4px 8px 4px 4px; }
+  .appbar h1 { margin: 0; font-size: 20px; line-height: 26px; font-weight: 600; }
+  .appbar p { margin: 0; font-size: 12px; line-height: 16px; color: var(--text-2);
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .icon-btn { width: 48px; height: 48px; border: 0; border-radius: 8px; background: transparent;
+              display: inline-grid; place-items: center; cursor: pointer; }
+  .icon-btn:hover { background: var(--surface-2); }
+
+  .body { min-height: 0; display: grid; grid-template-columns: 1fr; }
+  .nav, .pane { min-height: 0; overflow: auto; }
+  body:not(.is-hub) .nav { display: none; }
+  body.is-hub .pane { display: none; }
+  /* Wide: list on the left, page on the right; the hub never hides the page */
+  @media (min-width: 840px) {
+    .body { grid-template-columns: 300px 1fr; }
+    body.is-hub .nav, body:not(.is-hub) .nav { display: block; border-right: 1px solid var(--stroke); }
+    body.is-hub .pane { display: block; }
+  }
+  .nav { padding: 0 8px 16px; }
+  .nav h2 { margin: 16px 12px 4px; font-size: 12px; font-weight: 600; color: var(--text-2);
+            text-transform: uppercase; letter-spacing: .04em; }
+  .nav-item { width: 100%; min-height: 56px; display: grid; grid-template-columns: 24px 1fr 20px; gap: 12px;
+              align-items: center; padding: 6px 12px; border: 0; border-radius: 8px; background: transparent;
+              text-align: left; cursor: pointer; position: relative; }
+  .nav-item small { display: block; font-size: 12px; line-height: 16px; color: var(--text-2);
+                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-item span { min-width: 0; }
+  .nav-item:hover { background: var(--surface-2); }
+  .nav-item .chev { color: var(--text-2); }
+  @media (min-width: 840px) {
+    .nav-item .chev { visibility: hidden; }
+    .nav-item.on { background: var(--surface); }
+    .nav-item.on::before { content: ""; position: absolute; left: 0; top: 16px; bottom: 16px; width: 3px;
+                           border-radius: 2px; background: var(--accent); }
+    .nav-item.ext .chev { visibility: visible; }
+  }
+  .pane { padding: 0 16px 24px; }
+  .inner { max-width: 720px; margin: 0 auto; }
+  @media (min-width: 840px) { .pane { padding: 0 24px 24px; } .pane-title { display: block !important; } }
+  .pane-title { display: none; margin: 12px 4px 4px; font-size: 20px; font-weight: 600; line-height: 28px; }
+
+  /* Groups and rows (same anatomy as Settings › History) */
+  .sec { margin: 16px 4px 6px; font-size: 12px; font-weight: 600; color: var(--text-2);
+         text-transform: uppercase; letter-spacing: .04em; }
+  .group { background: var(--surface); border: 1px solid var(--stroke); border-radius: 8px; overflow: hidden; }
+  .group + .group { margin-top: 8px; }
+  .row { display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: center;
+         min-height: 56px; padding: 6px 12px; }
+  .row + .row, .row + .opt, .opt + .row { border-top: 1px solid var(--stroke); }
+  .row > span { min-width: 0; }
+  .row small, .opt small { display: block; font-size: 12px; line-height: 16px; color: var(--text-2); }
+  .row.link { width: 100%; border: 0; background: transparent; text-align: left; cursor: pointer; }
+  .row.link:hover { background: var(--surface-2); }
+  .row .chev { color: var(--text-2); }
+  .row.stack { grid-template-columns: 24px 1fr; }
+  .row.stack > .full { grid-column: 2; }
+  .note { margin: 8px 4px 0; font-size: 12px; line-height: 16px; color: var(--text-2); }
+
+  .switch { width: 48px; height: 48px; border: 0; background: transparent; display: grid; place-items: center; cursor: pointer; padding: 0; }
+  .switch i { width: 40px; height: 20px; border-radius: 10px; border: 1px solid var(--text-2); position: relative; display: block; }
+  .switch i::after { content: ""; position: absolute; top: 3px; left: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-2); }
+  .switch.on i { background: var(--accent); border-color: var(--accent); }
+  .switch.on i::after { left: 22px; background: var(--accent-text); }
+  .select { min-height: 44px; min-width: 112px; max-width: 220px; display: inline-flex; align-items: center; justify-content: space-between;
+            gap: 8px; padding: 0 10px 0 12px; border: 1px solid var(--stroke); border-radius: 6px; background: var(--surface-2);
+            cursor: pointer; white-space: nowrap; }
+  .select svg { width: 16px; height: 16px; color: var(--text-2); }
+  .btn { min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 6px; border: 1px solid var(--stroke);
+         background: var(--surface-2); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .btn.accent { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  .btn.accent[disabled] { opacity: .45; cursor: default; }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--accent); }
+  .btn.danger { color: var(--danger); }
+  .btn svg { width: 16px; height: 16px; }
+  .field { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--stroke); border-radius: 6px;
+           background: var(--surface-2); }
+  .field.mono { font-family: var(--mono); font-size: 13px; }
+  .field.focus { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+  .field.bad { border-color: var(--danger); box-shadow: inset 0 -2px 0 var(--danger); }
+  textarea.field { min-height: 88px; resize: none; line-height: 20px; }
+
+  /* Options (radio list) */
+  .opt { width: 100%; min-height: 56px; display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: center;
+         padding: 6px 12px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+  .opt + .opt { border-top: 1px solid var(--stroke); }
+  .radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--text-2); }
+  .opt.on .radio { border: 6px solid var(--accent); }
+  .opt[aria-disabled="true"] { opacity: .5; }
+  .tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; font-size: 11px; line-height: 16px;
+         background: var(--chip-on); color: var(--text); vertical-align: 1px; }
+
+  /* Segmented */
+  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 2px; border-radius: 8px;
+         background: var(--surface-2); border: 1px solid var(--stroke); }
+  .seg button { min-height: 44px; min-width: 44px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+  .seg button.on { background: var(--surface); font-weight: 600; box-shadow: 0 0 0 1px var(--stroke); }
+
+  /* Key chips (hotkeys) */
+  .keys { min-height: 44px; min-width: 132px; display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px;
+          padding: 0 8px; border: 1px solid var(--stroke); border-radius: 6px; background: var(--surface-2); cursor: pointer; }
+  .keys kbd { font: 12px/18px var(--mono); padding: 1px 6px; border-radius: 4px; border: 1px solid var(--stroke);
+              border-bottom-width: 2px; background: var(--surface); }
+  .keys.rec { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); color: var(--text-2); font-size: 12px; }
+  .keys.bad { border-color: var(--caution); }
+
+  /* ── Storage ── */
+  .usage { padding: 12px; }
+  .usage .bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--seg-free); margin: 8px 0 10px; }
+  .usage .bar i { display: block; height: 100%; }
+  .legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 4px 12px; font-size: 12px; color: var(--text-2); }
+  .legend b { color: var(--text); font-weight: 600; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .loc { padding: 12px; display: grid; gap: 8px; }
+  .loc-head { display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: start; }
+  .loc-head b { font-weight: 600; }
+  .loc-head small { display: block; font-size: 12px; line-height: 16px; color: var(--text-2); }
+  .badge { font-size: 11px; line-height: 18px; padding: 0 8px; border-radius: 9px; border: 1px solid var(--stroke); color: var(--text-2); white-space: nowrap; }
+  .badge.custom { background: var(--info-bg); border-color: transparent; color: var(--text); }
+  .badge.bad { background: var(--caution-bg); border-color: var(--caution); color: var(--text); }
+  .path { font: 13px/18px var(--mono); padding: 8px 10px; border-radius: 6px; background: var(--surface-2);
+          border: 1px solid var(--stroke); overflow-wrap: anywhere; word-break: break-all; user-select: text; }
+  .path.dim { color: var(--text-2); text-decoration: line-through; }
+  .facts { font-size: 12px; line-height: 16px; color: var(--text-2); display: flex; flex-wrap: wrap; gap: 2px 12px; }
+  .facts b { color: var(--text); font-weight: 600; }
+  .inside { font-size: 12px; line-height: 18px; color: var(--text-2); display: grid; grid-template-columns: auto 1fr; gap: 0 12px; }
+  .inside code { font-family: var(--mono); color: var(--text); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .actions.two { display: grid; grid-template-columns: 1fr 1fr; }
+  .actions.two .btn { justify-content: center; white-space: normal; text-align: center; }
+  .caption { font-size: 11px; line-height: 14px; color: var(--text-2); margin-bottom: -4px; }
+  .kinds { display: grid; grid-template-columns: auto auto 1fr; gap: 2px 10px; font-size: 13px; line-height: 20px; align-items: baseline; }
+  .kinds code { font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+  .kinds .none { color: var(--text-2); }
+  .kinds > span:nth-child(3n) { text-align: right; white-space: nowrap; }
+  .total { font-size: 12px; font-weight: 600; }
+  @media (max-width: 359px) { .kinds { grid-template-columns: 1fr auto; } .kinds code { display: none; } }
+  .loc .sub { margin: 0 -12px -12px; }
+  .loc .sub .row { border-top: 1px solid var(--stroke); }
+  .progress { display: grid; gap: 6px; font-size: 12px; color: var(--text-2); }
+  .progress .track { height: 4px; border-radius: 2px; background: var(--stroke); overflow: hidden; }
+  .progress .track i { display: block; height: 100%; width: 36%; background: var(--accent); }
+  .callout { display: grid; grid-template-columns: 20px 1fr; gap: 10px; padding: 10px 12px; border-radius: 8px; font-size: 13px; line-height: 18px; }
+  .callout.warn { background: var(--caution-bg); border: 1px solid var(--caution); }
+  .callout.info { background: var(--info-bg); }
+  .callout .actions { margin-top: 8px; }
+  .callout b { font-weight: 600; }
+  .callout + .group, .callout + .sec { margin-top: 8px; }
+
+  /* ── Sheet: bottom sheet on phones, dialog on wide or short windows ── */
+  .scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); display: none; }
+  .sheet { position: fixed; z-index: 41; left: var(--inset-left); right: var(--inset-right); bottom: max(var(--inset-bottom), var(--kb));
+           max-height: calc(100% - var(--inset-top) - max(var(--inset-bottom), var(--kb)) - 24px);
+           background: var(--surface); border-radius: 12px 12px 0 0; box-shadow: var(--shadow); display: none;
+           grid-template-rows: auto 1fr auto; }
+  body.is-sheet .scrim { display: block; } body.is-sheet .sheet { display: grid; }
+  @media (min-width: 840px), (max-height: 479px) {
+    .sheet { left: 50%; right: auto; width: min(520px, calc(100% - var(--inset-left) - var(--inset-right) - 32px));
+             transform: translateX(-50%); top: calc(var(--inset-top) + 16px); bottom: auto;
+             max-height: calc(100% - var(--inset-top) - max(var(--inset-bottom), var(--kb)) - 32px); border-radius: 12px; }
+  }
+  .s-head { padding: 12px 8px 4px 16px; display: grid; grid-template-columns: 1fr 48px; align-items: center; gap: 8px; }
+  .s-head b { font-size: 16px; line-height: 22px; }
+  .s-head small { display: block; font-size: 12px; color: var(--text-2); line-height: 16px; }
+  .s-body { min-height: 0; overflow: auto; padding: 4px 16px 8px; display: grid; gap: 8px; align-content: start; }
+  .s-body h4 { margin: 8px 0 0; font-size: 12px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+  .s-body .opt { padding: 6px 4px; }
+  .s-body .group .opt { padding: 6px 12px; }
+  .s-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 16px 12px; border-top: 1px solid var(--stroke); }
+  .pick { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .valid { display: grid; grid-template-columns: 18px 1fr; gap: 8px; font-size: 12px; line-height: 16px; }
+  .valid svg { width: 18px; height: 18px; }
+  .valid.ok { color: var(--ok); } .valid.err { color: var(--danger); }
+  .valid span { color: var(--text); }
+  @media (max-height: 479px) { .s-head { padding-top: 4px; } .s-foot { padding: 4px 16px 6px; } }
+
+  #check { display: none; }
+</style>
+</head>
+<body>
+<div class="sysbar top"></div><div class="sysbar bottom"></div><div class="sysbar left"></div><div class="sysbar right"></div>
+<div class="keyboard"></div>
+
+<div class="page">
+  <header class="appbar">
+    <button class="icon-btn" data-hit="back" aria-label="Back" id="back">
+      <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div><h1 id="title">Settings</h1><p id="subtitle"></p></div>
+  </header>
+  <div class="body">
+    <nav class="nav" id="nav" aria-label="Settings sections"></nav>
+    <main class="pane" id="pane"><div class="inner" id="inner"></div></main>
+  </div>
+</div>
+
+<div class="scrim"></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true"></section>
+<pre id="check"></pre>
+
+<script>
+  const S = Object.fromEntries(new URLSearchParams(location.search));
+  const has = k => S[k] === '1';
+  const cls = document.body.classList;
+  const root = document.documentElement.style;
+  if (S.theme) document.documentElement.dataset.theme = S.theme;
+  for (const k of ['top', 'bottom', 'left', 'right']) root.setProperty(`--inset-${k}`, (S[k] || 0) + 'px');
+  root.setProperty('--kb', (S.kb || 0) + 'px');
+  if (S.kb) cls.add('is-kb');
+
+  const android = S.os === 'android';
+  const wide = innerWidth >= 840;
+  let page = S.page || 'hub';
+  if (page === 'hub') cls.add('is-hub');
+  // Wide windows always show a section on the right; the hub selects Storage.
+  const shown = page === 'hub' ? 'storage' : page;
+  const kind = S.kind || 'models';
+  const state = S.state || '';
+
+  const go = p => { const q = new URLSearchParams(location.search); for (const [k, v] of Object.entries(p)) { if (v === null) q.delete(k); else q.set(k, v); } location.search = q.toString(); };
+
+  const I = {
+    storage: '<path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+    speech: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+    audio: '<path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2"/>',
+    translation: '<path d="M4 5h9M8.5 3v2M6 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/>',
+    typing: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h1M11 10h1M15 10h2M7 14h10"/>',
+    hotkeys: '<path d="M8 4h8M12 4v4M5 10h14l-1 10H6z"/><path d="M10 14h4"/>',
+    general: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+    history: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    models: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
+    folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    data: '<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/>',
+    rec: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',
+    chev: '<path d="M9 6l6 6-6 6"/>', down: '<path d="M6 9l6 6 6-6"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    open: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+    more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    ok: '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>', err: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/>',
+    warn: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+    sd: '<path d="M7 3h8l4 4v14H7z"/><path d="M10 3v4M13 3v4"/>', phone: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+    vad: '<path d="M3 12h3l2-5 3 10 3-7 2 2h5"/>', lang: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+    cpu: '<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
+    scroll: '<path d="M12 4v14M7 13l5 5 5-5"/>', play: '<path d="M7 5v14l11-7z"/>', pin: '<path d="M9 4h6l-1 6 4 4H6l4-4zM12 14v7"/>',
+    clear: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>', paste: '<rect x="6" y="5" width="12" height="16" rx="2"/><path d="M9 5V3h6v2"/>',
+    focus: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 12h6"/>', server: '<rect x="4" y="4" width="16" height="7" rx="1"/><rect x="4" y="13" width="16" height="7" rx="1"/><path d="M8 7.5h.01M8 16.5h.01"/>',
+    note: '<path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/>', gemma: '<path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',
+  };
+  const ic = n => `<svg viewBox="0 0 24 24">${I[n]}</svg>`;
+
+  // ── Sample data ────────────────────────────────────────────────────────────
+  // Desktop paths are Windows; Linux shows ~/.local/share/VoiceType/... in the same places.
+  const W = 'C:\\Users\\alex\\AppData\\Local\\VoiceType';
+  const A = '/data/user/0/com.voicetype.uno/files/.local/share/VoiceType';
+  const sep = android ? '/' : '\\';
+  const L = android ? {
+    models: { path: A + '/models', def: A + '/models',
+      kinds: [['Speech recognition', 'asr', '1 model · 640 MB'], ['Language models (Gemma)', 'llm', '1 model · 1.2 GB'], ['Speaker detection', 'diarization', 'none yet']],
+      total: 'Total 1.8 GB · 41 GB free', size: '1.8 GB' },
+    recordings: { path: A + '/sessions', def: A + '/sessions', size: '412 MB', count: '18 recordings' },
+    data: { path: A, def: A, size: '14 MB', count: 'settings, 3 chats, queue, logs' },
+    free: '41 GB free of 128 GB',
+  } : {
+    models: { path: W + '\\models', def: W + '\\models',
+      kinds: [['Speech recognition', 'asr', '2 models · 820 MB'], ['Language models (Gemma)', 'llm', '1 model · 2.4 GB'], ['Speaker detection', 'diarization', '1 model · 210 MB']],
+      total: 'Total 3.4 GB · 41 GB free', size: '3.4 GB' },
+    recordings: { path: 'D:\\Recordings\\VoiceType', def: W + '\\sessions', size: '1.1 GB', count: '24 recordings' },
+    data: { path: W, def: W, size: '96 MB', count: 'settings, 5 chats, queue, logs' },
+    free: '41 GB free on C: · 212 GB free on D:',
+  };
+  const target = { models: 'D:\\Models', recordings: 'D:\\Recordings\\VoiceType2', data: 'D:\\VoiceType' };
+  const otherDrive = { models: 'E:\\Models' };
+
+  const sections = [
+    { id: 'storage', icon: 'storage', title: 'Storage', sub: android ? 'Models 1.8 GB · recordings 412 MB' : 'Models 3.4 GB on C: · recordings on D:' },
+    { id: 'speech', icon: 'speech', title: 'Speech recognition', sub: 'Parakeet TDT v3 INT4 · CPU · auto language' },
+    { id: 'audio', icon: 'audio', title: 'Audio input', sub: android ? 'Microphone' : 'Microphone + system audio' },
+    { id: 'translation', icon: 'translation', title: 'Translation and Gemma', sub: 'Into Russian · Gemma 4 on this device' },
+    { id: 'typing', icon: 'typing', title: 'Typing into apps', sub: 'On · paste with Ctrl+V', desktop: true },
+    { id: 'hotkeys', icon: 'hotkeys', title: 'Keyboard shortcuts', sub: 'Ctrl+Shift+V starts and stops', desktop: true },
+    { id: 'general', icon: 'general', title: 'General', sub: android ? 'Auto-scroll · auto-start' : 'Window on top · auto-scroll' },
+  ].filter(s => !(android && s.desktop));
+  const titleOf = id => (sections.find(s => s.id === id) || {}).title || 'Settings';
+
+  // ── Hub / left list ─────────────────────────────────────────────────────────
+  const nav = document.getElementById('nav');
+  nav.innerHTML = `<h2>App</h2>` + sections.map(s =>
+    `<button class="nav-item ${s.id === shown ? 'on' : ''}" data-hit="nav-${s.id}" onclick="go({page:'${s.id}'})">${ic(s.icon)}<span>${s.title}<small>${s.sub}</small></span><span class="chev">${ic('chev')}</span></button>`).join('')
+    + `<h2>Also in Settings</h2>
+    <button class="nav-item ext" data-hit="nav-history">${ic('history')}<span>History<small>Keep audio 30 days · limit 2 GB</small></span><span class="chev">${ic('chev')}</span></button>
+    <button class="nav-item ext" data-hit="nav-models">${ic('models')}<span>Models<small>Download, switch, delete</small></span><span class="chev">${ic('chev')}</span></button>`;
+
+  // ── Section pages ───────────────────────────────────────────────────────────
+  const sw = (id, on) => `<button class="switch ${on ? 'on' : ''}" data-hit="${id}" role="switch" aria-checked="${!!on}" aria-label="${id}"><i></i></button>`;
+  const sel = (id, label) => `<button class="select" data-hit="${id}">${label}${ic('down')}</button>`;
+  const row = (icon, title, sub, ctl) => `<div class="row">${ic(icon)}<span>${title}${sub ? `<small>${sub}</small>` : ''}</span>${ctl || ''}</div>`;
+  const link = (id, icon, title, sub) => `<button class="row link" data-hit="${id}">${ic(icon)}<span>${title}${sub ? `<small>${sub}</small>` : ''}</span><span class="chev">${ic('chev')}</span></button>`;
+  const opt = (id, on, title, sub, dis) => `<button class="opt ${on ? 'on' : ''}" data-hit="${id}" role="radio" aria-checked="${!!on}"${dis ? ' aria-disabled="true"' : ''}><span class="radio"></span><span>${title}${sub ? `<small>${sub}</small>` : ''}</span></button>`;
+
+  // Open folder / Change folder… — two equal columns, as in ModelStorageBlock. Desktop heads only:
+  // Android keeps everything in the app's private storage (no file manager to open, no folder to pick).
+  const folderButtons = k => android ? '' : `<div class="actions two">
+      <button class="btn" data-hit="${k}-open">${ic('open')}Open folder</button>
+      <button class="btn" data-hit="${k}-change" onclick="go({sheet:'move',kind:'${k}'})">${ic('folder')}Change folder…</button></div>`;
+
+  // Notes under a folder: pending move (PendingModelsRoot) / move that could not finish (ModelStorageNote).
+  function folderNote(k) {
+    if (kind !== k) return '';
+    if (state === 'pending') return `<div class="callout info">${ic('info')}<div>${{
+      models: `Models will move to ${target.models} when the app restarts.`,
+      recordings: `Recordings will move to ${target.recordings} when the app restarts.`,
+      data: `App data will move to ${target.data} when the app restarts.`,
+    }[k]}<div class="actions"><button class="btn accent" data-hit="${k}-restart">Restart now</button><button class="btn ghost" data-hit="${k}-undo">Don’t move</button></div></div></div>`;
+    if (state === 'incomplete') return `<div class="callout warn">${ic('warn')}<div>Models were not moved to ${otherDrive.models}: it is on another drive and models are not copied automatically. They stay in ${L.models.path}.</div></div>`;
+    return '';
+  }
+
+  // Models = the existing "Model storage" block (ModelStorageBlock): root, one line per kind, total, note, buttons.
+  function modelsCard() {
+    const d = L.models;
+    const custom = d.path !== d.def;
+    return `<div class="group loc" data-loc="models">
+      <div class="loc-head">${ic('models')}<span><b>Model storage</b><small>All models live in one folder, one sub-folder per kind. Copy a model folder into the matching sub-folder and it shows up.</small></span><span class="badge ${custom ? 'custom' : ''}">${custom ? 'Custom' : 'Default'}</span></div>
+      <div class="caption">Model storage folder</div>
+      <div class="path" data-path="models">${d.path}</div>
+      <div class="kinds">${d.kinds.map(([t, f, v]) => `<span>${t}</span><code>${f}${sep}</code><span class="${v === 'none yet' ? 'none' : ''}">${v}</span>`).join('')}</div>
+      <div class="total">${d.total}</div>
+      ${folderNote('models')}
+      ${folderButtons('models')}</div>`;
+  }
+
+  // Recordings and App data: new cards with the same anatomy (path, size, note, the same two buttons).
+  function folderCard(k) {
+    const meta = {
+      recordings: { icon: 'rec', title: 'Recordings', what: 'Audio and transcripts saved to History' },
+      data: { icon: 'data', title: 'App data', what: 'Settings, chats, the job queue and logs' },
+    }[k];
+    const d = L[k];
+    const custom = d.path !== d.def;
+    const inside = k === 'data' ? `<div class="inside"><code>settings.json</code><span>everything on these pages</span><code>chats${sep}</code><span>conversations with Gemma</span><code>jobs${sep}queue.json</code><span>background jobs</span><code>*.log</code><span>errors, translation, engine host</span></div>` : '';
+    const retention = k === 'recordings' ? `<div class="sub">${link('rec-retention', 'history', 'Retention and limits', 'Keep audio 30 days · limit 2 GB · Standard quality')}</div>` : '';
+    return `<div class="group loc" data-loc="${k}">
+      <div class="loc-head">${ic(meta.icon)}<span><b>${meta.title}</b><small>${meta.what}</small></span><span class="badge ${custom ? 'custom' : ''}">${custom ? 'Custom' : 'Default'}</span></div>
+      <div class="path" data-path="${k}">${d.path}</div>
+      <div class="facts"><span><b>${d.size}</b> · ${d.count}</span></div>
+      ${inside}${folderNote(k)}${folderButtons(k)}${retention}</div>`;
+  }
+
+  const pages = {
+    storage: () => {
+      const bar = android
+        ? '<i style="width:1.4%;background:var(--seg-models)"></i><i style="width:.4%;background:var(--seg-rec)"></i><i style="width:.2%;background:var(--seg-data)"></i>'
+        : '<i style="width:7%;background:var(--seg-models)"></i><i style="width:3%;background:var(--seg-rec)"></i><i style="width:.6%;background:var(--seg-data)"></i>';
+      return `
+      <div class="sec">Used by VoiceType</div>
+      <div class="group usage">
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${android ? '2.2 GB' : '4.6 GB'} in total</b><span style="font-size:12px;color:var(--text-2)">${L.free}</span></div>
+        <div class="bar" role="img" aria-label="Disk usage">${bar}</div>
+        <div class="legend"><span><i style="background:var(--seg-models)"></i>Models <b>${L.models.size}</b></span><span><i style="background:var(--seg-rec)"></i>Recordings <b>${L.recordings.size}</b></span><span><i style="background:var(--seg-data)"></i>App data <b>${L.data.size}</b></span></div>
+      </div>
+      <div class="sec">Models</div>
+      ${modelsCard()}
+      <div class="sec">Your data</div>
+      ${folderCard('recordings')}
+      <div style="height:8px"></div>${folderCard('data')}
+      <p class="note">${android
+        ? 'Android keeps models, recordings and app data in VoiceType’s private storage. Nothing leaves the phone, and Android removes it all when VoiceType is uninstalled.'
+        : 'Everything stays on this computer. A folder change never deletes or overwrites files: moves happen at the next start, as renames on the same drive.'}</p>`;
+    },
+    speech: () => `
+      <div class="sec">Model</div>
+      <div class="group">
+        ${link('model-active', 'models', 'Parakeet TDT 0.6B v3 · INT4', 'In use · 25 European languages · asr/ in Model storage')}
+        ${link('model-manage', 'storage', 'Manage models', '4 installed · download, switch or delete')}
+      </div>
+      <div class="sec">Recognition</div>
+      <div class="group">
+        ${row('lang', 'Language', 'Parakeet detects the language itself', sel('language', 'Auto-detect'))}
+        ${row('vad', 'Skip silence', 'Voice activity detection · saves battery', sw('vad', true))}
+      </div>
+      <div class="sec">Compute</div>
+      <div class="group" role="radiogroup" aria-label="Compute">
+        ${opt('ep-cpu', true, 'Processor (CPU)<span class="tag">Recommended</span>', 'Works everywhere · model loaded in 1.8 s')}
+        ${opt('ep-gpu-hp', false, 'Graphics card — performance', 'WebGPU on the discrete GPU')}
+        ${opt('ep-gpu-lp', false, 'Graphics card — power saving', 'WebGPU on the integrated GPU')}
+        ${opt('ep-model', false, 'As set by the model', 'Uses the provider in the model’s genai_config.json')}
+      </div>
+      <p class="note">Changing the model or compute reloads the model. During a recording the change waits until you stop.</p>
+      <div class="sec">Advanced</div>
+      <div class="group">
+        <button class="row link" data-hit="adv" onclick="go({adv:${has('adv') ? 0 : 1}})">${ic('general')}<span>Advanced decoding<small>Nemotron and Qwen3 only</small></span><span class="chev" style="transform:rotate(${has('adv') ? 270 : 90}deg)">${ic('chev')}</span></button>
+        ${has('adv') ? `<div class="row stack">${ic('note')}<span>Repetition penalty<small>1.0 = off. Higher values stop looped words; too high drops real repeats.</small></span><div class="full seg">${['1.0', '1.1', '1.2', '1.5'].map(v => `<button class="${v === '1.1' ? 'on' : ''}" data-hit="rp-${v}">${v}</button>`).join('')}</div></div>` : ''}
+      </div>`,
+    audio: () => android ? `
+      <div class="sec">Source</div>
+      <div class="group">${opt('src-mic', true, 'Microphone', 'The phone microphone or a connected headset')}
+        ${opt('src-loop', false, 'System audio', 'Not available on Android: apps cannot record other apps’ sound', true)}</div>
+      <p class="note">Recording continues with the screen off. Android shows a notification while VoiceType listens.</p>` : `
+      <div class="sec">Source</div>
+      <div class="group" role="radiogroup" aria-label="Source">
+        ${opt('src-mic', false, 'Microphone', 'The default input device in Windows sound settings')}
+        ${opt('src-loop', false, 'System audio', 'What you hear: calls, videos, meetings (loopback)')}
+        ${opt('src-mix', true, 'Microphone + system audio', 'Both sides of a call in one transcript')}
+      </div>
+      <p class="note">System audio is captured from the default output and the communications device, so headset calls are included. Changing the source restarts capture without stopping the recording.</p>`,
+    translation: () => `
+      <div class="sec">Live translation</div>
+      <div class="group">
+        ${row('translation', 'Translate while recording', 'Also in the menu as a mode', sw('tr-on', true))}
+        ${row('lang', 'Translate into', 'A code (ru, de) or a name (Belarusian)', sel('tr-target', 'Russian'))}
+      </div>
+      <div class="sec">Engine</div>
+      <div class="group" role="radiogroup" aria-label="Engine">
+        ${opt('eng-native', !has('srv'), 'On this device', 'Gemma runs inside VoiceType · offline')}
+        ${opt('eng-http', has('srv'), 'Local server', 'A LiteRT-LM server with an OpenAI-compatible API')}
+      </div>
+      ${has('srv') ? `<div class="group" style="margin-top:8px"><div class="row stack">${ic('server')}<span>Server address<small>/v1/chat/completions is added automatically</small></span><input class="field mono full" data-hit="tr-url" value="http://localhost:9379" aria-label="Server address"></div></div>`
+      : `<div class="group" style="margin-top:8px">
+          ${link('tr-model', 'gemma', 'Gemma 4 E2B · installed', 'Shared by translation, chats and titles · llm/ in Model storage · 2.4 GB')}
+          <div class="row stack">${ic('cpu')}<span>Run Gemma on<small>GPU is faster but needs a working graphics driver</small></span><div class="full seg"><button class="on" data-hit="tr-cpu">Processor</button><button data-hit="tr-gpu">Graphics card</button></div></div>
+        </div>`}
+      <div class="sec">Instructions</div>
+      <div class="group"><div class="row stack">${ic('note')}<span>Extra instructions for Gemma<small>Added to the built-in prompt: terms, style, casing</small></span>
+        <textarea class="field full" data-hit="tr-prompt" aria-label="Extra instructions" placeholder="For example: keep product names in English.">Keep product names (VoiceType, Parakeet) in English.</textarea></div></div>`,
+    typing: () => `
+      <div class="group">
+        ${row('typing', 'Type into other apps', 'Each finished phrase is pasted into the focused window', sw('inj-on', true))}
+        ${row('focus', 'Stop when focus moves', 'Turns typing off if you switch windows', sw('inj-focus', true))}
+      </div>
+      <div class="sec">Paste shortcut</div>
+      <div class="group" role="radiogroup" aria-label="Paste shortcut">
+        ${opt('paste-ctrlv', true, 'Ctrl+V', 'Most apps')}
+        ${opt('paste-ctrlshiftv', false, 'Ctrl+Shift+V', 'Terminals: Windows Terminal, VS Code terminal')}
+        ${opt('paste-shiftins', false, 'Shift+Insert', 'Older terminals and remote desktops')}
+      </div>
+      <p class="note">VoiceType puts the phrase on the clipboard and sends the shortcut. Your clipboard is restored afterwards.</p>`,
+    hotkeys: () => {
+      const k = (...ks) => ks.map(x => `<kbd>${x}</kbd>`).join('');
+      return `
+      ${has('conflict') ? `<div class="callout warn">${ic('warn')}<div><b>Ctrl+Shift+M is taken by another app.</b> Mute has no shortcut until you choose a different one.</div></div>` : ''}
+      <div class="sec">Work in any app</div>
+      <div class="group">
+        ${row('rec', 'Start or stop recording', '', `<button class="keys ${has('rec') ? 'rec' : ''}" data-hit="hk-toggle">${has('rec') ? 'Press keys… Esc clears' : k('Ctrl', 'Shift', 'V')}</button>`)}
+        ${row('audio', 'Mute microphone', has('conflict') ? 'Not registered' : '', `<button class="keys ${has('conflict') ? 'bad' : ''}" data-hit="hk-mute">${k('Ctrl', 'Shift', 'M')}</button>`)}
+        ${row('typing', 'Type the transcript', 'Into the focused app', `<button class="keys" data-hit="hk-inject">${k('Ctrl', 'Shift', 'I')}</button>`)}
+      </div>
+      <p class="note">Select a field and press the new combination. Esc clears it. Shortcuts need at least one of Ctrl, Alt or Win.</p>`;
+    },
+    general: () => `
+      <div class="group">
+        ${row('scroll', 'Follow new text', 'Keep the transcript scrolled to the end', sw('gen-scroll', true))}
+        ${row('play', 'Start when the model is ready', 'Recording begins right after launch', sw('gen-autostart', false))}
+        ${android ? '' : row('pin', 'Keep window on top', 'Stay above other windows', sw('gen-top', true))}
+        ${row('clear', 'Clear transcript on model change', 'Also when a new session starts', sw('gen-clear', true))}
+      </div>
+      <div class="sec">Reset</div>
+      <div class="group">${link('gen-reset', 'general', 'Reset settings to defaults', 'Folders, models and history are not touched')}</div>
+      <p class="note">VoiceType 0.9 · settings.json in App data (Settings › Storage)</p>`,
+  };
+
+  // ── Assemble ────────────────────────────────────────────────────────────────
+  document.getElementById('title').textContent = page === 'hub' && !wide ? 'Settings' : (wide ? 'Settings' : titleOf(page));
+  document.getElementById('subtitle').textContent = page === 'hub' && !wide ? 'VoiceType' : (wide ? 'VoiceType' : 'Settings');
+  document.getElementById('inner').innerHTML = `<h2 class="pane-title">${titleOf(shown)}</h2>` + (pages[shown] || pages.storage)();
+  document.getElementById('back').onclick = () => go(!wide && page !== 'hub' ? { page: 'hub', sheet: null } : {});
+  document.getElementById('back').setAttribute('aria-label', !wide && page !== 'hub' ? 'Back to Settings' : 'Close Settings');
+
+  // ── Sheets ──────────────────────────────────────────────────────────────────
+  // "Change folder…" opens the system folder picker first (ExportDialog.PickFolderAsync, not mocked);
+  // this question follows when the old folder holds files (ModelStorageUi.ChooseAsync).
+  const sheet = document.getElementById('sheet');
+  if (S.sheet === 'move') {
+    cls.add('is-sheet');
+    const drive = S.drive || 'same';
+    const to = drive === 'other' ? (otherDrive[kind] || 'E:\\' + kind) : drive === 'nested' ? L[kind].path + sep + 'new' : target[kind];
+    const what = { models: '4 models (3.4 GB)', recordings: '24 recordings (1.1 GB)', data: 'App data (96 MB)' }[kind];
+    const title = { models: 'Move models to the new folder?', recordings: 'Move recordings to the new folder?', data: 'Move app data to the new folder?' }[kind];
+    let body, buttons;
+    if (drive === 'nested') {
+      body = `<div class="callout warn">${ic('warn')}<div>The new folder is inside the current one. Choose a folder outside it.</div></div>`;
+      buttons = `<button class="btn" data-hit="s-cancel">Cancel</button><button class="btn accent" data-hit="s-pick">Choose another…</button>`;
+    } else if (drive === 'other') {
+      body = `<div>${what} are in</div><div class="path">${L[kind].path}</div><div>a different drive than</div><div class="path">${to}</div>
+        <div>Models are not copied between drives automatically: they stay in the old folder, and you can copy them into the matching sub-folders (asr, llm, diarization) of the new folder yourself.</div>`;
+      buttons = `<button class="btn" data-hit="s-cancel">Cancel</button><button class="btn accent" data-hit="s-keep">Keep old location</button>`;
+    } else {
+      const after = kind === 'models'
+        ? 'They move when the app restarts (same drive: instant, nothing is copied). Or keep them where they are and start the new folder empty.'
+        : kind === 'recordings'
+          ? 'They move when the app restarts (same drive: instant). Or keep them where they are: they then leave History until you choose the old folder again.'
+          : 'VoiceType moves settings, chats, the queue and logs when it restarts. Models and recordings stay in their own folders.';
+      body = `<div>${what} ${kind === 'data' ? 'is' : 'are'} in</div><div class="path">${L[kind].path}</div><div>New folder:</div><div class="path">${to}</div><div>${after}</div>`;
+      buttons = `<button class="btn" data-hit="s-cancel">Cancel</button>${kind === 'data' ? '' : '<button class="btn" data-hit="s-keep">Keep old location</button>'}<button class="btn accent" data-hit="s-move">Move on restart</button>`;
+    }
+    sheet.innerHTML = `
+      <div class="s-head"><span><b>${title}</b></span><button class="icon-btn" data-hit="s-close" aria-label="Close">${ic('x')}</button></div>
+      <div class="s-body">${body}</div>
+      <div class="s-foot">${buttons}</div>`;
+  }
+
+  // ── Layout check ────────────────────────────────────────────────────────────
+  function check() {
+    const vw = innerWidth, vh = innerHeight;
+    const n = k => parseInt(S[k] || '0', 10) || 0;
+    const safe = { l: n('left'), t: n('top'), r: vw - n('right'), b: vh - Math.max(n('bottom'), n('kb')) };
+    const short = vh < 480;
+    const visible = el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+    const active = cls.contains('is-sheet') ? 'sheet' : 'page';
+    const layerOf = el => el.closest('.sheet') ? 'sheet' : 'page';
+    const els = [...document.querySelectorAll('[data-hit]')].filter(visible).filter(el => layerOf(el) === active);
+    const issues = [];
+    const scrollParent = el => { for (let p = el.parentElement; p; p = p.parentElement) { const s = getComputedStyle(p).overflowY; if ((s === 'auto' || s === 'scroll') && p.scrollHeight > p.clientHeight) return p; } return null; };
+    const clip = (r, el) => { const sp = scrollParent(el); if (!sp) return r; const c = sp.getBoundingClientRect();
+      const l = Math.max(r.left, c.left), t = Math.max(r.top, c.top), rr = Math.min(r.right, c.right), b = Math.min(r.bottom, c.bottom);
+      return { left: l, top: t, right: Math.max(l, rr), bottom: Math.max(t, b) }; };
+    const rects = els.map(el => ({ id: el.dataset.hit, r: el.getBoundingClientRect(), v: clip(el.getBoundingClientRect(), el), el }));
+    const tol = 0.5;
+    for (const { id, r, el } of rects) {
+      const sp = scrollParent(el);
+      const box = sp ? sp.getBoundingClientRect() : r;
+      if (!sp && (r.left < safe.l - tol || r.top < safe.t - tol || r.right > safe.r + tol || r.bottom > safe.b + tol))
+        issues.push(`${id}: outside safe area [${r.left|0},${r.top|0},${r.right|0},${r.bottom|0}] vs [${safe.l},${safe.t},${safe.r},${safe.b}]`);
+      if (sp && (box.left < safe.l - tol || box.top < safe.t - tol || box.right > safe.r + tol || box.bottom > safe.b + tol))
+        issues.push(`${id}: scroll container outside safe area`);
+      if (sp && (r.left < box.left - tol || r.right > box.right + tol)) issues.push(`${id}: wider than its scroll pane`);
+      if (r.width < 44 - tol || r.height < 44 - tol) issues.push(`${id}: hit target ${r.width.toFixed(0)}x${r.height.toFixed(0)} < 44x44`);
+      if (el.tagName !== 'TEXTAREA' && el.tagName !== 'INPUT' && el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflow !== 'visible')
+        issues.push(`${id}: label clipped (${el.scrollWidth} > ${el.clientWidth})`);
+    }
+    for (let i = 0; i < rects.length; i++)
+      for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i].v, c = rects[j].v;
+        const ox = Math.min(a.right, c.right) - Math.max(a.left, c.left);
+        const oy = Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top);
+        if (ox > 0.5 && oy > 0.5) issues.push(`${rects[i].id} overlaps ${rects[j].id} (${ox.toFixed(0)}x${oy.toFixed(0)})`);
+      }
+    // Paths are the point of the Storage page: never cut, never wider than their card.
+    for (const p of document.querySelectorAll('.path')) if (visible(p)) {
+      if (p.scrollWidth > p.clientWidth + 1) issues.push(`path clipped (${p.textContent.slice(0, 32)}…)`);
+      const card = p.closest('.group, .sheet, .callout');
+      if (card && p.getBoundingClientRect().right > card.getBoundingClientRect().right + tol) issues.push('path wider than its card');
+    }
+    if (active === 'page') {
+      const minRead = short ? 72 : 96;
+      for (const sel of ['.pane', '.nav']) { const e = document.querySelector(sel);
+        if (e && visible(e)) { const h = e.getBoundingClientRect().height; if (h < minRead - tol) issues.push(`${sel}: reading area ${h.toFixed(0)} px < ${minRead}`); } }
+    }
+    return { viewport: `${vw}x${vh}`, safe, layer: active, checked: rects.map(x => x.id), issues, ok: issues.length === 0 };
+  }
+  if (S.check === '1') {
+    const report = JSON.stringify(check());
+    document.getElementById('check').textContent = report;
+    if (parent !== window) parent.postMessage(report, '*');
+  }
+</script>
+</body>
+</html>

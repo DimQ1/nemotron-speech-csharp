@@ -36,14 +36,15 @@ internal static class ModelStorageUi
     /// <summary>Picks a folder, asks about the models, applies the settings. False when nothing changed.</summary>
     public static async Task<bool> ChangeFolderAsync(XamlRoot? xamlRoot)
     {
-        var picked = await ExportDialog.PickFolderAsync(xamlRoot);
+        var main = App.Services.GetRequiredService<MainViewModel>();
+        var original = main.CreateSettingsSnapshot();
+        // A folder inside the current one (or around it) is refused with "Choose another…" before anything else is asked.
+        var picked = await SettingsUi.StorageFolderUi.PickFolderAsync(xamlRoot, ModelStorageLayout.Resolve(original).Root);
         if (picked is null)
             return false;
 
-        var main = App.Services.GetRequiredService<MainViewModel>();
-        var original = main.CreateSettingsSnapshot();
         var built = original.Clone();
-        built.ModelsRootPath = picked.Path;
+        built.ModelsRootPath = picked;
         if (await ChooseAsync(xamlRoot, built, original) == ModelRootChoice.Cancel)
             return false;
 
@@ -71,33 +72,11 @@ internal static class ModelStorageUi
         return choice;
     }
 
-    private static async Task<ModelRootChoice> AskAsync(XamlRoot? xamlRoot, string oldRoot, string newRoot, ModelStorageSummary summary, bool sameDrive)
+    private static Task<ModelRootChoice> AskAsync(XamlRoot? xamlRoot, string oldRoot, string newRoot, ModelStorageSummary summary, bool sameDrive)
     {
-        try
-        {
-            var dialog = new ContentDialog
-            {
-                XamlRoot = xamlRoot,
-                Title = ModelStorageText.MoveQuestionTitle,
-                Content = new TextBlock { Text = ModelStorageText.MoveQuestion(oldRoot, newRoot, summary, sameDrive), TextWrapping = TextWrapping.Wrap },
-                // Another drive: nothing is copied, so "move" would only be a promise that cannot be kept.
-                PrimaryButtonText = sameDrive ? ModelStorageText.MoveButton : "",
-                SecondaryButtonText = ModelStorageText.KeepButton,
-                CloseButtonText = ModelStorageText.CancelButton,
-                DefaultButton = sameDrive ? ContentDialogButton.Primary : ContentDialogButton.Secondary,
-            };
-            return await dialog.ShowAsync() switch
-            {
-                ContentDialogResult.Primary => ModelRootChoice.MoveOnRestart,
-                ContentDialogResult.Secondary => ModelRootChoice.Keep,
-                _ => ModelRootChoice.Cancel,
-            };
-        }
-        catch (Exception ex)
-        {
-            // ContentDialog throws when another dialog is open on the same XamlRoot: keep the old folder rather than guess.
-            Console.WriteLine($"[VoiceType.Uno] Move question could not be shown: {ex.Message}");
-            return ModelRootChoice.Cancel;
-        }
+        // Another drive: nothing is copied, so "move" would only be a promise that cannot be kept (only "Keep old location" is offered).
+        var subject = StorageFolderText.Subject(StorageFolderKind.Models, summary.TotalCount, summary.TotalBytes);
+        var relation = sameDrive ? FolderRelation.SameDrive : FolderRelation.OtherDrive;
+        return SettingsUi.StorageFolderUi.AskAsync(xamlRoot, StorageFolderKind.Models, subject, oldRoot, newRoot, relation);
     }
 }

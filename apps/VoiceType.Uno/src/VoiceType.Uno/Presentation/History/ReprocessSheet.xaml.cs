@@ -178,7 +178,7 @@ public sealed partial class ReprocessSheet : ContentDialog
         }
         AddLanguage(keepText, OfflineRecognitionJob.KeepLanguage);
         AddLanguage("Auto-detect", OfflineRecognitionJob.AutoLanguage);
-        foreach (var code in SettingsViewModel.DefaultLanguageOptions.Where(c => c != "auto"))
+        foreach (var code in SettingsText.LanguageCodes.Where(c => c != "auto"))
             AddLanguage(LanguageName(code), code);
         LanguageBox.SelectedIndex = 0;
     }

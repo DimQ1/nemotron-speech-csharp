@@ -18,9 +18,12 @@ public sealed partial class ModelStorageBlock : UserControl
         ExplanationText.Text = ModelStorageText.Explanation;
         RootCaption.Text = ModelStorageText.RootLabel;
         OpenFolderLabel.Text = ModelStorageText.OpenFolder;
+        RootText.FontFamily = VoiceType.Uno.Presentation.SettingsUi.SettingsRows.MonoFont;
+        RestartLabel.Text = StorageFolderText.RestartNow;
+        DontMoveLabel.Text = StorageFolderText.DontMove;
 
         // Phones keep models in the app's private storage: there is no file manager to open and no path to pick.
-        var desktop = !OperatingSystem.IsAndroid();
+        var desktop = !VoiceType.Uno.Presentation.SettingsUi.PlatformUi.IsAndroidLayout;
         ButtonRow.Visibility = desktop ? Visibility.Visible : Visibility.Collapsed;
         Loaded += async (_, _) => await RefreshAsync();
     }
@@ -39,6 +42,10 @@ public sealed partial class ModelStorageBlock : UserControl
             : settings.ModelStorageNote;
 
         RootText.Text = layout.Root;
+        BadgeText.Text = StorageFolderText.Badge(layout.Root, AppPaths.ModelsDir);
+        // A pending move offers "Restart now" (desktop only: Android never has one) and "Don't move".
+        PendingButtons.Visibility = !string.IsNullOrWhiteSpace(settings.PendingModelsRoot) ? Visibility.Visible : Visibility.Collapsed;
+        RestartButton.Visibility = VoiceType.Uno.Presentation.SettingsUi.AppRestart.IsAvailable ? Visibility.Visible : Visibility.Collapsed;
         var summary = await Task.Run(() => ModelStorageScanner.Summarize(layout, note));
         if (version != Volatile.Read(ref _version))
             return;
@@ -49,6 +56,26 @@ public sealed partial class ModelStorageBlock : UserControl
         TotalLine.Text = summary.TotalText;
         NoteText.Text = summary.Note;
         NoteText.Visibility = string.IsNullOrEmpty(summary.Note) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void Restart_Click(object sender, RoutedEventArgs e) => VoiceType.Uno.Presentation.SettingsUi.AppRestart.RestartNow();
+
+    /// <summary>"Don't move": forgets the pending move; the models stay where they are.</summary>
+    private async void DontMove_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var main = App.Services.GetRequiredService<MainViewModel>();
+            var built = main.CreateSettingsSnapshot();
+            built.PendingModelsRoot = "";
+            await main.ApplySettingsAsync(built);
+            await RefreshAsync();
+            StorageChanged?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[VoiceType.Uno] Could not drop the pending models move: {ex}");
+        }
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)

@@ -8,16 +8,46 @@
           BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
           BorderThickness="1" CornerRadius="8" Padding="12">
     <StackPanel Spacing="6">
-      <TextBlock x:Name="TitleText" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+      <Grid ColumnSpacing="8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="TitleText" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <!-- Default / Custom: is the folder the app's own or one the user chose -->
+        <Border x:Name="BadgeBorder" Grid.Column="1" VerticalAlignment="Top" CornerRadius="10" Padding="8,1" BorderThickness="1"
+                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+          <TextBlock x:Name="BadgeText" FontSize="11" LineHeight="16" />
+        </Border>
+      </Grid>
       <TextBlock x:Name="ExplanationText" FontSize="12" Opacity="0.75" TextWrapping="Wrap" />
       <TextBlock x:Name="RootCaption" FontSize="11" Opacity="0.7" Margin="0,4,0,0" />
-      <TextBlock x:Name="RootText" FontSize="13" TextWrapping="Wrap" IsTextSelectionEnabled="True"
-                 AutomationProperties.Name="Model storage folder" />
+      <Border Background="{ThemeResource ControlFillColorSecondaryBrush}" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+              BorderThickness="1" CornerRadius="6" Padding="10,8">
+        <TextBlock x:Name="RootText" FontSize="13" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                   AutomationProperties.Name="Model storage folder" />
+      </Border>
       <TextBlock x:Name="SpeechLine" FontSize="13" TextWrapping="Wrap" Margin="0,4,0,0" />
       <TextBlock x:Name="LanguageLine" FontSize="13" TextWrapping="Wrap" />
       <TextBlock x:Name="SpeakerLine" FontSize="13" TextWrapping="Wrap" />
       <TextBlock x:Name="TotalLine" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0" />
       <TextBlock x:Name="NoteText" FontSize="12" TextWrapping="Wrap" Visibility="Collapsed" />
+      <!-- A move waits for the restart: restart now, or drop it -->
+      <Grid x:Name="PendingButtons" ColumnSpacing="8" Visibility="Collapsed">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Button x:Name="RestartButton" MinHeight="44" MinWidth="44" HorizontalAlignment="Stretch"
+                Style="{StaticResource AccentButtonStyle}" Click="Restart_Click"
+                AutomationProperties.Name="Restart now">
+          <TextBlock x:Name="RestartLabel" TextWrapping="Wrap" TextAlignment="Center" />
+        </Button>
+        <Button x:Name="DontMoveButton" Grid.Column="1" MinHeight="44" MinWidth="44" HorizontalAlignment="Stretch"
+                Click="DontMove_Click" AutomationProperties.Name="Don't move">
+          <TextBlock x:Name="DontMoveLabel" TextWrapping="Wrap" TextAlignment="Center" />
+        </Button>
+      </Grid>
       <Grid x:Name="ButtonRow" ColumnSpacing="8" Margin="0,4,0,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />

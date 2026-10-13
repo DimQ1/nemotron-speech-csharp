@@ -1,0 +1,65 @@
+<Page x:Class="VoiceType.Uno.Presentation.SettingsUi.SettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:history="using:VoiceType.Uno.Presentation.History"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+      KeyDown="Page_KeyDown"
+      SizeChanged="Page_SizeChanged"
+      Loaded="Page_Loaded">
+
+  <!-- Settings (design voicetype-uno-settings §3): a page, not a dialog. Under 840 px the section list (hub) and the section
+       take turns; from 840 px the list (300 px) and the section (up to 720 px) sit side by side. Every control applies its
+       value at once. The sections themselves are built in code (Presentation/Settings/*Section.cs). -->
+  <Page.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <history:HistoryStyles />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Page.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0" MinHeight="56" Padding="4" ColumnSpacing="8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="48" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <Button x:Name="BackButton" Style="{StaticResource HistoryIconButtonStyle}" Click="Back_Click"
+              AutomationProperties.Name="Back" ToolTipService.ToolTip="Back">
+        <SymbolIcon Symbol="Back" />
+      </Button>
+      <StackPanel Grid.Column="1" VerticalAlignment="Center">
+        <TextBlock x:Name="TitleText" Text="Settings" FontSize="20" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="SubtitleText" Text="VoiceType" FontSize="12" Opacity="0.7" />
+      </StackPanel>
+    </Grid>
+
+    <Grid x:Name="Body" Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition x:Name="ListColumn" Width="300" />
+        <ColumnDefinition x:Name="DividerColumn" Width="1" />
+        <ColumnDefinition x:Name="PaneColumn" Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <ScrollViewer x:Name="ListScroll" Grid.Column="0" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <StackPanel x:Name="ListPanel" Margin="8,0,8,24" />
+      </ScrollViewer>
+
+      <Border x:Name="Divider" Grid.Column="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+      <ScrollViewer x:Name="PaneScroll" Grid.Column="2" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <StackPanel x:Name="PanePanel" MaxWidth="720" Margin="16,0,16,24" HorizontalAlignment="Stretch">
+          <TextBlock x:Name="PaneTitle" FontSize="20" FontWeight="SemiBold" Margin="4,4,4,4" />
+          <ContentControl x:Name="SectionHost" HorizontalContentAlignment="Stretch" HorizontalAlignment="Stretch" IsTabStop="False" />
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</Page>

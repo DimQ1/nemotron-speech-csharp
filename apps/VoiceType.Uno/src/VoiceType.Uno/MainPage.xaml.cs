@@ -501,39 +501,11 @@ public sealed partial class MainPage : Page
             Frame?.Navigate(typeof(RecordingPage), recordingId);
     }
 
+    // Settings is a page (design voicetype-uno-settings): hub on narrow windows, two panes on wide ones.
     private async void Settings_Click(object sender, RoutedEventArgs e)
     {
-        try
-        {
-            await ClosePaneAsync();
-
-            var dialog = new SettingsDialog(ViewModel.CreateSettingsSnapshot())
-            {
-                XamlRoot = XamlRoot
-            };
-
-            var result = await dialog.ShowAsync();
-
-            // The dialog closes itself when the user asks for the model manager, so
-            // pending edits are saved first and the Models page opens afterwards.
-            if (result == ContentDialogResult.Primary || dialog.OpenModelManagerRequested)
-            {
-                var original = ViewModel.CreateSettingsSnapshot();
-                var built = dialog.ViewModel.BuildSettings();
-                // Another model storage folder: move the models on the next start, keep them where they are, or drop the change.
-                await ModelStorageUi.ChooseAsync(XamlRoot, built, original);
-                await ViewModel.ApplySettingsAsync(built);
-            }
-
-            if (dialog.OpenModelManagerRequested)
-                OpenModelsPage(ModelsTab.Speech);
-        }
-        catch (Exception ex)
-        {
-            // ContentDialog throws when another dialog is already open on the same
-            // XamlRoot; report it instead of losing the exception in async void.
-            Console.WriteLine($"[VoiceType.Uno] Settings could not be shown: {ex}");
-        }
+        await ClosePaneAsync();
+        Frame?.Navigate(typeof(VoiceType.Uno.Presentation.SettingsUi.SettingsPage));
     }
 
     private async void Help_Click(object sender, RoutedEventArgs e)

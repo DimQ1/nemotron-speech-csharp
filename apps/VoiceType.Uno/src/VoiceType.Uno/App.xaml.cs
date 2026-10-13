@@ -67,6 +67,23 @@ public partial class App : Application
         }
     }
 
+    /// <summary>
+    /// A pending "Move app data" (Settings > Storage): moves settings, chats, the queue and logs to the folder the user chose and flips
+    /// the pointer, before anything reads <see cref="AppPaths.DataRoot"/>. Skipped in the DEBUG sandbox, whose root is fixed.
+    /// </summary>
+    private static void PrepareDataLocation()
+    {
+        try
+        {
+            if (!AppPaths.IsDataRootSandboxed)
+                DataLocation.RunAtStartup(AppPaths.DefaultDataRoot);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[VoiceType.Uno] App data move failed: {ex.Message}");
+        }
+    }
+
     private static void PrepareModelStorage()
     {
         try
@@ -77,7 +94,9 @@ public partial class App : Application
             ModelStorageLayout.UseRootProvider(() => settings.ModelsRootPath);
 
             var report = ModelStorageMigrator.RunAtStartup(settings, LogModelStorage);
-            if (report.SettingsChanged)
+            // A pending "Move recordings" (Settings > Storage) is carried out before the history store opens.
+            var recordingsChanged = RecordingStorageMigrator.RunAtStartup(settings, AppPaths.SessionsDir, LogModelStorage);
+            if (report.SettingsChanged || recordingsChanged)
                 service.Save(settings);
             ModelStorageLayout.Resolve(settings).EnsureDirectories();
         }
@@ -92,6 +111,9 @@ public partial class App : Application
     {
         // Before any service reads a model path: finish a pending "Move models", sort the flat model folders of older
         // versions into asr/, llm/ and diarization/ (instant renames, never deletes, never overwrites).
+        // After "Restart now" the previous process may still be closing: wait, so no folder to move is locked.
+        VoiceType.Uno.Presentation.SettingsUi.AppRestart.WaitForPreviousInstance();
+        PrepareDataLocation();
         PrepareModelStorage();
 
         var builder = this.CreateBuilder(args)

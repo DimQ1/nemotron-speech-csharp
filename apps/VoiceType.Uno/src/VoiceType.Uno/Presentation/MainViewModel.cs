@@ -257,7 +257,29 @@ public sealed partial class MainViewModel : ObservableObject
             _muteHotkeyId = await service.RegisterAsync(Settings.MuteHotkey).ConfigureAwait(false);
         if (!string.IsNullOrWhiteSpace(Settings.InjectTextHotkey))
             _injectTextHotkeyId = await service.RegisterAsync(Settings.InjectTextHotkey).ConfigureAwait(false);
+
+        // A chord another app already owns (or one the OS refuses) comes back as 0: Settings › Keyboard shortcuts shows it.
+        var failed = new List<(HotkeyAction, string)>();
+        if (!string.IsNullOrWhiteSpace(Settings.ToggleHotkey) && _toggleHotkeyId <= 0)
+            failed.Add((HotkeyAction.ToggleRecording, Settings.ToggleHotkey.Trim()));
+        if (!string.IsNullOrWhiteSpace(Settings.MuteHotkey) && _muteHotkeyId <= 0)
+            failed.Add((HotkeyAction.ToggleMute, Settings.MuteHotkey.Trim()));
+        if (!string.IsNullOrWhiteSpace(Settings.InjectTextHotkey) && _injectTextHotkeyId <= 0)
+            failed.Add((HotkeyAction.InjectText, Settings.InjectTextHotkey.Trim()));
+        FailedHotkeys = failed;
+        _scheduler.Post(() => HotkeyRegistrationChanged?.Invoke());
     }
+
+    /// <summary>Shortcuts that could not be registered at the last registration (taken by another app, or refused by the OS).</summary>
+    public IReadOnlyList<(HotkeyAction Action, string Chord)> FailedHotkeys { get; private set; } = [];
+
+    /// <summary>Raised on the UI thread after the global hotkeys were (re)registered.</summary>
+    public event Action? HotkeyRegistrationChanged;
+
+    private static bool HotkeysEqual(AppSettings a, AppSettings b) =>
+        string.Equals(a.ToggleHotkey, b.ToggleHotkey, StringComparison.Ordinal)
+        && string.Equals(a.MuteHotkey, b.MuteHotkey, StringComparison.Ordinal)
+        && string.Equals(a.InjectTextHotkey, b.InjectTextHotkey, StringComparison.Ordinal);
 
     /// <summary>
     /// Runs a fire-and-forget startup task, reporting failures on the status line
@@ -275,8 +297,12 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    // Registrations run one at a time: two interleaved unregister/register rounds would register a chord twice and report it as taken.
+    private readonly SemaphoreSlim _hotkeyGate = new(1, 1);
+
     private async Task ReregisterHotkeysAsync()
     {
+        await _hotkeyGate.WaitAsync().ConfigureAwait(false);
         try
         {
             if (_hotkeys.IsAvailable)
@@ -291,6 +317,41 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _scheduler.Post(() => StatusText = $"Hotkey error: {ex.Message}");
+        }
+        finally
+        {
+            _hotkeyGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Settings › Keyboard shortcuts records a new combination: while it listens, the global shortcuts are released so pressing
+    /// a combination that is registered right now reaches the field instead of running its action. Resuming registers them again.
+    /// </summary>
+    public async Task SetHotkeysSuspendedAsync(bool suspended)
+    {
+        if (!suspended)
+        {
+            await ReregisterHotkeysAsync().ConfigureAwait(false);
+            return;
+        }
+
+        await _hotkeyGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_hotkeys.IsAvailable)
+                await _hotkeys.UnregisterAllAsync().ConfigureAwait(false);
+            _toggleHotkeyId = 0;
+            _muteHotkeyId = 0;
+            _injectTextHotkeyId = 0;
+        }
+        catch (Exception ex)
+        {
+            _scheduler.Post(() => StatusText = $"Hotkey error: {ex.Message}");
+        }
+        finally
+        {
+            _hotkeyGate.Release();
         }
     }
 
@@ -709,7 +770,7 @@ public sealed partial class MainViewModel : ObservableObject
         _translation.SetTargetLanguage(value);
     }
 
-    public IReadOnlyList<string> LanguageOptions => SettingsViewModel.DefaultLanguageOptions;
+    public IReadOnlyList<string> LanguageOptions => SettingsText.LanguageCodes;
 
     /// <summary>Translation targets: real languages only ("auto" is a recognition option, not a target).</summary>
     public IReadOnlyList<string> TranslationLanguageOptions { get; } =
@@ -1182,11 +1243,19 @@ public sealed partial class MainViewModel : ObservableObject
                 OnPropertyChanged(nameof(IsLanguageChoiceAvailable));
                 OnPropertyChanged(nameof(IsLanguageChoiceHintVisible));
             });
-            _ = ReregisterHotkeysAsync();
+            // Settings apply at once now, so only a real shortcut change re-registers the global hotkeys.
+            if (!HotkeysEqual(previousSettings, newSettings))
+                _ = ReregisterHotkeysAsync();
 
             var previousModelPath = _recognition.LoadedModelPath;
             var newModelPath = ModelPathResolver.FindExistingModelPath(newSettings) ?? newSettings.ModelPath;
-            var modelChanged = !PathsEqual(previousModelPath, newModelPath);
+            // A compute change (CPU / graphics card) reloads the model too: the provider is chosen when the session is created.
+            var modelChanged = !PathsEqual(previousModelPath, newModelPath)
+                || (_recognition.ModelState == ModelLifecycleState.Loaded
+                    && !string.Equals(
+                        SettingsText.NormalizeCompute(previousSettings.ExecutionProvider),
+                        SettingsText.NormalizeCompute(newSettings.ExecutionProvider),
+                        StringComparison.Ordinal));
             var audioSourceChanged = !string.Equals(
                 previousSettings.AudioSource,
                 newSettings.AudioSource,

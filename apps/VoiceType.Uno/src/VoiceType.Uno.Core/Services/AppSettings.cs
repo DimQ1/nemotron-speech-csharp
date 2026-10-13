@@ -24,7 +24,15 @@ public sealed class AppSettings
     public string ModelStorageNote { get; set; } = "";
     public string SelectedModel { get; set; } = "";
     public string ModelPath { get; set; } = "";
+    /// <summary>The recordings folder (<c>sessions/</c> of the data root when empty). Changed from Settings › Storage.</summary>
     public string SessionsPath { get; set; } = "";
+    /// <summary>
+    /// A new recordings folder the user chose with "Move on restart": at the next start, before the history store opens, the
+    /// recording folders move there (<see cref="RecordingStorageMigrator"/>) and this becomes <see cref="SessionsPath"/>.
+    /// </summary>
+    public string PendingSessionsPath { get; set; } = "";
+    /// <summary>One line the Recordings card shows after a start-up move that could not finish.</summary>
+    public string SessionsStorageNote { get; set; } = "";
     public string ExecutionProvider { get; set; } = "cpu";
 
     public bool UseVad { get; set; } = true;

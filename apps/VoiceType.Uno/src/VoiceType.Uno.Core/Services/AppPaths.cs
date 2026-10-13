@@ -11,6 +11,46 @@ public static class AppPaths
 
     public static string DataRoot => s_dataRoot ??= EnsureDataRoot();
 
+    /// <summary>
+    /// The default data root (<c>%LOCALAPPDATA%\VoiceType</c>, <c>~/.local/share/VoiceType</c>). Holds the
+    /// <see cref="DataLocation.PointerFileName"/> pointer when the data lives elsewhere.
+    /// </summary>
+    public static string DefaultDataRoot
+    {
+        get
+        {
+            var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (string.IsNullOrWhiteSpace(baseDir))
+                baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
+            return Path.Combine(baseDir, "VoiceType");
+        }
+    }
+
+    /// <summary>
+    /// True when the DEBUG-only sandbox (<c>VOICETYPE_DATA_ROOT</c>) names the data root: it beats the pointer file, and
+    /// "Move app data" is not offered because the sandbox folder is throwaway.
+    /// </summary>
+    public static bool IsDataRootSandboxed
+    {
+        get
+        {
+#if DEBUG
+            return Environment.GetEnvironmentVariable("VOICETYPE_DATA_ROOT") is { Length: > 0 };
+#else
+            return false;
+#endif
+        }
+    }
+
+    /// <summary>
+    /// Where the pointer files (<see cref="DataLocation"/>) live: the default root, or the sandbox folder in DEBUG sandbox runs
+    /// so UI checks never write into the user's real <c>%LOCALAPPDATA%\VoiceType</c>.
+    /// </summary>
+    public static string PointerRoot => IsDataRootSandboxed ? DataRoot : DefaultDataRoot;
+
+    /// <summary>A line for the App data card: the saved folder was unavailable, or a move did not finish. Empty otherwise.</summary>
+    public static string DataRootNote => IsDataRootSandboxed ? DataLocation.ReadNote(DataRoot) : DataLocation.ReadNote(DefaultDataRoot);
+
     public static string ModelsDir => Path.Combine(DataRoot, "models");
     public static string SessionsDir => Path.Combine(DataRoot, "sessions");
     /// <summary>Top-level history chats: <c>chats/&lt;chatId&gt;/chat.json</c>.</summary>
@@ -42,11 +82,8 @@ public static class AppPaths
         if (Environment.GetEnvironmentVariable("VOICETYPE_DATA_ROOT") is { Length: > 0 } sandbox)
             return sandbox;
 #endif
-        var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if (string.IsNullOrWhiteSpace(baseDir))
-            baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
-
-        return Path.Combine(baseDir, "VoiceType");
+        // The pointer file in the default root says where the data really is (Settings › Storage › App data).
+        return DataLocation.Resolve(DefaultDataRoot).Root;
     }
 
     /// <summary>Reset the cached root — only for tests.</summary>

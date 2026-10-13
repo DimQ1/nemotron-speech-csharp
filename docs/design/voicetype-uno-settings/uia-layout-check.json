@@ -1,0 +1,700 @@
+{
+  "settings-hub 360x800": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models"
+    ],
+    "issues": []
+  },
+  "settings-storage 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Open the model storage folder",
+      "Change the model storage folder",
+      "Open the Recordings folder",
+      "Change the Recordings folder",
+      "Retention and limits",
+      "Open the App data folder",
+      "Change the App data folder"
+    ],
+    "issues": []
+  },
+  "settings-speech 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Speech model in use",
+      "Manage models",
+      "Language",
+      "Skip silence",
+      "Processor (CPU)",
+      "Graphics card — performance",
+      "Graphics card — power saving",
+      "As set by the model",
+      "Advanced decoding"
+    ],
+    "issues": []
+  },
+  "settings-audio 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Microphone",
+      "System audio",
+      "Microphone + system audio"
+    ],
+    "issues": []
+  },
+  "settings-translation 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Translate while recording",
+      "Translate into",
+      "On this device",
+      "Local server",
+      "Gemma model",
+      "Processor",
+      "Graphics card",
+      "Extra instructions for Gemma"
+    ],
+    "issues": []
+  },
+  "settings-typing 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Type into other apps",
+      "Ctrl+V",
+      "Ctrl+Shift+V",
+      "Shift+Insert"
+    ],
+    "issues": []
+  },
+  "settings-hotkeys 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Start or stop recording shortcut",
+      "Mute microphone shortcut",
+      "Type the transcript shortcut"
+    ],
+    "issues": []
+  },
+  "settings-general 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Follow new text",
+      "Start when the model is ready",
+      "Keep window on top",
+      "Clear transcript on model change",
+      "Reset settings to defaults"
+    ],
+    "issues": []
+  },
+  "settings-hub 320x568": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models"
+    ],
+    "issues": []
+  },
+  "settings-storage 320x568": {
+    "checked": [
+      "Back to Settings",
+      "Open the model storage folder",
+      "Change the model storage folder",
+      "Open the Recordings folder",
+      "Change the Recordings folder",
+      "Retention and limits",
+      "Open the App data folder",
+      "Change the App data folder"
+    ],
+    "issues": []
+  },
+  "settings-speech 320x568": {
+    "checked": [
+      "Back to Settings",
+      "Speech model in use",
+      "Manage models",
+      "Language",
+      "Skip silence",
+      "Processor (CPU)",
+      "Graphics card — performance",
+      "Graphics card — power saving",
+      "As set by the model",
+      "Advanced decoding"
+    ],
+    "issues": []
+  },
+  "settings-audio 320x568": {
+    "checked": [
+      "Back to Settings",
+      "Microphone",
+      "System audio",
+      "Microphone + system audio"
+    ],
+    "issues": []
+  },
+  "settings-translation 320x568": {
+    "checked": [
+      "Back to Settings",
+      "Translate while recording",
+      "Translate into",
+      "On this device",
+      "Local server",
+      "Gemma model",
+      "Processor",
+      "Graphics card",
+      "Extra instructions for Gemma"
+    ],
+    "issues": []
+  },
+  "settings-typing 320x568": {
+    "checked": [
+      "Back to Settings",
+      "Type into other apps",
+      "Ctrl+V",
+      "Ctrl+Shift+V",
+      "Shift+Insert"
+    ],
+    "issues": []
+  },
+  "settings-hotkeys 320x568": {
+    "checked": [
+      "Back to Settings",
+      "Start or stop recording shortcut",
+      "Mute microphone shortcut",
+      "Type the transcript shortcut"
+    ],
+    "issues": []
+  },
+  "settings-general 320x568": {
+    "checked": [
+      "Back to Settings",
+      "Follow new text",
+      "Start when the model is ready",
+      "Keep window on top",
+      "Clear transcript on model change",
+      "Reset settings to defaults"
+    ],
+    "issues": []
+  },
+  "settings-hub 800x360": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models"
+    ],
+    "issues": []
+  },
+  "settings-storage 800x360": {
+    "checked": [
+      "Back to Settings",
+      "Open the model storage folder",
+      "Change the model storage folder",
+      "Open the Recordings folder",
+      "Change the Recordings folder",
+      "Retention and limits",
+      "Open the App data folder",
+      "Change the App data folder"
+    ],
+    "issues": []
+  },
+  "settings-speech 800x360": {
+    "checked": [
+      "Back to Settings",
+      "Speech model in use",
+      "Manage models",
+      "Language",
+      "Skip silence",
+      "Processor (CPU)",
+      "Graphics card — performance",
+      "Graphics card — power saving",
+      "As set by the model",
+      "Advanced decoding"
+    ],
+    "issues": []
+  },
+  "settings-audio 800x360": {
+    "checked": [
+      "Back to Settings",
+      "Microphone",
+      "System audio",
+      "Microphone + system audio"
+    ],
+    "issues": []
+  },
+  "settings-translation 800x360": {
+    "checked": [
+      "Back to Settings",
+      "Translate while recording",
+      "Translate into",
+      "On this device",
+      "Local server",
+      "Gemma model",
+      "Processor",
+      "Graphics card",
+      "Extra instructions for Gemma"
+    ],
+    "issues": []
+  },
+  "settings-typing 800x360": {
+    "checked": [
+      "Back to Settings",
+      "Type into other apps",
+      "Ctrl+V",
+      "Ctrl+Shift+V",
+      "Shift+Insert"
+    ],
+    "issues": []
+  },
+  "settings-hotkeys 800x360": {
+    "checked": [
+      "Back to Settings",
+      "Start or stop recording shortcut",
+      "Mute microphone shortcut",
+      "Type the transcript shortcut"
+    ],
+    "issues": []
+  },
+  "settings-general 800x360": {
+    "checked": [
+      "Back to Settings",
+      "Follow new text",
+      "Start when the model is ready",
+      "Keep window on top",
+      "Clear transcript on model change",
+      "Reset settings to defaults"
+    ],
+    "issues": []
+  },
+  "settings-hub 1280x800": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models",
+      "Open the model storage folder",
+      "Change the model storage folder",
+      "Open the Recordings folder",
+      "Change the Recordings folder",
+      "Retention and limits",
+      "Open the App data folder",
+      "Change the App data folder"
+    ],
+    "issues": []
+  },
+  "settings-storage 1280x800": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models",
+      "Open the model storage folder",
+      "Change the model storage folder",
+      "Open the Recordings folder",
+      "Change the Recordings folder",
+      "Retention and limits",
+      "Open the App data folder",
+      "Change the App data folder"
+    ],
+    "issues": []
+  },
+  "settings-speech 1280x800": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models",
+      "Speech model in use",
+      "Manage models",
+      "Language",
+      "Skip silence",
+      "Processor (CPU)",
+      "Graphics card — performance",
+      "Graphics card — power saving",
+      "As set by the model",
+      "Advanced decoding"
+    ],
+    "issues": []
+  },
+  "settings-audio 1280x800": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models",
+      "Microphone",
+      "System audio",
+      "Microphone + system audio"
+    ],
+    "issues": []
+  },
+  "settings-translation 1280x800": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models",
+      "Translate while recording",
+      "Translate into",
+      "On this device",
+      "Local server",
+      "Gemma model",
+      "Processor",
+      "Graphics card",
+      "Extra instructions for Gemma"
+    ],
+    "issues": []
+  },
+  "settings-typing 1280x800": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models",
+      "Type into other apps",
+      "Ctrl+V",
+      "Ctrl+Shift+V",
+      "Shift+Insert"
+    ],
+    "issues": []
+  },
+  "settings-hotkeys 1280x800": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models",
+      "Start or stop recording shortcut",
+      "Mute microphone shortcut",
+      "Type the transcript shortcut"
+    ],
+    "issues": []
+  },
+  "settings-general 1280x800": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models",
+      "Follow new text",
+      "Start when the model is ready",
+      "Keep window on top",
+      "Clear transcript on model change",
+      "Reset settings to defaults"
+    ],
+    "issues": []
+  },
+  "settings-storage+incomplete 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Open the model storage folder",
+      "Change the model storage folder",
+      "Open the Recordings folder",
+      "Change the Recordings folder",
+      "Retention and limits",
+      "Open the App data folder",
+      "Change the App data folder"
+    ],
+    "issues": []
+  },
+  "settings-storage+incomplete 1280x800": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "Typing into apps",
+      "Keyboard shortcuts",
+      "General",
+      "History",
+      "Models",
+      "Open the model storage folder",
+      "Change the model storage folder",
+      "Open the Recordings folder",
+      "Change the Recordings folder",
+      "Retention and limits",
+      "Open the App data folder",
+      "Change the App data folder"
+    ],
+    "issues": []
+  },
+  "settings-storage+move-recordings 360x800": {
+    "checked": [
+      "Move on restart",
+      "Keep old location",
+      "Cancel"
+    ],
+    "issues": []
+  },
+  "settings-storage+pending-recordings 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Open the model storage folder",
+      "Change the model storage folder",
+      "Restart now",
+      "Don't move",
+      "Open the Recordings folder",
+      "Change the Recordings folder",
+      "Retention and limits",
+      "Open the App data folder",
+      "Change the App data folder"
+    ],
+    "issues": []
+  },
+  "settings-storage+move-data 360x800": {
+    "checked": [
+      "Move on restart",
+      "Cancel"
+    ],
+    "issues": []
+  },
+  "settings-storage+pending-data 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Open the model storage folder",
+      "Change the model storage folder",
+      "Open the Recordings folder",
+      "Change the Recordings folder",
+      "Retention and limits",
+      "Restart now",
+      "Don't move",
+      "Open the App data folder",
+      "Change the App data folder"
+    ],
+    "issues": []
+  },
+  "settings-storage+move-models 360x800": {
+    "checked": [
+      "Move on restart",
+      "Keep old location",
+      "Cancel"
+    ],
+    "issues": []
+  },
+  "settings-storage+pending-models 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Restart now",
+      "Don't move",
+      "Open the model storage folder",
+      "Change the model storage folder",
+      "Open the Recordings folder",
+      "Change the Recordings folder",
+      "Retention and limits",
+      "Open the App data folder",
+      "Change the App data folder"
+    ],
+    "issues": []
+  },
+  "settings-storage+move-other-drive 360x800": {
+    "checked": [
+      "Keep old location",
+      "Cancel"
+    ],
+    "issues": []
+  },
+  "settings-hub+android 360x800": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "General",
+      "History",
+      "Models"
+    ],
+    "issues": []
+  },
+  "settings-storage+android 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Retention and limits"
+    ],
+    "issues": []
+  },
+  "settings-audio+android 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Microphone",
+      "System audio"
+    ],
+    "issues": []
+  },
+  "settings-general+android 360x800": {
+    "checked": [
+      "Back to Settings",
+      "Follow new text",
+      "Start when the model is ready",
+      "Clear transcript on model change",
+      "Reset settings to defaults"
+    ],
+    "issues": []
+  },
+  "settings-hub+android 320x568": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "General",
+      "History",
+      "Models"
+    ],
+    "issues": []
+  },
+  "settings-storage+android 320x568": {
+    "checked": [
+      "Back to Settings",
+      "Retention and limits"
+    ],
+    "issues": []
+  },
+  "settings-audio+android 320x568": {
+    "checked": [
+      "Back to Settings",
+      "Microphone",
+      "System audio"
+    ],
+    "issues": []
+  },
+  "settings-general+android 320x568": {
+    "checked": [
+      "Back to Settings",
+      "Follow new text",
+      "Start when the model is ready",
+      "Clear transcript on model change",
+      "Reset settings to defaults"
+    ],
+    "issues": []
+  },
+  "settings-hub+android 800x360": {
+    "checked": [
+      "Close Settings",
+      "Storage",
+      "Speech recognition",
+      "Audio input",
+      "Translation and Gemma",
+      "General",
+      "History",
+      "Models"
+    ],
+    "issues": []
+  },
+  "settings-storage+android 800x360": {
+    "checked": [
+      "Back to Settings",
+      "Retention and limits"
+    ],
+    "issues": []
+  },
+  "settings-audio+android 800x360": {
+    "checked": [
+      "Back to Settings",
+      "Microphone",
+      "System audio"
+    ],
+    "issues": []
+  },
+  "settings-general+android 800x360": {
+    "checked": [
+      "Back to Settings",
+      "Follow new text",
+      "Start when the model is ready",
+      "Clear transcript on model change",
+      "Reset settings to defaults"
+    ],
+    "issues": []
+  },
+  "settings-storage 480x560": {
+    "checked": [
+      "Back to Settings",
+      "Open the model storage folder",
+      "Change the model storage folder",
+      "Open the Recordings folder",
+      "Change the Recordings folder",
+      "Retention and limits",
+      "Open the App data folder",
+      "Change the App data folder"
+    ],
+    "issues": []
+  },
+  "settings-storage+nested 360x800": {
+    "checked": [
+      "Choose another…",
+      "Cancel"
+    ],
+    "issues": []
+  }
+}

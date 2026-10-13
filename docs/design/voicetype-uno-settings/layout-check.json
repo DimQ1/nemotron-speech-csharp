@@ -1,0 +1,834 @@
+{
+  "phone-hub": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-general",
+      "nav-history",
+      "nav-models"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-storage": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "rec-retention"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-speech": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "model-active",
+      "model-manage",
+      "language",
+      "vad",
+      "ep-cpu",
+      "ep-gpu-hp",
+      "ep-gpu-lp",
+      "ep-model",
+      "adv"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-speech-advanced": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "model-active",
+      "model-manage",
+      "language",
+      "vad",
+      "ep-cpu",
+      "ep-gpu-hp",
+      "ep-gpu-lp",
+      "ep-model",
+      "adv",
+      "rp-1.0",
+      "rp-1.1",
+      "rp-1.2",
+      "rp-1.5"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-audio": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "src-mic",
+      "src-loop"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-translation": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "tr-on",
+      "tr-target",
+      "eng-native",
+      "eng-http",
+      "tr-model",
+      "tr-cpu",
+      "tr-gpu",
+      "tr-prompt"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-translation-keyboard": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 480
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "tr-on",
+      "tr-target",
+      "eng-native",
+      "eng-http",
+      "tr-model",
+      "tr-cpu",
+      "tr-gpu",
+      "tr-prompt"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-general": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "gen-scroll",
+      "gen-autostart",
+      "gen-clear",
+      "gen-reset"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-hub": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-general",
+      "nav-history",
+      "nav-models"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "small-storage": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "rec-retention"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-hub": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-general",
+      "nav-history",
+      "nav-models"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "landscape-storage": {
+    "viewport": "800x360",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 752,
+      "b": 360
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "rec-retention"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "tablet-storage": {
+    "viewport": "800x1280",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 800,
+      "b": 1232
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "rec-retention"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-storage": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "models-open",
+      "models-change",
+      "recordings-open",
+      "recordings-change",
+      "rec-retention",
+      "data-open",
+      "data-change"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-models-move": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "s-cancel",
+      "s-keep",
+      "s-move"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-models-move-other-drive": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "s-cancel",
+      "s-keep"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-models-pending": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "models-restart",
+      "models-undo",
+      "models-open",
+      "models-change",
+      "recordings-open",
+      "recordings-change",
+      "rec-retention",
+      "data-open",
+      "data-change"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-models-incomplete": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "models-open",
+      "models-change",
+      "recordings-open",
+      "recordings-change",
+      "rec-retention",
+      "data-open",
+      "data-change"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-recordings-move": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "s-cancel",
+      "s-keep",
+      "s-move"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-data-move": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "s-cancel",
+      "s-move"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-data-pending": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "models-open",
+      "models-change",
+      "recordings-open",
+      "recordings-change",
+      "rec-retention",
+      "data-restart",
+      "data-undo",
+      "data-open",
+      "data-change"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-speech": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "model-active",
+      "model-manage",
+      "language",
+      "vad",
+      "ep-cpu",
+      "ep-gpu-hp",
+      "ep-gpu-lp",
+      "ep-model",
+      "adv",
+      "rp-1.0",
+      "rp-1.1",
+      "rp-1.2",
+      "rp-1.5"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-audio": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "src-mic",
+      "src-loop",
+      "src-mix"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-translation": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "tr-on",
+      "tr-target",
+      "eng-native",
+      "eng-http",
+      "tr-model",
+      "tr-cpu",
+      "tr-gpu",
+      "tr-prompt"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-translation-server": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "tr-on",
+      "tr-target",
+      "eng-native",
+      "eng-http",
+      "tr-url",
+      "tr-prompt"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-typing": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "inj-on",
+      "inj-focus",
+      "paste-ctrlv",
+      "paste-ctrlshiftv",
+      "paste-shiftins"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-hotkeys": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "hk-toggle",
+      "hk-mute",
+      "hk-inject"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-hotkeys-conflict": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "hk-toggle",
+      "hk-mute",
+      "hk-inject"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-general": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "gen-scroll",
+      "gen-autostart",
+      "gen-top",
+      "gen-clear",
+      "gen-reset"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-dark-storage": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models",
+      "models-open",
+      "models-change",
+      "recordings-open",
+      "recordings-change",
+      "rec-retention",
+      "data-open",
+      "data-change"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-dark-move": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "s-cancel",
+      "s-keep",
+      "s-move"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-min-hub": {
+    "viewport": "480x560",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 480,
+      "b": 560
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "nav-storage",
+      "nav-speech",
+      "nav-audio",
+      "nav-translation",
+      "nav-typing",
+      "nav-hotkeys",
+      "nav-general",
+      "nav-history",
+      "nav-models"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-min-storage": {
+    "viewport": "480x560",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 480,
+      "b": 560
+    },
+    "layer": "page",
+    "checked": [
+      "back",
+      "models-restart",
+      "models-undo",
+      "models-open",
+      "models-change",
+      "recordings-open",
+      "recordings-change",
+      "rec-retention",
+      "data-open",
+      "data-change"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-min-move": {
+    "viewport": "480x560",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 480,
+      "b": 560
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "s-cancel",
+      "s-keep",
+      "s-move"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-min-move-nested": {
+    "viewport": "480x560",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 480,
+      "b": 560
+    },
+    "layer": "sheet",
+    "checked": [
+      "s-close",
+      "s-cancel",
+      "s-pick"
+    ],
+    "issues": [],
+    "ok": true
+  }
+}
