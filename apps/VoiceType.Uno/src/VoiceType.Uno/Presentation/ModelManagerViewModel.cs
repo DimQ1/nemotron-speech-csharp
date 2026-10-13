@@ -45,10 +45,15 @@ public sealed partial class ModelManagerViewModel : ObservableObject
     /// <summary>Catalog entries in display order (recommended first).</summary>
     public ObservableCollection<ModelCardViewModel> Cards { get; } = [];
 
-    /// <summary>Folder the models are downloaded into.</summary>
+    /// <summary>The model storage folder (parent of <c>asr/</c>, <c>llm/</c> and <c>diarization/</c>).</summary>
     public string ModelsRootPath { get; private set; } = "";
 
-    public string StorageText => $"Models are stored in {ModelsRootPath}";
+    /// <summary>Where speech models are stored and downloaded: <c>&lt;root&gt;/asr</c>.</summary>
+    public string AsrDir => Layout.AsrDir;
+
+    private ModelStorageLayout Layout => new(ModelsRootPath);
+
+    public string StorageText => ModelStorageText.StoredIn(ModelKind.Speech, Layout) + ". " + ModelStorageText.PlaceFilesText(ModelKind.Speech, Layout);
 
     /// <summary>Friendly name of the model the app currently uses.</summary>
     public string ActiveModelText
@@ -108,9 +113,11 @@ public sealed partial class ModelManagerViewModel : ObservableObject
 
     private string ResolveRoot()
     {
-        var configured = _settingsProvider().ModelsRootPath;
-        return string.IsNullOrWhiteSpace(configured) ? AppPaths.ModelsDir : configured;
+        return ModelStorageLayout.Resolve(_settingsProvider()).Root;
     }
+
+    /// <summary>Folder of a catalog model: <c>asr/&lt;name&gt;</c>, or the flat root of older versions until it is migrated.</summary>
+    private string FolderOf(string folderName) => ModelPathResolver.LocateModelFolder(ModelsRootPath, folderName);
 
     /// <summary>Re-checks which models are on disk and which one is active.</summary>
     public void Refresh()
@@ -120,7 +127,7 @@ public sealed partial class ModelManagerViewModel : ObservableObject
 
         foreach (var card in Cards)
         {
-            var installed = ModelFolderScanner.IsModelDirectory(Path.Combine(ModelsRootPath, card.FolderName));
+            var installed = ModelFolderScanner.IsModelDirectory(FolderOf(card.FolderName));
             var inUse = installed && string.Equals(card.FolderName, active, StringComparison.OrdinalIgnoreCase);
             card.ApplyState(installed, inUse);
         }
@@ -139,31 +146,13 @@ public sealed partial class ModelManagerViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Counts the installed catalog models, the default model and the translation model and adds up
-    /// their size on disk (a handful of large files each, so the walk is cheap).
+    /// Counts every installed model of the storage folder (speech, language, speaker detection, including folders the
+    /// user copied in) and adds up their size on disk (a handful of large files each, so the walk is cheap).
     /// </summary>
     private string DescribeInstalled()
     {
-        var installed = Cards.Where(card => card.IsInstalled).ToList();
-        var bytes = installed.Sum(card => ModelStorage.SizeOf(Path.Combine(ModelsRootPath, card.FolderName)));
-        var count = installed.Count;
-
-        // The first-run default model lives outside the catalog.
-        var defaultFolder = DefaultAsrModel.FolderPath(ModelsRootPath);
-        if (Directory.Exists(defaultFolder))
-        {
-            count++;
-            bytes += ModelStorage.SizeOf(defaultFolder);
-        }
-
-        // Every installed language model (E2B, and E4B / 12B on desktop).
-        foreach (var llm in LlmModelCatalog.All.Where(m => m.IsInstalled))
-        {
-            count++;
-            bytes += ModelStorage.SizeOf(llm.LocalPath);
-        }
-
-        return ModelsPageFormatter.DescribeInstalled(count, bytes);
+        var summary = ModelStorageScanner.Summarize(Layout);
+        return ModelsPageFormatter.DescribeInstalled(summary.TotalCount, summary.TotalBytes);
     }
 
     /// <summary>Stops the cards' progress updates when the page closes; downloads keep running.</summary>
@@ -181,7 +170,7 @@ public sealed partial class ModelManagerViewModel : ObservableObject
         if (force)
             DeleteModelFolder(model.SubfolderName);
 
-        return _downloads.Enqueue(ModelDownloadRequest.ForCatalogModel(model, ModelsRootPath));
+        return _downloads.Enqueue(ModelDownloadRequest.ForCatalogModel(model, AsrDir));
     }
 
     /// <summary>The download pipeline, so cards can observe and cancel their own job.</summary>
@@ -191,7 +180,7 @@ public sealed partial class ModelManagerViewModel : ObservableObject
     {
         try
         {
-            var folder = Path.Combine(ModelsRootPath, folderName);
+            var folder = FolderOf(folderName);
             if (Directory.Exists(folder))
                 Directory.Delete(folder, recursive: true);
         }
@@ -225,7 +214,7 @@ public sealed partial class ModelManagerViewModel : ObservableObject
         var settings = _settingsProvider();
         settings.ModelsRootPath = ModelsRootPath;
         settings.SelectedModel = card.FolderName;
-        settings.ModelPath = Path.Combine(ModelsRootPath, card.FolderName);
+        settings.ModelPath = FolderOf(card.FolderName);
 
         _dispatcher.TryEnqueue(() => StatusText = $"Switching to {card.Title}...");
         await _applySettings(settings).ConfigureAwait(false);
@@ -241,7 +230,7 @@ public sealed partial class ModelManagerViewModel : ObservableObject
     {
         try
         {
-            var path = Path.Combine(ModelsRootPath, card.FolderName);
+            var path = FolderOf(card.FolderName);
             if (Directory.Exists(path))
                 Directory.Delete(path, recursive: true);
 

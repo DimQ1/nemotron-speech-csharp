@@ -51,9 +51,49 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Appends a line about model-storage migration to models-migration.log in the data root.</summary>
+    private static void LogModelStorage(string message)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.DataRoot);
+            File.AppendAllText(
+                Path.Combine(AppPaths.DataRoot, "models-migration.log"),
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Best-effort file logging.
+        }
+    }
+
+    private static void PrepareModelStorage()
+    {
+        try
+        {
+            var service = new SettingsService();
+            var settings = service.Load();
+            // Until the SettingsStore exists the layout follows this early copy.
+            ModelStorageLayout.UseRootProvider(() => settings.ModelsRootPath);
+
+            var report = ModelStorageMigrator.RunAtStartup(settings, LogModelStorage);
+            if (report.SettingsChanged)
+                service.Save(settings);
+            ModelStorageLayout.Resolve(settings).EnsureDirectories();
+        }
+        catch (Exception ex)
+        {
+            LogModelStorage($"model storage start-up failed: {ex}");
+        }
+    }
+
     [SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "Uno.Extensions APIs are used in a way that is safe for trimming in this template context.")]
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        // Before any service reads a model path: finish a pending "Move models", sort the flat model folders of older
+        // versions into asr/, llm/ and diarization/ (instant renames, never deletes, never overwrites).
+        PrepareModelStorage();
+
         var builder = this.CreateBuilder(args)
             .Configure(host => host
 #if DEBUG
@@ -67,7 +107,13 @@ public partial class App : Application
                     // Single owner of the live settings instance and the only writer of
                     // settings.json: the UI thread, model init, download continuations and
                     // the settings dialog all mutate through it.
-                    services.AddSingleton<SettingsStore>();
+                    services.AddSingleton(sp =>
+                    {
+                        var store = new SettingsStore(sp.GetRequiredService<SettingsService>());
+                        // Every model path comes from ModelStorageLayout.Current: it follows the live storage-folder setting.
+                        ModelStorageLayout.UseRootProvider(() => store.Current.ModelsRootPath);
+                        return store;
+                    });
                     // UI dispatcher behind an interface, so the UI-free core
                     // (VoiceType.Uno.Core) can be unit-tested with a deterministic scheduler.
                     services.AddSingleton<IUiScheduler>(_ => new DispatcherQueueUiScheduler(
@@ -210,6 +256,11 @@ public partial class App : Application
                         sp.GetRequiredService<ModelDownloadManager>(),
                         sp.GetRequiredService<SpeechLib.Llm.ILlmHostConfiguration>()));
                     // <<< larger Gemma
+                    // Speaker-detection model (INT8 / FP32 download, validation, switch) over the same download queue.
+                    services.AddSingleton<IDiarizationModelService>(sp => DiarizationModelService.ForSettings(
+                        sp.GetRequiredService<ModelDownloadManager>(),
+                        sp.GetRequiredService<SettingsStore>(),
+                        OperatingSystem.IsAndroid()));
 
 #if DEBUG
                     // [llm-ui] Debug stand-in with simulated downloads; keep this LAST so a real ILlmModelService wins.

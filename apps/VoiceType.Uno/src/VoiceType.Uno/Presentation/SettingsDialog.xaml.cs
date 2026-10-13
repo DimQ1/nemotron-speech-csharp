@@ -25,7 +25,27 @@ public sealed partial class SettingsDialog : ContentDialog
     {
         ViewModel = new SettingsViewModel(settings);
         InitializeComponent();
+
+        // Phones keep models in the app's private storage: no file manager, no folder picker.
+        var desktop = !OperatingSystem.IsAndroid();
+        StorageBrowseButton.Visibility = desktop ? Visibility.Visible : Visibility.Collapsed;
+        StorageOpenButton.Visibility = desktop ? Visibility.Visible : Visibility.Collapsed;
+        StorageRootBox.IsReadOnly = !desktop;
     }
+
+    /// <summary>Re-measures the typed folder when the box loses focus (not on every keystroke).</summary>
+    private void StorageRoot_LostFocus(object sender, RoutedEventArgs e) => ViewModel.RefreshStorage();
+
+    private async void StorageBrowse_Click(object sender, RoutedEventArgs e)
+    {
+        var folder = await VoiceType.Uno.Presentation.History.ExportDialog.PickFolderAsync(XamlRoot);
+        if (folder is null)
+            return;
+        ViewModel.ModelsRootPath = folder.Path;
+        ViewModel.RefreshStorage();
+    }
+
+    private void StorageOpen_Click(object sender, RoutedEventArgs e) => FolderOpener.Open(ViewModel.ModelsRootPath);
 
     private void OpenModelManager_Click(object sender, RoutedEventArgs e)
     {
@@ -121,7 +141,7 @@ public sealed partial class SettingsDialog : ContentDialog
     private async void DownloadTranslationModel_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         ViewModel.IsDownloadingModel = true;
-        ViewModel.DownloadStatus = "Queued translation model download...";
+        ViewModel.DownloadStatus = "Queued Gemma language model download...";
         try
         {
             // The single .litertlm file goes through the shared download manager.
@@ -131,6 +151,7 @@ public sealed partial class SettingsDialog : ContentDialog
             await job.Completion;
             ViewModel.DownloadStatus = $"Downloaded to {job.ResultPath}";
             ViewModel.NotifyNativeModelChanged();
+            ViewModel.RefreshStorage();
         }
         catch (OperationCanceledException)
         {

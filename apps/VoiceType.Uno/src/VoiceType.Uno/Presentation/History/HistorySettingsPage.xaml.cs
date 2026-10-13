@@ -66,7 +66,7 @@ public sealed partial class HistorySettingsPage : Page
             JobsSwitch.IsOn = h.AllowJobsDuringRecording;
             TitlesSwitch.IsOn = h.AutoTitles;
             if (!VoiceType.Uno.Services.Jobs.GemmaAvailability.IsInstalled)
-                TitlesDetail.Text = "Needs the Gemma translation model: download it on the Models page";
+                TitlesDetail.Text = "Needs a Gemma language model: download it on the Models page (Gemma tab)";
             InjectSwitch.IsEnabled = h.Enabled;
             if (OperatingSystem.IsAndroid())
                 JobsDetail.Text = "Slower and uses more battery while you record";

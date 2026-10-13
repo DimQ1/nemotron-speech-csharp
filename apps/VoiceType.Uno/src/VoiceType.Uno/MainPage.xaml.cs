@@ -135,7 +135,7 @@ public sealed partial class MainPage : Page
         }
 
         var settings = ViewModel.CreateSettingsSnapshot();
-        var root = string.IsNullOrWhiteSpace(settings.ModelsRootPath) ? AppPaths.ModelsDir : settings.ModelsRootPath;
+        var root = ModelStorageLayout.Resolve(settings).AsrDir;
         Console.WriteLine($"[SMOKE] {descriptor.Title} | repo={descriptor.RepoId} quant={descriptor.QuantizationFolder} root={root}");
 
         var downloads = App.Services.GetRequiredService<ModelDownloadManager>();
@@ -517,7 +517,13 @@ public sealed partial class MainPage : Page
             // The dialog closes itself when the user asks for the model manager, so
             // pending edits are saved first and the Models page opens afterwards.
             if (result == ContentDialogResult.Primary || dialog.OpenModelManagerRequested)
-                await ViewModel.ApplySettingsAsync(dialog.ViewModel.BuildSettings());
+            {
+                var original = ViewModel.CreateSettingsSnapshot();
+                var built = dialog.ViewModel.BuildSettings();
+                // Another model storage folder: move the models on the next start, keep them where they are, or drop the change.
+                await ModelStorageUi.ChooseAsync(XamlRoot, built, original);
+                await ViewModel.ApplySettingsAsync(built);
+            }
 
             if (dialog.OpenModelManagerRequested)
                 OpenModelsPage(ModelsTab.Speech);

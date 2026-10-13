@@ -27,8 +27,8 @@ public static class TranslationModelInfo
     /// </summary>
     public const string Backend = "cpu";
 
-    /// <summary>Local destination for the downloaded model file.</summary>
-    public static string LocalModelPath => Path.Combine(AppPaths.ModelsDir, FileName);
+    /// <summary>Local destination for the downloaded model file: <c>&lt;models root&gt;/llm/&lt;file&gt;</c>.</summary>
+    public static string LocalModelPath => LlmModelCatalog.Default.LocalPath;
 
     /// <summary>True when the model file already exists on disk.</summary>
     public static bool IsDownloaded => File.Exists(LocalModelPath);
@@ -37,12 +37,7 @@ public static class TranslationModelInfo
     public static bool HasPartialDownload => File.Exists(LocalModelPath + ".part") || File.Exists(LocalModelPath + ".download");
 
     /// <summary>A download request for the single .litertlm file.</summary>
-    public static ModelDownloadRequest CreateRequest() =>
-        new(Key, $"Translation model · {FileName}", RepoId, AppPaths.ModelsDir)
-        {
-            SingleFile = FileName,
-            Kind = ModelDownloadKind.Translation
-        };
+    public static ModelDownloadRequest CreateRequest() => LlmModelService.CreateRequest(LlmModelCatalog.Default);
 
     /// <summary>Deletes the model file and any leftover temp file (repair a broken install).</summary>
     public static void DeleteDownloaded()

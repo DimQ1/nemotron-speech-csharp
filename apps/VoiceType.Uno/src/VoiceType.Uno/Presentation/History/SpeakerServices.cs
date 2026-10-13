@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.UI.Xaml.Media;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.Presentation.History;
 
@@ -27,6 +28,52 @@ internal static class SpeakerServices
                 return null; // host not built (designer / tests)
             }
         }
+    }
+
+    /// <summary>The speaker-model download service (Models › Speakers uses the same one), or null in a host without it.</summary>
+    public static IDiarizationModelService? Models
+    {
+        get
+        {
+            try
+            {
+                return App.Services.GetService<IDiarizationModelService>();
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>The running speaker-model download (percent and text), null when none runs.</summary>
+    public static SpeakerModelDownload? ModelDownload()
+    {
+        if (Models is not { } models)
+            return null;
+        foreach (var model in models.Models)
+        {
+            if (models.DownloadPercent(model) is { } percent)
+                return new SpeakerModelDownload(percent, models.DownloadProgressText(model));
+        }
+        return null;
+    }
+
+    /// <summary>Starts the one-tap download of the recommended speaker model (the shared queue; resumes a partial one).</summary>
+    public static bool StartModelDownload()
+    {
+        if (Models is not { } models || models.Models.FirstOrDefault() is not { } model)
+            return false;
+        models.StartDownload(model);
+        return true;
+    }
+
+    public static void CancelModelDownload()
+    {
+        if (Models is not { } models)
+            return;
+        foreach (var model in models.Models)
+            models.CancelDownload(model);
     }
 
     public static IReprocessChainEnqueuer? Chain

@@ -3,7 +3,8 @@ namespace VoiceType.Uno.Services;
 public sealed record LlmModelInfo(string Id, string Title, string RepoId, string FileName, long SizeBytes,
     int ContextTokens, double MinFreeRamGb, bool PhoneSupported, string Tagline, string Description)
 {
-    public string LocalPath => System.IO.Path.Combine(AppPaths.ModelsDir, FileName);
+    /// <summary>The model file under <c>&lt;models root&gt;/llm/</c> (<see cref="ModelStorageLayout.Current"/>).</summary>
+    public string LocalPath => ModelStorageLayout.Current.LlmFilePath(FileName);
     public bool IsInstalled => System.IO.File.Exists(LocalPath);
 }
 public static class LlmModelCatalog

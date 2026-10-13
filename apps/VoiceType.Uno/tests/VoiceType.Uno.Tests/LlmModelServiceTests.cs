@@ -269,7 +269,7 @@ public sealed class LlmModelServiceTests : IDisposable
 
         Assert.Equal("litert-community/gemma-4-E4B-it-litert-lm", request.RepoId);
         Assert.Equal("gemma-4-E4B-it.litertlm", request.SingleFile);
-        Assert.Equal(AppPaths.ModelsDir, request.TargetDirectory);
+        Assert.Equal(ModelStorageLayout.Current.LlmDir, request.TargetDirectory);
         Assert.Equal("llm-gemma-4-e4b", request.Key);
     }
 

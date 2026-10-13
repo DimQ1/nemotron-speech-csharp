@@ -383,6 +383,86 @@
         </Grid>
       </DataTemplate>
 
+      <!-- One speaker-detection model (Speakers tab) -->
+      <DataTemplate x:Key="SpeakerCardTemplate" x:DataType="presentation:SpeakerModelCardViewModel">
+        <Grid>
+          <Border Style="{StaticResource ModelCardStyle}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{x:Bind Title}" Style="{StaticResource CardTitleStyle}" />
+
+              <controls:ChipWrapPanel Spacing="4">
+                <Border Style="{StaticResource ChipStyle}">
+                  <TextBlock Text="{x:Bind SizeChip}" Style="{StaticResource ChipTextStyle}" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}">
+                  <TextBlock Text="{x:Bind PrecisionChip}" Style="{StaticResource ChipTextStyle}" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}">
+                  <TextBlock Text="up to 8 speakers" Style="{StaticResource ChipTextStyle}" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}"
+                        Background="{ThemeResource ModelsHintBrush}" BorderBrush="Transparent"
+                        Visibility="{x:Bind ShowRecommendedChip}">
+                  <TextBlock Text="★ Recommended" Style="{StaticResource ChipTextStyle}" FontWeight="SemiBold" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind ShowDesktopOnlyChip}">
+                  <TextBlock Text="Desktop only" Style="{StaticResource ChipTextStyle}" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                        Visibility="{x:Bind ShowInUseChip, Mode=OneWay}">
+                  <TextBlock Text="● In use" Style="{StaticResource ChipTextStyle}"
+                             Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                </Border>
+                <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind ShowInstalledChip, Mode=OneWay}">
+                  <TextBlock Text="installed" Style="{StaticResource ChipTextStyle}" />
+                </Border>
+              </controls:ChipWrapPanel>
+
+              <TextBlock Text="{x:Bind Tagline}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{x:Bind Description}" Style="{StaticResource SecondaryTextStyle}" />
+
+              <StackPanel Spacing="4" Visibility="{x:Bind ShowProgress, Mode=OneWay}">
+                <ProgressBar Maximum="100" Value="{x:Bind Percent, Mode=OneWay}" />
+                <TextBlock Text="{x:Bind ProgressText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
+              </StackPanel>
+
+              <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{x:Bind StatusText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"
+                           VerticalAlignment="Center" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="1" Content="{x:Bind ActionText, Mode=OneWay}"
+                        Style="{StaticResource AccentActionButtonStyle}"
+                        Click="SpeakerPrimary_Click"
+                        Visibility="{x:Bind ShowAccentAction, Mode=OneWay}"
+                        AutomationProperties.Name="{x:Bind PrimaryAutomationName, Mode=OneWay}" />
+                <Button Grid.Column="1" Content="{x:Bind ActionText, Mode=OneWay}"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Click="SpeakerPrimary_Click"
+                        Visibility="{x:Bind ShowPlainAction, Mode=OneWay}"
+                        AutomationProperties.Name="{x:Bind PrimaryAutomationName, Mode=OneWay}" />
+                <Button Grid.Column="2" Style="{StaticResource IconButtonStyle}" Width="44" Height="44"
+                        Click="SpeakerMore_Click"
+                        Visibility="{x:Bind CanDelete, Mode=OneWay}"
+                        AutomationProperties.Name="{x:Bind MoreAutomationName}"
+                        ToolTipService.ToolTip="More actions">
+                  <SymbolIcon Symbol="More" />
+                </Button>
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" BorderThickness="2"
+                  CornerRadius="8" IsHitTestVisible="False"
+                  Visibility="{x:Bind ShowInUseChip, Mode=OneWay}" />
+        </Grid>
+      </DataTemplate>
+
       <!-- One job (Downloads tab) -->
       <DataTemplate x:Key="DownloadItemTemplate" x:DataType="presentation:DownloadItemViewModel">
         <Border Style="{StaticResource ModelCardStyle}">
@@ -489,7 +569,8 @@
     <ScrollViewer x:Name="ContentScroll" Grid.Row="2"
                   HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
-      <Grid MaxWidth="760" Margin="16,0,16,16">
+      <StackPanel MaxWidth="760" Margin="16,0,16,16" Spacing="12">
+        <Grid>
 
         <!-- Speech -->
         <StackPanel x:Name="SpeechPane" Spacing="8">
@@ -518,7 +599,7 @@
           <TextBlock Text="{x:Bind Models.StorageText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" FontSize="11" />
         </StackPanel>
 
-        <!-- Speakers: the on-device speaker detection model (Nemotron 3 Diarization) -->
+        <!-- Speakers: the on-device speaker detection model (Nemotron 3 Diarization): download, cancel, use, delete -->
         <StackPanel x:Name="SpeakersPane" Spacing="8" Visibility="Collapsed">
           <Border Style="{StaticResource HintBorderStyle}">
             <StackPanel>
@@ -527,35 +608,35 @@
             </StackPanel>
           </Border>
 
-          <Border Style="{StaticResource ModelCardStyle}">
-            <StackPanel Spacing="8">
-              <TextBlock x:Name="SpeakersTitle" Style="{StaticResource CardTitleStyle}" />
-              <controls:ChipWrapPanel Spacing="4">
-                <Border Style="{StaticResource ChipStyle}">
-                  <TextBlock Text="ONNX" Style="{StaticResource ChipTextStyle}" />
-                </Border>
-                <Border Style="{StaticResource ChipStyle}">
-                  <TextBlock Text="up to 8 speakers" Style="{StaticResource ChipTextStyle}" />
-                </Border>
-                <Border x:Name="SpeakersInstalledChip" Style="{StaticResource ChipStyle}"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" Visibility="Collapsed">
-                  <TextBlock Text="installed" Style="{StaticResource ChipTextStyle}"
-                             Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
-                </Border>
-              </controls:ChipWrapPanel>
-              <TextBlock x:Name="SpeakersStatus" FontSize="13" TextWrapping="Wrap" FontWeight="SemiBold" />
-              <TextBlock x:Name="SpeakersFacts" Style="{StaticResource SecondaryTextStyle}" />
-              <TextBlock x:Name="SpeakersLicence" Style="{StaticResource SecondaryTextStyle}" />
-              <TextBlock x:Name="SpeakersPlaceFiles" FontSize="13" Opacity="0.85" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-              <StackPanel Spacing="4">
-                <Button x:Name="SpeakersDownloadButton" Content="Download" IsEnabled="False" HorizontalAlignment="Right"
-                        Style="{StaticResource AccentActionButtonStyle}" AutomationProperties.Name="Download the speaker model (not available yet)" />
-                <TextBlock x:Name="SpeakersDownloadNote" Style="{StaticResource SecondaryTextStyle}" HorizontalTextAlignment="Right" />
-              </StackPanel>
-            </StackPanel>
+          <TextBlock x:Name="SpeakersStatus" FontSize="13" TextWrapping="Wrap" FontWeight="SemiBold"
+                     AutomationProperties.LiveSetting="Polite" />
+
+          <!-- Failed download / delete -->
+          <Border x:Name="SpeakersErrorBanner" Style="{StaticResource HintBorderStyle}" Visibility="Collapsed">
+            <Grid ColumnSpacing="8">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock x:Name="SpeakersErrorText" FontSize="13" TextWrapping="Wrap"
+                         Foreground="{ThemeResource ModelsErrorBrush}" VerticalAlignment="Center"
+                         AutomationProperties.LiveSetting="Assertive" />
+              <Button Grid.Column="1" Content="Dismiss" Style="{StaticResource ActionButtonStyle}" Click="SpeakersDismissError_Click" />
+            </Grid>
           </Border>
 
+          <ItemsControl x:Name="SpeakerCards" ItemTemplate="{StaticResource SpeakerCardTemplate}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <controls:CardColumnsPanel MinColumnWidth="300" MaxColumns="1" Spacing="8" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+          </ItemsControl>
+
+          <TextBlock x:Name="SpeakersFacts" Style="{StaticResource SecondaryTextStyle}" />
+          <TextBlock x:Name="SpeakersLicence" Style="{StaticResource SecondaryTextStyle}" />
+          <TextBlock x:Name="SpeakersSource" Style="{StaticResource SecondaryTextStyle}" IsTextSelectionEnabled="True" />
+          <TextBlock x:Name="SpeakersPlaceFiles" Style="{StaticResource SecondaryTextStyle}" FontSize="11" IsTextSelectionEnabled="True" />
           <TextBlock Style="{StaticResource SecondaryTextStyle}" FontSize="11"
                      Text="Speaker labels are computed on this device from the saved audio. No voice prints are stored: speakers are numbered inside one recording." />
         </StackPanel>
@@ -741,7 +822,11 @@
             </ItemsControl.ItemsPanel>
           </ItemsControl>
         </StackPanel>
-      </Grid>
+        </Grid>
+
+        <!-- The ONE model storage block, under every tab: root, asr/ llm/ diarization/ lines, total, free space -->
+        <controls:ModelStorageBlock x:Name="StorageBlock" />
+      </StackPanel>
     </ScrollViewer>
   </Grid>
 </Page>

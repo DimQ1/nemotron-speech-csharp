@@ -1,3 +1,5 @@
+using VoiceType.Uno.Services;
+
 namespace VoiceType.Uno.History;
 
 /// <summary>Wording of the Models › Speakers tab, Settings › Speakers and the chat additions (testable without a UI).</summary>
@@ -5,10 +7,9 @@ public static class SpeakersModelsUi
 {
     public const string TabLabel = "Speakers";
     public const string ModelTitle = "Nemotron 3 Diarization";
-    public const string ModelFolder = "nemotron-3-diarization-onnx-int8";
-    public const string Licence = "OpenMDW-1.1 · NVIDIA Nemotron-3-Diarization";
-    public const string Facts = "ONNX · about 100M parameters · up to 8 speakers";
-    public const string DownloadDisabledText = "Download will be available once published";
+    public const string Licence = "OpenMDW-1.1 · derived from NVIDIA Nemotron-3-Diarization";
+    public const string Facts = "ONNX · about 100M parameters · up to 8 speakers · runs on this device";
+    public const string SourceText = "Downloaded from huggingface.co/DimQ1/nemotron-3-diarization-onnx";
 
     public const string Intro = "Tells who spoke when, on this device. Run it from a recording (Detect speakers) or after each recording stops.";
 
@@ -28,10 +29,9 @@ public static class SpeakersModelsUi
         return modelAvailable ? ModelTitle + " is installed" : "Model not installed";
     }
 
-    /// <summary>Where to copy the model folder: the app's models folder plus the folder name.</summary>
-    public static string PlaceFilesText(string modelsRoot) =>
-        "Copy the model folder “" + ModelFolder + "” (model.onnx and its config files) into " + modelsRoot
-        + ". It is detected automatically; use Refresh at the top of the page.";
+    /// <summary>Where the model is stored and where to copy it for an offline install (the <c>diarization/</c> folder of the models root).</summary>
+    public static string PlaceFilesText(ModelStorageLayout layout) =>
+        ModelStorageText.StoredIn(ModelKind.Speaker, layout) + ". " + ModelStorageText.PlaceFilesText(ModelKind.Speaker, layout);
 
     public static string ThreadsLabel(int threads) => threads <= 0 ? "Automatic" : threads + (threads == 1 ? " thread" : " threads");
 

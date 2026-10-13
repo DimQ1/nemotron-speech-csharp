@@ -38,11 +38,11 @@ public sealed record DiarizationModelDescriptor(
 /// <summary>
 /// Where the model lives and what it consists of. The app downloads the files into a folder named
 /// <see cref="Int8FolderName"/> (int8 only), <see cref="Fp32FolderName"/> (fp32 only) or <see cref="FolderName"/> (everything)
-/// under its models root, the same <c>{repo}-{variant}</c> naming <c>ModelDescriptor.SubfolderName</c> produces;
+/// under `<models root>/diarization/` of the app, the same <c>{repo}-{variant}</c> naming <c>ModelDescriptor.SubfolderName</c> produces;
 /// <see cref="Find"/> and <see cref="Validate"/> turn that into a loadable descriptor.
 /// </summary>
 /// <remarks>
-/// For the model catalog (not wired yet): one catalog entry per variant, each a list of
+/// The app catalog (VoiceType.Uno.Core DiarizationModelCatalog, DimQ1/nemotron-3-diarization-onnx) has: one catalog entry per variant, each a list of
 /// <see cref="Int8Files"/> / <see cref="Fp32Files"/> (+ <see cref="CommonFiles"/>) at the repo root, a
 /// model-kind "diarization" that is not an ASR provider, <see cref="UpstreamRepo"/> and <see cref="License"/>
 /// to show in the UI, and the sizes below (rendered in Models, Speakers). See

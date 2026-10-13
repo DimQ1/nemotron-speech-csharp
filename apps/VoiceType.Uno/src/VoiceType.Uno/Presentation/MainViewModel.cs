@@ -462,7 +462,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string _translationModelBannerText =
-        "Translation model is not downloaded — translation will use the HTTP server fallback or stay off.";
+        "Gemma language model is not downloaded — translation will use the HTTP server fallback or stay off.";
 
     [ObservableProperty]
     private bool _isAsrModelPartial;
@@ -534,8 +534,8 @@ public sealed partial class MainViewModel : ObservableObject
             IsTranslationModelPartial = !TranslationModelInfo.IsDownloaded && TranslationModelInfo.HasPartialDownload;
             IsTranslationModelMissing = !TranslationModelInfo.IsDownloaded;
             TranslationModelBannerText = IsTranslationModelPartial
-                ? "Translation model download is incomplete — re-download it to finish."
-                : "Translation model is not downloaded — translation will use the HTTP server fallback or stay off.";
+                ? "Gemma language model download is incomplete — re-download it to finish."
+                : "Gemma language model is not downloaded — translation will use the HTTP server fallback or stay off.";
             LlmSubtitle = "Gemma 4, on-device";
         }
 
@@ -550,16 +550,14 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Enqueues the ASR model download into the shared queue (force re-download when partial).</summary>
     public void EnqueueAsrModelDownload()
     {
-        var modelsRoot = string.IsNullOrWhiteSpace(Settings.ModelsRootPath)
-            ? AppPaths.ModelsDir
-            : Settings.ModelsRootPath;
+        var layout = ModelStorageLayout.Resolve(Settings);
 
         if (IsAsrModelPartial)
-            DeleteModelFolder(DefaultAsrModel.FolderPath(modelsRoot));
+            DeleteModelFolder(DefaultAsrModel.FolderPath(layout));
 
-        var job = _downloads.Enqueue(DefaultAsrModel.CreateRequest(modelsRoot));
+        var job = _downloads.Enqueue(DefaultAsrModel.CreateRequest(layout));
         _ = job.Completion.ContinueWith(
-            _ => _scheduler.Post(() => _ = AdoptDownloadedModelAsync(job, modelsRoot)),
+            _ => _scheduler.Post(() => _ = AdoptDownloadedModelAsync(job, layout.Root)),
             TaskScheduler.Default);
     }
 
@@ -1249,18 +1247,16 @@ public sealed partial class MainViewModel : ObservableObject
         if (modelPath is null)
         {
             SetModelPreparationState(true, true, "Downloading model...");
-            var modelsRoot = string.IsNullOrWhiteSpace(Settings.ModelsRootPath)
-                ? AppPaths.ModelsDir
-                : Settings.ModelsRootPath;
+            var layout = ModelStorageLayout.Resolve(Settings);
 
             // Enqueue into the shared download manager and await this job's
             // completion. Aggregate progress shows on the main window.
-            var job = _downloads.Enqueue(DefaultAsrModel.CreateRequest(modelsRoot));
+            var job = _downloads.Enqueue(DefaultAsrModel.CreateRequest(layout));
             modelPath = await job.Completion.ConfigureAwait(false);
 
             await _settingsStore.MutateAsync(s =>
             {
-                s.ModelsRootPath = modelsRoot;
+                s.ModelsRootPath = layout.Root;
                 s.SelectedModel = Path.GetFileName(modelPath);
                 s.ModelPath = modelPath;
             }).ConfigureAwait(false);

@@ -140,15 +140,87 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public string ModelPath => !string.IsNullOrWhiteSpace(ModelsRootPath)
         && !string.IsNullOrWhiteSpace(SelectedModel)
-        ? Path.Combine(ModelsRootPath, SelectedModel)
+        ? ModelPathResolver.LocateModelFolder(ModelsRootPath.Trim(), SelectedModel)
         : string.Empty;
+
+    // ── Model storage block (one root, one sub-folder per kind) ────────────
+
+    public string StorageTitle => ModelStorageText.Title;
+    public string StorageRootLabel => ModelStorageText.RootLabel;
+    public string StorageExplanation => ModelStorageText.Explanation;
+
+    [ObservableProperty]
+    private string _storageSpeechLine = "";
+
+    [ObservableProperty]
+    private string _storageLanguageLine = "";
+
+    [ObservableProperty]
+    private string _storageSpeakerLine = "";
+
+    [ObservableProperty]
+    private string _storageTotalLine = "";
+
+    /// <summary>Shown when the folder differs from the saved one, or after a start-up move that could not finish.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStorageNote))]
+    private string _storageNote = "";
+
+    public bool HasStorageNote => !string.IsNullOrEmpty(StorageNote);
+
+    /// <summary>The storage folder as saved (before this dialog), for detecting a change.</summary>
+    public string OriginalModelsRoot => ModelStorageLayout.Resolve(_original).Root;
+
+    /// <summary>True when the folder in the box is another folder than the saved one.</summary>
+    public bool IsModelsRootChanged
+    {
+        get
+        {
+            try
+            {
+                return !string.IsNullOrWhiteSpace(ModelsRootPath)
+                    && !string.Equals(
+                        Path.GetFullPath(ModelsRootPath.Trim()).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                        OriginalModelsRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                        ModelStorageLayout.PathComparison);
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or IOException)
+            {
+                return false;
+            }
+        }
+    }
+
+    /// <summary>Re-measures the folder in the box (call after editing the path, Browse or a download).</summary>
+    public void RefreshStorage()
+    {
+        ModelStorageSummary summary;
+        try
+        {
+            summary = ModelStorageScanner.Summarize(new ModelStorageLayout(string.IsNullOrWhiteSpace(ModelsRootPath) ? AppPaths.ModelsDir : ModelsRootPath));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or IOException)
+        {
+            StorageSpeechLine = StorageLanguageLine = StorageSpeakerLine = "";
+            StorageTotalLine = "This folder cannot be used.";
+            return;
+        }
+
+        StorageSpeechLine = summary.Line(ModelKind.Speech).Text;
+        StorageLanguageLine = summary.Line(ModelKind.Language).Text;
+        StorageSpeakerLine = summary.Line(ModelKind.Speaker).Text;
+        StorageTotalLine = summary.TotalText;
+        StorageNote = IsModelsRootChanged
+            ? ModelStorageText.ChangeRootNote
+            : !string.IsNullOrWhiteSpace(_original.PendingModelsRoot)
+                ? ModelStorageText.PendingMoveNote(_original.PendingModelsRoot)
+                : _original.ModelStorageNote;
+    }
 
     public SettingsViewModel(AppSettings settings)
     {
         _original = settings.Clone();
-        ModelsRootPath = string.IsNullOrWhiteSpace(settings.ModelsRootPath)
-            ? AppPaths.ModelsDir
-            : settings.ModelsRootPath;
+        ModelsRootPath = ModelStorageLayout.Resolve(settings).Root;
         SelectedModel = settings.SelectedModel;
         ExecutionProvider = settings.ExecutionProvider;
         Language = settings.Language;
@@ -171,6 +243,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         AutoStartRecognition = settings.AutoStartRecognition;
         ClearTextOnModelOrSessionChange = settings.ClearTextOnModelOrSessionChange;
         ScanModels();
+        RefreshStorage();
     }
 
     partial void OnModelsRootPathChanged(string value) => ScanModels();
@@ -185,9 +258,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         // writes null back), so remember the choice and restore it after the rescan.
         var selected = SelectedModel;
         AvailableModels.Clear();
-        if (Directory.Exists(ModelsRootPath))
+        if (!string.IsNullOrWhiteSpace(ModelsRootPath))
         {
-            foreach (var name in ModelFolderScanner.ScanModelFolderNames(ModelsRootPath))
+            // <root>/asr plus the flat root of older versions (and any folder the user copied into either).
+            var layout = new ModelStorageLayout(ModelsRootPath);
+            foreach (var name in layout.AsrScanRoots.SelectMany(ModelFolderScanner.ScanModelFolderNames)
+                         .Distinct(StringComparer.OrdinalIgnoreCase)
+                         .OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
                 AvailableModels.Add(name);
         }
 

@@ -10,8 +10,8 @@ using Windows.System;
 namespace VoiceType.Uno.Presentation;
 
 /// <summary>
-/// Full-screen "Models" page with three tabs: speech models of the catalog,
-/// the on-device translation model and the shared download queue. Opened with
+/// Full-screen "Models" page with four tabs: speech models of the catalog,
+/// the Gemma language models, the speaker-detection model and the shared download queue. Opened with
 /// <c>Frame.Navigate(typeof(ModelsPage), ModelsTab.X)</c>; the back button, Escape
 /// and the system back gesture return to the main page. Downloads keep running
 /// after the page closes — they live in the app-wide <see cref="ModelDownloadManager"/>.
@@ -35,10 +35,20 @@ public sealed partial class ModelsPage : Page
             LlmModels = new LlmModelsViewModel(llm, dispatcher, OperatingSystem.IsAndroid());
             LlmModels.PropertyChanged += OnLlmPropertyChanged;
         }
+        if (App.Services.GetService<IDiarizationModelService>() is { } diarization)
+            SpeakerModels = new SpeakerModelsViewModel(diarization, dispatcher);
         Downloads = new DownloadsViewModel(downloads, dispatcher);
         TranslationModel.PropertyChanged += OnTranslationPropertyChanged;
 
         InitializeComponent();
+        SpeakerCards.ItemsSource = SpeakerModels?.Cards;
+        if (SpeakerModels is not null)
+            SpeakerModels.PropertyChanged += OnSpeakerModelsPropertyChanged;
+
+        // A finished download changes the sizes of the Model storage block.
+        _downloadManager = downloads;
+        downloads.JobFinished += OnJobFinished;
+        StorageBlock.StorageChanged += OnStorageChanged;
 
         // Without the model service the page keeps the single Gemma 4 E2B card.
         LlmPanel.Visibility = LlmModels is null ? Visibility.Collapsed : Visibility.Visible;
@@ -46,8 +56,34 @@ public sealed partial class ModelsPage : Page
         SyncCompute();
     }
 
+    private readonly ModelDownloadManager _downloadManager;
+
     /// <summary>Gemma tab: one card per language model of this device, or null when the service is not registered.</summary>
     public LlmModelsViewModel? LlmModels { get; }
+
+    /// <summary>Speakers tab: the speaker-detection model cards, or null when the service is not registered.</summary>
+    public SpeakerModelsViewModel? SpeakerModels { get; }
+
+    private void OnJobFinished(DownloadJob job) =>
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                await StorageBlock.RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[VoiceType.Uno] Model storage refresh failed: {ex.Message}");
+            }
+        });
+
+    private void OnStorageChanged()
+    {
+        Models.Refresh();
+        TranslationModel.Refresh();
+        LlmModels?.Refresh();
+        SpeakerModels?.Refresh();
+    }
 
     public string LlmSharedNote => LlmUiText.SharedModelNote;
 
@@ -74,6 +110,11 @@ public sealed partial class ModelsPage : Page
 
         // The page is not cached: drop every subscription to the app-wide download manager.
         TranslationModel.PropertyChanged -= OnTranslationPropertyChanged;
+        _downloadManager.JobFinished -= OnJobFinished;
+        StorageBlock.StorageChanged -= OnStorageChanged;
+        if (SpeakerModels is not null)
+            SpeakerModels.PropertyChanged -= OnSpeakerModelsPropertyChanged;
+        SpeakerModels?.Detach();
         Models.Detach();
         TranslationModel.Detach();
         Downloads.Detach();
@@ -214,19 +255,43 @@ public sealed partial class ModelsPage : Page
         }
     }
 
-    /// <summary>Speakers tab: install status, size, licence, where to put the files; Download stays disabled until the model is published.</summary>
+    /// <summary>Speakers tab: install status, the INT8 / FP32 cards (download, cancel, use, delete), licence, where the files live.</summary>
     private void UpdateSpeakersPane()
     {
-        var service = VoiceType.Uno.Presentation.History.SpeakerServices.Current;
-        var available = service?.IsModelAvailable == true;
         SpeakersIntro.Text = SpeakersModelsUi.Intro;
-        SpeakersTitle.Text = SpeakersModelsUi.ModelTitle;
-        SpeakersInstalledChip.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
-        SpeakersStatus.Text = SpeakersModelsUi.Status(service is not null, available, service?.ModelStatus);
         SpeakersFacts.Text = SpeakersModelsUi.Facts;
         SpeakersLicence.Text = "Licence: " + SpeakersModelsUi.Licence;
-        SpeakersPlaceFiles.Text = SpeakersModelsUi.PlaceFilesText(AppPaths.ModelsDir);
-        SpeakersDownloadNote.Text = SpeakersModelsUi.DownloadDisabledText;
+        SpeakersSource.Text = SpeakersModelsUi.SourceText;
+
+        if (SpeakerModels is null)
+        {
+            // No model service in this build: only the status line of the speaker service remains.
+            var service = VoiceType.Uno.Presentation.History.SpeakerServices.Current;
+            SpeakersStatus.Text = SpeakersModelsUi.Status(service is not null, service?.IsModelAvailable == true, service?.ModelStatus);
+            SpeakersPlaceFiles.Text = SpeakersModelsUi.PlaceFilesText(ModelStorageLayout.Current);
+            return;
+        }
+
+        SpeakerModels.Refresh();
+        SpeakersStatus.Text = SpeakerModels.StatusText;
+        SpeakersPlaceFiles.Text = SpeakerModels.PlaceFilesText;
+        SpeakersErrorText.Text = SpeakerModels.ErrorText;
+        SpeakersErrorBanner.Visibility = SpeakerModels.HasError ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnSpeakerModelsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (SpeakerModels is null)
+            return;
+        switch (e.PropertyName)
+        {
+            case nameof(SpeakerModelsViewModel.StatusText): SpeakersStatus.Text = SpeakerModels.StatusText; break;
+            case nameof(SpeakerModelsViewModel.PlaceFilesText): SpeakersPlaceFiles.Text = SpeakerModels.PlaceFilesText; break;
+            case nameof(SpeakerModelsViewModel.ErrorText): SpeakersErrorText.Text = SpeakerModels.ErrorText; break;
+            case nameof(SpeakerModelsViewModel.HasError):
+                SpeakersErrorBanner.Visibility = SpeakerModels.HasError ? Visibility.Visible : Visibility.Collapsed;
+                break;
+        }
     }
 
     private void Refresh_Click(object sender, RoutedEventArgs e)
@@ -235,7 +300,42 @@ public sealed partial class ModelsPage : Page
         Models.Refresh();
         TranslationModel.Refresh();
         LlmModels?.Refresh();
+        _ = StorageBlock.RefreshAsync();
     }
+
+    // ── Speaker model cards ───────────────────────────────────────────────
+
+    private async void SpeakerPrimary_Click(object sender, RoutedEventArgs e)
+    {
+        if (SpeakerModels is not null && SpeakerCardOf(sender) is { } card)
+            await SpeakerModels.RunPrimaryAsync(card);
+    }
+
+    /// <summary>"⋯": Delete (confirmed), only for an installed model.</summary>
+    private void SpeakerMore_Click(object sender, RoutedEventArgs e)
+    {
+        if (SpeakerModels is null || SpeakerCardOf(sender) is not { } card || sender is not FrameworkElement anchor)
+            return;
+
+        var menu = new MenuFlyout();
+        var delete = new MenuFlyoutItem { Text = "Delete", Icon = new SymbolIcon(Symbol.Delete) };
+        delete.Click += async (_, _) =>
+        {
+            if (await ConfirmDeleteAsync(card.Title, $"The {DownloadProgressFormatter.FormatBytes(card.Model.SizeBytes)} model files are removed from this device. You can download them again later."))
+            {
+                SpeakerModels.Delete(card);
+                Models.Refresh();
+                _ = StorageBlock.RefreshAsync();
+            }
+        };
+        menu.Items.Add(delete);
+        menu.ShowAt(anchor);
+    }
+
+    private void SpeakersDismissError_Click(object sender, RoutedEventArgs e) => SpeakerModels?.ClearError();
+
+    private static SpeakerModelCardViewModel? SpeakerCardOf(object sender)
+        => (sender as FrameworkElement)?.DataContext as SpeakerModelCardViewModel;
 
     // The subtitle counts the translation model too.
     private void OnTranslationPropertyChanged(object? sender, PropertyChangedEventArgs e)

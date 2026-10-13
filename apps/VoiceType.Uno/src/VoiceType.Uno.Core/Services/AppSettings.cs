@@ -10,7 +10,18 @@ public sealed class AppSettings
 {
     public string Language { get; set; } = "auto";
     public string AudioSource { get; set; } = "Mic";
+    /// <summary>
+    /// "Model storage folder": the ONE root of all models (<c>asr/</c>, <c>llm/</c>, <c>diarization/</c> inside it, see
+    /// <see cref="ModelStorageLayout"/>). Empty means the app's default (<see cref="AppPaths.ModelsDir"/>).
+    /// </summary>
     public string ModelsRootPath { get; set; } = "";
+    /// <summary>
+    /// A new model storage folder the user chose with "Move models": at the next start, before anything loads, the
+    /// existing models move there (<see cref="ModelStorageMigrator.MoveRoot"/>) and this becomes <see cref="ModelsRootPath"/>.
+    /// </summary>
+    public string PendingModelsRoot { get; set; } = "";
+    /// <summary>One line the Model storage block shows after a start-up move or migration that could not finish; cleared when shown once resolved.</summary>
+    public string ModelStorageNote { get; set; } = "";
     public string SelectedModel { get; set; } = "";
     public string ModelPath { get; set; } = "";
     public string SessionsPath { get; set; } = "";

@@ -28,12 +28,12 @@ internal static class DefaultAsrModel
     /// </summary>
     public static string Describe(string? folderName) => KnownModels.Describe(folderName);
 
-    /// <summary>Full path of the installed model folder.</summary>
-    public static string FolderPath(string modelsRoot) => Path.Combine(modelsRoot, FolderName);
+    /// <summary>Full path of the installed model folder: <c>&lt;models root&gt;/asr/&lt;folder&gt;</c>.</summary>
+    public static string FolderPath(ModelStorageLayout layout) => layout.AsrModelPath(FolderName);
 
-    /// <summary>A download request for <paramref name="modelsRoot"/>.</summary>
-    public static ModelDownloadRequest CreateRequest(string modelsRoot) =>
-        new(Key, Title, RepoId, FolderPath(modelsRoot))
+    /// <summary>A download request into the <c>asr/</c> folder of <paramref name="layout"/>.</summary>
+    public static ModelDownloadRequest CreateRequest(ModelStorageLayout layout) =>
+        new(Key, Title, RepoId, FolderPath(layout))
         {
             Kind = ModelDownloadKind.Recognition
         };

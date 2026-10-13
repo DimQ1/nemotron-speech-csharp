@@ -6,6 +6,7 @@ using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.AudioStorage;
 using SpeechLib.Diarization;
+using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.History;
 
@@ -53,12 +54,11 @@ public interface IDiarizerFactory
 
 /// <summary>
 /// <see cref="IDiarizerFactory"/> over <c>SpeechLib.Diarization</c>: finds <c>nemotron-3-diarization-onnx-int8|-fp32|bare</c>
-/// under the model roots (<see cref="DiarizationModelLocator.Find"/>) and runs <see cref="OfflineDiarizer"/>.
+/// under the given roots (<see cref="DiarizationModelLocator.Find"/>) and runs <see cref="OfflineDiarizer"/>.
 /// </summary>
 /// <remarks>
-/// TODO(catalog): the ONNX files are not on Hugging Face yet (tools/converters/NemotronDiarization/publish_hf.md). Once they
-/// are published, add the catalog entries (kind "diarization", files <see cref="DiarizationModelLocator.Int8Files"/> etc.) and
-/// let Models › Speakers download into <c>AppPaths.ModelsDir</c>; this factory then finds them without a change.
+/// The app passes <see cref="ModelStorageLayout.DiarizationScanRoots"/> (<c>&lt;models root&gt;/diarization</c> first, then the flat
+/// root of older versions); Models › Speakers downloads the catalog models (<see cref="DiarizationModelCatalog"/>) into the first.
 /// </remarks>
 public sealed class OnnxDiarizerFactory(Func<IReadOnlyList<string>> modelRoots) : IDiarizerFactory
 {

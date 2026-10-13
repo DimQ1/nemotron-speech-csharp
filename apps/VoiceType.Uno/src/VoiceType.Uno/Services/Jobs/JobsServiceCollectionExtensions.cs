@@ -40,7 +40,8 @@ public static class JobsServiceCollectionExtensions
         services.AddSingleton<IDiarizerFactory>(sp =>
         {
             var settings = sp.GetRequiredService<SettingsStore>();
-            return new OnnxDiarizerFactory(() => InstalledAsrModels.DefaultRoots(settings.Snapshot()));
+            // <models root>/diarization first, then the flat root of older versions.
+            return new OnnxDiarizerFactory(() => DiarizationModels.Roots(settings.Current));
         });
         services.AddSingleton<IJobExecutor>(sp =>
         {

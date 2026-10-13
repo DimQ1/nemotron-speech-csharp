@@ -55,14 +55,19 @@ public sealed record InstalledAsrModel(string Folder, string Path, ModelDescript
 /// <summary>Finds installed ASR models (complete folders only) under the model roots.</summary>
 public static class InstalledAsrModels
 {
-    /// <summary>Configured root, the folder of the selected model, then the app's models folder.</summary>
+    /// <summary>
+    /// Where speech models are looked for: <c>asr/</c> of the model storage folder (then its flat root, which older
+    /// versions used and which may hold folders the user added), the folder of the selected model, then the same for the
+    /// app's default models folder. Folders found earlier win.
+    /// </summary>
     public static IReadOnlyList<string> DefaultRoots(AppSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        var roots = new List<string?> { settings.ModelsRootPath };
+        var roots = new List<string?>();
+        roots.AddRange(ModelStorageLayout.Resolve(settings).AsrScanRoots);
         if (!string.IsNullOrWhiteSpace(settings.ModelPath))
             roots.Add(System.IO.Path.GetDirectoryName(settings.ModelPath.TrimEnd('/', '\\')));
-        roots.Add(AppPaths.ModelsDir);
+        roots.AddRange(new ModelStorageLayout(AppPaths.ModelsDir).AsrScanRoots);
         return Distinct(roots);
     }
 

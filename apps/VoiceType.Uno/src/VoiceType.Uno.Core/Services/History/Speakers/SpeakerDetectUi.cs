@@ -7,8 +7,11 @@ public enum SpeakerDetectKind
     /// <summary>No speaker service in this build: the controls stay hidden.</summary>
     Unavailable,
 
-    /// <summary>The ONNX model is not installed: explain and open the Models page.</summary>
+    /// <summary>The ONNX model is not installed: explain and offer a one-tap download.</summary>
     NoModel,
+
+    /// <summary>The model is downloading (shared queue): progress and Cancel.</summary>
+    DownloadingModel,
 
     /// <summary>Model installed, no layer yet: offer "Detect speakers".</summary>
     Idle,
@@ -31,7 +34,9 @@ public sealed record SpeakerDetectInfo(SpeakerDetectKind Kind, string Title, str
 public static class SpeakerDetectUi
 {
     public const string NoModelTitle = "Speaker detection needs a model";
-    public const string NoModelDetail = "Nemotron 3 Diarization is not installed yet. See the Speakers section on the Models page.";
+    public const string NoModelDetail = "Nemotron 3 Diarization is not installed yet. Download it once (about 106 MB); it runs on this device.";
+    public const string DownloadButton = "Download";
+    public const string DownloadingTitle = "Downloading the speaker model…";
     public const string IdleTitle = "Who spoke when";
     public const string IdleDetail = "Detect speakers on this device. The audio never leaves it.";
 
@@ -40,8 +45,9 @@ public static class SpeakerDetectUi
     /// <param name="hasLayer">The viewed version has a speaker layer.</param>
     /// <param name="hasAudio">Detection runs on the stored audio.</param>
     /// <param name="running">The tracked job: null when none is active.</param>
+    /// <param name="modelDownload">The speaker model download in the shared queue, when one is running.</param>
     public static SpeakerDetectInfo Describe(bool serviceAvailable, bool modelAvailable, bool hasLayer, bool hasAudio,
-        SpeakerDetectJob? running)
+        SpeakerDetectJob? running, SpeakerModelDownload? modelDownload = null, string? modelError = null)
     {
         if (!serviceAvailable)
             return new SpeakerDetectInfo(SpeakerDetectKind.Unavailable, "", "", "", false, false, 0);
@@ -58,8 +64,12 @@ public static class SpeakerDetectUi
             return new SpeakerDetectInfo(SpeakerDetectKind.Running, "Detecting speakers…",
                 percent > 0 ? (percent * 100).ToString("0", CultureInfo.InvariantCulture) + " %" : "Starting", "Running", false, true, percent);
         }
+        if (!modelAvailable && modelDownload is { } download)
+            return new SpeakerDetectInfo(SpeakerDetectKind.DownloadingModel, DownloadingTitle,
+                string.IsNullOrWhiteSpace(download.Text) ? "Starting" : download.Text, "Cancel", true, true, Math.Clamp(download.Percent / 100d, 0, 1));
         if (!modelAvailable)
-            return new SpeakerDetectInfo(SpeakerDetectKind.NoModel, NoModelTitle, NoModelDetail, "Open Models", true, false, 0);
+            return new SpeakerDetectInfo(SpeakerDetectKind.NoModel, NoModelTitle,
+                string.IsNullOrWhiteSpace(modelError) ? NoModelDetail : modelError + " Try again.", DownloadButton, true, false, 0);
         if (!hasAudio)
             return new SpeakerDetectInfo(SpeakerDetectKind.Idle, IdleTitle, "The audio of this recording is gone, so speakers cannot be detected.", "Detect speakers", false, false, 0);
         return new SpeakerDetectInfo(SpeakerDetectKind.Idle, IdleTitle, IdleDetail, "Detect speakers", true, false, 0);
@@ -77,6 +87,9 @@ public static class SpeakerDetectUi
     /// <summary>Whether a queue job is a speaker detection (matched by name so it works before the enum value exists everywhere).</summary>
     public static bool IsDiarizeJob(HistoryJob job) => job.Kind.ToString() == "Diarize";
 }
+
+/// <summary>Snapshot of the running speaker-model download (percent 0..100 and its "42% · 44 / 106 MB" text).</summary>
+public readonly record struct SpeakerModelDownload(double Percent, string? Text);
 
 /// <summary>Snapshot of the tracked diarization job.</summary>
 public readonly record struct SpeakerDetectJob(bool Waiting, bool Failed, double Progress, string? Error);

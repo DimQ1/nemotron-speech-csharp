@@ -5,6 +5,11 @@ namespace VoiceType.Uno.Services;
 /// <summary>Finds and normalizes installed model directories for all UNO targets.</summary>
 public static class ModelPathResolver
 {
+    /// <summary>
+    /// The usable speech model: the selected folder under <c>&lt;root&gt;/asr</c> (or, until migrated, the flat root), the
+    /// stored <see cref="AppSettings.ModelPath"/>, then any complete model folder under the model storage folder and the
+    /// default one. Folders the user copied into <c>asr/</c> are found like downloaded ones.
+    /// </summary>
     public static string? FindExistingModelPath(AppSettings settings)
     {
         var candidates = new List<string>();
@@ -12,7 +17,11 @@ public static class ModelPathResolver
         var configuredRoot = NormalizePath(settings.ModelsRootPath);
 
         if (configuredRoot is not null && !string.IsNullOrWhiteSpace(settings.SelectedModel))
-            AddCandidate(candidates, seen, Path.Combine(configuredRoot, settings.SelectedModel));
+        {
+            var layout = new ModelStorageLayout(configuredRoot);
+            AddCandidate(candidates, seen, layout.AsrModelPath(settings.SelectedModel));
+            AddCandidate(candidates, seen, Path.Combine(layout.Root, settings.SelectedModel)); // flat layout of older versions
+        }
 
         // A concrete ModelPath is more authoritative than directory scanning, but only
         // after the current root/selection pair has had a chance to resolve (same order
@@ -21,21 +30,43 @@ public static class ModelPathResolver
 
         if (configuredRoot is not null)
         {
-            AddCandidate(candidates, seen, configuredRoot);
-            AddModelDirectories(candidates, seen, configuredRoot);
+            var layout = new ModelStorageLayout(configuredRoot);
+            AddModelDirectories(candidates, seen, layout.AsrDir);
+            AddCandidate(candidates, seen, layout.Root);
+            AddModelDirectories(candidates, seen, layout.Root);
         }
 
         var defaultRoot = NormalizePath(AppPaths.ModelsDir);
         if (defaultRoot is not null)
         {
-            AddCandidate(candidates, seen, defaultRoot);
-            AddModelDirectories(candidates, seen, defaultRoot);
+            var layout = new ModelStorageLayout(defaultRoot);
+            AddModelDirectories(candidates, seen, layout.AsrDir);
+            AddCandidate(candidates, seen, layout.Root);
+            AddModelDirectories(candidates, seen, layout.Root);
         }
 
         AddDevelopmentCandidates(candidates, seen);
         return candidates.FirstOrDefault(IsModelDirectory);
     }
 
+    /// <summary>
+    /// The folder of a speech model by name under a models root: <c>&lt;root&gt;/asr/&lt;name&gt;</c>, or the flat
+    /// <c>&lt;root&gt;/&lt;name&gt;</c> of older versions while it has not been migrated; the <c>asr/</c> path when neither exists.
+    /// </summary>
+    public static string LocateModelFolder(string modelsRoot, string folderName)
+    {
+        var layout = new ModelStorageLayout(modelsRoot);
+        var inAsr = layout.AsrModelPath(folderName);
+        if (Directory.Exists(inAsr))
+            return inAsr;
+        var flat = Path.Combine(layout.Root, folderName);
+        return Directory.Exists(flat) ? flat : inAsr;
+    }
+
+    /// <summary>
+    /// Points <see cref="AppSettings.ModelPath"/>, the selection and the storage folder at the usable model.
+    /// The storage folder is the model's parent (or its parent's parent when the model sits in <c>asr/</c>).
+    /// </summary>
     public static bool ApplyExistingModelPath(AppSettings settings)
     {
         var modelPath = FindExistingModelPath(settings);
@@ -49,8 +80,14 @@ public static class ModelPathResolver
             changed = true;
         }
 
-        var modelRoot = Path.GetDirectoryName(modelPath);
-        if (modelRoot is not null && !PathsEqual(settings.ModelsRootPath, modelRoot))
+        // The storage folder follows the model only when the model lives outside both the configured folder and the app's
+        // default one. A model found in the default folder while the user chose another (still empty) folder must not
+        // undo that choice: it is a fallback, and new downloads go to the chosen folder.
+        var modelRoot = StorageRootOf(modelPath);
+        var configured = NormalizePath(settings.ModelsRootPath);
+        var insideConfigured = configured is not null && new ModelStorageLayout(configured).Contains(modelPath);
+        var insideDefault = new ModelStorageLayout(AppPaths.ModelsDir).Contains(modelPath);
+        if (modelRoot is not null && !insideConfigured && !insideDefault && !PathsEqual(settings.ModelsRootPath, modelRoot))
         {
             settings.ModelsRootPath = modelRoot;
             changed = true;
@@ -64,6 +101,17 @@ public static class ModelPathResolver
         }
 
         return changed;
+    }
+
+    /// <summary>The model storage folder a model folder belongs to: the parent of <c>asr/</c>, or the parent for a flat model.</summary>
+    internal static string? StorageRootOf(string modelPath)
+    {
+        var parent = Path.GetDirectoryName(modelPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        if (parent is null)
+            return null;
+        return string.Equals(Path.GetFileName(parent), ModelStorageLayout.AsrFolderName, StringComparison.OrdinalIgnoreCase)
+            ? Path.GetDirectoryName(parent) ?? parent
+            : parent;
     }
 
     private static void AddModelDirectories(List<string> candidates, HashSet<string> seen, string root)
@@ -260,23 +308,41 @@ public static class ModelPathResolver
             if (configuredRoot is not null)
                 roots.Add(configuredRoot);
             var defaultRoot = NormalizePath(AppPaths.ModelsDir);
-            if (defaultRoot is not null)
+            if (defaultRoot is not null && !roots.Contains(defaultRoot, StringComparer.OrdinalIgnoreCase))
                 roots.Add(defaultRoot);
 
             foreach (var root in roots)
             {
-                if (!Directory.Exists(root))
-                    continue;
+                var layout = new ModelStorageLayout(root);
 
-                if (Directory.EnumerateFiles(root, "*.part", SearchOption.AllDirectories).Any())
-                    return true;
-
-                // Any model-shaped dir that is not complete counts as partial.
-                foreach (var dir in Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories))
+                // Speech models: asr/ plus the flat folders of older versions (llm/ and diarization/ have their own partials).
+                var folders = new List<string>();
+                if (Directory.Exists(layout.AsrDir))
+                    folders.AddRange(Directory.EnumerateDirectories(layout.AsrDir));
+                if (Directory.Exists(layout.Root))
                 {
-                    var hasOnnx = Directory.EnumerateFiles(dir, "*.onnx*").Any();
-                    if (hasOnnx && CheckIntegrity(dir) != ModelIntegrity.Complete)
+                    folders.AddRange(Directory.EnumerateDirectories(layout.Root).Where(d =>
+                    {
+                        var name = Path.GetFileName(d);
+                        return !string.Equals(name, ModelStorageLayout.AsrFolderName, StringComparison.OrdinalIgnoreCase)
+                            && !string.Equals(name, ModelStorageLayout.LlmFolderName, StringComparison.OrdinalIgnoreCase)
+                            && !string.Equals(name, ModelStorageLayout.DiarizationFolderName, StringComparison.OrdinalIgnoreCase)
+                            && !name.StartsWith("nemotron-3-diarization-onnx", StringComparison.OrdinalIgnoreCase);
+                    }));
+                }
+
+                foreach (var folder in folders)
+                {
+                    if (Directory.EnumerateFiles(folder, "*.part", SearchOption.AllDirectories).Any())
                         return true;
+
+                    // Any model-shaped dir that is not complete counts as partial.
+                    foreach (var dir in new[] { folder }.Concat(Directory.EnumerateDirectories(folder, "*", SearchOption.AllDirectories)))
+                    {
+                        var hasOnnx = Directory.EnumerateFiles(dir, "*.onnx*").Any();
+                        if (hasOnnx && CheckIntegrity(dir) != ModelIntegrity.Complete)
+                            return true;
+                    }
                 }
             }
         }

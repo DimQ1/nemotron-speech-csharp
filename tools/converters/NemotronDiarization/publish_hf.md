@@ -1,6 +1,6 @@
-# Publishing the diarization ONNX files to Hugging Face (not done yet)
+# Publishing the diarization ONNX files to Hugging Face (done: https://huggingface.co/DimQ1/nemotron-3-diarization-onnx)
 
-Nothing here has been run. The ONNX export lives in the gitignored `models/nemotron-3-diarization-onnx/`.
+Status: published (public, `int8/` and `fp32/` sub-folders, LICENSE OpenMDW-1.1 and README at the root); the app downloads from it (`DiarizationModelCatalog`). The ONNX export lives in the gitignored `models/nemotron-3-diarization-onnx/`.
 This page lists exactly what to upload and how the app's catalog will consume it.
 
 ## Files to upload
@@ -71,7 +71,7 @@ huggingface-cli upload <user>/nemotron-3-diarization-onnx models/nemotron-3-diar
 * How it was converted: `tools/converters/NemotronDiarization/export_onnx.py`, torch 2.14.1, transformers 5.19.0.dev0, onnx 1.23.2, opset 17.
 * Tested with ONNX Runtime 1.30 CPU (win-x64). Not verified on phones.
 
-## What the model catalog needs (do not edit `ModelCatalog` until the repo exists)
+## What the model catalog needs (implemented: `VoiceType.Uno.Core` `DiarizationModelCatalog`, a separate catalog; `ModelCatalog` stays ASR-only)
 
 `ModelCatalog.Models` is a list of ASR `ModelDescriptor`s with WER/speed research metrics, which do not apply here. Suggested minimal change,
 for whoever wires the UI (Models, Speakers tab):

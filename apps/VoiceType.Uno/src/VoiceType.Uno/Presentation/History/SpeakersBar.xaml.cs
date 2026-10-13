@@ -23,7 +23,10 @@ public sealed partial class SpeakersBar : UserControl
     public event Action<string?>? FilterRequested;
 
     public event EventHandler? DetectRequested;
-    public event EventHandler? OpenModelsRequested;
+    /// <summary>One tap on "Download" of the missing speaker model.</summary>
+    public event EventHandler? DownloadModelRequested;
+
+    public event EventHandler? CancelModelDownloadRequested;
     public event Action<bool>? ColorWordsRequested;
 
     public void Update(RecordingViewModel vm, double width, double height)
@@ -143,7 +146,9 @@ public sealed partial class SpeakersBar : UserControl
     private void Detect_Click(object sender, RoutedEventArgs e)
     {
         if (_detectKind == SpeakerDetectKind.NoModel)
-            OpenModelsRequested?.Invoke(this, EventArgs.Empty);
+            DownloadModelRequested?.Invoke(this, EventArgs.Empty);
+        else if (_detectKind == SpeakerDetectKind.DownloadingModel)
+            CancelModelDownloadRequested?.Invoke(this, EventArgs.Empty);
         else
             DetectRequested?.Invoke(this, EventArgs.Empty);
     }

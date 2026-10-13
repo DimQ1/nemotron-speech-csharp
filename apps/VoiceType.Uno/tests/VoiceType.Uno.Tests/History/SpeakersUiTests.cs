@@ -270,11 +270,11 @@ public class SpeakerDetectUiTests
         Assert.False(SpeakerDetectUi.Describe(true, true, true, true, null).IsVisible);
 
     [Fact]
-    public void Describe_ShouldExplainAMissingModelAndOpenModels()
+    public void Describe_ShouldExplainAMissingModelAndOfferTheDownload()
     {
         var info = SpeakerDetectUi.Describe(true, false, false, true, null);
         Assert.Equal(SpeakerDetectKind.NoModel, info.Kind);
-        Assert.Equal("Open Models", info.ButtonText);
+        Assert.Equal("Download", info.ButtonText);
         Assert.True(info.ButtonEnabled);
     }
 

@@ -169,7 +169,7 @@ public sealed class LlmModelService : ILlmModelService, IDisposable
         _switchGate.Dispose();
     }
 
-    /// <summary>The download request of a model: one file from its repo into the models folder.</summary>
+    /// <summary>The download request of a model: one file from its repo into the llm folder of the models root.</summary>
     public static ModelDownloadRequest CreateRequest(LlmModelInfo model)
     {
         ArgumentNullException.ThrowIfNull(model);
@@ -177,7 +177,7 @@ public sealed class LlmModelService : ILlmModelService, IDisposable
             LlmModelCatalog.DownloadKey(model),
             $"Language model · {model.Title}",
             model.RepoId,
-            Path.GetDirectoryName(model.LocalPath) ?? AppPaths.ModelsDir)
+            Path.GetDirectoryName(model.LocalPath) ?? ModelStorageLayout.Current.LlmDir)
         {
             SingleFile = Path.GetFileName(model.LocalPath),
             Kind = ModelDownloadKind.Translation,

@@ -33,7 +33,8 @@ public sealed record ModelDownloadRequest(string Key, string Title, string RepoI
         };
 }
 
-public enum ModelDownloadKind { Recognition, Translation }
+/// <summary>What a download is for: speech recognition, the on-device language model, or speaker detection.</summary>
+public enum ModelDownloadKind { Recognition, Translation, Diarization }
 
 public enum DownloadJobState { Queued, Downloading, Completed, Failed, Cancelled }
 

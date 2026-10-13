@@ -7,12 +7,37 @@
                DefaultButton="Primary">
   <ScrollViewer MaxHeight="620" VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="12" Padding="4">
+      <!-- ONE place for where models live: the root folder, then a live line per kind of model. -->
+      <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
+        <StackPanel Spacing="8">
+          <TextBlock Text="{x:Bind ViewModel.StorageTitle}" FontWeight="SemiBold" />
+          <TextBlock Text="{x:Bind ViewModel.StorageExplanation}" Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
+          <TextBlock Text="{x:Bind ViewModel.StorageRootLabel}" Opacity="0.7" FontSize="12" />
+          <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="StorageRootBox" Text="{x:Bind ViewModel.ModelsRootPath, Mode=TwoWay}" LostFocus="StorageRoot_LostFocus"
+                     AutomationProperties.Name="Model storage folder" />
+            <Button x:Name="StorageBrowseButton" Grid.Column="1" Content="Browse…" MinHeight="44" Click="StorageBrowse_Click"
+                    AutomationProperties.Name="Browse for the model storage folder" />
+          </Grid>
+          <TextBlock Text="{x:Bind ViewModel.StorageSpeechLine, Mode=OneWay}" FontSize="12" TextWrapping="Wrap" />
+          <TextBlock Text="{x:Bind ViewModel.StorageLanguageLine, Mode=OneWay}" FontSize="12" TextWrapping="Wrap" />
+          <TextBlock Text="{x:Bind ViewModel.StorageSpeakerLine, Mode=OneWay}" FontSize="12" TextWrapping="Wrap" />
+          <TextBlock Text="{x:Bind ViewModel.StorageTotalLine, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Text="{x:Bind ViewModel.StorageNote, Mode=OneWay}" Opacity="0.8" FontSize="11" TextWrapping="Wrap"
+                     Visibility="{x:Bind ViewModel.HasStorageNote, Mode=OneWay}" />
+          <Button x:Name="StorageOpenButton" Content="Open folder" MinHeight="44" HorizontalAlignment="Left" Click="StorageOpen_Click"
+                  AutomationProperties.Name="Open the model storage folder" />
+        </StackPanel>
+      </Border>
+
       <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
         <StackPanel Spacing="8">
           <TextBlock Text="Speech Engine" FontWeight="SemiBold" />
-          <TextBlock Text="Models root folder" Opacity="0.7" FontSize="12" />
-          <TextBox Text="{x:Bind ViewModel.ModelsRootPath, Mode=TwoWay}" />
-          <TextBlock Text="Installed model folder (used for recognition)" Opacity="0.7" FontSize="12" />
+          <TextBlock Text="Installed speech model (used for recognition)" Opacity="0.7" FontSize="12" />
           <ComboBox ItemsSource="{x:Bind ViewModel.AvailableModels}"
                     SelectedItem="{x:Bind ViewModel.SelectedModel, Mode=TwoWay}"
                     HorizontalAlignment="Stretch"
@@ -21,8 +46,8 @@
           <TextBlock Text="{x:Bind ViewModel.ActiveModelSummary, Mode=OneWay}"
                      TextWrapping="Wrap" FontSize="12" />
           <Button Content="Manage models…" Click="OpenModelManager_Click"
-                  HorizontalAlignment="Left" />
-          <TextBlock Text="Compare Parakeet, Nemotron and Qwen3 variants by accuracy, speed and download size, then download or switch the active model."
+                  HorizontalAlignment="Left" MinHeight="44" />
+          <TextBlock Text="Compare Parakeet, Nemotron and Qwen3 variants by accuracy, speed and download size, then download or switch the active model. Gemma and speaker detection models are on the Models page too."
                      Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
           <TextBlock Text="{x:Bind ViewModel.DownloadStatus, Mode=OneWay}"
                      Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
@@ -68,11 +93,11 @@
           <TextBlock Text="Target language (code such as ru, en, de, or a name such as Belarusian)" Opacity="0.7" FontSize="12" />
           <TextBox Text="{x:Bind ViewModel.TranslationTargetLanguage, Mode=TwoWay}"
                    PlaceholderText="ru" />
-          <TextBlock Text="Native model (.litertlm)" Opacity="0.7" FontSize="12" />
+          <TextBlock Text="Gemma language model (llm folder of the model storage)" Opacity="0.7" FontSize="12" />
           <TextBlock Text="{x:Bind ViewModel.NativeModelStatus, Mode=OneWay}"
                      Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Download native model"
+            <Button Content="Download Gemma model" MinHeight="44"
                     Click="DownloadTranslationModel_Click"
                     IsEnabled="{x:Bind ViewModel.CanDownloadModel, Mode=OneWay}" />
             <ProgressRing Width="20" Height="20"
@@ -139,7 +164,7 @@
         </StackPanel>
       </Border>
 
-      <TextBlock Text="A missing model is downloaded in the background when the app starts."
+      <TextBlock Text="A missing speech model is downloaded in the background when the app starts. All models are stored in the model storage folder above."
                  Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
     </StackPanel>
   </ScrollViewer>

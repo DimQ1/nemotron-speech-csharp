@@ -82,7 +82,7 @@ public sealed partial class ReprocessSheet : ContentDialog
         if (!modelReady)
         {
             SpeakersStepSwitch.IsOn = false;
-            SpeakersStepHint.Text = "Needs the speaker model: see Speakers on the Models page";
+            SpeakersStepHint.Text = "Needs the speaker model: download it on Models › Speakers (106 MB)";
         }
         AnalysisStepSwitch.IsOn = false;
         AnalysisStepSwitch.IsEnabled = VoiceType.Uno.Services.Jobs.GemmaAvailability.IsInstalled;

@@ -342,7 +342,8 @@ public sealed partial class RecordingPage : Page
         SpeakerBar.OpenSheetRequested += async (_, _) => await ShowSpeakersSheetAsync();
         SpeakerBar.FilterRequested += id => ViewModel.SetFilter(id);
         SpeakerBar.DetectRequested += async (_, _) => await DetectSpeakersAsync();
-        SpeakerBar.OpenModelsRequested += (_, _) => OpenSpeakersModels();
+        SpeakerBar.DownloadModelRequested += (_, _) => StartSpeakerModelDownload(detectWhenReady: false);
+        SpeakerBar.CancelModelDownloadRequested += (_, _) => { _detectWhenModelReady = false; SpeakerServices.CancelModelDownload(); ViewModel.RefreshDetect(); };
         SpeakerBar.ColorWordsRequested += on => ViewModel.ColorWords = on;
         ViewModel.SpeakersChanged += () =>
         {
@@ -357,6 +358,8 @@ public sealed partial class RecordingPage : Page
         _speakerService = SpeakerServices.Current;
         if (_speakerService is not null)
             _speakerService.Changed += OnSpeakerServiceChanged;
+        if (SpeakerServices.Models is { } models)
+            models.Changed += OnSpeakerModelsChanged;
         try
         {
             HistoryServices.Jobs.Changed += OnJobsChanged;
@@ -372,6 +375,8 @@ public sealed partial class RecordingPage : Page
         if (_speakerService is not null)
             _speakerService.Changed -= OnSpeakerServiceChanged;
         _speakerService = null;
+        if (SpeakerServices.Models is { } models)
+            models.Changed -= OnSpeakerModelsChanged;
         try
         {
             HistoryServices.Jobs.Changed -= OnJobsChanged;
@@ -417,7 +422,8 @@ public sealed partial class RecordingPage : Page
         DetectSpeakersLabel.Text = detect.Kind switch
         {
             SpeakerDetectKind.Queued or SpeakerDetectKind.Running => SpeakerDetectUi.ChipText(detect),
-            SpeakerDetectKind.NoModel => "Detect speakers (needs a model)",
+            SpeakerDetectKind.NoModel => "Detect speakers · download model",
+            SpeakerDetectKind.DownloadingModel => "Downloading speaker model…",
             _ => ViewModel.HasLayer ? "Detect speakers again…" : "Detect speakers…",
         };
         DetectSpeakersButton.IsEnabled = ViewModel.HasAudio && detect.Kind is not (SpeakerDetectKind.Queued or SpeakerDetectKind.Running);
@@ -490,7 +496,8 @@ public sealed partial class RecordingPage : Page
             return;
         if (!service.IsModelAvailable)
         {
-            OpenSpeakersModels();
+            // One tap: download the speaker model, then detect (the model is 106 MB, downloaded once).
+            StartSpeakerModelDownload(detectWhenReady: true);
             return;
         }
         var version = versionId ?? ViewModel.ViewedVersionId;
@@ -503,8 +510,38 @@ public sealed partial class RecordingPage : Page
         ViewModel.RefreshDetect();
     }
 
-    private void OpenSpeakersModels() =>
-        VoiceType.Uno.Presentation.Chat.ChatServices.RootFrame(XamlRoot)?.Navigate(typeof(VoiceType.Uno.Presentation.ModelsPage), VoiceType.Uno.Presentation.ModelsTab.Speakers);
+    private bool _detectWhenModelReady;
+    private string? _detectVersionWhenReady;
+
+    /// <summary>Starts the speaker-model download; with <paramref name="detectWhenReady"/> speaker detection follows when it is installed.</summary>
+    private void StartSpeakerModelDownload(bool detectWhenReady)
+    {
+        _detectWhenModelReady = detectWhenReady;
+        _detectVersionWhenReady = detectWhenReady ? ViewModel.ViewedVersionId : null;
+        SpeakerServices.StartModelDownload();
+        ViewModel.RefreshDetect();
+    }
+
+    private void OnSpeakerModelsChanged() => _dispatcher.TryEnqueue(async () =>
+    {
+        try
+        {
+            ViewModel.RefreshDetect();
+            if (_detectWhenModelReady && SpeakerServices.Current is { IsModelAvailable: true })
+            {
+                _detectWhenModelReady = false;
+                await DetectSpeakersAsync(_detectVersionWhenReady);
+            }
+            else if (_detectWhenModelReady && SpeakerServices.ModelDownload() is null && SpeakerServices.Models?.LastError is not null)
+            {
+                _detectWhenModelReady = false; // the failure is shown in the detect row
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[VoiceType.Uno] Speaker model update failed: {ex.Message}");
+        }
+    });
 
     // ── Header ⋯ ──────────────────────────────────────────────────────────
 

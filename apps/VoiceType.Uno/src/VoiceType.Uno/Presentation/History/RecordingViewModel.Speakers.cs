@@ -208,7 +208,9 @@ public sealed partial class RecordingViewModel
     {
         var service = SpeakerServices.Current;
         _detect = SpeakerDetectUi.Describe(service is not null, service?.IsModelAvailable == true, HasLayer, HasAudio,
-            service is null || HasLayer ? null : SpeakerServices.TrackedJob(RecordingId));
+            service is null || HasLayer ? null : SpeakerServices.TrackedJob(RecordingId),
+            service is null || HasLayer ? null : SpeakerServices.ModelDownload(),
+            service is null || HasLayer ? null : SpeakerServices.Models?.LastError);
     }
 
     private void RaiseSpeakers()
