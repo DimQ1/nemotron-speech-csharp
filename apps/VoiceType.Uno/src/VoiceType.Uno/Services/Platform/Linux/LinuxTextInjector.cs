@@ -109,4 +109,10 @@ public sealed class LinuxTextInjector : IPlatformTextInjector
             return;
         _clipboard.SetText(text);
     }
+
+    /// <summary>
+    /// False when the focused X11 window is VoiceType's own. Where that cannot be told (native Wayland windows, a
+    /// window manager without the hint) typing is allowed.
+    /// </summary>
+    public bool IsFocusedWindowForeign() => X11ActiveWindow.IsOwnedByThisProcess() != true;
 }

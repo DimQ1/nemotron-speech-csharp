@@ -42,6 +42,7 @@
     <Compile Include="..\..\src\VoiceType.Uno\Services\Platform\Linux\LinuxKeyboard.cs" Link="Platform\Linux\LinuxKeyboard.cs" />
     <Compile Include="..\..\src\VoiceType.Uno\Services\Platform\Linux\LinuxClipboard.cs" Link="Platform\Linux\LinuxClipboard.cs" />
     <Compile Include="..\..\src\VoiceType.Uno\Services\Platform\Linux\LinuxSession.cs" Link="Platform\Linux\LinuxSession.cs" />
+    <Compile Include="..\..\src\VoiceType.Uno\Services\Platform\Linux\X11ActiveWindow.cs" Link="Platform\Linux\X11ActiveWindow.cs" />
   </ItemGroup>
 
 </Project>

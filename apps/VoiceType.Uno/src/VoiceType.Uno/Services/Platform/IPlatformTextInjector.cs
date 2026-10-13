@@ -23,6 +23,13 @@ public interface IPlatformTextInjector
     bool CanInject => true;
 
     /// <summary>
+    /// True when the focused window belongs to another app, i.e. when typing reaches the app the user is dictating
+    /// into. False while the focus is inside VoiceType itself (a typed space or Enter would press its focused
+    /// button) or nothing has the focus. Platforms that cannot tell answer true.
+    /// </summary>
+    bool IsFocusedWindowForeign() => true;
+
+    /// <summary>
     /// How <see cref="Inject"/> delivers text: typed key by key (default) or pasted through the
     /// clipboard. Set from the settings; injectors without a choice ignore it.
     /// </summary>

@@ -135,14 +135,17 @@ public sealed partial class MainViewModel : ObservableObject
         };
         _transcript.FinalCommitted += text =>
         {
-            if (IsTextInjectionEnabled && IsTextInjectionAvailable && !string.IsNullOrEmpty(text))
-                InjectOffUiThread(text);
+            // Committed text was typed while recording; this pass only adds what is still missing
+            // (the words flushed when recording stopped), never the whole text again.
+            if (!string.IsNullOrEmpty(text))
+                TypeStableText(text);
 
             if (IsTranslationEnabled)
                 _ = _translation.FlushAsync();
         };
 
         _recognition.PartialResult += _transcript.OnPartialResult;
+        _recognition.CommittedResult += text => _scheduler.Post(() => TypeStableText(text));
         _recognition.FinalResult += _transcript.OnFinalResult;
         _recognition.Stopped += () =>
         {
@@ -366,6 +369,25 @@ public sealed partial class MainViewModel : ObservableObject
     // Tail of the injection queue: every Inject continues the previous one.
     private Task _injectTail = Task.CompletedTask;
 
+    private readonly LiveTextFeed _liveText = new();
+
+    /// <summary>
+    /// Types what is new in the recognizer's committed text into the focused window. Runs on the UI thread, in the
+    /// order the text was committed. Nothing is typed (and the text is not typed later) while injection is off, manual
+    /// input is on, or the focus is inside VoiceType itself: a typed space or Enter would press its focused button.
+    /// </summary>
+    private void TypeStableText(string stableText)
+    {
+        var canType = IsTextInjectionEnabled
+            && IsTextInjectionAvailable
+            && !_transcript.IsManualInputEnabled
+            && _textInjector.IsFocusedWindowForeign();
+
+        var delta = _liveText.Next(stableText, canType);
+        if (delta.Length > 0)
+            InjectOffUiThread(delta);
+    }
+
     /// <summary>
     /// Text is typed key by key into the focused window, which takes a while for a long
     /// sentence. Run it off the UI thread so the transcript stays responsive, and chain
@@ -394,7 +416,8 @@ public sealed partial class MainViewModel : ObservableObject
         else if (id > 0 && id == _injectTextHotkeyId)
             _scheduler.Post(() =>
             {
-                if (!string.IsNullOrEmpty(FloatingText))
+                // Pressed with another app focused: type the whole current transcript there.
+                if (!string.IsNullOrEmpty(FloatingText) && _textInjector.IsFocusedWindowForeign())
                     InjectOffUiThread(FloatingText);
             });
     }
@@ -890,6 +913,7 @@ public sealed partial class MainViewModel : ObservableObject
         // coordinator clears the field through TextChanged, which also feeds the
         // translator with the emptied text.
         _transcript.BeginRecordingSession(Settings.ClearTextOnModelOrSessionChange);
+        _liveText.BeginSession();
 
         var historySession = await BeginHistorySessionAsync();
         Volatile.Write(ref _historySession, historySession);
@@ -1400,7 +1424,11 @@ public sealed partial class MainViewModel : ObservableObject
         // The restarted recognizer begins a new session text; queued before Start so it
         // runs ahead of the first result, which is dispatched the same way. The previous
         // capture was saved to History on Stopped; the restarted one is a new recording.
-        _scheduler.Post(_transcript.StartNewSpeechSegment);
+        _scheduler.Post(() =>
+        {
+            _transcript.StartNewSpeechSegment();
+            _liveText.BeginSession();
+        });
         var historySession = await BeginHistorySessionAsync().ConfigureAwait(false);
         Volatile.Write(ref _historySession, historySession);
         try

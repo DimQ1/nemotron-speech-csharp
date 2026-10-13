@@ -62,6 +62,17 @@ public sealed class WindowsTextInjector : IPlatformTextInjector
         CopyToClipboardCore(text);
     }
 
+    /// <summary>The foreground window exists and belongs to another process.</summary>
+    public bool IsFocusedWindowForeign()
+    {
+        var hwnd = GetForegroundWindow();
+        if (hwnd == nint.Zero)
+            return false;
+
+        GetWindowThreadProcessId(hwnd, out var processId);
+        return processId != (uint)Environment.ProcessId;
+    }
+
     private static void SendUnicodeText(string text)
     {
         var inputs = new List<INPUT>(ChunkChars * 2);
@@ -228,6 +239,12 @@ public sealed class WindowsTextInjector : IPlatformTextInjector
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hWnd, out uint processId);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool OpenClipboard(nint hWndNewOwner);

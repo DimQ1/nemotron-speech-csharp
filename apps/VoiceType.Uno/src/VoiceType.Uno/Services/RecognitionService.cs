@@ -32,6 +32,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     private readonly object _recognizerOperationGate = new();
     private string? _loadedModelPath;
     private string? _lastPartial;
+    private string? _lastCommitted;
     private Exception? _captureException;
     private IRecognitionPipeline? _pipeline;
     private LiveRecognizerInfo? _recognizerInfo;
@@ -42,6 +43,15 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     }
 
     public event Action<string>? PartialResult;
+
+    /// <summary>
+    /// The transcript the recognizer has settled on so far in this session (finished utterances plus the stable part
+    /// of the current one, never revised), raised on the decode thread whenever it grows. This is what gets typed into
+    /// other apps while recording, as in the WinUI app.
+    /// </summary>
+    public event Action<string>? CommittedResult;
+
+    /// <summary>The whole session text, once, after recording has stopped.</summary>
     public event Action<string>? FinalResult;
     public event Action<string>? UtteranceFinalized;
     public event Action? Stopped;
@@ -183,6 +193,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         ApplyRuntimeSettings(settings);
         pipeline.Reset();
         _lastPartial = null;
+        _lastCommitted = null;
         _captureException = null;
         _isRunning = true;
 
@@ -325,6 +336,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
                         step = pipeline.Process(batch);
                     InvokeTap(ref tap, t => t.OnStep(batch.Length, step.Tail, step.Committed, step.CommittedWords));
                     ApplyStep(step);
+                    RaiseCommitted(pipeline);
                 }
 
                 if (!gotData)
@@ -339,6 +351,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
                 tail = pipeline.Flush();
             InvokeTap(ref tap, t => t.OnFlush(tail.Committed, tail.CommittedWords));
             ApplyStep(tail);
+            RaiseCommitted(pipeline);
 
             // Final pass: strip language tags AND normalize whitespace for clean output.
             FinalResult?.Invoke(FinalPostProcessing.Execute(pipeline.CommittedText));
@@ -400,6 +413,12 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         /// <summary>The transcript committed so far.</summary>
         string CommittedText { get; }
 
+        /// <summary>
+        /// <see cref="CommittedText"/> plus the stable part of the utterance still in progress: text that will not
+        /// change any more, so it may be typed into another app before the utterance ends.
+        /// </summary>
+        string StableText { get; }
+
         /// <summary>Drops committed text for a new session.</summary>
         void Reset();
 
@@ -423,10 +442,20 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     private sealed class UtterancePipeline(IUtteranceStreamingRecognizer recognizer) : IRecognitionPipeline
     {
         private readonly StringBuilder _committed = new();
+        private string _stable = "";
 
         public string CommittedText => _committed.ToString();
 
-        public void Reset() => _committed.Clear();
+        public string StableText =>
+            _stable.Length == 0 ? CommittedText
+            : _committed.Length == 0 ? _stable
+            : _committed + " " + _stable;
+
+        public void Reset()
+        {
+            _committed.Clear();
+            _stable = "";
+        }
 
         public RecognitionStep Process(float[] batch) => ToStep(recognizer.ProcessUtterance(batch));
 
@@ -442,6 +471,9 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
                 _committed.Append(committed);
             }
 
+            // The stable part of the utterance that is still going on (Stable is null for recognizers that do not report it).
+            _stable = result.Stable ?? "";
+
             return new RecognitionStep(ComposeDisplay(_committed, result.Partial), committed, IsUtteranceCommit: committed is not null, result.Partial,
                 committed is null ? null : result.FinalWords);
         }
@@ -456,6 +488,9 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         private readonly StringBuilder _committed = new();
 
         public string CommittedText => _committed.ToString();
+
+        // Every step's text is committed verbatim, so it is all stable.
+        public string StableText => CommittedText;
 
         public void Reset() => _committed.Clear();
 
@@ -496,6 +531,20 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
 
         if (!string.IsNullOrEmpty(step.Display))
             RaisePartial(PartialPostProcessing.Execute(step.Display));
+    }
+
+    /// <summary>
+    /// Reports the stable transcript (finished utterances plus the settled part of the current one) whenever it grew.
+    /// Raised on every decode step, so text typed into other apps follows speech by a fraction of a second.
+    /// </summary>
+    private void RaiseCommitted(IRecognitionPipeline pipeline)
+    {
+        var text = PartialPostProcessing.Execute(pipeline.StableText);
+        if (text.Length == 0 || string.Equals(text, _lastCommitted, StringComparison.Ordinal))
+            return;
+
+        _lastCommitted = text;
+        CommittedResult?.Invoke(text);
     }
 
     /// <summary>Committed transcript followed by the recognizer's revisable tail.</summary>
