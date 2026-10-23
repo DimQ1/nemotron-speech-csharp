@@ -313,7 +313,7 @@ public class DiarizeJobWorkerTests : IDisposable
         public List<DiarizerRunOptions> Options { get; } = [];
 
         public DiarizerModelRef? Find(string? preferredFolder = null) =>
-            Installed ? new DiarizerModelRef(@"C:\models\nemotron-3-diarization-onnx-int8", "Nemotron 3 Diarization INT8", "Int8", 105_852_942) : null;
+            Installed ? new DiarizerModelRef(Path.Combine(Path.GetTempPath(), "models", "nemotron-3-diarization-onnx-int8"),"Nemotron 3 Diarization INT8", "Int8", 105_852_942) : null;
 
         public IJobDiarizer Create(DiarizerModelRef model, DiarizerRunOptions options)
         {

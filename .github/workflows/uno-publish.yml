@@ -284,29 +284,27 @@ jobs:
       - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
         uses: ./.github/actions/setup-build
 
+      # The workload version and the Xcode move TOGETHER, and the Xcode is not always the first two parts of the workload
+      # version: 26.5.10318 needs Xcode 26.6 ("This version of .NET for iOS (26.5.10318) requires Xcode 26.6").
+      # The unpinned `dotnet workload install ios` takes the newest manifest (27.x today), whose Xcode is not on the
+      # runner image. Change both values together after reading the build error of the new combination.
       - name: Install iOS workload (pinned)
-        # Pinned: the newest ios manifest (27.x today) needs an Xcode that the runner image does not have, and every
-        # workload version needs exactly one Xcode (26.5.x -> Xcode 26.5). Move this value together with the image.
         shell: bash
         env:
           IOS_WORKLOAD: 26.5.10318/10.0.100
         run: |
           printf '{ "microsoft.net.sdk.ios": "%s" }\n' "$IOS_WORKLOAD" > "$RUNNER_TEMP/ios-rollback.json"
           dotnet workload install ios --from-rollback-file "$RUNNER_TEMP/ios-rollback.json"
+          dotnet workload list
 
       - name: Select the Xcode the workload requires
-        # Each .NET for iOS workload requires exactly one Xcode (26.5 for workload 26.5.x); a mismatch is a build
-        # error ("This version of .NET for iOS (26.5.x) requires Xcode 26.5"). `dotnet workload list` prints the
-        # workload version (ios  26.5.10318/10.0.100 ...), whose first two parts are the Xcode version.
         shell: bash
+        env:
+          IOS_XCODE: '26.6'
         run: |
-          dotnet workload list
-          version=$(dotnet workload list | awk '$1 == "ios" { print $2 }')
-          xcode=$(echo "${version%%/*}" | cut -d. -f1,2)
-          echo "iOS workload $version needs Xcode $xcode"
-          app="/Applications/Xcode_${xcode}.app"
+          app="/Applications/Xcode_${IOS_XCODE}.app"
           if [[ ! -d "$app" ]]; then
-            echo "::error::Xcode $xcode is not on the runner image. Installed: $(find /Applications -maxdepth 1 -name 'Xcode_*.app' | tr '\n' ' ')"
+            echo "::error::Xcode $IOS_XCODE is not on the runner image. Installed: $(find /Applications -maxdepth 1 -name 'Xcode_*.app' | tr '\n' ' ')"
             exit 1
           fi
           sudo xcode-select -s "$app"

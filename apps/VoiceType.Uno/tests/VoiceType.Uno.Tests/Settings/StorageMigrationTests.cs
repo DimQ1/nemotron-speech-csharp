@@ -56,7 +56,7 @@ public class FolderMoverTests
         Assert.Equal("A", File.ReadAllText(Path.Combine(to, "a", "f.txt")));
     }
 
-    [Fact]
+    [WindowsFact]
     public void MoveChildren_ShouldLeaveLockedItemsForTheNextStart()
     {
         using var temp = new TempDirectory();
@@ -175,7 +175,7 @@ public class FolderMoverTests
         Assert.Equal("old", File.ReadAllText(Path.Combine(temp.Path, "to", "same", "old.txt")));
     }
 
-    [Fact]
+    [WindowsFact]
     public void MoveChildren_AcrossDrives_WhenTheSourceCannotBeRemoved_ShouldUndoItsCopy()
     {
         using var temp = new TempDirectory();
@@ -276,7 +276,7 @@ public class RecordingStorageMigratorTests
         Assert.Equal(Path.Combine(temp.Path, "new"), settings.SessionsPath);
     }
 
-    [Fact]
+    [WindowsFact]
     public void RunAtStartup_ShouldKeepTheOldFolderAndNote_WhenSomethingIsLocked()
     {
         using var temp = new TempDirectory();
@@ -375,10 +375,12 @@ public class RecordingStorageMigratorTests
     [Fact]
     public void NeedsQuestion_ShouldRequireDifferentFoldersAndExistingRecordings()
     {
-        Assert.True(RecordingStorageMigrator.NeedsQuestion(@"C:\a", @"C:\b", 3));
-        Assert.False(RecordingStorageMigrator.NeedsQuestion(@"C:\a", @"C:\a\", 3));
-        Assert.False(RecordingStorageMigrator.NeedsQuestion(@"C:\a", @"C:\b", 0));
-        Assert.False(RecordingStorageMigrator.NeedsQuestion(@"C:\a", "", 3));
+        var a = Path.Combine(Path.GetTempPath(), "a");
+        var b = Path.Combine(Path.GetTempPath(), "b");
+        Assert.True(RecordingStorageMigrator.NeedsQuestion(a, b, 3));
+        Assert.False(RecordingStorageMigrator.NeedsQuestion(a, a + Path.DirectorySeparatorChar, 3));
+        Assert.False(RecordingStorageMigrator.NeedsQuestion(a, b, 0));
+        Assert.False(RecordingStorageMigrator.NeedsQuestion(a, "", 3));
     }
 
     [Fact]
@@ -553,7 +555,7 @@ public class DataLocationTests
         Assert.Contains("App data was not moved", resolution.Note);
     }
 
-    [Fact]
+    [WindowsFact]
     public void RunAtStartup_WithLockedFile_ShouldStayWithANote_AndRetryOnlyWhenAskedAgain()
     {
         using var temp = new TempDirectory();

@@ -8,8 +8,9 @@ public class StorageFolderTextTests
     [Fact]
     public void Badge_ShouldSayDefaultOrCustom()
     {
-        Assert.Equal("Default", StorageFolderText.Badge(@"C:\Data\sessions", @"C:\Data\sessions\"));
-        Assert.Equal("Custom", StorageFolderText.Badge(@"D:\Rec", @"C:\Data\sessions"));
+        var sessions = Path.Combine(Path.GetTempPath(), "Data", "sessions");
+        Assert.Equal("Default", StorageFolderText.Badge(sessions, sessions + Path.DirectorySeparatorChar));
+        Assert.Equal("Custom", StorageFolderText.Badge(Path.Combine(Path.GetTempPath(), "Rec"), sessions));
     }
 
     [Fact]
@@ -89,9 +90,10 @@ public class StorageFolderTextTests
     [Fact]
     public void Relation_ShouldDetectNestedAndDrives()
     {
-        Assert.Equal(FolderRelation.Nested, StorageFolderText.Relation(@"C:\a", @"C:\a\b"));
-        Assert.Equal(FolderRelation.Nested, StorageFolderText.Relation(@"C:\a\b", @"C:\a"));
-        Assert.Equal(FolderRelation.SameDrive, StorageFolderText.Relation(@"C:\a", @"C:\b"));
+        var a = Path.Combine(Path.GetTempPath(), "a");
+        Assert.Equal(FolderRelation.Nested, StorageFolderText.Relation(a, Path.Combine(a, "b")));
+        Assert.Equal(FolderRelation.Nested, StorageFolderText.Relation(Path.Combine(a, "b"), a));
+        Assert.Equal(FolderRelation.SameDrive, StorageFolderText.Relation(a, Path.Combine(Path.GetTempPath(), "b")));
     }
 
     [Fact]
@@ -181,7 +183,7 @@ public class StorageOverviewTests
         Assert.Equal((0.0, 0.0, 0.0), StorageOverview.Fractions(Usage(0, 0, 0)));
     }
 
-    [Fact]
+    [WindowsFact("Windows only: the hub line names drive letters, which have no equivalent in a Linux path.")]
     public void HubLine_ShouldNameDrivesOnlyWhenTheyDiffer()
     {
         var split = Usage(3L << 30, 1L << 30, 1L << 20);
@@ -376,9 +378,10 @@ public class RestartCommandTests
     [Fact]
     public void Build_UnderDotnet_ShouldPassTheDllAsFirstArgument()
     {
-        var command = RestartCommand.Build(@"C:\Program Files\dotnet\dotnet.exe", [@"C:\app\VoiceType.Uno.dll", "--x"]);
+        var dll = Path.Combine(Path.GetTempPath(), "app", "VoiceType.Uno.dll");
+        var command = RestartCommand.Build(Path.Combine(Path.GetTempPath(), "dotnet", "dotnet.exe"), [dll, "--x"]);
 
-        Assert.Equal([@"C:\app\VoiceType.Uno.dll", "--x"], command!.Value.Arguments);
+        Assert.Equal([dll, "--x"], command!.Value.Arguments);
     }
 
     [Fact]
