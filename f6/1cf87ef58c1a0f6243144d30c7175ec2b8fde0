@@ -1,0 +1,23 @@
+.github/workflows/release-voicetype-uno.yml
+  s_20e41f7f2d2ce6::t_e8c898f79a54aa 5-6,46-47,83-94,98-104,117-118
+docs/ci.md
+  s_20e41f7f2d2ce6::t_3a0339f0a0e279 14-16,47,177,190,198-237,249,277,283-285
+libraries/SpeechLib/tests/SpeechLib.LiteRT.Native.Tests/Unit_GemmaEngineHostTests.cs
+  s_20e41f7f2d2ce6::t_c493c1ee0201fe 648-656
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "f61cf87ef58c1a0f6243144d30c7175ec2b8fde0",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
