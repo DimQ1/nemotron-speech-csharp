@@ -1,0 +1,7 @@
+# Encoder repack (graph surgery + INT4 MatMulNBits). No PyTorch, no NeMo, no Olive.
+# onnxruntime 1.30.0 = the version the C# recognizers pin (Microsoft.ML.OnnxRuntime 1.30.0);
+# its quantisation package imports onnx_ir but does not declare it, hence the explicit pin.
+numpy==2.5.4
+onnx==1.23.2
+onnx-ir==1.1.0
+onnxruntime==1.30.0
