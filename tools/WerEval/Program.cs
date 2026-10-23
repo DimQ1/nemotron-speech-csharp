@@ -13,6 +13,7 @@
 //   WerEval <parakeet|nemotron|qwen3|qwen3-streaming> <modelDir> <audioRoot> [--max N] [--lang en|ru]
 //           [--streaming] [--top N] [--verbose] [--trace] [--save report.md]
 //           [--codec wav|opus:<kbps>[:audio|voip[:complexity]]] [--codec-only]
+//           [--threads N] [--joint batched|frame]   (nemotron: intra-op threads; batched or frame-by-frame joint for A/B)
 //
 // --codec round-trips every utterance through SpeechLib.AudioStorage (the recordings
 // history writer + reader) before recognition, to measure what storing audio costs in
@@ -41,6 +42,7 @@ if (args.Length == 0 || args[0] is "--list-gpus")
         Console.WriteLine("              nemotron: WebGPU runs the encoder on a discrete GPU only; index/options are ignored, lp and no discrete GPU mean CPU");
         Console.WriteLine("  --codec wav|opus:<kbps>[:audio|voip[:complexity]]  round-trip audio through the recording store first; --codec-only skips ASR");
         Console.WriteLine("  parakeet streaming: --chunk <s> --right <s> --left <s> --silence <s> --onset <s> --no-preview (see ParakeetTdtRecognizer)");
+        Console.WriteLine("  nemotron: --threads <n> (intra-op threads, default from the core count) --joint batched|frame (default batched)");
         return 1;
     }
 
@@ -71,6 +73,7 @@ string ep = "cpu";
 RecordingAudioFormat? codec = null;
 bool codecOnly = false;
 var streamingOptions = new ParakeetStreamingOptions();
+var nemotronOptions = new NemotronRecognizerOptions();
 
 for (int i = 3; i < args.Length; i++)
 {
@@ -92,6 +95,8 @@ for (int i = 3; i < args.Length; i++)
         case "--save" when i + 1 < args.Length: savePath = args[++i]; break;
         case "--codec" when i + 1 < args.Length: codec = RecordingAudioFormat.Parse(args[++i]); break;
         case "--codec-only": codecOnly = true; break;
+        case "--threads" when i + 1 < args.Length: nemotronOptions = nemotronOptions with { CpuThreads = int.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
+        case "--joint" when i + 1 < args.Length: nemotronOptions = nemotronOptions with { BatchedJoint = args[++i] != "frame" }; break;
     }
 }
 
@@ -118,9 +123,12 @@ if (codecOnly)
     return 0;
 }
 
-using var recognizer = CreateRecognizer(provider, modelDir, lang, ep, streamingOptions);
+using var recognizer = CreateRecognizer(provider, modelDir, lang, ep, streamingOptions, nemotronOptions);
 if (recognizer is NemotronUtteranceRecognizer nemotronInfo)
+{
     Console.WriteLine($"Nemotron execution provider: {nemotronInfo.ExecutionProvider.Effective} ({nemotronInfo.ExecutionProvider.Summary})");
+    Console.WriteLine($"Nemotron CPU threads: {nemotronOptions.CpuThreads?.ToString(CultureInfo.InvariantCulture) ?? "default"}, joint: {(nemotronOptions.BatchedJoint ? "batched" : "frame by frame")}");
+}
 if (recognizer is ParakeetTdtRecognizer parakeetInfo && streaming)
     Console.WriteLine($"Parakeet streaming: chunk={parakeetInfo.ChunkSeconds:F2}s right={parakeetInfo.RightContextSeconds:F2}s left={parakeetInfo.LeftContextSeconds:F2}s silence={parakeetInfo.SilenceContextSeconds:F2}s onset={parakeetInfo.OnsetContextSeconds:F2}s preview={parakeetInfo.PreviewEnabled}");
 
@@ -335,7 +343,8 @@ static void PrintTop(string header, Dictionary<string, int> counts, int topN)
 
 static double Rate(int errors, int words) => words == 0 ? 0 : (double)errors / words;
 
-static IStreamingSpeechRecognizer CreateRecognizer(string provider, string modelDir, string? lang, string ep, ParakeetStreamingOptions streamingOptions) => provider switch
+static IStreamingSpeechRecognizer CreateRecognizer(string provider, string modelDir, string? lang, string ep, ParakeetStreamingOptions streamingOptions,
+    NemotronRecognizerOptions nemotronOptions) => provider switch
 {
     "parakeet" => new ParakeetTdtRecognizer(
         modelDir,
@@ -349,7 +358,7 @@ static IStreamingSpeechRecognizer CreateRecognizer(string provider, string model
     "qwen3" => new Qwen3AsrRecognizer(modelDir, executionProvider: ep, language: lang),
     "qwen3-streaming" => new Qwen3AsrStreamingRecognizer(modelDir, executionProvider: ep, language: lang),
     // Raw input (no gain control): the accuracy of the model itself.
-    "nemotron" => new NemotronUtteranceRecognizer(modelDir, ep, lang is null ? null : LanguageMapper.Resolve(lang), useVad: false),
+    "nemotron" => new NemotronUtteranceRecognizer(modelDir, ep, lang is null ? null : LanguageMapper.Resolve(lang), useVad: false, engineOptions: nemotronOptions),
     _ => throw new ArgumentException($"Unknown provider '{provider}'. Use 'parakeet', 'nemotron', 'qwen3' or 'qwen3-streaming'."),
 };
 
