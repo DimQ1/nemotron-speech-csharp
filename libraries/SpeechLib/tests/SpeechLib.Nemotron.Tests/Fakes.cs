@@ -80,6 +80,29 @@ internal static class TestAudio
         return audio;
     }
 
+    /// <summary>
+    /// Quiet speech-like input for the gain control: 180 ms syllables (two harmonics, 15 ms ramps) of RMS <paramref name="syllableRms"/>
+    /// every 300 ms, three to a word, over a Gaussian room tone of RMS <paramref name="toneRms"/> (fixed seed). A steady sine is not
+    /// speech for the gain control, and digital silence between the syllables would be no room at all.
+    /// </summary>
+    public static float[] Syllables(int length, float syllableRms, float toneRms = 0.0001f, int seed = 1)
+    {
+        const int period = 4800, syllable = 2880;
+        var random = new Random(seed);
+        var audio = new float[length];
+        for (var i = 0; i < length; i++)
+        {
+            var slot = i % period;
+            var voiced = i / period % 4 != 3 && slot < syllable;
+            var ramp = Math.Min(1.0, Math.Min(slot, syllable - slot) / 240.0);
+            var t = i / 16000.0;
+            var speech = voiced ? syllableRms * Math.Sqrt(2) * ramp * (0.8 * Math.Sin(2 * Math.PI * 180 * t) + 0.6 * Math.Sin(2 * Math.PI * 360 * t)) : 0;
+            var tone = toneRms * Math.Sqrt(-2 * Math.Log(1 - random.NextDouble())) * Math.Cos(2 * Math.PI * random.NextDouble());
+            audio[i] = (float)(speech + tone);
+        }
+        return audio;
+    }
+
     /// <summary>Splits <paramref name="audio"/> into pieces of the given sizes (the last piece takes the rest, sizes repeat).</summary>
     public static IEnumerable<float[]> Split(float[] audio, params int[] sizes)
     {

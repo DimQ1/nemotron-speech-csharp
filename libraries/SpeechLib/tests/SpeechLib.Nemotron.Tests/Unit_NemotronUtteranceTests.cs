@@ -877,8 +877,8 @@ public sealed class Unit_NemotronUtteranceTests
     [Fact]
     public void TranscribeWords_OfAnIdleRecognizer_ShouldStartFromAFreshGainAndLeaveTheOneItLearned()
     {
-        var loud = Sine(0.3f, 2 * N);
-        var quiet = Sine(0.005f, 4 * N);
+        var loud = TestAudio.Syllables(2 * N, 0.1f);
+        var quiet = TestAudio.Syllables(4 * N, 0.005f, seed: 2);
         using var learned = Make(CalibratedOptions() with { AutoGain = true }, tokens: Dialogue());
         using var newOne = Make(CalibratedOptions() with { AutoGain = true }, tokens: Dialogue());
         using var control = Make(CalibratedOptions() with { AutoGain = true }, tokens: Dialogue());
@@ -905,8 +905,8 @@ public sealed class Unit_NemotronUtteranceTests
     [Fact]
     public void TranscribeWords_DuringAStream_ShouldHearWhatANewRecognizerHearsAndLeaveTheStreamsGain()
     {
-        var loud = Sine(0.3f, 2 * N);
-        var quiet = Sine(0.005f, 4 * N);
+        var loud = TestAudio.Syllables(2 * N, 0.1f);
+        var quiet = TestAudio.Syllables(4 * N, 0.005f, seed: 2);
         var created = new List<FakeChunkEngine>();
         var offline = (Func<NemotronRnntRecognizer>)(() =>
         {
@@ -987,15 +987,14 @@ public sealed class Unit_NemotronUtteranceTests
 
     // ── gain control ────────────────────────────────────────────────────
 
-    private static float[] Sine(float amplitude, int samples) =>
-        Enumerable.Range(0, samples).Select(i => (float)(amplitude * Math.Sin(2 * Math.PI * 220 * i / 16000))).ToArray();
+    private const float QuietSyllableRms = 0.005f;   // about -46 dBFS: the gain raises it about 12 times, to the target
 
     private static float Rms(float[] samples) => (float)Math.Sqrt(samples.Sum(s => (double)s * s) / samples.Length);
 
     [Fact]
     public void AutoGain_ShouldRaiseQuietInputBeforeTheEngineAndKeepTheStreamClock()
     {
-        var quiet = Sine(0.005f, 4 * N);
+        var quiet = TestAudio.Syllables(4 * N, QuietSyllableRms);
         using var raw = Make(CalibratedOptions(), tokens: [(2, "▁the")]);
         using var gained = Make(CalibratedOptions() with { AutoGain = true }, tokens: [(2, "▁the")]);
 
@@ -1003,7 +1002,8 @@ public sealed class Unit_NemotronUtteranceTests
         var gainedResults = gained.FeedChunks(4, quiet);
 
         Assert.Equal(quiet[(3 * N)..], raw.Engine.Calls[3].Chunk);                       // off: the model hears the input as it is
-        Assert.InRange(Rms(gained.Engine.Calls[3].Chunk), AutomaticGainControl.TargetRms * 0.8f, AutomaticGainControl.TargetRms * 1.2f);
+        var boost = Rms(gained.Engine.Calls[3].Chunk) / Rms(raw.Engine.Calls[3].Chunk);
+        Assert.InRange(boost, AutomaticGainControl.TargetRms / QuietSyllableRms * 0.8f, AutomaticGainControl.TargetRms / QuietSyllableRms * 1.2f);
         Assert.Equal(raw.Engine.Calls.Select(c => c.Chunk.Length), gained.Engine.Calls.Select(c => c.Chunk.Length));
         Assert.Equal(rawResults[0].PartialWords![0].StartSeconds, gainedResults[0].PartialWords![0].StartSeconds);   // same clock
     }
@@ -1011,7 +1011,7 @@ public sealed class Unit_NemotronUtteranceTests
     [Fact]
     public void AutoGain_OfNormallyLeveledInput_ShouldReachTheEngineUnchanged()
     {
-        var loud = Sine(0.3f, 2 * N);
+        var loud = TestAudio.Syllables(2 * N, 0.1f);
         using var rig = Make(RawOptions() with { AutoGain = true }, tokens: []);
 
         rig.FeedChunks(2, loud);
@@ -1023,7 +1023,7 @@ public sealed class Unit_NemotronUtteranceTests
     [Fact]
     public void AutoGain_ShouldNotDependOnHowTheAudioIsBatched()
     {
-        var quiet = Sine(0.004f, 5 * N);
+        var quiet = TestAudio.Syllables(5 * N, 0.004f);
         using var aligned = Make(RawOptions() with { AutoGain = true }, tokens: []);
         using var ragged = Make(RawOptions() with { AutoGain = true }, tokens: []);
 
@@ -1039,7 +1039,7 @@ public sealed class Unit_NemotronUtteranceTests
     {
         // loud speech, then a quiet stretch: the level decays slowly, so the first quiet chunk is not yet boosted fully.
         // A reset in between (a new recording session on the same microphone) must not change that trajectory.
-        var loudThenQuiet = Sine(0.3f, N).Concat(Sine(0.005f, 2 * N)).ToArray();
+        var loudThenQuiet = TestAudio.Syllables(N, 0.1f).Concat(TestAudio.Syllables(2 * N, QuietSyllableRms, seed: 2)).ToArray();
         using var continuous = Make(RawOptions() with { AutoGain = true }, tokens: []);
         using var withReset = Make(RawOptions() with { AutoGain = true }, tokens: []);
 
@@ -1059,12 +1059,13 @@ public sealed class Unit_NemotronUtteranceTests
     [Fact]
     public void AutoGain_ShouldAlsoApplyToTheWordsOfTranscribeWords()
     {
-        var quiet = Sine(0.005f, 4 * N);
+        var quiet = TestAudio.Syllables(4 * N, QuietSyllableRms);
         using var rig = Make(CalibratedOptions() with { AutoGain = true }, tokens: Dialogue());
 
         rig.Recognizer.TranscribeWords(quiet);
 
-        Assert.InRange(Rms(rig.Engine.Calls[3].Chunk), AutomaticGainControl.TargetRms * 0.8f, AutomaticGainControl.TargetRms * 1.2f);
+        var boost = Rms(rig.Engine.Calls[3].Chunk) / Rms(quiet[(3 * N)..]);
+        Assert.InRange(boost, AutomaticGainControl.TargetRms / QuietSyllableRms * 0.8f, AutomaticGainControl.TargetRms / QuietSyllableRms * 1.2f);
     }
 
     // ── words of consecutive utterances ─────────────────────────────────

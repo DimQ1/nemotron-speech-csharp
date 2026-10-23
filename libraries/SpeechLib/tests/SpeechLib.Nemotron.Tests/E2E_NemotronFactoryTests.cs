@@ -77,8 +77,8 @@ public sealed class E2E_NemotronFactoryTests
         return UtteranceText.Join(text, tail.Final, tail.FinalContinuesPrevious);
     }
 
-    // A quiet room (sigma 12 LSB, about -69 dBFS: below the noise gate of the gain control) and the noisy one of the S0 fixtures (66 LSB,
-    // about -54 dBFS), which the gain control takes for speech and pumps up by 20x in every pause.
+    // A quiet room (sigma 12 LSB, about -69 dBFS) and the noisy one of the S0 fixtures (66 LSB, about -54 dBFS), which the gain control
+    // before G1 took for speech and pumped up by 20x in every pause; the current one leaves both rooms below its noise ceiling.
     private static float[] RoomTone(double seconds, uint seed, float sigmaLsb = 12f) =>
         SyntheticAudio.RoomTone((int)(seconds * 16000), sigmaLsb / 32768f, seed);
 
@@ -166,7 +166,7 @@ public sealed class E2E_NemotronFactoryTests
     [InlineData("en-0024-at-minus-55-dBFS", "en", false)]
     [InlineData("en-0001-at-minus-40-dBFS", "en", false)]
     [InlineData("en-pauses", "en", false)]
-    [InlineData("en-pauses-in-a-noisy-room", "en", false)]      // the gain pumps in the pauses: equal to the reference by construction, a guard against drift only
+    [InlineData("en-pauses-in-a-noisy-room", "en", false)]      // equal to the reference by construction (same gain control), a guard against drift only
     [InlineData("en-long-pause", "en", true)]
     [InlineData("ru-0001", "ru", false)]
     public void TheDefaultChain_ShouldGiveTheTextOfTheEngineBehindAGainControl(string clipName, string language, bool useVad)
