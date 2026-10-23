@@ -19,7 +19,8 @@ encoder weights. This tool, working on the exported graph (no re-export, no PyTo
 
 Usage:
     python repack_encoder.py --model-dir <model folder> --out-dir <new folder> [--recipe match]
-        [--block-size N] [--accuracy-level N] [--fold-pos full|table|none] [--no-pointwise] [--include-2d]
+        [--bits 4|8] [--block-size N] [--accuracy-level N] [--fold-pos full|table|none] [--no-pointwise]
+        [--include-2d]
         [--verify-audio <wav or folder> ...] [--skip-verify] [--threads 4]
 """
 
@@ -144,7 +145,9 @@ def main() -> int:
     ap.add_argument("--encoder-file", help="encoder file name when the folder type cannot be detected")
     ap.add_argument("--recipe", default="match", choices=("match",) + RECIPES,
                     help="INT4 recipe of the new MatMulNBits (default: match the source graph's scheme)")
-    ap.add_argument("--block-size", type=int, help="INT4 block size (default: the source graph's, else 32)")
+    ap.add_argument("--bits", type=int, default=4, choices=(4, 8),
+                    help="bits of the new MatMulNBits weights (default 4; 8 = INT8 MatMulNBits)")
+    ap.add_argument("--block-size", type=int, help="quantisation block size (default: the source graph's, else 32)")
     ap.add_argument("--accuracy-level", type=int,
                     help="MatMulNBits accuracy_level (default: the source graph's; 0 = attribute omitted)")
     ap.add_argument("--fold-pos", default="full", choices=("full", "table", "none"),
@@ -188,10 +191,10 @@ def main() -> int:
         f"{' + ' + ', '.join(p.name for p in source_data) if source_data else ''}")
     log(before.summary())
     recipe, block, acc = resolve_recipe(args, before.scheme(), folder.kind)
-    log(f"[recipe] {recipe}, block {block}, accuracy_level {acc}")
+    log(f"[recipe] {recipe}, {args.bits} bits, block {block}, accuracy_level {acc}")
     info: dict = {
         "source": str(folder.path), "kind": folder.kind, "encoder": folder.encoder_file,
-        "recipe": recipe, "block_size": block, "accuracy_level": acc,
+        "recipe": recipe, "bits": args.bits, "block_size": block, "accuracy_level": acc,
         "fold_pos": args.fold_pos, "pointwise": not args.no_pointwise, "include_2d": args.include_2d,
         "versions": {"onnx": onnx.__version__, "onnxruntime": ort.__version__, "numpy": np.__version__,
                      "python": sys.version.split()[0]},
@@ -267,11 +270,11 @@ def main() -> int:
                 return fail("rewrite", gate, args.max_rel_rms)
 
     # 4. quantise
-    report = quantize_graph(g, store, recipe, block, acc)
+    report = quantize_graph(g, store, recipe, block, acc, bits=args.bits)
     info["quantized"] = report
     if report:
         fp = sum(r["fp32_bytes"] for r in report)
-        q = sum(r["int4_bytes"] for r in report)
+        q = sum(r["quantized_bytes"] for r in report)
         err = np.sqrt(np.mean([r["rel_rmse"] ** 2 for r in report]))
         log(f"[quant] {len(report)} MatMul -> MatMulNBits: {fp / 1e6:.1f} MB FP32 -> {q / 1e6:.1f} MB "
             f"(weight rel RMSE {err:.4f})")
