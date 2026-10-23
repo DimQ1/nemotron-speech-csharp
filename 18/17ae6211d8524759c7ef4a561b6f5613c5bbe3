@@ -1,0 +1,77 @@
+.claude/skills/nemotron-backend/SKILL.md
+  s_20e41f7f2d2ce6::t_d5cea8d1754769 3,10,18,31,33,35,37-44,47-52,56-57,99,115,119-120,124,139,141-145,147,178,224,238-239
+.claude/skills/nemotron-ui/SKILL.md
+  s_20e41f7f2d2ce6::t_b39da60dfae27e 16,18,21-22,25,180
+.github/instructions/nemotron-speech.instructions.md
+  s_20e41f7f2d2ce6::t_077ed81bf7a0f4 3,12,14,27-29,31,37,40
+AGENTS.md
+  s_20e41f7f2d2ce6::t_9f1cf1ba0839ef 6,10,18-19,22-23,25-26,28-30,35-43,46-48,77-81,84,86-87,97-99,106-108,114,116,118-119,121,126,128,131-132,135,137,139,141,143-148,158,164-166,168-171,176,178-179
+DOCS_INDEX.md
+  s_20e41f7f2d2ce6::t_0cba3407a3e50d 10,32-35
+README.md
+  s_20e41f7f2d2ce6::t_c0f6bd90fe4d08 3,10,21,23-25,43,45,47,59-60,62,65-77,83-85,93-95,97,99-101,104,153,156,173-177,188-189,195,202,223-228,231,241
+apps/NemotronSpeech/src/NemotronSpeech/README.md
+  s_20e41f7f2d2ce6::t_7ce25eb2440584 3,5,7-19,22-27,36-44,49-56,64,66,68-69,78,81-83,93,98,106,108-109,111-112,115,117,120-131,134-139,142-145,151-152
+apps/VoiceType.Uno/README.md
+  s_20e41f7f2d2ce6::t_367f0c511c5437 14,39
+apps/VoiceType.WinUI/src/VoiceType.WinUI/README.md
+  s_20e41f7f2d2ce6::t_9ff01ee6cf7f25 10
+docs/README.md
+  s_20e41f7f2d2ce6::t_edc16b3c36ab20 13,17-19,26,28-30
+docs/ci.md
+  s_20e41f7f2d2ce6::t_c493530f1def5b 1-280
+docs/design/voicetype-uno-settings/README.md
+  s_20e41f7f2d2ce6::t_57309012d240a6 53
+docs/design/voicetype-uno-settings/mockup.html
+  s_20e41f7f2d2ce6::t_f7d036515dfab6 472
+docs/plans/voicetype-uno-linux-plan.md
+  s_20e41f7f2d2ce6::t_bc9a7d20f7b303 16
+docs/research/asr/nemotron-3.5-asr-timestamps-analysis.md
+  s_20e41f7f2d2ce6::t_241472aff71733 276-320,322,327,370,425
+docs/research/nemotron-pure-ort-followups.md
+  s_20e41f7f2d2ce6::t_f75527ac55b593 1-101
+docs/research/nemotron-webgpu.md
+  s_20e41f7f2d2ce6::t_1d51467604d809 1-129
+docs/research/onnxruntime-genai-ideas.md
+  s_20e41f7f2d2ce6::t_eb840ece906ab6 1-381
+docs/translation-live-gemma.md
+  s_20e41f7f2d2ce6::t_545f7c5d763337 58-59
+tools/android-emulator/README.md
+  s_20e41f7f2d2ce6::t_b9199435cd3ace 45-46
+tools/converters/NemotronAsr/README.md
+  s_20e41f7f2d2ce6::t_93db4b1479ccdd 20-22,37-42
+tools/converters/NemotronAsr/scripts/README.md
+  s_20e41f7f2d2ce6::t_783671b165ad7a 36
+tools/converters/NemotronAsr/src/README.md
+  s_20e41f7f2d2ce6::t_c6dfc8e30ed79e 5-6,96-97
+tools/converters/NemotronAsr/src/flatten_output.py
+  s_20e41f7f2d2ce6::t_e85a274ad1d232 6
+tools/converters/ParakeetTdt/README.md
+  s_20e41f7f2d2ce6::t_f214fe2ee9d07a 21-22
+docs/research/onnx/webgpu-ep-evaluation.md
+  s_6e2b94bf674066::t_5983b70d4f4242 5-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "1817ae6211d8524759c7ef4a561b6f5613c5bbe3",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_6e2b94bf674066": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a49d80ff09f19fe1b",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
