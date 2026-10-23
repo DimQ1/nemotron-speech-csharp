@@ -147,10 +147,17 @@ public sealed class Unit_NemotronStreamingMelTests
         mel.Process(audio.AsSpan(0, 8960), default, output);
         mel.Process(audio.AsSpan(0, 8960), default, output);
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 5; i++)
-            mel.Process(audio.AsSpan(0, 8960), default, output);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        // Tiered JIT / on-stack replacement can allocate on this thread while the loop is recompiled (6848 bytes once on a
+        // Windows runner), so steady state means one window of calls without an allocation; a per-call allocation in
+        // Process shows up in every window.
+        var allocated = long.MaxValue;
+        for (var window = 0; window < 5 && allocated != 0; window++)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 5; i++)
+                mel.Process(audio.AsSpan(0, 8960), default, output);
+            allocated = Math.Min(allocated, GC.GetAllocatedBytesForCurrentThread() - before);
+        }
 
         Assert.Equal(0, allocated);
     }
