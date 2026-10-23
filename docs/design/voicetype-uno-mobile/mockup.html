@@ -654,7 +654,7 @@
       const items = Object.entries(SOURCES).map(([k, v]) =>
         `<button role="menuitemradio" data-src="${k}" data-hit="src-${k}${suf ? '-top' : ''}" onclick="setSource('${k}')"><span class="tick">&#10003;</span>${v.label}</button>`);
       document.getElementById('srcMenu' + suf).innerHTML = items.join('') +
-        '<div class="src-hint">Switching now saves this recording and starts a new one</div>';
+        '<div class="src-hint">The recording continues on the new source</div>';
     }
   }
   function renderSource() {

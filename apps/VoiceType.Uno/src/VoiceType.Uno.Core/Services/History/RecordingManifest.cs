@@ -147,14 +147,32 @@ public sealed class AudioInfo
     public double DurationSec { get; set; }
     public long Bytes { get; set; }
 
-    /// <summary><c>AppSettings.AudioSource</c>: Mic | Loopback | Mix.</summary>
+    /// <summary><c>AppSettings.AudioSource</c> the recording started with: Mic | Loopback | Mix.</summary>
     public string? Source { get; set; }
+
+    /// <summary>
+    /// Where the source was switched while recording (on the fly, the recording went on): from <see cref="AudioSourceChange.AtSec"/>
+    /// on the audio comes from <see cref="AudioSourceChange.Source"/>. Null when the source never changed.
+    /// </summary>
+    public List<AudioSourceChange>? SourceChanges { get; set; }
 
     /// <summary>Muted stretches: no audio was written, the timeline stays continuous.</summary>
     public List<AudioGap> Gaps { get; set; } = [];
 
     /// <summary>Set when the audio was deleted (retention or by the user); text stays.</summary>
     public DateTimeOffset? RemovedAt { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+public sealed class AudioSourceChange
+{
+    /// <summary>Position in the audio file, seconds.</summary>
+    public double AtSec { get; set; }
+
+    /// <summary>Mic | Loopback | Mix.</summary>
+    public string Source { get; set; } = "";
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using Microsoft.UI.Xaml.Controls;
 using SpeechLib.ModelDownload;
+using SpeechLib.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VoiceType.Hotkeys;
@@ -794,8 +795,8 @@ public sealed partial class MainViewModel : ObservableObject
     public AudioSourceGlyph AudioSourceGlyph => SettingsText.AudioSourceGlyphOf(AudioSource, PlatformUi.IsAndroidLayout);
 
     /// <summary>
-    /// A pick in the chip menu. Saved like a Settings change: while recording the capture restarts on the new source
-    /// (<see cref="RestartCaptureAsync"/> saves the first part to History and starts a new recording).
+    /// A pick in the chip menu. Saved like a Settings change; while recording the capture moves to the new source on the
+    /// fly (<see cref="SwitchLiveSourceAsync"/>): same recording, same transcript, no stop.
     /// </summary>
     public void SelectAudioSource(string value)
     {
@@ -811,6 +812,44 @@ public sealed partial class MainViewModel : ObservableObject
             return;
 
         Persist(s => s.AudioSource = value);
+        if (_recognition.IsRunning)
+            _ = SwitchLiveSourceAsync(value);
+    }
+
+    /// <summary>
+    /// Moves the running capture to <paramref name="source"/> without stopping the recording. A source that cannot be started
+    /// leaves capture where it was: the choice is taken back and the reason is shown. When nothing records, the source
+    /// is just used at the next start.
+    /// </summary>
+    private async Task SwitchLiveSourceAsync(string source)
+    {
+        if (!Enum.TryParse<CaptureMode>(source, out var mode))
+            return;
+
+        CaptureSwitchResult result;
+        try
+        {
+            result = await _recognition.SwitchSourceAsync(mode).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            result = new CaptureSwitchResult(CaptureSwitchOutcome.Refused, _recognition.ActiveSource, ex);
+        }
+
+        if (result.Outcome != CaptureSwitchOutcome.Refused)
+            return;
+
+        var active = result.Active.ToString();
+        var android = PlatformUi.IsAndroidLayout;
+        _scheduler.Post(() =>
+        {
+            // The choice is only taken back if the user has not picked something else in the meantime. Setting the
+            // property saves the old source; the switch back is a no-op, that source is the one running.
+            if (string.Equals(AudioSource, source, StringComparison.Ordinal))
+                AudioSource = active;
+            StatusText = $"Could not switch to {SettingsText.AudioSourceTitle(source, android)}: {result.Error?.Message} " +
+                         $"Still using {SettingsText.AudioSourceTitle(active, android)}.";
+        });
     }
 
     partial void OnIsTranslationEnabledChanged(bool value)
@@ -1342,8 +1381,9 @@ public sealed partial class MainViewModel : ObservableObject
             }
 
             await Task.Run(() => _recognition.ApplyRuntimeSettings(newSettings)).ConfigureAwait(false);
+            // The source changes on the fly: no stop, the recording carries on.
             if (audioSourceChanged && _recognition.IsRunning)
-                await RestartCaptureAsync(newSettings, version).ConfigureAwait(false);
+                await SwitchLiveSourceAsync(SettingsText.NormalizeAudioSource(newSettings.AudioSource, PlatformUi.IsAndroidLayout)).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

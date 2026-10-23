@@ -38,6 +38,10 @@ public sealed class LiveRecordingSession : IRecognitionTap
     private int _finished;
     private double? _lastLevelDb;
 
+    // Audio appended so far (file position, without muted stretches) and the on-the-fly source switches at that position.
+    private long _audioSamples;
+    private readonly SourceChangeLog _sourceChanges;
+
     private const double OnsetLeadSeconds = 0.5;
 
     private LiveRecordingSession(
@@ -50,6 +54,7 @@ public sealed class LiveRecordingSession : IRecognitionTap
     {
         _store = store;
         _settings = settings;
+        _sourceChanges = new SourceChangeLog(settings.AudioSource);
         _recognizer = recognizer;
         _plan = plan;
         _model = model;
@@ -135,6 +140,7 @@ public sealed class LiveRecordingSession : IRecognitionTap
         try
         {
             _writer.Append(batch);
+            _audioSamples += batch.Length;
         }
         catch (Exception ex)
         {
@@ -142,6 +148,8 @@ public sealed class LiveRecordingSession : IRecognitionTap
             _writer = DropWriter(_writer);
         }
     }
+
+    public void OnSourceChanged(string source) => _sourceChanges.Record(_audioSamples, source);
 
     public void OnMuted(int samples)
     {
@@ -278,7 +286,8 @@ public sealed class LiveRecordingSession : IRecognitionTap
                 result.Samples,
                 result.Bytes,
                 _settings.AudioSource,
-                result.Gaps.Select(g => (g.AtSample, g.MutedSamples)));
+                result.Gaps.Select(g => (g.AtSample, g.MutedSamples)),
+                _sourceChanges.Changes);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or InvalidDataException)
         {

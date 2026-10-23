@@ -179,7 +179,9 @@ public static class LiveRecordingMetadata
         };
     }
 
-    /// <summary>Audio info for the manifest; gaps are (file position, muted length) in samples.</summary>
+    /// <summary>
+    /// Audio info for the manifest; gaps are (file position, muted length) in samples, source changes (file position, new source).
+    /// </summary>
     public static AudioInfo BuildAudioInfo(
         string fileName,
         AudioQuality quality,
@@ -187,7 +189,8 @@ public static class LiveRecordingMetadata
         long samples,
         long bytes,
         string? source,
-        IEnumerable<(long AtSample, long MutedSamples)> gaps)
+        IEnumerable<(long AtSample, long MutedSamples)> gaps,
+        IEnumerable<(long AtSample, string Source)>? sourceChanges = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sampleRate);
         return new AudioInfo
@@ -209,6 +212,11 @@ public static class LiveRecordingMetadata
                     Reason = "muted",
                 })
                 .ToList(),
+            SourceChanges = sourceChanges is null
+                ? null
+                : sourceChanges
+                    .Select(c => new AudioSourceChange { AtSec = Math.Round((double)c.AtSample / sampleRate, 3), Source = c.Source })
+                    .ToList() is { Count: > 0 } changes ? changes : null,
         };
     }
 

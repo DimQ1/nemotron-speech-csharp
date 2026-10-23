@@ -151,8 +151,8 @@ public static class SettingsText
     public static string AudioSourceChipName(string? stored, bool android) =>
         $"Audio source: {AudioSourceTitle(stored, android)}" + (HasAudioSourceChoice(android) ? ". Tap to change." : "");
 
-    /// <summary>Hint at the end of the source menu: a change while recording restarts the capture, and the first part is saved.</summary>
-    public const string AudioSourceSwitchWhileRecordingHint = "Switching now saves this recording and starts a new one";
+    /// <summary>Hint at the end of the source menu while recording: the switch happens on the fly, the recording is not interrupted.</summary>
+    public const string AudioSourceSwitchWhileRecordingHint = "The recording continues on the new source";
 
     public const string EngineNative = "native";
     public const string EngineHttp = "http";
