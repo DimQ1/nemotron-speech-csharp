@@ -167,7 +167,9 @@ try {
             $pat = $null
             if ($target.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$pat)) { $pat.Invoke() }
             elseif ($target.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern, [ref]$pat)) { $pat.Select() }
-            else { throw "Step '$step' has no Invoke/SelectionItem pattern" }
+            # A checkable menu item (the audio source menu of the main screen) only has Toggle.
+            elseif ($target.TryGetCurrentPattern([Windows.Automation.TogglePattern]::Pattern, [ref]$pat)) { $pat.Toggle() }
+            else { throw "Step '$step' has no Invoke/SelectionItem/Toggle pattern" }
             Start-Sleep -Seconds 2
         }
 

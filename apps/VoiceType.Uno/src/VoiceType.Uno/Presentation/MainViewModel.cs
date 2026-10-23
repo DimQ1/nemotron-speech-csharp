@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using VoiceType.Hotkeys;
 using VoiceType.Hotkeys.XdgPortal;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Presentation.SettingsUi;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Platform;
 using VoiceType.Uno.Services.Platform.Linux;
@@ -114,6 +115,7 @@ public sealed partial class MainViewModel : ObservableObject
         _transcript = new TranscriptCoordinator(scheduler, () => FloatingText ?? "");
 
         _selectedLanguage = Settings.Language;
+        _audioSource = SettingsText.NormalizeAudioSource(Settings.AudioSource, PlatformUi.IsAndroidLayout);
         ConfigureTextInjector(Settings);
         IsTextInjectionEnabled = Settings.IsTextInjectionEnabled;
         IsAutoScrollEnabled = Settings.IsAutoScrollEnabled;
@@ -754,6 +756,13 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _alwaysOnTop;
 
+    /// <summary>What is captured: <c>Mic</c>, <c>Loopback</c> or <c>Mix</c> (the stored value, normalized for the platform).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AudioSourceLabel))]
+    [NotifyPropertyChangedFor(nameof(AudioSourceGlyph))]
+    [NotifyPropertyChangedFor(nameof(AudioSourceChipName))]
+    private string _audioSource;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsTranslationVisible))]
     private bool _isTranslationEnabled;
@@ -768,6 +777,41 @@ public sealed partial class MainViewModel : ObservableObject
     private string _translationTargetLanguage = "ru";
 
     public bool IsTranslationVisible => IsTranslationEnabled;
+
+    // ── Audio source chip (main screen): shows the source and, where there is a choice, switches it ──
+
+    /// <summary>The sources the platform offers (Android: the microphone only).</summary>
+    public IReadOnlyList<SettingsOption> AudioSourceOptions => SettingsText.AudioSourceOptions(PlatformUi.IsAndroidLayout);
+
+    /// <summary>False where only one source exists: the chip then just says what is captured.</summary>
+    public bool IsAudioSourceSwitchable => SettingsText.HasAudioSourceChoice(PlatformUi.IsAndroidLayout);
+
+    public string AudioSourceLabel => SettingsText.AudioSourceChipTitle(AudioSource, PlatformUi.IsAndroidLayout);
+
+    public string AudioSourceChipName => SettingsText.AudioSourceChipName(AudioSource, PlatformUi.IsAndroidLayout);
+
+    /// <summary>Which icon the chip shows; <c>AudioSourceIcons</c> draws it (microphone, speaker, or both side by side).</summary>
+    public AudioSourceGlyph AudioSourceGlyph => SettingsText.AudioSourceGlyphOf(AudioSource, PlatformUi.IsAndroidLayout);
+
+    /// <summary>
+    /// A pick in the chip menu. Saved like a Settings change: while recording the capture restarts on the new source
+    /// (<see cref="RestartCaptureAsync"/> saves the first part to History and starts a new recording).
+    /// </summary>
+    public void SelectAudioSource(string value)
+    {
+        var normalized = SettingsText.NormalizeAudioSource(value, PlatformUi.IsAndroidLayout);
+        if (string.Equals(AudioSource, normalized, StringComparison.Ordinal))
+            return;
+        AudioSource = normalized;
+    }
+
+    partial void OnAudioSourceChanged(string value)
+    {
+        if (_isProjectingSettingsSnapshot)
+            return;
+
+        Persist(s => s.AudioSource = value);
+    }
 
     partial void OnIsTranslationEnabledChanged(bool value)
     {
@@ -1464,6 +1508,7 @@ public sealed partial class MainViewModel : ObservableObject
             IsTextInjectionEnabled = settings.IsTextInjectionEnabled;
             IsAutoScrollEnabled = settings.IsAutoScrollEnabled;
             AlwaysOnTop = settings.AlwaysOnTop;
+            AudioSource = SettingsText.NormalizeAudioSource(settings.AudioSource, PlatformUi.IsAndroidLayout);
             IsTranslationEnabled = settings.TranslationEnabled;
             TranslationTargetLanguage = settings.TranslationTargetLanguage;
             _translation.SetTargetLanguage(settings.TranslationTargetLanguage);

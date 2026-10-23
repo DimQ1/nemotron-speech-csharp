@@ -91,7 +91,8 @@ claude mcp add --scope user --transport stdio "uno-app" -- dotnet dnx -y uno.dev
 │ [≡]  VoiceType                 ● Ready   │  Row 0  верхняя панель, 56 px (48 на низких экранах)
 │      Parakeet TDT INT4 · Auto · → RU     │         подзаголовок = сводка активных режимов
 ├──────────────────────────────────────────┤
-│ ⓘ ASR model is not available… [Download] │  Row 1  баннеры / прогресс загрузки (Collapsed, если нет)
+│ (🎙 Microphone ▾)                        │  Row 1  чип источника звука (на высоких экранах), под ним
+│ ⓘ ASR model is not available… [Download] │         баннеры / прогресс загрузки (Collapsed, если нет)
 ├──────────────────────────────────────────┤
 │ ┌ Transcript ─────────────────── [🗑] ┐  │  Row 2  контент (*)
 │ │ The meeting starts at ten…          │  │         транскрипт
@@ -116,6 +117,41 @@ claude mcp add --scope user --transport stdio "uno-app" -- dotnet dnx -y uno.dev
 | Индикатор состояния | авто | `Ready` / `Rec 12:34` (красная пульсирующая точка + длительность сессии) / `Muted 12:34` (жёлтая) / `Loading model…` / `Downloading…`. `AutomationProperties.LiveSetting="Polite"` (как сейчас у `StatusText`) |
 
 Кнопок, кроме меню, вверху нет — это главное требование и главный источник прежних перекрытий.
+
+#### Чип источника звука
+
+Главный экран всегда показывает, **что сейчас записывается**, и там, где есть выбор, позволяет переключить источник,
+не заходя в Settings. Это тот же параметр, что `Settings → Audio` (`AppSettings.AudioSource`); оба места показывают одно
+значение, изменение в любом из них видно в другом.
+
+Размещение выбирает `MainLayout.SourceChip` (Core, покрыто тестами) — отдельной строки не хватает на низких экранах
+(на 320×568 с баннерами и переводом карточки теряют минимальную высоту 96 px; проверка макета нашла это сразу):
+
+| `SourceChip` | Когда | Вид |
+|---|---|---|
+| `Row` | высота страницы ≥ 560 px и клавиатура закрыта | Первая строка Row 1 под верхней панелью, слева: `SourceChip`, высота 44, скругление 22. Значок + короткое название + шеврон `⌄`: `🎙 Microphone` / `🔊 System audio` / `🎙🔊 Mic + system audio` |
+| `TopBar` | ниже 560 px (телефон в альбоме, split-screen, малые экраны) или открыта клавиатура | `SourceChipCompact`: кнопка 44×44 только со значком, в верхней панели слева от индикатора состояния. Название — в `AutomationProperties.Name` и подсказке |
+| `None` | доступен один источник (Android: только микрофон) | Чипа нет: выбирать нечего, а строка стоила бы 52 px высоты телефона. Источник — всегда микрофон (кнопка записи и так микрофон) |
+
+Меню (`MenuFlyout` под чипом, одинаковое для обеих форм): три пункта с галочкой у текущего — `Microphone`,
+`System audio`, `Microphone + system audio` (названия и состав из `SettingsText.AudioSourceOptions`), пункты по 44 px.
+Во время записи в конце — серая подсказка «Switching now saves this recording and starts a new one».
+
+Правила:
+
+- **Значок «микрофон + система»** — два штатных символа рядом (микрофон и динамик, по 16 px): в наборе `Symbol` нет
+  такого значка, а `Symbol.Audio` — музыкальная нота и вводит в заблуждение (`AudioSourceIcons`).
+- **Переключение во время записи** идёт тем же путём, что изменение в Settings: источник сохраняется, захват
+  перезапускается (`RestartCaptureAsync`), записанное до переключения сохраняется в History, дальше начинается новая запись.
+  Поэтому меню предупреждает об этом заранее, а не после.
+- Чип не использует заголовок карточки: в `Compact` его перекрывают вкладки `Transcript | Translation`.
+- Логика — в Core: `SettingsText.AudioSourceChipTitle`, `AudioSourceGlyphOf`, `HasAudioSourceChoice`, `AudioSourceChipName`,
+  `MainLayout.SourceChip`. `MainViewModel` отдаёт `AudioSource`, `AudioSourceLabel`, `AudioSourceGlyph`, `AudioSourceChipName`,
+  `AudioSourceOptions`, `IsAudioSourceSwitchable`, метод `SelectAudioSource`; страница строит меню в `MainPage.xaml.cs`.
+- Макет: `mockup.html?src=mic|loop|mix&srcmenu=1&android=1`; сценарии `phone-source-menu`, `phone-source-android`,
+  `phone-small-source-menu`, `desktop-source-mix` в `render.ps1`.
+
+![Чип источника: меню на телефоне](screenshots/phone-source-menu.png) ![Тесное окно: значок в верхней панели](screenshots/phone-small-source-menu.png) ![Desktop, «микрофон + система»](screenshots/desktop-source-mix.png)
 
 ### 5.3 Боковое меню (SplitView pane)
 
@@ -485,6 +521,10 @@ pwsh docs/design/voicetype-uno-mobile/render.ps1   # код выхода 1 пр�
 
 ### Проверка
 
+- Чип источника звука (2026-10-23): `render.ps1` — 27/27 сценариев OK (три сценария малого размера сначала упали и
+  привели к размещению `Row`/`TopBar`); `uia-layout-check.ps1` на запущенной desktop-голове — OK при 360×800, 320×568,
+  800×360, 480×560, 1280×800, а также с открытым меню (360×800, 800×360, 1280×800, пункты 44 px); выбор пункта через UIA
+  меняет подпись и значок (скрипт теперь умеет `Toggle` для пунктов-галочек). `VoiceType.Uno.Tests`: 1107, из них 20 новых.
 - Сборка: `net10.0-desktop` — 0 предупреждений; `net10.0-windows10.0.26100` — 0 ошибок, только MVVMTK0045
   (того же вида, что в существующем коде); `net10.0-android` — 0 ошибок, 4 старых предупреждения.
 - Тесты `VoiceType.Uno.Tests`: 129/129.
