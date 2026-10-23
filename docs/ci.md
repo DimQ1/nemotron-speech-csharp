@@ -259,7 +259,9 @@ The Skia desktop head (`net10.0-desktop`, `UseMacOS()`) published for `osx-arm64
 * **Bundle**: the files of the publish output stay in `Contents/MacOS` next to the executable; its folders (`Assets`, the
   `Uno.Fonts.*` folders) move to `Contents/Resources` and are linked back. Both halves are forced: `codesign` treats a folder in `MacOS`
   as nested code ("bundle format unrecognized" on `Uno.Fonts.OpenSans`), and the .NET host resolves a linked `VoiceType.Uno.dll` to
-  its real folder and then misses `libhostpolicy.dylib` ("Failed to run as a self-contained app"). `Info.plist` (`@VERSION@`
+  its real folder and then misses `libhostpolicy.dylib` ("Failed to run as a self-contained app"). `Contents/MacOS/Resources` links
+  to `../Resources`: inside a bundle the Uno macOS host reads `ms-appx:///` content (the icon font `Uno.Fonts.Fluent`, Open Sans,
+  `Assets`) from the folder `Resources` next to the app assembly; without it every icon was a "?". `Info.plist` (`@VERSION@`
   replaced), `Resources/AppIcon.icns` from `Packaging/macOS/AppIcon.png` (rendered from the two `Assets/Icons` SVG layers). Every
   file in `MacOS` is signed ad hoc (non-Mach-O files keep the signature in extended attributes, which Finder, `ditto` and the disk
   image preserve, `unzip` does not), then the bundle. Output `build/macos-packages`: `.dmg` (with an Applications link), `.zip`,

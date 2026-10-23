@@ -75,6 +75,10 @@ for item in "$APP/Contents/MacOS"/*; do
         ln -s "../Resources/$name" "$APP/Contents/MacOS/$name"
     fi
 done
+# Inside a bundle the Uno macOS host reads ms-appx:/// content (the icon font Uno.Fonts.Fluent, Open Sans, Assets) from
+# "<folder of the app assembly>/Resources" = Contents/MacOS/Resources (MacOSHost: StorageFile.ResourcePathBase); without
+# this link every icon is drawn as a "?".
+ln -s ../Resources "$APP/Contents/MacOS/Resources"
 
 # Ad-hoc signature, inside out: every file in Contents/MacOS (a non-Mach-O file keeps its signature in extended
 # attributes, which Finder, ditto and disk images preserve), then the bundle, which seals Info.plist and Resources.
