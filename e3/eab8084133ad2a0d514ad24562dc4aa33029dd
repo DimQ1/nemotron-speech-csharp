@@ -1,0 +1,45 @@
+AGENTS.md
+  s_20e41f7f2d2ce6::t_b05b9c290af1c2 161
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/MainLayout.cs
+  s_20e41f7f2d2ce6::t_ae7b7cb4d35b85 41-53,59,65-66,73-78,84-85,114-118
+apps/VoiceType.Uno/src/VoiceType.Uno/MainPage.xaml
+  s_20e41f7f2d2ce6::t_5eeb49a6298361 352,359,375-387,404,406-427
+apps/VoiceType.Uno/src/VoiceType.Uno/MainPage.xaml.cs
+  s_20e41f7f2d2ce6::t_6df781ea099912 6,33-34,50-102,251-253,305,323-325
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Controls/AudioSourceIcons.cs
+  s_20e41f7f2d2ce6::t_ae5eaadcddc610 1-34
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/MainViewModel.cs
+  s_20e41f7f2d2ce6::t_58a44fb64d6532 10,118,759-765,781-815,1511
+docs/design/voicetype-uno-mobile/README.md
+  s_20e41f7f2d2ce6::t_08349321064324 94-95,121-155,524-527
+docs/design/voicetype-uno-mobile/layout-check.json
+  s_20e41f7f2d2ce6::t_8d26f56bd7786e 13,33,44-96,131,152,174,197,242,265,287,447,469,480-496,555,578
+docs/design/voicetype-uno-mobile/mockup.html
+  s_20e41f7f2d2ce6::t_bd30977a520f81 22-23,102,138-169,377-382,386-397,636-678,698-701
+docs/design/voicetype-uno-mobile/render.ps1
+  s_20e41f7f2d2ce6::t_6df636f2d346a9 27-29,47
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Settings/SettingsText.cs
+  s_20e41f7f2d2ce6::t_ba9aef7eb268ac 10-17,131-156
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/MainLayoutTests.cs
+  s_20e41f7f2d2ce6::t_6140beef4e9832 64-86
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/Settings/SettingsTextTests.cs
+  s_20e41f7f2d2ce6::t_13114881aa1a7b 90-125
+docs/design/voicetype-uno-mobile/uia-layout-check.ps1
+  s_20e41f7f2d2ce6::t_44630c3bfd9fca 170-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "e3eab8084133ad2a0d514ad24562dc4aa33029dd",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
