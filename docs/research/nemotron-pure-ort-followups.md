@@ -70,7 +70,7 @@ Layer: `NemotronUtteranceRecognizer`, `NemotronWordTimer`, `NemotronLagTable`, `
   (`E2E_NemotronStreamControlTests` asserts sensible text and a consistent stream instead); other languages than en / ru; VAD goldens for
   FP32 (INT4 only, as recorded); the 10-symbols-per-frame cap never fires on real data (scripted-model unit test only).
 * **43 of the 210 golden rows (and 2 of 48 VAD rows) need audio that is not in the repository** and cannot be regenerated: the SAPI truth clips
-  (20 + 6 rows; the SAPI dialogue audio `Data/truth/dialogue-*.wav` is deliberately NOT tracked in git: the redistribution terms of the Windows voices are unclear, so only the word-time json files are tracked and the four timing tests skip without the wavs) and the maintainer's private
+  (20 + 6 rows; the two `Data/truth/dialogue-*.wav` SAPI samples are the exception and ARE tracked: the maintainer confirmed on 2026-10-23 that there are no redistribution restrictions) and the maintainer's private
   `Test-Audio` extras (17 rows). They are skipped tests with a reason in a fresh clone (`tools/nemotron-golden/README.md`). Pending decision.
 
 ## 2. Next-round candidates from the optimisation backlog
@@ -97,5 +97,5 @@ Nemotron for a GPU EP, together with P4), B-group items for the other recognizer
    noisy rooms can both be served.
 4. **Portable-libm policy** (P1): one oracle for all platforms or a Windows oracle plus a tolerance elsewhere.
 5. **A1 on or off by default** and the matching new golden set (section 2).
-6. **The SAPI truth sample** (`Data/truth/dialogue-*.wav`, untracked since the publication of the branch) and the 43 golden rows without public audio: replace by a redistributable sample (a permissively licensed recording or another TTS engine with a clear licence) or keep it local-only.
+6. **The 43 golden rows without public audio:** keep as skipped rows, add their audio to the repository (the SAPI clips could go in now that the SAPI redistribution question is settled, see section 1) or drop. The two `Data/truth` dialogue wavs are tracked.
 7. **Dead settings** (1.4): hide the repetition penalty and drop it from `IRuntimeConfigurable`, or keep it.

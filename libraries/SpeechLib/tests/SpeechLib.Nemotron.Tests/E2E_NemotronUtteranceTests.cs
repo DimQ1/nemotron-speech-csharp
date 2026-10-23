@@ -10,7 +10,7 @@ namespace SpeechLib.Nemotron.Tests;
 /// The utterance and word-time layer on the real models: the text equals the plain recognizer's, every Final has one timed
 /// word per word of its tag-free text, times are ordered and inside the stream, the result does not depend on how the audio
 /// is batched, the offline words equal the streaming words, and the word times of a synthetic two-voice dialogue are
-/// accurate enough for speaker assignment. Skipped without the models, the test audio or the truth sample audio (not tracked, see NemotronTruthFactAttribute).
+/// accurate enough for speaker assignment. Skipped without the models, the test audio or the committed truth sample.
 /// </summary>
 [Collection(NemotronModelCollection.Name)]
 public sealed class E2E_NemotronUtteranceTests(NemotronModelCache models, ITestOutputHelper output)
@@ -250,7 +250,7 @@ public sealed class E2E_NemotronUtteranceTests(NemotronModelCache models, ITestO
         Assert.Equal(Key(expectedB), Key(recognizer.TranscribeWords(clipB)));
     }
 
-    // ── timing accuracy on the truth sample audio (not tracked, see NemotronTruthFactAttribute) ───────────────────
+    // ── timing accuracy on the committed truth sample ───────────────────
 
     private void AssertDialogueSample(string variant, string language, double maxMedianMs, double maxP90Ms, double maxEarlyShare, double minSpeakerAccuracy)
     {
@@ -297,15 +297,15 @@ public sealed class E2E_NemotronUtteranceTests(NemotronModelCache models, ITestO
     // The limits sit a little above what the layer measures on the committed sample (this sample is small, 21 to 28 words: one word
     // is 4 to 5 points of the shares): median / p90 of the start error in ms, share of starts earlier than -100 ms, speaker accuracy.
     // Measured: en c056 58 / 148 ms, 0 %, 100 %; en c112 67 / 190, 0 %, 100 %; ru c056 41 / 91, 0 %, 100 %; ru c112 48 / 104, 5 %, 100 %.
-    [NemotronTruthFact("int4-c056", "en")]
+    [NemotronModelFact("int4-c056")]
     public void Dialogue_English_Int4C056_ShouldBeTimedAccurately() => AssertDialogueSample("int4-c056", "en", 70, 180, 0.08, 0.98);
 
-    [NemotronTruthFact("int4-c056", "ru")]
+    [NemotronModelFact("int4-c056")]
     public void Dialogue_Russian_Int4C056_ShouldBeTimedAccurately() => AssertDialogueSample("int4-c056", "ru", 55, 115, 0.08, 0.98);
 
-    [NemotronTruthFact("int4-c112", "en")]
+    [NemotronModelFact("int4-c112")]
     public void Dialogue_English_Int4C112_ShouldBeTimedAccurately() => AssertDialogueSample("int4-c112", "en", 80, 220, 0.08, 0.98);
 
-    [NemotronTruthFact("int4-c112", "ru")]
+    [NemotronModelFact("int4-c112")]
     public void Dialogue_Russian_Int4C112_ShouldBeTimedAccurately() => AssertDialogueSample("int4-c112", "ru", 60, 125, 0.12, 0.98);
 }

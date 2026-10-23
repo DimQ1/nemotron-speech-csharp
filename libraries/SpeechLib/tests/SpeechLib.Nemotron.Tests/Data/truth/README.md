@@ -1,9 +1,10 @@
-# Word-time truth sample (local audio, tracked timings)
+# Word-time truth sample
 
-`dialogue-en.json` / `dialogue-ru.json` hold the word start/end times (from the Windows SAPI engine's own events) of two short
-two-voice dialogues, with the voice and turn of every word. They are tracked.
+`dialogue-en` / `dialogue-ru` are two short two-voice dialogues synthesised with the Windows SAPI voices.
 
-The matching audio, `dialogue-en.wav` / `dialogue-ru.wav` (16 kHz mono PCM16, SAPI speech), is **not tracked**: the
-redistribution terms of the Windows voices are unclear. The four `Dialogue_*_ShouldBeTimedAccurately` tests in
-`E2E_NemotronUtteranceTests` use `NemotronTruthFact` and are skipped with that reason when the wavs are missing.
-To run them, put the two files next to the json files (they are matched by `.gitignore`, so they never show up as changes).
+* `dialogue-*.wav` — 16 kHz mono PCM16 audio.
+* `dialogue-*.json` — start/end time of every word (taken from the SAPI engine's own word events) with the voice and the turn of the word.
+
+The four `Dialogue_*_ShouldBeTimedAccurately` tests in `E2E_NemotronUtteranceTests` score the word times of the
+recognizer against these json files. The maintainer confirmed on 2026-10-23 that the audio may live in the repository
+without restrictions, so all four files are tracked.
