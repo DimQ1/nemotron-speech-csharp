@@ -364,7 +364,10 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
     /// </summary>
     public IReadOnlyList<NemotronToken> LastTokens => _tokens;
 
-    /// <summary>The chunks of the most recent call (encoded and dropped); valid until the next call.</summary>
+    /// <summary>
+    /// The chunks of the most recent call (encoded and dropped); valid until the next call. While a pause-branch decision is pending
+    /// its chunks are not listed; the call that decides lists them all, in stream order, with the winning branch's tokens.
+    /// </summary>
     public IReadOnlyList<NemotronChunkInfo> LastChunks => _chunks;
 
     // ── streaming ───────────────────────────────────────────────────────

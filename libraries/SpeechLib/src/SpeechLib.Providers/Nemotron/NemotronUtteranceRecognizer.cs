@@ -162,6 +162,12 @@ public sealed class NemotronUtteranceRecognizer : ITimedUtteranceRecognizer, ILa
     /// <summary>The streaming engine underneath (diagnostics and tests).</summary>
     internal NemotronRnntRecognizer Engine => _engine;
 
+    /// <summary>The engine's pause-state policy (<see cref="NemotronRecognizerOptions.PauseState"/>).</summary>
+    public NemotronPauseState PauseState => _engine.PauseState;
+
+    /// <summary>Chunks of zeros the engine's flush adds after the padded remainder (<see cref="NemotronRecognizerOptions.FlushClosingChunks"/>).</summary>
+    public int FlushClosingChunks => _engine.FlushClosingChunks;
+
     /// <summary>The engine's pause-state decisions (<see cref="NemotronRnntRecognizer.PauseDecided"/>), for diagnostics and evaluation.</summary>
     public event Action<NemotronPauseDecision>? PauseDecided
     {

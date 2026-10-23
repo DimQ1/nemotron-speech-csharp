@@ -115,6 +115,8 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             Language = settings.Language,
             UseVad = settings.UseVad,
             RepetitionPenalty = settings.RepetitionPenalty,
+            NemotronPauseState = NemotronStreamPolicy.PauseState,
+            NemotronFlushClosingChunks = NemotronStreamPolicy.FlushClosingChunks,
         });
 
     /// <summary>
@@ -145,6 +147,11 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         {
             values.Add(new("maxUtteranceSec", nemotron.MaxUtteranceSeconds));
             values.Add(new("autoGain", nemotron.Options.AutoGain));
+            // only when they differ from GenAI's behaviour (NemotronStreamPolicy)
+            if (nemotron.PauseState != SpeechLib.Nemotron.NemotronPauseState.Keep)
+                values.Add(new("pauseState", nemotron.PauseState.ToString()));
+            if (nemotron.FlushClosingChunks > 0)
+                values.Add(new("flushClosingChunks", nemotron.FlushClosingChunks));
         }
 
         return new LiveRecognizerInfo(
