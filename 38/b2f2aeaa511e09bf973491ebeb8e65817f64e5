@@ -1,0 +1,25 @@
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/GemmaEngineHost.cs
+  s_20e41f7f2d2ce6::t_39d953c225f657 57,474,501-502,524-543,595
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/GemmaEngineHostOptions.cs
+  s_20e41f7f2d2ce6::t_1550db05ae3286 31-34,36-44,78
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/README.md
+  s_20e41f7f2d2ce6::t_84d5db122e5962 48-51
+libraries/SpeechLib/tests/SpeechLib.LiteRT.Native.Tests/Unit_GemmaEngineHostTests.cs
+  s_20e41f7f2d2ce6::t_7fed73db93a35b 605-672
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "38b2f2aeaa511e09bf973491ebeb8e65817f64e5",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
