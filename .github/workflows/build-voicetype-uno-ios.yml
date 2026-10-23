@@ -1,0 +1,59 @@
+name: VoiceType.Uno iOS
+
+run-name: VoiceType.Uno iOS · ${{ github.ref_name }} · #${{ github.run_number }}
+
+# Unsigned iOS builds of the Uno head (net10.0-ios, Skia on UIKit): one for the Simulator, one for a device.
+# Kept apart from "VoiceType.Uno CI" because a Mac runner is slow (30+ min) and the head is young: an iOS problem
+# must not turn the Windows / Linux / Android packages red. The job lives in uno-publish.yml (job `ios`).
+# What the artifacts are good for and how a signed IPA would come out: docs/ci.md, section iOS.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - feat/ios-build # TEMPORARY: iterate on the iOS branch before the merge; remove with the merge
+    paths:
+      - '.github/workflows/build-voicetype-uno-ios.yml'
+      - '.github/workflows/uno-publish.yml'
+      - '.github/actions/**'
+      - 'apps/VoiceType.Uno/**'
+      - 'libraries/SpeechLib/**'
+      - 'libraries/VoiceType.Hotkeys/**'
+      - 'tools/scripts/fetch-litertlmsharp-feed.ps1'
+      - 'nuget.config'
+      - 'global.json'
+  pull_request:
+    paths:
+      - '.github/workflows/build-voicetype-uno-ios.yml'
+      - '.github/workflows/uno-publish.yml'
+      - '.github/actions/**'
+      - 'apps/VoiceType.Uno/**'
+      - 'libraries/SpeechLib/**'
+      - 'libraries/VoiceType.Hotkeys/**'
+      - 'tools/scripts/fetch-litertlmsharp-feed.ps1'
+      - 'nuget.config'
+      - 'global.json'
+
+concurrency:
+  group: uno-ios-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: iOS packages
+    uses: ./.github/workflows/uno-publish.yml
+    with:
+      # CFBundleShortVersionString 1.0.<run>, CFBundleVersion <run>: grows with every run, like the Android versionCode.
+      version: 1.0.${{ github.run_number }}
+      version-code: ${{ fromJSON(github.run_number) }}
+      windows: false
+      linux: false
+      android: false
+      ios: true
+      retention-days: 7
+    # No Apple secrets exist: the builds are unsigned.
+    secrets: inherit

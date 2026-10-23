@@ -26,7 +26,7 @@ on:
         type: boolean
         default: true
       ios:
-        description: PLACEHOLDER - needs the net10.0-ios head (see docs/ci.md, iOS); keep false until it exists
+        description: Build the iOS head (net10.0-ios) for the Simulator and for a device, both unsigned - see docs/ci.md, iOS
         type: boolean
         default: false
       require-android-signing:
@@ -46,7 +46,7 @@ on:
         required: false
       ANDROID_KEY_PASSWORD:
         required: false
-      # --- iOS placeholders: only read by the (disabled) signed-IPA steps of the ios job ---
+      # --- iOS signing: only read by the (still commented-out) signed-IPA steps of the ios job ---
       IOS_CERTIFICATE_P12_BASE64:
         required: false
       IOS_CERTIFICATE_PASSWORD:
@@ -253,63 +253,91 @@ jobs:
           retention-days: ${{ inputs.retention-days }}
 
   # ------------------------------------------------------------------------------------------------
-  # PLACEHOLDER. There is no iOS head today: VoiceType.Uno.csproj has no net10.0-ios TFM, no Platforms/iOS,
-  # no iOS audio capture. The job only exists so the shape of the pipeline is agreed; it is skipped
-  # (inputs.ios defaults to false) and fails with a clear message if somebody switches it on before the head exists.
-  # Staged path and prerequisites: docs/ci.md, section iOS.
+  # iOS head (net10.0-ios, Skia on UIKit). Two unsigned builds of the same project on a Mac runner:
+  #   simulator - iossimulator-arm64, runs in the Xcode Simulator on an Apple-silicon Mac
+  #   device    - ios-arm64, the Release/AOT/linker pass for a real iPhone; unsigned, so it cannot be installed
+  # A device install needs the Apple Developer account steps at the end of this job (docs/ci.md, iOS).
+  # The head is opt-in in the csproj (-p:UnoIosOnly=true, built with -f net10.0-ios).
   # ------------------------------------------------------------------------------------------------
   ios:
-    name: Build iOS (simulator, unsigned) - PLACEHOLDER
+    name: Build iOS (${{ matrix.name }}, unsigned)
     if: ${{ inputs.ios }}
     # macos-26 = macOS 26 arm64 with Xcode 26.0.1 ... 26.6 (default 26.6) and .NET SDK 10.0.401.
     # macos-latest is the same image today; pin the label so Xcode does not move under the workload.
     runs-on: macos-26
-    timeout-minutes: 60
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: simulator
+            rid: iossimulator-arm64
+            artifact: VoiceType.Uno-ios-simulator
+          - name: device
+            rid: ios-arm64
+            artifact: VoiceType.Uno-ios-device-unsigned
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Fail early while there is no iOS head
-        shell: bash
-        run: |
-          if ! grep -q 'net10.0-ios' "$UNO_PROJECT"; then
-            echo "::error::PLACEHOLDER job: $UNO_PROJECT has no net10.0-ios target, so there is nothing to build. Add the iOS head first (docs/ci.md, section iOS, stage 1)."
-            exit 1
-          fi
-
       - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
         uses: ./.github/actions/setup-build
-
-      - name: Select Xcode
-        # Each .NET for iOS workload requires exactly one Xcode (26.5 for workload 26.5.x); a mismatch is a build
-        # error ("This version of .NET for iOS (26.5.x) requires Xcode 26.5").
-        run: sudo xcode-select -s /Applications/Xcode_26.5.app
 
       - name: Install iOS workload
         run: dotnet workload install ios
 
-      - name: Build VoiceType.Uno (net10.0-ios, iOS Simulator, no signing)
-        # Needs the csproj opt-in `UnoIosOnly` (a single net10.0-ios TFM; see docs/ci.md, iOS).
+      - name: Select the Xcode the workload requires
+        # Each .NET for iOS workload requires exactly one Xcode (26.5 for workload 26.5.x); a mismatch is a build
+        # error ("This version of .NET for iOS (26.5.x) requires Xcode 26.5"). `dotnet workload list` prints the
+        # workload version (ios  26.5.10318/10.0.100 ...), whose first two parts are the Xcode version.
+        shell: bash
+        run: |
+          dotnet workload list
+          version=$(dotnet workload list | awk '$1 == "ios" { print $2 }')
+          xcode=$(echo "${version%%/*}" | cut -d. -f1,2)
+          echo "iOS workload $version needs Xcode $xcode"
+          app="/Applications/Xcode_${xcode}.app"
+          if [[ ! -d "$app" ]]; then
+            echo "::error::Xcode $xcode is not on the runner image. Installed: $(ls -d /Applications/Xcode_*.app | tr '\n' ' ')"
+            exit 1
+          fi
+          sudo xcode-select -s "$app"
+          xcodebuild -version
+
+      - name: Build VoiceType.Uno (net10.0-ios, ${{ matrix.rid }}, no signing)
         # Use -f, never -p:TargetFrameworks: that global property leaks into every referenced library.
-        run: >-
-          dotnet build ${{ env.UNO_PROJECT }}
-          -c Release -f net10.0-ios -r iossimulator-arm64
-          -p:UnoIosOnly=true -p:EnableCodeSigning=false
-          -p:ApplicationDisplayVersion=${{ inputs.version }} -p:ApplicationVersion=${{ inputs.version-code }}
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet build ${{ env.UNO_PROJECT }} \
+            -c Release -f net10.0-ios -r ${{ matrix.rid }} \
+            -p:UnoIosOnly=true -p:EnableCodeSigning=false \
+            -p:ApplicationDisplayVersion=${{ inputs.version }} -p:ApplicationVersion=${{ inputs.version-code }} \
+            2>&1 | tee ios-build.log
+
+      - name: Show the build errors
+        # Hosted-runner logs need a login to read; the first distinct errors are repeated as annotations.
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          grep -E ' error |error :|: error|ILLink.*error|Undefined symbols|ld: ' ios-build.log | sort -u | head -n 25 |
+            while IFS= read -r line; do echo "::error::${line:0:900}"; done
 
       - name: Zip the .app
+        shell: bash
         run: |
           app=$(find apps/VoiceType.Uno/src/VoiceType.Uno/bin/Release/net10.0-ios -maxdepth 3 -name '*.app' | head -n 1)
-          test -n "$app"
+          test -n "$app" || { echo "::error::no .app in the build output"; exit 1; }
+          echo "app: $app"; du -sh "$app"
           mkdir -p build
-          ditto -c -k --keepParent "$app" build/VoiceType.Uno-ios-simulator.zip
+          ditto -c -k --keepParent "$app" "build/${{ matrix.artifact }}.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: VoiceType.Uno-ios-simulator
-          path: build/VoiceType.Uno-ios-simulator.zip
+          name: ${{ matrix.artifact }}
+          path: build/${{ matrix.artifact }}.zip
           if-no-files-found: error
           retention-days: ${{ inputs.retention-days }}
 

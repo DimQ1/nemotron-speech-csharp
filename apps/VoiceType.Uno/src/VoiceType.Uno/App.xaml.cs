@@ -159,6 +159,10 @@ public partial class App : Application
                     // (Services/Audio/AndroidAudioSourceFactory.cs). Loopback/Mix are
                     // unavailable without elevated privileges — Mic only.
                     services.AddSingleton<SpeechLib.IAudioSourceFactory, AndroidAudioSourceFactory>();
+#elif __IOS__
+                    // iOS head: microphone capture via AVAudioEngine
+                    // (Services/Audio/IosAudioSourceFactory.cs). Mic only: iOS has no system-audio capture.
+                    services.AddSingleton<SpeechLib.IAudioSourceFactory, IosAudioSourceFactory>();
 #else
                     // Skia desktop head. Audio capture is picked at runtime:
                     //   Windows → NAudio 3.0.1 (WASAPI) so dictation works on a dev box;

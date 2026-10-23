@@ -10,6 +10,11 @@
          is published with its own TFM (no -r). -->
     <TargetFrameworks>net10.0-windows10.0.26100;net10.0-desktop</TargetFrameworks>
     <TargetFrameworks Condition="'$(RuntimeIdentifier)' != 'linux-x64' and '$(RuntimeIdentifier)' != 'win-x64'">$(TargetFrameworks);net10.0-android</TargetFrameworks>
+    <!-- iOS head, opt-in: -p:UnoIosOnly=true builds ONLY net10.0-ios (build with -f net10.0-ios, never with
+         -p:TargetFrameworks: a global property leaks into every referenced library). It is not part of the default
+         set because the iOS target needs the ios workload and an Xcode, which only a Mac (or a machine with the
+         workload and a paired Mac) has; the CI job `ios` in uno-publish.yml sets it. -->
+    <TargetFrameworks Condition="'$(UnoIosOnly)' == 'true'">net10.0-ios</TargetFrameworks>
 
     <OutputType>Exe</OutputType>
     <UnoSingleProject>true</UnoSingleProject>
@@ -50,6 +55,15 @@
     <!-- ONNX Runtime AAR declares minSdk 24 (uses APIs not available below);
          align the app's minSdk with the library instead of overrideLibrary. -->
     <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-ios'">
+    <!-- Uno 6 renders with Skia on UIKit (UnoPlatformHostBuilder.UseAppleUIKit, Platforms/iOS/Main.iOS.cs).
+         The ONNX Runtime iOS xcframework is linked statically by the NuGet package's own targets (CoreML weak). -->
+    <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
+    <!-- Unsigned by default (CI, simulator, compile checks). A signed build passes EnableCodeSigning=true plus the
+         CodesignKey / CodesignProvision properties (see docs/ci.md, iOS). -->
+    <EnableCodeSigning Condition="'$(EnableCodeSigning)' == ''">false</EnableCodeSigning>
   </PropertyGroup>
 
   <ItemGroup>

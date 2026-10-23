@@ -13,6 +13,7 @@ on:
   push:
     branches:
       - master
+      - feat/ios-build # TEMPORARY: CI on the iOS branch before the merge; remove with the merge
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
@@ -109,6 +110,19 @@ jobs:
               --logger "trx;LogFileName=$name.trx" --results-directory TestResults
             if ($LASTEXITCODE -ne 0) { $failed += $name }
             Write-Host '::endgroup::'
+          }
+          # Hosted-runner logs need a login to read: repeat every failed test (name + first lines of the message) as an annotation.
+          $ns = New-Object Xml.XmlNamespaceManager((New-Object Xml.NameTable))
+          $ns.AddNamespace('t', 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010')
+          foreach ($trxFile in Get-ChildItem TestResults -Filter *.trx -ErrorAction SilentlyContinue) {
+            $trx = [xml](Get-Content -LiteralPath $trxFile.FullName -Raw)
+            foreach ($result in $trx.SelectNodes("//t:UnitTestResult[@outcome='Failed']", $ns)) {
+              $message = $result.SelectSingleNode('t:Output/t:ErrorInfo/t:Message', $ns)?.InnerText
+              if (-not $message) { $message = '' }
+              $message = ($message -replace '\r?\n', ' | ')
+              if ($message.Length -gt 600) { $message = $message.Substring(0, 600) }
+              Write-Host "::error::FAILED $($trxFile.BaseName) $($result.testName): $message"
+            }
           }
           if ($failed.Count -gt 0) { Write-Host "::error::failed test projects: $($failed -join ', ')"; exit 1 }
 
