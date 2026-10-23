@@ -1,0 +1,25 @@
+.claude/skills/nemotron-backend/SKILL.md
+  s_ac6e0785fbdb7d::t_38b03392d1b33a 42
+AGENTS.md
+  s_ac6e0785fbdb7d::t_818e2a9c0f5ac7 166
+docs/research/nemotron-pure-ort-followups.md
+  s_ac6e0785fbdb7d::t_21287d69aa0774 85
+docs/research/onnxruntime-genai-ideas.md
+  s_ac6e0785fbdb7d::t_50702fe7eab9a9 5,76,86,96,124-128,280,321,349,378
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "fd40186059d0ae165c0e3f7724f06ad7e933ec4c",
+  "prompts": {},
+  "sessions": {
+    "s_ac6e0785fbdb7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a252daefe3eccd856",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
