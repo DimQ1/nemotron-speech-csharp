@@ -2,11 +2,13 @@ using System.ComponentModel;
 using System.Diagnostics;
 using Microsoft.UI.Xaml.Controls;
 using SpeechLib.ModelDownload;
+using SpeechLib.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VoiceType.Hotkeys;
 using VoiceType.Hotkeys.XdgPortal;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Presentation.SettingsUi;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Platform;
 using VoiceType.Uno.Services.Platform.Linux;
@@ -114,6 +116,7 @@ public sealed partial class MainViewModel : ObservableObject
         _transcript = new TranscriptCoordinator(scheduler, () => FloatingText ?? "");
 
         _selectedLanguage = Settings.Language;
+        _audioSource = SettingsText.NormalizeAudioSource(Settings.AudioSource, PlatformUi.IsAndroidLayout);
         ConfigureTextInjector(Settings);
         IsTextInjectionEnabled = Settings.IsTextInjectionEnabled;
         IsAutoScrollEnabled = Settings.IsAutoScrollEnabled;
@@ -754,6 +757,13 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _alwaysOnTop;
 
+    /// <summary>What is captured: <c>Mic</c>, <c>Loopback</c> or <c>Mix</c> (the stored value, normalized for the platform).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AudioSourceLabel))]
+    [NotifyPropertyChangedFor(nameof(AudioSourceGlyph))]
+    [NotifyPropertyChangedFor(nameof(AudioSourceChipName))]
+    private string _audioSource;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsTranslationVisible))]
     private bool _isTranslationEnabled;
@@ -768,6 +778,79 @@ public sealed partial class MainViewModel : ObservableObject
     private string _translationTargetLanguage = "ru";
 
     public bool IsTranslationVisible => IsTranslationEnabled;
+
+    // ── Audio source chip (main screen): shows the source and, where there is a choice, switches it ──
+
+    /// <summary>The sources the platform offers (Android: the microphone only).</summary>
+    public IReadOnlyList<SettingsOption> AudioSourceOptions => SettingsText.AudioSourceOptions(PlatformUi.IsAndroidLayout);
+
+    /// <summary>False where only one source exists: the chip then just says what is captured.</summary>
+    public bool IsAudioSourceSwitchable => SettingsText.HasAudioSourceChoice(PlatformUi.IsAndroidLayout);
+
+    public string AudioSourceLabel => SettingsText.AudioSourceChipTitle(AudioSource, PlatformUi.IsAndroidLayout);
+
+    public string AudioSourceChipName => SettingsText.AudioSourceChipName(AudioSource, PlatformUi.IsAndroidLayout);
+
+    /// <summary>Which icon the chip shows; <c>AudioSourceIcons</c> draws it (microphone, speaker, or both side by side).</summary>
+    public AudioSourceGlyph AudioSourceGlyph => SettingsText.AudioSourceGlyphOf(AudioSource, PlatformUi.IsAndroidLayout);
+
+    /// <summary>
+    /// A pick in the chip menu. Saved like a Settings change; while recording the capture moves to the new source on the
+    /// fly (<see cref="SwitchLiveSourceAsync"/>): same recording, same transcript, no stop.
+    /// </summary>
+    public void SelectAudioSource(string value)
+    {
+        var normalized = SettingsText.NormalizeAudioSource(value, PlatformUi.IsAndroidLayout);
+        if (string.Equals(AudioSource, normalized, StringComparison.Ordinal))
+            return;
+        AudioSource = normalized;
+    }
+
+    partial void OnAudioSourceChanged(string value)
+    {
+        if (_isProjectingSettingsSnapshot)
+            return;
+
+        Persist(s => s.AudioSource = value);
+        if (_recognition.IsRunning)
+            _ = SwitchLiveSourceAsync(value);
+    }
+
+    /// <summary>
+    /// Moves the running capture to <paramref name="source"/> without stopping the recording. A source that cannot be started
+    /// leaves capture where it was: the choice is taken back and the reason is shown. When nothing records, the source
+    /// is just used at the next start.
+    /// </summary>
+    private async Task SwitchLiveSourceAsync(string source)
+    {
+        if (!Enum.TryParse<CaptureMode>(source, out var mode))
+            return;
+
+        CaptureSwitchResult result;
+        try
+        {
+            result = await _recognition.SwitchSourceAsync(mode).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            result = new CaptureSwitchResult(CaptureSwitchOutcome.Refused, _recognition.ActiveSource, ex);
+        }
+
+        if (result.Outcome != CaptureSwitchOutcome.Refused)
+            return;
+
+        var active = result.Active.ToString();
+        var android = PlatformUi.IsAndroidLayout;
+        _scheduler.Post(() =>
+        {
+            // The choice is only taken back if the user has not picked something else in the meantime. Setting the
+            // property saves the old source; the switch back is a no-op, that source is the one running.
+            if (string.Equals(AudioSource, source, StringComparison.Ordinal))
+                AudioSource = active;
+            StatusText = $"Could not switch to {SettingsText.AudioSourceTitle(source, android)}: {result.Error?.Message} " +
+                         $"Still using {SettingsText.AudioSourceTitle(active, android)}.";
+        });
+    }
 
     partial void OnIsTranslationEnabledChanged(bool value)
     {
@@ -1298,8 +1381,9 @@ public sealed partial class MainViewModel : ObservableObject
             }
 
             await Task.Run(() => _recognition.ApplyRuntimeSettings(newSettings)).ConfigureAwait(false);
+            // The source changes on the fly: no stop, the recording carries on.
             if (audioSourceChanged && _recognition.IsRunning)
-                await RestartCaptureAsync(newSettings, version).ConfigureAwait(false);
+                await SwitchLiveSourceAsync(SettingsText.NormalizeAudioSource(newSettings.AudioSource, PlatformUi.IsAndroidLayout)).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -1464,6 +1548,7 @@ public sealed partial class MainViewModel : ObservableObject
             IsTextInjectionEnabled = settings.IsTextInjectionEnabled;
             IsAutoScrollEnabled = settings.IsAutoScrollEnabled;
             AlwaysOnTop = settings.AlwaysOnTop;
+            AudioSource = SettingsText.NormalizeAudioSource(settings.AudioSource, PlatformUi.IsAndroidLayout);
             IsTranslationEnabled = settings.TranslationEnabled;
             TranslationTargetLanguage = settings.TranslationTargetLanguage;
             _translation.SetTargetLanguage(settings.TranslationTargetLanguage);

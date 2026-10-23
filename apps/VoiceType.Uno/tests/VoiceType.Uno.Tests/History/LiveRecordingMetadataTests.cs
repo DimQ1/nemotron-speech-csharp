@@ -117,6 +117,30 @@ public class LiveRecordingMetadataTests
         Assert.Equal("muted", gap.Reason);
     }
 
+    [Fact]
+    public void BuildAudioInfo_ShouldListTheSourceSwitchesOfARecordingInSeconds()
+    {
+        var audio = LiveRecordingMetadata.BuildAudioInfo(
+            "audio.ogg", AudioQuality.Standard, 16000, samples: 160_000, bytes: 1, source: "Mic",
+            gaps: [], sourceChanges: [(48_000, "Loopback"), (112_000, "Mix")]);
+
+        Assert.Equal("Mic", audio.Source);   // what the recording started with
+        Assert.NotNull(audio.SourceChanges);
+        Assert.Equal([(3.0, "Loopback"), (7.0, "Mix")], audio.SourceChanges.Select(c => (c.AtSec, c.Source)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BuildAudioInfo_WithoutSourceSwitches_ShouldLeaveThemOutOfTheManifest(bool emptyList)
+    {
+        var audio = LiveRecordingMetadata.BuildAudioInfo(
+            "audio.ogg", AudioQuality.Standard, 16000, samples: 16_000, bytes: 1, source: "Mic",
+            gaps: [], sourceChanges: emptyList ? [] : null);
+
+        Assert.Null(audio.SourceChanges);   // null is not written: manifests of recordings that never switched stay as they were
+    }
+
     [Theory]
     [InlineData("hello", null, 0.5, true)]
     [InlineData("", "typed", 0.5, true)]

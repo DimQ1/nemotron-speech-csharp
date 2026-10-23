@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Input;
 using SpeechLib.ModelDownload;
 using VoiceType.Uno.Presentation;
 using VoiceType.Uno.Presentation.Chat;
+using VoiceType.Uno.Presentation.Controls;
 using VoiceType.Uno.Presentation.History;
 using VoiceType.Uno.Presentation.Queue;
 using VoiceType.Uno.Services;
@@ -29,6 +30,8 @@ public sealed partial class MainPage : Page
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         SizeChanged += (_, _) => ApplyLayout();
         Loaded += OnLoaded;
+        BuildSourceChip();
+        UpdateSourceIcons();
 
 #if DEBUG
         // Smoke-test hook (Linux/WSLg verification): VOICETYPE_OPEN_MODEL_MANAGER=1 opens
@@ -42,6 +45,59 @@ public sealed partial class MainPage : Page
             || Environment.GetEnvironmentVariable("VOICETYPE_SMOKE_RECORD_SECONDS") is { Length: > 0 })
             Loaded += OnSmokeTestLoaded;
 #endif
+    }
+
+    /// <summary>
+    /// Wires the audio source chip. There are two buttons for the one chip (a row under the app bar and an icon in the
+    /// app bar; <see cref="MainLayout.SourceChip"/> shows one of them), each with its own menu. Where only the
+    /// microphone exists (Android) there is nothing to switch and neither is ever shown.
+    /// </summary>
+    private void BuildSourceChip()
+    {
+        if (!ViewModel.IsAudioSourceSwitchable)
+            return;
+
+        SourceChip.Flyout = CreateSourceMenu(Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft);
+        SourceChipCompact.Flyout = CreateSourceMenu(Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight);
+    }
+
+    /// <summary>Draws the chip icon of the current source in both chip buttons (the row one and the app bar one).</summary>
+    private void UpdateSourceIcons()
+    {
+        SourceChipIcon.Content = AudioSourceIcons.Create(ViewModel.AudioSourceGlyph);
+        SourceChipCompactIcon.Content = AudioSourceIcons.Create(ViewModel.AudioSourceGlyph);
+    }
+
+    /// <summary>
+    /// One checkable item per source, then (while recording) the hint that a switch starts a new recording. The checks
+    /// are set each time the menu opens, so a change made in Settings is reflected too.
+    /// </summary>
+    private MenuFlyout CreateSourceMenu(Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode placement)
+    {
+        var items = new List<(string Value, ToggleMenuFlyoutItem Item)>();
+        var menu = new MenuFlyout { Placement = placement };
+        foreach (var option in ViewModel.AudioSourceOptions)
+        {
+            var value = option.Value;
+            // 44 px high like every touch target of the screen (the default menu item is about 40).
+            var item = new ToggleMenuFlyoutItem { Text = option.Title, IsEnabled = option.Enabled, MinHeight = 44 };
+            item.Click += (_, _) => ViewModel.SelectAudioSource(value);
+            items.Add((value, item));
+            menu.Items.Add(item);
+        }
+
+        var separator = new MenuFlyoutSeparator();
+        var hint = new MenuFlyoutItem { Text = SettingsText.AudioSourceSwitchWhileRecordingHint, IsEnabled = false, MinHeight = 44 };
+        menu.Items.Add(separator);
+        menu.Items.Add(hint);
+
+        menu.Opening += (_, _) =>
+        {
+            foreach (var (value, item) in items)
+                item.IsChecked = string.Equals(value, ViewModel.AudioSource, StringComparison.Ordinal);
+            separator.Visibility = hint.Visibility = ViewModel.IsRecording ? Visibility.Visible : Visibility.Collapsed;
+        };
+        return menu;
     }
 
     protected override void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
@@ -192,6 +248,9 @@ public sealed partial class MainPage : Page
             case nameof(MainViewModel.IsManualInputEnabled):
                 UpdateVisualStates(useTransitions: true);
                 break;
+            case nameof(MainViewModel.AudioSourceGlyph):
+                UpdateSourceIcons();
+                break;
             case nameof(MainViewModel.FloatingText) when ViewModel.IsAutoScrollEnabled:
                 DispatcherQueue.TryEnqueue(() => ScrollToEnd(TranscriptScroll));
                 break;
@@ -243,7 +302,7 @@ public sealed partial class MainPage : Page
 
         Shell.OpenPaneLength = Math.Min(MaxPaneWidth, width * MaxPaneWidthRatio);
 
-        _layout = MainLayout.Compute(width, height, ViewModel.IsTranslationVisible, _isKeyboardOpen);
+        _layout = MainLayout.Compute(width, height, ViewModel.IsTranslationVisible, _isKeyboardOpen, ViewModel.IsAudioSourceSwitchable);
         ApplyChrome(_layout);
         ApplyCards(_layout.Cards);
     }
@@ -260,6 +319,9 @@ public sealed partial class MainPage : Page
         RecordButton.CornerRadius = new CornerRadius(recordSize / 2.0);
         RecordCaptionText.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         BottomBar.Padding = compact ? new Thickness(16, 4, 16, 8) : new Thickness(16, 8, 16, 12);
+
+        SourceChip.Visibility = layout.SourceChip == SourceChipPlacement.Row ? Visibility.Visible : Visibility.Collapsed;
+        SourceChipCompact.Visibility = layout.SourceChip == SourceChipPlacement.TopBar ? Visibility.Visible : Visibility.Collapsed;
 
         var side = layout.SidePadding;
         BannerPanel.Padding = new Thickness(side, 0, side, 0);

@@ -20,11 +20,9 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     private readonly IAudioSourceFactory _audioSourceFactory;
 
     private IStreamingSpeechRecognizer? _recognizer;
-    private IAudioSource? _audioSource;
-    private Thread? _captureThread;
+    private SwitchableCapture? _capture;
     private ConcurrentQueueWrapper? _buffer;
     private ManualResetEventSlim? _signal;
-    private CaptureState? _captureState;
     private bool _isRunning;
     private volatile bool _captureMuted;
     private Task? _processTask;
@@ -190,7 +188,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         if (_recognizer is null || _pipeline is null || ModelState != ModelLifecycleState.Loaded)
             throw new InvalidOperationException("Model is not loaded. Call LoadModelAsync first.");
 
-        if (_processTask is not null || _audioSource is not null)
+        if (_processTask is not null || _capture is not null)
             await StopAndCleanupAsync();
 
         var pipeline = _pipeline;
@@ -199,57 +197,67 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         _lastPartial = null;
         _lastCommitted = null;
         _captureException = null;
-        _isRunning = true;
 
-        _audioSource = _audioSourceFactory.Create(
-            Enum.Parse<CaptureMode>(settings.AudioSource),
-            _recognizer.SampleRate);
-
-        _buffer = new ConcurrentQueueWrapper();
-        _signal = new ManualResetEventSlim(false);
-        _captureState = new CaptureState();
+        var buffer = new ConcurrentQueueWrapper();
+        var signal = new ManualResetEventSlim(false);
+        var capture = new SwitchableCapture(_audioSourceFactory, _recognizer.SampleRate, buffer, signal);
+        capture.Failed += OnCaptureFailed;
 
         // Clear buffered audio/decoder state from a previous session so the new
         // stream starts fresh (Parakeet TDT buffers audio between chunks).
         lock (_recognizerOperationGate)
             _recognizer.ResetStreamingState();
 
-        var audioSource = _audioSource;
-        var buffer = _buffer;
-        var signal = _signal;
-        var captureState = _captureState;
-        _captureThread = new Thread(() =>
+        // Running before the source starts: a source that fails at once reports through OnCaptureFailed, which clears it.
+        _isRunning = true;
+        try
         {
-            try
-            {
-                audioSource.Start(buffer, signal, captureState);
-            }
-            catch (Exception ex)
-            {
-                _captureException = ex;
-                _isRunning = false;
-                Error?.Invoke(ex);
-            }
-            finally
-            {
-                captureState.IsRunning = false;
-                signal.Set();
-            }
-        })
+            capture.Start(Enum.Parse<CaptureMode>(settings.AudioSource));
+        }
+        catch
         {
-            IsBackground = true,
-            Name = "VoiceType audio capture"
-        };
-        _captureThread.Start();
+            _isRunning = false;
+            capture.Dispose();
+            signal.Dispose();
+            throw;
+        }
 
-        _processTask = Task.Run(() => ProcessLoop(pipeline, tap));
+        _buffer = buffer;
+        _signal = signal;
+        _capture = capture;
+        _processTask = Task.Run(() => ProcessLoop(pipeline, tap, capture, buffer, signal));
+    }
+
+    /// <summary>The source capture runs on now (meaningful while <see cref="IsRunning"/>).</summary>
+    public CaptureMode ActiveSource => _capture?.Mode ?? default;
+
+    /// <summary>
+    /// Changes the audio source of the running session without ending it: the old source is stopped and the new one
+    /// started on the same queue, so the recognizer, the transcript and the History recording carry on (the stream
+    /// has a gap of a few hundred milliseconds and a marker where the source changed). If the new source cannot be
+    /// started the previous one is restored (<see cref="CaptureSwitchOutcome.Refused"/>); when nothing is recording the
+    /// source simply applies at the next start (<see cref="CaptureSwitchOutcome.NotRunning"/>).
+    /// </summary>
+    public Task<CaptureSwitchResult> SwitchSourceAsync(CaptureMode mode)
+    {
+        var capture = _capture;
+        return capture is null || !_isRunning
+            ? Task.FromResult(new CaptureSwitchResult(CaptureSwitchOutcome.NotRunning, ActiveSource))
+            : capture.SwitchToAsync(mode);
+    }
+
+    /// <summary>The current source died (device unplugged, driver error): the session cannot go on.</summary>
+    private void OnCaptureFailed(Exception ex)
+    {
+        _captureException = ex;
+        _isRunning = false;
+        Error?.Invoke(ex);
     }
 
     public void Stop()
     {
         _isRunning = false;
-        if (_captureState is not null)
-            _captureState.IsRunning = false;
+        _capture?.Stop();
         _signal?.Set();
     }
 
@@ -314,18 +322,25 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             languageConfigurable.TrySetLanguage(language);
     }
 
-    private Task ProcessLoop(IRecognitionPipeline pipeline, IRecognitionTap? tap)
+    private Task ProcessLoop(
+        IRecognitionPipeline pipeline, IRecognitionTap? tap, SwitchableCapture capture, ConcurrentQueueWrapper buffer, ManualResetEventSlim signal)
     {
         try
         {
-            while ((_isRunning && _captureState?.IsRunning == true) ||
-                   (_captureThread?.IsAlive == true) ||
-                   (_buffer?.IsEmpty == false))
+            // IsActive stays true while the source is being exchanged, so a switch never ends the session.
+            while (capture.IsActive || !buffer.IsEmpty)
             {
                 var gotData = false;
-                while (_buffer?.TryDequeue(out var batch) == true)
+                while (buffer.TryDequeue(out var batch))
                 {
                     gotData = true;
+                    if (capture.IsSwitchMarker(batch, out var newSource))
+                    {
+                        // Not audio: the place in the stream where the source changed.
+                        InvokeTap(ref tap, t => t.OnSourceChanged(newSource.ToString()));
+                        continue;
+                    }
+
                     if (_captureMuted)
                     {
                         // Muted audio reaches neither the recognizer nor the file; the
@@ -345,8 +360,8 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
 
                 if (!gotData)
                 {
-                    _signal?.Wait(50);
-                    _signal?.Reset();
+                    signal.Wait(50);
+                    signal.Reset();
                 }
             }
 
@@ -367,7 +382,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         finally
         {
             Stopped?.Invoke();
-            _captureThread?.Join(TimeSpan.FromSeconds(1));
+            capture.Join(TimeSpan.FromSeconds(1));
         }
 
         return Task.CompletedTask;
@@ -437,17 +452,11 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
 
     private void CleanupCaptureResources()
     {
-        _captureThread?.Join(TimeSpan.FromSeconds(1));
-        _captureThread = null;
-
-        _audioSource?.Dispose();
-        _audioSource = null;
+        _capture?.Dispose();
+        _capture = null;
 
         _signal?.Dispose();
         _signal = null;
-
-        _captureState?.Dispose();
-        _captureState = null;
 
         _buffer = null;
     }
@@ -518,6 +527,12 @@ public interface IRecognitionTap
     /// <summary><see cref="OnFlush(string?, IReadOnlyList{SpeechLib.Models.WordTiming}?)"/> with the same flag.</summary>
     void OnFlush(string? committed, IReadOnlyList<SpeechLib.Models.WordTiming>? committedWords, bool committedContinuesPrevious) =>
         OnFlush(committed, committedWords);
+
+    /// <summary>
+    /// The audio source changed while recording (<c>Mic</c>, <c>Loopback</c> or <c>Mix</c>): everything delivered after
+    /// this call comes from <paramref name="source"/>. In order with <see cref="OnAudio"/>.
+    /// </summary>
+    void OnSourceChanged(string source) { }
 }
 
 public enum ModelLifecycleState

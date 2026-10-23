@@ -349,12 +349,13 @@
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
 
-      <!-- Row 0: top app bar — menu, title + mode summary, state pill -->
+      <!-- Row 0: top app bar — menu, title + mode summary, (audio source icon), state pill -->
       <Grid x:Name="TopBar" Grid.Row="0"
             MinHeight="56" Padding="4,4,8,4" ColumnSpacing="8">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="48" />
           <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <Button Grid.Column="0" Width="48" Height="48"
@@ -371,7 +372,19 @@
                      TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
                      ToolTipService.ToolTip="{x:Bind ViewModel.ModeSummary, Mode=OneWay}" />
         </StackPanel>
-        <Border Grid.Column="2" Height="28" Padding="10,0" CornerRadius="14"
+        <!-- Audio source, icon only: stands in for the chip row (SourceChip) where a row would not fit
+             (low height, keyboard open). MainLayout.SourceChip picks which of the two is visible. -->
+        <Button x:Name="SourceChipCompact" Grid.Column="2" Width="44" Height="44" Padding="0"
+                CornerRadius="22" Visibility="Collapsed" VerticalAlignment="Center"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                AutomationProperties.Name="{x:Bind ViewModel.AudioSourceChipName, Mode=OneWay}"
+                ToolTipService.ToolTip="{x:Bind ViewModel.AudioSourceChipName, Mode=OneWay}">
+          <ContentControl x:Name="SourceChipCompactIcon" IsTabStop="False"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Button>
+        <Border Grid.Column="3" Height="28" Padding="10,0" CornerRadius="14"
                 VerticalAlignment="Center"
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -388,8 +401,30 @@
         </Border>
       </Grid>
 
-      <!-- Row 1: status notice, model-missing banners, download queue progress -->
+      <!-- Row 1: audio source chip, status notice, model-missing banners, download queue progress -->
       <StackPanel x:Name="BannerPanel" Grid.Row="1" Padding="16,0" Spacing="8">
+        <!-- What is being captured, and where there is a choice (desktop: microphone / system audio / both)
+             the switch: tapping opens the menu that MainPage.xaml.cs builds. Only where the window is tall
+             enough (MainLayout.SourceChip = Row); otherwise SourceChipCompact in the top bar is shown,
+             and on Android (microphone only) neither. -->
+        <Button x:Name="SourceChip"
+                HorizontalAlignment="Left" MinHeight="44" Padding="12,0" CornerRadius="22"
+                Visibility="Collapsed"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                AutomationProperties.Name="{x:Bind ViewModel.AudioSourceChipName, Mode=OneWay}"
+                ToolTipService.ToolTip="{x:Bind ViewModel.AudioSourceChipName, Mode=OneWay}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <ContentControl x:Name="SourceChipIcon" IsTabStop="False" VerticalAlignment="Center" />
+            <TextBlock x:Name="SourceChipText" Text="{x:Bind ViewModel.AudioSourceLabel, Mode=OneWay}"
+                       FontSize="13" VerticalAlignment="Center" />
+            <FontIcon x:Name="SourceChipChevron" Glyph="&#xE70D;" FontSize="10"
+                      VerticalAlignment="Center"
+                      Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+          </StackPanel>
+        </Button>
+
         <TextBlock x:Name="StatusNoticeText"
                    Text="{x:Bind ViewModel.StatusNotice, Mode=OneWay}"
                    Visibility="{x:Bind ViewModel.IsStatusNoticeVisible, Mode=OneWay}"

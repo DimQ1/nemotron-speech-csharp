@@ -88,6 +88,42 @@ public class SettingsTextTests
         => Assert.Equal("Mic", SettingsText.NormalizeAudioSource(stored, android: true));
 
     [Theory]
+    [InlineData("Mic", "Microphone", AudioSourceGlyph.Microphone)]
+    [InlineData("Loopback", "System audio", AudioSourceGlyph.SystemAudio)]
+    [InlineData("Mix", "Mic + system audio", AudioSourceGlyph.Both)]
+    [InlineData("loopback", "System audio", AudioSourceGlyph.SystemAudio)]
+    [InlineData("", "Microphone", AudioSourceGlyph.Microphone)]
+    [InlineData(null, "Microphone", AudioSourceGlyph.Microphone)]
+    public void AudioSourceChip_ShouldNameAndIconTheSourceOnTheDesktop(string? stored, string chipTitle, AudioSourceGlyph glyph)
+    {
+        Assert.Equal(chipTitle, SettingsText.AudioSourceChipTitle(stored, android: false));
+        Assert.Equal(glyph, SettingsText.AudioSourceGlyphOf(stored, android: false));
+    }
+
+    [Theory]
+    [InlineData("Loopback")]
+    [InlineData("Mix")]
+    public void AudioSourceChip_OnAndroid_ShouldShowTheMicrophoneWhateverIsStored(string stored)
+    {
+        Assert.Equal("Microphone", SettingsText.AudioSourceChipTitle(stored, android: true));
+        Assert.Equal(AudioSourceGlyph.Microphone, SettingsText.AudioSourceGlyphOf(stored, android: true));
+    }
+
+    [Fact]
+    public void HasAudioSourceChoice_ShouldBeTrueOnlyWhereMoreThanOneSourceWorks()
+    {
+        Assert.True(SettingsText.HasAudioSourceChoice(android: false));
+        Assert.False(SettingsText.HasAudioSourceChoice(android: true));
+    }
+
+    [Fact]
+    public void AudioSourceChipName_ShouldSaySourceAndThatItCanBeChanged()
+    {
+        Assert.Equal("Audio source: System audio. Tap to change.", SettingsText.AudioSourceChipName("Loopback", android: false));
+        Assert.Equal("Audio source: Microphone", SettingsText.AudioSourceChipName("Mic", android: true));
+    }
+
+    [Theory]
     [InlineData("native", "On this device")]
     [InlineData("http", "Local server")]
     [InlineData("HTTP", "Local server")]

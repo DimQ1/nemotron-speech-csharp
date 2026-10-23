@@ -7,6 +7,14 @@ namespace VoiceType.Uno.Services;
 /// <summary>A choice shown with a human name; <see cref="Value"/> is what <c>settings.json</c> stores.</summary>
 public sealed record SettingsOption(string Value, string Title, string? Detail = null, string? Tag = null, bool Enabled = true);
 
+/// <summary>Icon family of an audio source: the microphone, what the computer plays, or both.</summary>
+public enum AudioSourceGlyph
+{
+    Microphone,
+    SystemAudio,
+    Both,
+}
+
 /// <summary>The sections of the Settings page (design voicetype-uno-settings §3.3).</summary>
 public enum SettingsSection { Storage, Speech, Audio, Translation, Typing, Hotkeys, General }
 
@@ -119,6 +127,32 @@ public static class SettingsText
 
     public static string AudioSourceTitle(string? stored, bool android) =>
         AudioSourceOptions(android).First(o => o.Value == NormalizeAudioSource(stored, android)).Title;
+
+    /// <summary>Whether the user has a real choice: more than one source can be used (false on Android, where only the microphone works).</summary>
+    public static bool HasAudioSourceChoice(bool android) => AudioSourceOptions(android).Count(o => o.Enabled) > 1;
+
+    /// <summary>The source on the main screen chip: short enough for a phone-width screen next to its icon.</summary>
+    public static string AudioSourceChipTitle(string? stored, bool android) => NormalizeAudioSource(stored, android) switch
+    {
+        SourceLoopback => "System audio",
+        SourceMix => "Mic + system audio",
+        _ => "Microphone",
+    };
+
+    /// <summary>The icon family of a source; the head maps it to its symbol.</summary>
+    public static AudioSourceGlyph AudioSourceGlyphOf(string? stored, bool android) => NormalizeAudioSource(stored, android) switch
+    {
+        SourceLoopback => AudioSourceGlyph.SystemAudio,
+        SourceMix => AudioSourceGlyph.Both,
+        _ => AudioSourceGlyph.Microphone,
+    };
+
+    /// <summary>What a screen reader says for the chip: the source, and that it can be changed when it can.</summary>
+    public static string AudioSourceChipName(string? stored, bool android) =>
+        $"Audio source: {AudioSourceTitle(stored, android)}" + (HasAudioSourceChoice(android) ? ". Tap to change." : "");
+
+    /// <summary>Hint at the end of the source menu while recording: the switch happens on the fly, the recording is not interrupted.</summary>
+    public const string AudioSourceSwitchWhileRecordingHint = "The recording continues on the new source";
 
     public const string EngineNative = "native";
     public const string EngineHttp = "http";

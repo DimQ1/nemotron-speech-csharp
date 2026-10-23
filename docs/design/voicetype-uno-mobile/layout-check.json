@@ -10,6 +10,7 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip",
       "clear",
       "mute",
       "record",
@@ -29,12 +30,66 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip",
       "clear",
       "target",
       "translate-all",
       "mute",
       "record",
       "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-source-menu": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "menu",
+    "checked": [
+      "src-mic",
+      "src-loop",
+      "src-mix"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-source-android": {
+    "viewport": "360x800",
+    "safe": {
+      "l": 0,
+      "t": 32,
+      "r": 360,
+      "b": 776
+    },
+    "layer": "main",
+    "checked": [
+      "menu",
+      "clear",
+      "mute",
+      "record",
+      "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "phone-small-source-menu": {
+    "viewport": "320x568",
+    "safe": {
+      "l": 0,
+      "t": 24,
+      "r": 320,
+      "b": 520
+    },
+    "layer": "menu",
+    "checked": [
+      "src-mic-top",
+      "src-loop-top",
+      "src-mix-top"
     ],
     "issues": [],
     "ok": true
@@ -73,6 +128,7 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip",
       "banner-dl",
       "clear",
       "mute",
@@ -93,6 +149,7 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip-top",
       "clear",
       "target",
       "translate-all",
@@ -114,6 +171,7 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip-top",
       "banner-dl",
       "clear",
       "target",
@@ -136,6 +194,7 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip-top",
       "clear",
       "target",
       "translate-all",
@@ -180,6 +239,7 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip-top",
       "banner-dl",
       "tab-transcript",
       "tab-translation",
@@ -202,6 +262,7 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip-top",
       "tab-transcript",
       "tab-translation",
       "translate-all",
@@ -223,6 +284,7 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip-top",
       "clear",
       "target",
       "translate-all",
@@ -382,6 +444,7 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip",
       "clear",
       "target",
       "translate-all",
@@ -403,12 +466,30 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip",
       "clear",
       "target",
       "translate-all",
       "mute",
       "record",
       "copy"
+    ],
+    "issues": [],
+    "ok": true
+  },
+  "desktop-source-mix": {
+    "viewport": "1280x800",
+    "safe": {
+      "l": 0,
+      "t": 0,
+      "r": 1280,
+      "b": 800
+    },
+    "layer": "menu",
+    "checked": [
+      "src-mic",
+      "src-loop",
+      "src-mix"
     ],
     "issues": [],
     "ok": true
@@ -471,6 +552,7 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip",
       "banner-dl",
       "clear",
       "target",
@@ -493,6 +575,7 @@
     "layer": "main",
     "checked": [
       "menu",
+      "source-chip",
       "clear",
       "target",
       "translate-all",

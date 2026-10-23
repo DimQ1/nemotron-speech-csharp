@@ -24,6 +24,9 @@ New-Item -ItemType Directory -Force $shots | Out-Null
 $scenarios = @(
     @{ Name = 'phone-idle';                W = 360;  H = 800;  Q = 'top=32&bottom=24' }
     @{ Name = 'phone-recording-translate'; W = 360;  H = 800;  Q = 'top=32&bottom=24&rec=1&tr=1&inject=1' }
+    @{ Name = 'phone-source-menu';         W = 360;  H = 800;  Q = 'top=32&bottom=24&rec=1&src=loop&srcmenu=1' }
+    @{ Name = 'phone-source-android';      W = 360;  H = 800;  Q = 'top=32&bottom=24&android=1' }
+    @{ Name = 'phone-small-source-menu';   W = 320;  H = 568;  Q = 'top=24&bottom=48&rec=1&src=mix&srcmenu=1' }
     @{ Name = 'phone-drawer';              W = 360;  H = 800;  Q = 'top=32&bottom=24&drawer=1&tr=1&inject=1&dl=1' }
     @{ Name = 'phone-banner-download';     W = 360;  H = 800;  Q = 'top=32&bottom=48&banner=1&dl=1' }
     @{ Name = 'phone-manual-keyboard';     W = 360;  H = 800;  Q = 'top=32&bottom=24&manual=1&tr=1&kb=320' }
@@ -41,6 +44,7 @@ $scenarios = @(
     @{ Name = 'phone-landscape-models';    W = 800;  H = 360;  Q = 'top=24&right=48&models=1&mtab=downloads' }
     @{ Name = 'tablet-portrait';           W = 800;  H = 1280; Q = 'top=24&bottom=48&rec=1&tr=1&long=1' }
     @{ Name = 'desktop-recording';         W = 1280; H = 800;  Q = 'rec=1&tr=1&inject=1&long=1' }
+    @{ Name = 'desktop-source-mix';        W = 1280; H = 800;  Q = 'rec=1&src=mix&tr=1&inject=1&srcmenu=1' }
     @{ Name = 'desktop-drawer';            W = 1280; H = 800;  Q = 'drawer=1&tr=1&inject=1' }
     @{ Name = 'desktop-models';            W = 1280; H = 800;  Q = 'models=1&mtab=speech' }
     @{ Name = 'desktop-min-window';        W = 480;  H = 560;  Q = 'tr=1&banner=1&dl=1' }

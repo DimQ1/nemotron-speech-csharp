@@ -61,4 +61,27 @@ public class MainLayoutTests
     {
         Assert.Equal(expected, MainLayout.Compute(width, 800, true, false).SidePadding);
     }
+
+    [Theory]
+    [InlineData(360, 744, true, false, SourceChipPlacement.Row)]     // 360x800 phone after the system bars
+    [InlineData(1280, 800, true, false, SourceChipPlacement.Row)]
+    [InlineData(480, 560, true, false, SourceChipPlacement.Row)]     // the smallest window that still has the row
+    [InlineData(480, 559, true, false, SourceChipPlacement.TopBar)]
+    [InlineData(320, 496, true, false, SourceChipPlacement.TopBar)]  // 320x568 phone after the system bars
+    [InlineData(800, 336, true, false, SourceChipPlacement.TopBar)]  // phone landscape
+    [InlineData(320, 420, true, false, SourceChipPlacement.TopBar)]  // split screen
+    [InlineData(360, 800, false, true, SourceChipPlacement.TopBar)]  // on-screen keyboard: no spare row whatever the height
+    public void Compute_ShouldPlaceTheSourceChipInARowOrTheTopBar(
+        double width, double height, bool translation, bool keyboard, SourceChipPlacement expected)
+    {
+        Assert.Equal(expected, MainLayout.Compute(width, height, translation, keyboard).SourceChip);
+    }
+
+    [Theory]
+    [InlineData(360, 800, false)]
+    [InlineData(320, 300, true)]
+    public void Compute_ShouldNotShowTheSourceChipWhereThereIsNoChoice(double width, double height, bool keyboard)
+    {
+        Assert.Equal(SourceChipPlacement.None, MainLayout.Compute(width, height, false, keyboard, hasSourceChoice: false).SourceChip);
+    }
 }

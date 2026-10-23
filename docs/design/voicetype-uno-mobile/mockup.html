@@ -19,6 +19,8 @@
     manual=1     manual input on            banner=1  "model missing" banner
     dl=1         download progress strip    long=1    long transcript
     showtr=1     translation tab selected (compact-height tab mode)
+    src=mic|loop|mix   audio source on the chip (default mic); srcmenu=1 opens its menu
+    android=1    microphone only: the chip is a plain label (no chevron, no menu)
     models=1     Models screen; mtab=speech|translation|downloads
     top/bottom/left/right=<px>  system bar insets (status bar, gesture/nav bar)
     kb=<px>      on-screen keyboard height (SafeArea SoftInput)
@@ -97,7 +99,7 @@
   /* Explicit rows, like Grid.Row in XAML: an empty/collapsed row never shifts the others */
   .appbar { grid-row: 1; } .banners { grid-row: 2; } .content { grid-row: 3; } .cmdbar { grid-row: 4; }
   .appbar {
-    display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 8px;
+    display: grid; grid-template-columns: 48px 1fr; grid-auto-flow: column; grid-auto-columns: auto; align-items: center; gap: 8px;
     min-height: 56px; padding: 4px 8px 4px 4px;
   }
   .icon-btn {
@@ -133,6 +135,38 @@
     min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 6px;
     border: 1px solid var(--stroke); background: var(--surface); cursor: pointer;
   }
+  /* Source chip (first thing of row 1): what is captured; a menu where there is a choice */
+  [hidden] { display: none !important; }
+  .src-row { position: relative; justify-self: start; }
+  .appbar { position: relative; }
+  .chip-btn {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px;
+    border-radius: 22px; border: 1px solid var(--stroke); background: var(--surface);
+    color: var(--text); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .chip-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .chip-btn .chev { width: 10px; height: 10px; color: var(--text-2); }
+  /* Tight heights (< 560 px net, keyboard): no spare row, so the chip becomes an icon in the app bar */
+  .chip-btn.icon { width: 44px; padding: 0; justify-content: center; }
+  .src-menu {
+    position: absolute; left: 0; top: 48px; z-index: 6; min-width: 250px; padding: 4px;
+    border-radius: 8px; border: 1px solid var(--stroke); background: var(--surface);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+  }
+  /* The app bar menu hangs from the bar (not from the icon, which sits near the right edge) */
+  .src-menu.top { left: auto; right: 8px; top: 100%; margin-top: 2px; }
+  .src-menu button {
+    display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 12px;
+    border: 0; border-radius: 4px; background: transparent; color: var(--text);
+    font: inherit; font-size: 14px; text-align: left; cursor: pointer;
+  }
+  .src-menu button:hover { background: var(--surface-2); }
+  .src-menu .tick { width: 16px; visibility: hidden; }
+  .src-menu button.sel .tick { visibility: visible; }
+  .src-menu .src-hint { margin: 2px 12px 8px; padding-top: 6px; border-top: 1px solid var(--stroke); font-size: 12px; color: var(--text-2); }
+  body:not(.is-rec) .src-menu .src-hint { display: none; }
+  .banner-list { display: grid; gap: 8px; }
+  .banner-list:empty { display: none; }
   .progress { font-size: 12px; color: var(--text-2); }
   .progress .bar { height: 4px; border-radius: 2px; background: var(--stroke); margin-top: 4px; overflow: hidden; }
   .progress .bar i { display: block; height: 100%; width: 42%; background: var(--accent); }
@@ -340,11 +374,27 @@
       <h1>VoiceType</h1>
       <p id="subtitle">Parakeet TDT INT4 · Auto</p>
     </div>
+    <span class="src-top" id="srcTop" hidden>
+      <button class="chip-btn icon" id="srcChipTop" data-hit="source-chip-top" aria-haspopup="menu" aria-expanded="false" onclick="toggleSrcMenu('Top')">
+        <svg id="srcIconTop" viewBox="0 0 24 24"></svg>
+      </button>
+      <div class="src-menu top" id="srcMenuTop" role="menu" hidden></div>
+    </span>
     <span class="state-pill" role="status" aria-live="polite"><span class="dot"></span><span id="state">Ready</span></span>
   </header>
 
-  <!-- Row 1: banners / download progress -->
-  <section class="banners" id="banners"></section>
+  <!-- Row 1: source chip, then banners / download progress -->
+  <section class="banners">
+    <div class="src-row" id="srcRow" hidden>
+      <button class="chip-btn" id="srcChip" data-hit="source-chip" aria-haspopup="menu" aria-expanded="false" onclick="toggleSrcMenu('')">
+        <svg id="srcIcon" viewBox="0 0 24 24"></svg>
+        <span id="srcLabel">Microphone</span>
+        <svg class="chev" viewBox="0 0 10 10"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <div class="src-menu" id="srcMenu" role="menu" hidden></div>
+    </div>
+    <div class="banner-list" id="banners"></div>
+  </section>
 
   <!-- Row 2: transcript + translation -->
   <main class="content">
@@ -583,6 +633,49 @@
     document.getElementById('banners').innerHTML = banners.join('');
     document.getElementById('dlBadge').hidden = !has('dl');
   }
+  // ── Audio source chip: the same three sources as Settings > Audio ──
+  // Placement (MainLayout.SourceChip): a row under the app bar when the window is tall enough (net height >= 560 px,
+  // no keyboard), an icon in the app bar otherwise; none where only the microphone exists (Android).
+  const SOURCES = {
+    mic:  { label: 'Microphone',                icon: '<path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/>' },
+    loop: { label: 'System audio',              icon: '<path d="M4 9v6h4l5 4V5L8 9H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>' },
+    mix:  { label: 'Microphone + system audio', icon: '<path d="M7 4a2 2 0 0 0-2 2v4a2 2 0 0 0 4 0V6a2 2 0 0 0-2-2zM3 10a4 4 0 0 0 8 0M7 14v3M13 10v4h2.5l3.5 3V7l-3.5 3H13zM21 9.5a3.5 3.5 0 0 1 0 5"/>' },
+  };
+  const SHORT_LABEL = { mic: 'Microphone', loop: 'System audio', mix: 'Mic + system audio' };
+  let source = SOURCES[q.get('src')] ? q.get('src') : 'mic';
+  const micOnly = q.get('android') === '1';
+  const nq = k => parseInt(q.get(k) || '0', 10) || 0;
+  const netHeight = innerHeight - nq('top') - Math.max(nq('bottom'), nq('kb'));
+  const placement = micOnly ? 'none' : (nq('kb') > 0 || netHeight < 560) ? 'top' : 'row';
+  document.getElementById('srcRow').hidden = placement !== 'row';
+  document.getElementById('srcTop').hidden = placement !== 'top';
+  function buildSourceMenus() {
+    for (const suf of ['', 'Top']) {
+      const items = Object.entries(SOURCES).map(([k, v]) =>
+        `<button role="menuitemradio" data-src="${k}" data-hit="src-${k}${suf ? '-top' : ''}" onclick="setSource('${k}')"><span class="tick">&#10003;</span>${v.label}</button>`);
+      document.getElementById('srcMenu' + suf).innerHTML = items.join('') +
+        '<div class="src-hint">The recording continues on the new source</div>';
+    }
+  }
+  function renderSource() {
+    document.getElementById('srcIcon').innerHTML = SOURCES[source].icon;
+    document.getElementById('srcIconTop').innerHTML = SOURCES[source].icon;
+    document.getElementById('srcLabel').textContent = SHORT_LABEL[source];
+    const name = 'Audio source: ' + SOURCES[source].label + '. Tap to change.';
+    document.getElementById('srcChip').setAttribute('aria-label', name);
+    document.getElementById('srcChipTop').setAttribute('aria-label', name);
+    for (const b of document.querySelectorAll('.src-menu [data-src]')) b.classList.toggle('sel', b.dataset.src === source);
+  }
+  function toggleSrcMenu(suf, open) {
+    const menu = document.getElementById('srcMenu' + suf);
+    menu.hidden = open === undefined ? !menu.hidden : !open;
+    document.getElementById('srcChip' + suf).setAttribute('aria-expanded', String(!menu.hidden));
+  }
+  function setSource(s) { source = s; renderSource(); for (const suf of ['', 'Top']) toggleSrcMenu(suf, false); }
+  buildSourceMenus();
+  renderSource();
+  if (q.get('srcmenu') === '1' && placement !== 'none') toggleSrcMenu(placement === 'top' ? 'Top' : '', true);
+
   function setMTab(t) {
     for (const c of ['speech', 'translation', 'downloads']) document.body.classList.toggle('mt-' + c, c === t);
     for (const b of document.querySelectorAll('.m-tabs button')) b.classList.toggle('sel', b.dataset.tab === t);
@@ -602,8 +695,10 @@
     const drawerOpen = !modelsOpen && document.body.classList.contains('is-drawer');
     const visible = el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
     // Only the top-most layer is interactive: Models page > drawer > main screen.
-    const layer = el => el.closest('.models') ? 'models' : el.closest('.drawer') ? 'drawer' : 'main';
-    const active = modelsOpen ? 'models' : drawerOpen ? 'drawer' : 'main';
+    // An open source menu floats over the main screen, so it is the only interactive layer while it is open.
+    const menuOpen = !modelsOpen && !drawerOpen && [...document.querySelectorAll('.src-menu')].some(m => !m.hidden);
+    const layer = el => el.closest('.models') ? 'models' : el.closest('.drawer') ? 'drawer' : el.closest('.src-menu') ? 'menu' : 'main';
+    const active = modelsOpen ? 'models' : drawerOpen ? 'drawer' : menuOpen ? 'menu' : 'main';
     const els = [...document.querySelectorAll('[data-hit]')]
       .filter(visible)
       .filter(el => layer(el) === active);
