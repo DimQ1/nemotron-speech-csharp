@@ -1,4 +1,3 @@
-using System.Text;
 using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Models;
@@ -143,6 +142,11 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             values.Add(new("rightContextSec", parakeet.RightContextSeconds));
             values.Add(new("silenceContextSec", parakeet.SilenceContextSeconds));
             values.Add(new("onsetContextSec", parakeet.OnsetContextSeconds));
+        }
+        if (recognizer is SpeechLib.Nemotron.NemotronUtteranceRecognizer nemotron)
+        {
+            values.Add(new("maxUtteranceSec", nemotron.MaxUtteranceSeconds));
+            values.Add(new("autoGain", nemotron.Options.AutoGain));
         }
 
         return new LiveRecognizerInfo(
@@ -334,7 +338,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
                     RecognitionStep step;
                     lock (_recognizerOperationGate)
                         step = pipeline.Process(batch);
-                    InvokeTap(ref tap, t => t.OnStep(batch.Length, step.Tail, step.Committed, step.CommittedWords));
+                    InvokeTap(ref tap, t => t.OnStep(batch.Length, step.Tail, step.Committed, step.CommittedWords, step.CommittedContinuesPrevious));
                     ApplyStep(step);
                     RaiseCommitted(pipeline);
                 }
@@ -349,7 +353,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             RecognitionStep tail;
             lock (_recognizerOperationGate)
                 tail = pipeline.Flush();
-            InvokeTap(ref tap, t => t.OnFlush(tail.Committed, tail.CommittedWords));
+            InvokeTap(ref tap, t => t.OnFlush(tail.Committed, tail.CommittedWords, tail.CommittedContinuesPrevious));
             ApplyStep(tail);
             RaiseCommitted(pipeline);
 
@@ -392,131 +396,6 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         new PostProcessingChain().Add(new LanguageTagStripper()).Add(new WhitespaceNormalizer());
 
     /// <summary>
-    /// One decoded batch: the text to show as the live partial, and the text (when any)
-    /// this batch committed to the transcript.
-    /// </summary>
-    /// <param name="Tail">The recognizer's revisable, uncommitted text after this batch.</param>
-    private readonly record struct RecognitionStep(
-        string? Display, string? Committed, bool IsUtteranceCommit, string? Tail = null,
-        IReadOnlyList<SpeechLib.Models.WordTiming>? CommittedWords = null)
-    {
-        public static RecognitionStep Empty { get; } = new(null, null, false);
-    }
-
-    /// <summary>
-    /// Unifies the two recognizer shapes behind one per-batch step. SpeechLib exposes
-    /// utterance-segmented streaming (committed text plus a revisable partial) and plain
-    /// streaming (a running transcript); the decode loop must not care which one it drives.
-    /// </summary>
-    private interface IRecognitionPipeline
-    {
-        /// <summary>The transcript committed so far.</summary>
-        string CommittedText { get; }
-
-        /// <summary>
-        /// <see cref="CommittedText"/> plus the stable part of the utterance still in progress: text that will not
-        /// change any more, so it may be typed into another app before the utterance ends.
-        /// </summary>
-        string StableText { get; }
-
-        /// <summary>Drops committed text for a new session.</summary>
-        void Reset();
-
-        RecognitionStep Process(float[] batch);
-
-        RecognitionStep Flush();
-    }
-
-    private static class RecognitionPipelineFactory
-    {
-        public static IRecognitionPipeline Create(IStreamingSpeechRecognizer recognizer) =>
-            recognizer is IUtteranceStreamingRecognizer utterance
-                ? new UtterancePipeline(utterance)
-                : new PlainPipeline(recognizer);
-    }
-
-    /// <summary>
-    /// Utterance-segmented recognizer (Parakeet TDT): finalized utterances are committed
-    /// with a separating space, the revisable tail is shown as the partial.
-    /// </summary>
-    private sealed class UtterancePipeline(IUtteranceStreamingRecognizer recognizer) : IRecognitionPipeline
-    {
-        private readonly StringBuilder _committed = new();
-        private string _stable = "";
-
-        public string CommittedText => _committed.ToString();
-
-        public string StableText =>
-            _stable.Length == 0 ? CommittedText
-            : _committed.Length == 0 ? _stable
-            : _committed + " " + _stable;
-
-        public void Reset()
-        {
-            _committed.Clear();
-            _stable = "";
-        }
-
-        public RecognitionStep Process(float[] batch) => ToStep(recognizer.ProcessUtterance(batch));
-
-        public RecognitionStep Flush() => ToStep(recognizer.FlushUtterance());
-
-        private RecognitionStep ToStep(StreamingResult result)
-        {
-            var committed = string.IsNullOrEmpty(result.Final) ? null : result.Final;
-            if (committed is not null)
-            {
-                if (_committed.Length > 0)
-                    _committed.Append(' ');
-                _committed.Append(committed);
-            }
-
-            // The stable part of the utterance that is still going on (Stable is null for recognizers that do not report it).
-            _stable = result.Stable ?? "";
-
-            return new RecognitionStep(ComposeDisplay(_committed, result.Partial), committed, IsUtteranceCommit: committed is not null, result.Partial,
-                committed is null ? null : result.FinalWords);
-        }
-    }
-
-    /// <summary>
-    /// Plain streaming recognizer: every step's text is committed verbatim (no separator)
-    /// and the recognizer's own <c>PartialText</c> is the revisable tail.
-    /// </summary>
-    private sealed class PlainPipeline(IStreamingSpeechRecognizer recognizer) : IRecognitionPipeline
-    {
-        private readonly StringBuilder _committed = new();
-
-        public string CommittedText => _committed.ToString();
-
-        // Every step's text is committed verbatim, so it is all stable.
-        public string StableText => CommittedText;
-
-        public void Reset() => _committed.Clear();
-
-        public RecognitionStep Process(float[] batch)
-        {
-            var raw = recognizer.ProcessAudio(batch);
-            if (!string.IsNullOrEmpty(raw))
-                _committed.Append(raw);
-
-            var partial = recognizer.PartialText;
-            return new RecognitionStep(ComposeDisplay(_committed, partial), raw, IsUtteranceCommit: false, partial);
-        }
-
-        public RecognitionStep Flush()
-        {
-            var tail = recognizer.Flush();
-            if (!string.IsNullOrEmpty(tail))
-                _committed.Append(tail);
-
-            // Committed but not an utterance commit: nothing is raised for it (the final
-            // result carries the whole text); the History tap still sees the tail.
-            return new RecognitionStep(null, string.IsNullOrEmpty(tail) ? null : tail, IsUtteranceCommit: false);
-        }
-    }
-
-    /// <summary>
     /// Surfaces one decoded step: committed text joins the transcript, the display text
     /// becomes the live partial.
     /// </summary>
@@ -545,15 +424,6 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
 
         _lastCommitted = text;
         CommittedResult?.Invoke(text);
-    }
-
-    /// <summary>Committed transcript followed by the recognizer's revisable tail.</summary>
-    private static string ComposeDisplay(StringBuilder committed, string? partial)
-    {
-        if (committed.Length == 0)
-            return partial ?? "";
-
-        return string.IsNullOrEmpty(partial) ? committed.ToString() : committed + " " + partial;
     }
 
     /// <summary>Reports a partial only when it differs from the previous one.</summary>
@@ -636,6 +506,18 @@ public interface IRecognitionTap
 
     /// <summary><see cref="OnFlush(string?)"/> with the decoder's word timings of the committed text.</summary>
     void OnFlush(string? committed, IReadOnlyList<SpeechLib.Models.WordTiming>? committedWords) => OnFlush(committed);
+
+    /// <summary>
+    /// <see cref="OnStep(int, string?, string?, IReadOnlyList{SpeechLib.Models.WordTiming}?)"/> that also says whether the committed text
+    /// starts with the rest of the previous utterance's last word (<see cref="SpeechLib.StreamingResult.FinalContinuesPrevious"/>).
+    /// </summary>
+    void OnStep(int samples, string? tail, string? committed, IReadOnlyList<SpeechLib.Models.WordTiming>? committedWords,
+        bool committedContinuesPrevious) =>
+        OnStep(samples, tail, committed, committedWords);
+
+    /// <summary><see cref="OnFlush(string?, IReadOnlyList{SpeechLib.Models.WordTiming}?)"/> with the same flag.</summary>
+    void OnFlush(string? committed, IReadOnlyList<SpeechLib.Models.WordTiming>? committedWords, bool committedContinuesPrevious) =>
+        OnFlush(committed, committedWords);
 }
 
 public enum ModelLifecycleState

@@ -127,8 +127,8 @@ public sealed class RecognitionService : IRecognitionService
             loadedModelPath = modelPath;
 
                 // Build the recognizer through the shared factory: it selects the
-                // provider (Nemotron GenAI vs Parakeet TDT) and applies the shared
-                // decorators (Silero VAD gate, metrics).
+                // provider (Nemotron, Parakeet TDT, Qwen3, VibeVoice) and applies the
+                // shared decorators (Silero VAD gate).
                 IStreamingSpeechRecognizer newRecognizer = RecognizerFactory.Create(new RecognizerFactoryOptions
                 {
                     ModelPath = modelPath,
@@ -138,6 +138,8 @@ public sealed class RecognitionService : IRecognitionService
                     TranslationLanguage = settings.TranslationTargetLanguage,
                     UseVad = settings.UseVad,
                     RepetitionPenalty = settings.RepetitionPenalty,
+                    // the text is typed into other applications and must only grow: no closing tag in finished utterances
+                    KeepLanguageTagInFinal = false,
                     SileroVadPath = _appPaths.SileroVadPath,
                 });
 
@@ -237,14 +239,12 @@ public sealed class RecognitionService : IRecognitionService
         _signal = new ManualResetEventSlim(false);
         _captureState = new CaptureState();
 
-        // Reset streaming state, then send a silent chunk to prime the model
-        // pipeline. ResetStreamingState clears buffered audio/decoder state left
-        // over from a previous session (Parakeet TDT buffers audio between chunks).
+        // Send a silent chunk to prime the model pipeline, then reset the streaming
+        // state: that clears the chunk again (a recognizer with a stream clock would
+        // start the session late) and any buffered audio/decoder state left over from
+        // a previous session (Parakeet TDT buffers audio between chunks).
         lock (_recognizerOperationGate)
-        {
-            _recognizer.ResetStreamingState();
-            Warmup(_recognizer);
-        }
+            RecognizerWarmup.Run(_recognizer);
 
         _captureThread = new Thread(() =>
         {
@@ -483,17 +483,17 @@ public sealed class RecognitionService : IRecognitionService
 
         if (!string.IsNullOrEmpty(result.Final))
         {
-            AppendUtterance(_accumulatedText, result.Final);
+            // No space in front of a closing mark that the recognizer reports with the next utterance.
+            UtteranceText.Append(_accumulatedText, result.Final, result.FinalContinuesPrevious);
             var processed = postProc.Process(result.Final, settings.CompiledRules);
             if (!string.IsNullOrEmpty(processed))
                 UtteranceFinalized?.Invoke(processed);
         }
 
-        var fullPartial = _accumulatedText.Length > 0 && result.Partial.Length > 0
-            ? _accumulatedText.ToString() + " " + result.Partial
-            : _accumulatedText.Length > 0
-                ? _accumulatedText.ToString()
-                : result.Partial;
+        // Both texts are post-processed as a whole (the rules see the whole transcript), which costs time in proportion to its length:
+        // about 0.15 ms per call for the default rule for 3 hours of speech, 1 ms with 40 user rules. Process each text only once.
+        var accumulated = _accumulatedText.ToString();
+        var fullPartial = UtteranceText.Join(accumulated, result.Partial, result.PartialContinuesPrevious);
 
         var processedPartial = postProc.Process(fullPartial, settings.CompiledRules);
         if (!string.IsNullOrEmpty(processedPartial))
@@ -502,23 +502,14 @@ public sealed class RecognitionService : IRecognitionService
         // Committed text only: finalized utterances plus the stable (non-preview) part
         // of the current one. Recognizers that do not report Stable fall back to the
         // finalized utterances.
-        var stable = result.Stable ?? "";
-        var committed = _accumulatedText.Length > 0 && stable.Length > 0
-            ? _accumulatedText + " " + stable
-            : _accumulatedText.Length > 0 ? _accumulatedText.ToString() : stable;
+        var committed = UtteranceText.Join(accumulated, result.Stable, result.PartialContinuesPrevious);
         if (committed.Length > 0)
         {
-            var processedCommitted = postProc.Process(committed, settings.CompiledRules);
+            // a recognizer whose open text is all stable (Nemotron: every token is final) gives the text that was just processed
+            var processedCommitted = committed == fullPartial ? processedPartial : postProc.Process(committed, settings.CompiledRules);
             if (!string.IsNullOrEmpty(processedCommitted))
                 CommittedResult?.Invoke(processedCommitted);
         }
-    }
-
-    private static void AppendUtterance(StringBuilder target, string utterance)
-    {
-        if (string.IsNullOrEmpty(utterance)) return;
-        if (target.Length > 0) target.Append(' ');
-        target.Append(utterance);
     }
 
     public string? SaveAudio(string fileNameBase)
@@ -595,16 +586,6 @@ public sealed class RecognitionService : IRecognitionService
         _buffer = null;
         _captureState?.Dispose();
         _captureState = null;
-    }
-
-    private static void Warmup(IStreamingSpeechRecognizer recognizer)
-    {
-        try
-        {
-            var silent = new float[recognizer.ChunkSamples];
-            recognizer.ProcessAudio(silent);
-        }
-        catch { /* best-effort */ }
     }
 
     /// <summary>Resolve an existing model path from settings and the default model directory.</summary>

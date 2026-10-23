@@ -1133,7 +1133,7 @@ public sealed class ParakeetTdtRecognizer : IStreamingSpeechRecognizer, ITimedUt
     /// <summary>
     /// True when <paramref name="modelDir"/> contains a parakeet-tdt ONNX export
     /// (<c>config.json</c> with <c>model_type: "nemo-conformer-tdt"</c>), as
-    /// opposed to a Nemotron GenAI export (<c>genai_config.json</c>).
+    /// opposed to a Nemotron export (<c>genai_config.json</c>).
     /// </summary>
     public static bool IsParakeetTdtModel(string modelDir)
     {

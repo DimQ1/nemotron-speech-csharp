@@ -44,13 +44,18 @@ public sealed class AutomaticGainControl
     /// <summary>Gain currently applied.</summary>
     public float Gain => _gain;
 
-    /// <summary>Returns a new buffer with the gain applied; <paramref name="input"/> is not changed.</summary>
+    /// <summary>
+    /// Returns a new buffer with the gain applied; <paramref name="input"/> is not changed. NaN and infinite samples
+    /// come out as 0 and do not reach the level estimate.
+    /// </summary>
     public float[] Process(ReadOnlySpan<float> input)
     {
         var output = new float[input.Length];
         for (var i = 0; i < input.Length; i++)
         {
             var sample = input[i];
+            if (!float.IsFinite(sample))
+                sample = 0f;   // NaN or Infinity from a faulty source: silence; Infinity would make the level estimate NaN for good
             var boosted = sample * _gain;
             output[i] = boosted > 1f ? 1f : boosted < -1f ? -1f : boosted;
 

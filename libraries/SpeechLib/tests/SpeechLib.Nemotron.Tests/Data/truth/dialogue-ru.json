@@ -1,0 +1,155 @@
+{
+"lang": "ru",
+"source": "ru_dialogue_g11",
+"seconds": 9.041,
+"note": "TTS ground truth (SAPI word starts), first 3 turns of the two-voice dialogue group; see scratch truth README",
+"words": [
+{
+"w": "Сегодня",
+"s": 1.2351,
+"e": 1.6208,
+"clip": "0031",
+"voice": "Microsoft Irina"
+},
+{
+"w": "его",
+"s": 1.6208,
+"e": 1.8162,
+"clip": "0031",
+"voice": "Microsoft Irina"
+},
+{
+"w": "семья",
+"s": 1.8162,
+"e": 2.1263,
+"clip": "0031",
+"voice": "Microsoft Irina"
+},
+{
+"w": "чтит",
+"s": 2.1263,
+"e": 2.3903,
+"clip": "0031",
+"voice": "Microsoft Irina"
+},
+{
+"w": "его",
+"s": 2.3903,
+"e": 2.5749,
+"clip": "0031",
+"voice": "Microsoft Irina"
+},
+{
+"w": "наследие",
+"s": 2.5749,
+"e": 3.0962,
+"clip": "0031",
+"voice": "Microsoft Irina"
+},
+{
+"w": "Они",
+"s": 3.3794,
+"e": 3.5181,
+"clip": "0067",
+"voice": "Microsoft Pavel"
+},
+{
+"w": "начинают",
+"s": 3.5181,
+"e": 3.9141,
+"clip": "0067",
+"voice": "Microsoft Pavel"
+},
+{
+"w": "потреблять",
+"s": 3.9141,
+"e": 4.2999,
+"clip": "0067",
+"voice": "Microsoft Pavel"
+},
+{
+"w": "доступные",
+"s": 4.2999,
+"e": 4.7169,
+"clip": "0067",
+"voice": "Microsoft Pavel"
+},
+{
+"w": "ресурсы",
+"s": 4.7169,
+"e": 5.0776,
+"clip": "0067",
+"voice": "Microsoft Pavel"
+},
+{
+"w": "по",
+"s": 5.0776,
+"e": 5.1881,
+"clip": "0067",
+"voice": "Microsoft Pavel"
+},
+{
+"w": "мере",
+"s": 5.1881,
+"e": 5.3806,
+"clip": "0067",
+"voice": "Microsoft Pavel"
+},
+{
+"w": "своей",
+"s": 5.3806,
+"e": 5.6581,
+"clip": "0067",
+"voice": "Microsoft Pavel"
+},
+{
+"w": "работы",
+"s": 5.6581,
+"e": 6.0181,
+"clip": "0067",
+"voice": "Microsoft Pavel"
+},
+{
+"w": "Почему",
+"s": 6.5293,
+"e": 6.9011,
+"clip": "0032",
+"voice": "Microsoft Irina"
+},
+{
+"w": "боятся",
+"s": 6.9011,
+"e": 7.2861,
+"clip": "0032",
+"voice": "Microsoft Irina"
+},
+{
+"w": "отмены",
+"s": 7.2861,
+"e": 7.6066,
+"clip": "0032",
+"voice": "Microsoft Irina"
+},
+{
+"w": "тайны",
+"s": 7.6066,
+"e": 7.8788,
+"clip": "0032",
+"voice": "Microsoft Irina"
+},
+{
+"w": "банковских",
+"s": 7.8788,
+"e": 8.4105,
+"clip": "0032",
+"voice": "Microsoft Irina"
+},
+{
+"w": "операций",
+"s": 8.4105,
+"e": 8.9011,
+"clip": "0032",
+"voice": "Microsoft Irina"
+}
+]
+}

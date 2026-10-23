@@ -2,8 +2,8 @@
   <PropertyGroup>
     <!-- net10.0-windows10.0.26100 = WinAppSDK (WinUI 3) head for parity testing on Windows;
          net10.0-desktop = Skia head (Linux X11 primary, also Windows/macOS);
-         net10.0-android = Android head (Skia). ORT GenAI ships an android-arm64 native
-         so Nemotron CPU inference runs on device. -p:GpuArch=CPU
+         net10.0-android = Android head (Skia). The Microsoft.ML.OnnxRuntime package ships the
+         android native (onnxruntime.aar), so the recognizers run on the CPU of the device.
          The android head is excluded when publishing for a desktop RID: a desktop RID
          (linux-x64 / win-x64) would make the android head resolve a non-existent Mono
          runtime pack during restore (dotnet publish -r <desktop-rid>). The android head
@@ -64,9 +64,8 @@
     <ProjectReference Include="..\VoiceType.Uno.Core\VoiceType.Uno.Core.csproj" />
     <!-- Speech recognition contracts (IAudioSource, IStreamingSpeechRecognizer, ...) -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib\SpeechLib.csproj" />
-    <!-- Single recognition library: Nemotron (ORT GenAI) + Parakeet TDT providers.
-         Owns ORT GenAI dependencies and GpuArch selection.
-         Linux uses CPU execution provider: -p:GpuArch=CPU -->
+    <!-- Single recognition library: the Nemotron, Parakeet TDT, Qwen3-ASR and VibeVoice providers
+         on plain ONNX Runtime (CPU execution provider on Linux and Android). -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Providers\SpeechLib.Providers.csproj" />
     <!-- Shared model catalog for the downloader (WinUI + Uno) -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.ModelDownload\SpeechLib.ModelDownload.csproj" />

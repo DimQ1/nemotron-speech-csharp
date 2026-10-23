@@ -19,6 +19,7 @@
     <ProjectReference Include="..\..\src\SpeechLib\SpeechLib.csproj" />
     <ProjectReference Include="..\..\src\SpeechLib.Providers\SpeechLib.Providers.csproj" />
     <ProjectReference Include="..\..\src\SpeechLib.ModelDownload\SpeechLib.ModelDownload.csproj" />
+    <ProjectReference Include="..\..\src\SpeechLib.Diarization\SpeechLib.Diarization.csproj" />
   </ItemGroup>
 
 </Project>

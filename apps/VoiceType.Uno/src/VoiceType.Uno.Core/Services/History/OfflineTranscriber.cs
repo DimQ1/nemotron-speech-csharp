@@ -87,6 +87,12 @@ public static partial class OfflineTranscriber
     /// <summary>Shortest plausible time per word, for segments whose start was not observed.</summary>
     private const double WordSeconds = 0.25;
 
+    /// <summary>Shortest silence between two segments that a resume point is put into.</summary>
+    private const double ResumeMinPauseSeconds = 0.1;
+
+    /// <summary>How far outside the silence the quietest point is looked for (the bounds of the segments are estimates of 0.05 to 0.15 s).</summary>
+    private const double ResumeSearchSlackSeconds = 0.1;
+
     [GeneratedRegex(@"<([A-Za-z]{2,3})(?:-\w{2,4})?>")]
     private static partial Regex LanguageTag();
 
@@ -146,10 +152,24 @@ public static partial class OfflineTranscriber
                 // back from the commit by the number of words.
                 long minimum = (long)(TextTokens.SplitWords(result.Final).Count * WordSeconds * state.Rate);
                 long start = utteranceStart ?? Math.Max(lastCommit, speechEnd - minimum);
-                state.AddSegment(result.Final, start, Math.Max(speechEnd, Math.Min(end, start + minimum)), result.FinalWords);
+                var committed = state.Segments.Count;
+                state.AddSegment(result.Final, start, Math.Max(speechEnd, Math.Min(end, start + minimum)), result.FinalWords,
+                    result.FinalContinuesPrevious);
                 lastCommit = end;
                 utteranceStart = null;
-                state.RaiseCheckpoint(end);
+
+                // A recognizer with word times shows the closing mark of a sentence and the first words of the next one only
+                // with the next speech, so the end of this Final is no place to resume from (see RaiseCheckpointInFrontOfLast).
+                // Without word times it commits in silence, and the end of the batch is one.
+                if (result.FinalWords is { Count: > 0 })
+                {
+                    if (state.Segments.Count > committed)
+                        state.RaiseCheckpointInFrontOfLast(samples);
+                }
+                else
+                {
+                    state.RaiseCheckpoint(end);
+                }
             }
 
             // Partial text after this step's commit belongs to the next utterance.
@@ -161,12 +181,14 @@ public static partial class OfflineTranscriber
 
         ct.ThrowIfCancellationRequested();
         var tail = recognizer.FlushUtterance();
-        var tailText = string.IsNullOrWhiteSpace(tail.Final) ? tail.Partial : tail.Final;
+        var tailIsFinal = !string.IsNullOrWhiteSpace(tail.Final);
+        var tailText = tailIsFinal ? tail.Final : tail.Partial;
         if (!string.IsNullOrWhiteSpace(tailText))
         {
             long start = utteranceStart ?? lastCommit;
             state.AddSegment(tailText, start, Math.Max(start, state.Total),
-                string.IsNullOrWhiteSpace(tail.Final) ? tail.PartialWords : tail.FinalWords);
+                tailIsFinal ? tail.FinalWords : tail.PartialWords,
+                tailIsFinal ? tail.FinalContinuesPrevious : tail.PartialContinuesPrevious);
         }
         state.RaiseProgress(state.Total);
     }
@@ -274,7 +296,9 @@ public static partial class OfflineTranscriber
         public OfflineTranscriptionOptions Options { get; }
         public List<TranscriptSegment> Segments { get; } = [];
 
-        public void AddSegment(string rawText, long startSample, long endSample, IReadOnlyList<WordTiming>? decoderWords = null)
+        /// <param name="continuesPrevious">The text starts with the rest of the previous segment's last word (<see cref="StreamingResult.FinalContinuesPrevious"/>).</param>
+        public void AddSegment(string rawText, long startSample, long endSample, IReadOnlyList<WordTiming>? decoderWords = null,
+            bool continuesPrevious = false)
         {
             foreach (Match match in LanguageTag().Matches(rawText))
             {
@@ -285,18 +309,12 @@ public static partial class OfflineTranscriber
 
             var text = SpaceBeforePunctuation().Replace(Cleanup.Execute(rawText), "$1").Trim();
             // The sentence end of the previous utterance often arrives with the next commit
-            // (". She'll be alright"): it belongs to the previous segment.
-            var lead = LeadingPunctuation(text);
-            if (lead > 0)
-            {
-                if (Segments.Count > 0)
-                    AppendToLast(text[..lead].Replace(" ", "", StringComparison.Ordinal));
-                text = text[lead..].TrimStart();
-            }
+            // (". She'll be alright"): it belongs to the previous segment, and so does the rest of a late word.
+            text = SegmentContinuation.MoveToPrevious(Segments, text, continuesPrevious, decoderWords, (double)Start / Rate, out var skippedWords);
             if (text.Length == 0 || !text.Any(char.IsLetterOrDigit))
             {
                 if (text.Length > 0 && Segments.Count > 0)
-                    AppendToLast(text.Replace(" ", "", StringComparison.Ordinal));
+                    SegmentContinuation.AppendToLast(Segments, text);
                 return;
             }
 
@@ -305,7 +323,7 @@ public static partial class OfflineTranscriber
                 end = start;
             var textWords = TextTokens.SplitWords(text);
             var exact = Options.UseDecoderTimings
-                ? DecoderWordTimings.Map(decoderWords, textWords, (double)Start / Rate)
+                ? DecoderWordTimings.Map(decoderWords, textWords, (double)Start / Rate, skippedWords)
                 : null;
             if (exact is not null)
             {
@@ -333,31 +351,66 @@ public static partial class OfflineTranscriber
             });
         }
 
-        /// <summary>Length of the punctuation-only prefix (". ", "?", ". ,") of <paramref name="text"/>.</summary>
-        private static int LeadingPunctuation(string text)
-        {
-            var i = 0;
-            while (i < text.Length && (char.IsWhiteSpace(text[i]) || text[i] is '.' or ',' or '!' or '?' or ';' or ':' or '…' or '。' or '？' or '！' or '、'))
-                i++;
-            // Only a separate token: ".5 kg" or "...and" are left alone.
-            return i > 0 && (i == text.Length || char.IsWhiteSpace(text[i - 1])) ? i : 0;
-        }
-
-        private void AppendToLast(string punctuation)
-        {
-            if (punctuation.Length == 0)
-                return;
-            var last = Segments[^1];
-            last.Text += punctuation;
-            if (last.Words.Count > 0)
-                last.Words[^1].Text += punctuation;
-        }
-
         public void RaiseProgress(long processed) =>
             Options.Progress?.Invoke(new OfflineProgress(processed, Total, Rate));
 
         public void RaiseCheckpoint(long sample) =>
             Options.Checkpoint?.Invoke(new OfflineCheckpoint(sample, Segments.Select(Clone).ToList()));
+
+        /// <summary>
+        /// The checkpoint after the segment that was just added: a point in the silence IN FRONT OF it, with the segments before it, so
+        /// a resumed run recognizes this segment again. After the segment itself nothing is safe: the closing mark of its sentence
+        /// (the model writes it when it hears what follows, often after the silence rule had committed the sentence) and the first
+        /// words of the next utterance belong to audio that follows. In front of it everything is complete (the mark that led this
+        /// segment has moved to the one before) and nothing of a neighbouring segment is playing. There is no checkpoint where the
+        /// segments do not leave a pause, and none for the first segment.
+        /// </summary>
+        public void RaiseCheckpointInFrontOfLast(float[] samples)
+        {
+            var index = Segments.Count - 1;
+            if (index < 1 || Options.Checkpoint is null)
+                return;
+            if (QuietestPointBetween(samples, Segments[index - 1].End, Segments[index].Start) is { } sample)
+                Options.Checkpoint(new OfflineCheckpoint(sample, Segments.Take(index).Select(Clone).ToList()));
+        }
+
+        // The middle of the quietest stretch between the end of one segment and the start of the next, looked for a little beyond
+        // both (their bounds are estimates): a point that is silent whatever the estimates' errors, not their midpoint.
+        private long? QuietestPointBetween(float[] samples, double previousEnd, double nextStart)
+        {
+            if (nextStart - previousEnd < ResumeMinPauseSeconds)
+                return null;
+
+            var frame = Rate / 50;                                        // 20 ms
+            var first = (int)Math.Max(0, Math.Floor((previousEnd - ResumeSearchSlackSeconds) * Rate / frame));
+            var end = (int)Math.Min(samples.Length / frame, Math.Ceiling((nextStart + ResumeSearchSlackSeconds) * Rate / frame));
+            if (end - first < 3)
+                return null;
+
+            // the quiet level is that of the quietest 60 ms, not of the quietest frame: one frame of digital silence between louder ones
+            // would be a stretch of its own
+            var levels = SpeechBounds.FrameLevels(samples[(first * frame)..(end * frame)], frame);
+            var quiet = double.MaxValue;
+            for (var f = 0; f + 3 <= levels.Length; f++)
+                quiet = Math.Min(quiet, Math.Max(levels[f], Math.Max(levels[f + 1], levels[f + 2])));
+            quiet += 6;
+            int bestStart = 0, bestLength = 0;
+            for (var f = 0; f < levels.Length;)
+            {
+                if (levels[f] > quiet)
+                {
+                    f++;
+                    continue;
+                }
+                var g = f;
+                while (g < levels.Length && levels[g] <= quiet)
+                    g++;
+                if (g - f > bestLength)
+                    (bestStart, bestLength) = (f, g - f);
+                f = g;
+            }
+            return (long)(first + bestStart + bestLength / 2.0) * frame;
+        }
 
         public string? DetectedLanguage() =>
             _languages.Count == 0 ? null : _languages.MaxBy(pair => pair.Value).Key;

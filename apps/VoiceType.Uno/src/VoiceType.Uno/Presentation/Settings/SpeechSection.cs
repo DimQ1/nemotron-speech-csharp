@@ -80,7 +80,7 @@ internal sealed class SpeechSection : SettingsSectionView
         if (_advancedHost is null)
             return;
         _advancedHost.Children.Clear();
-        var toggle = SettingsRows.LinkRow(SettingsRows.Icon(Symbol.Setting), "Advanced decoding", "Nemotron and Qwen3 only",
+        var toggle = SettingsRows.LinkRow(SettingsRows.Icon(Symbol.Setting), "Advanced decoding", "Kept for compatibility",
             () => { _advancedOpen = !_advancedOpen; RebuildAdvanced(); });
         if (toggle.Content is Grid grid && grid.Children.OfType<FontIcon>().FirstOrDefault() is { } chevron)
             chevron.Glyph = _advancedOpen ? "" : "";
@@ -92,7 +92,7 @@ internal sealed class SpeechSection : SettingsSectionView
             var segmented = SettingsRows.Segmented(this, options, SettingsText.RepetitionLabel(penalty), "repetition",
                 value => Ctx.Change(s => s.RepetitionPenalty = double.Parse(value, System.Globalization.CultureInfo.InvariantCulture)));
             rows.Add(SettingsRows.StackRow(SettingsRows.Icon(Symbol.Document), "Repetition penalty",
-                "1.0 = off. Higher values stop looped words; too high drops real repeats.", segmented, out _));
+                "No effect: no current model has a repetition penalty (the Nemotron transducer searches greedily). Kept for old settings; History records it.", segmented, out _));
         }
         _advancedHost.Children.Add(SettingsRows.Card([.. rows]));
     }

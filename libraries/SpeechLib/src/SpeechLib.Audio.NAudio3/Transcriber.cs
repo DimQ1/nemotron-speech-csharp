@@ -41,9 +41,13 @@ public static class Transcriber
     /// <param name="recognizer">The speech recognizer.</param>
     /// <param name="wordTimestamps">When true, computes and outputs word-level start/end times.</param>
     /// <param name="timings">Receives the list of word timings (empty when <paramref name="wordTimestamps"/> is false).</param>
+    /// <param name="timedWords">
+    /// A recognizer that reports the times of its words (usually <paramref name="recognizer"/> itself, which a decorator may hide):
+    /// the timings are its exact ones instead of an estimate spread over the chunks.
+    /// </param>
     /// <returns>The full transcript text.</returns>
     public static string RunFile(string audioPath, IStreamingSpeechRecognizer recognizer,
-        bool wordTimestamps, out List<WordTiming> timings)
+        bool wordTimestamps, out List<WordTiming> timings, ITimedUtteranceRecognizer? timedWords = null)
     {
         var audio = AudioUtils.LoadFile(audioPath, recognizer.SampleRate);
         var totalDuration = audio.Length / (double)recognizer.SampleRate;
@@ -54,20 +58,24 @@ public static class Transcriber
         timings = new List<WordTiming>();
         var sampleRate = (double)recognizer.SampleRate;
 
+        // Exact times come from a separate pass, taken first: the recognizer is still idle, so it needs no second engine.
+        var estimateTimings = wordTimestamps && timedWords is null;
+        if (wordTimestamps && timedWords is not null)
+            timings.AddRange(timedWords.TranscribeWords(audio));
+
         for (int i = 0; i < audio.Length; i += recognizer.ChunkSamples)
         {
             int remaining = Math.Min(recognizer.ChunkSamples, audio.Length - i);
             var chunk = audio[i..(i + remaining)];
 
-            // Capture token count BEFORE ProcessAudio (it's set by the previous call's DecodeTokens).
-            // We read it after ProcessAudio returns, when LastTokenCount reflects the current chunk.
+            // LastTokenCount describes the call that just returned (the tokens this chunk produced), so it is read right below.
             var text = recognizer.ProcessAudio(chunk);
 
             if (text is not null)
             {
                 transcript.Append(text);
 
-                if (wordTimestamps)
+                if (estimateTimings)
                 {
                     double chunkStart = i / sampleRate;
                     double chunkEnd = (i + remaining) / sampleRate;
@@ -81,7 +89,7 @@ public static class Transcriber
         {
             transcript.Append(flush);
 
-            if (wordTimestamps)
+            if (estimateTimings)
             {
                 double flushStart = (audio.Length - (audio.Length % recognizer.ChunkSamples)) / sampleRate;
                 if (timings.Count > 0)

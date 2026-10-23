@@ -2,7 +2,8 @@ namespace SpeechLib.ModelFormats;
 
 /// <summary>
 /// Scans a models root folder for usable ASR model directories.
-/// Recognizes Nemotron GenAI exports (<c>genai_config.json</c>) and
+/// Recognizes Nemotron exports (<c>genai_config.json</c>, the config file name of the
+/// ONNX Runtime GenAI export format the models are published in) and
 /// Parakeet TDT exports (<c>config.json</c> with <c>model_type:
 /// "nemo-conformer-tdt"</c>), plus regular and manifest-based Qwen3-ASR ONNX
 /// packages. Shared by the WinUI and Uno settings screens and the model path

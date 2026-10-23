@@ -67,9 +67,11 @@ public static class SettingsText
     public static IReadOnlyList<SettingsOption> ComputeOptions { get; } =
     [
         new(ComputeCpu, "Processor (CPU)", "Works everywhere", "Recommended"),
-        new(ComputeGpuPerformance, "Graphics card — performance", "WebGPU on the discrete GPU"),
-        new(ComputeGpuPowerSaving, "Graphics card — power saving", "WebGPU on the integrated GPU"),
-        new(ComputeFollowModel, "As set by the model", "Uses the provider in the model’s genai_config.json"),
+        new(ComputeGpuPerformance, "Graphics card — performance",
+            "WebGPU on the discrete graphics card, experimental. Nemotron runs its speech encoder there and the rest on the processor; without a discrete card it runs on the processor"),
+        new(ComputeGpuPowerSaving, "Graphics card — power saving",
+            "WebGPU on the integrated graphics. Nemotron does not use it: integrated graphics are slower than the processor, so it runs on the processor"),
+        new(ComputeFollowModel, "As set by the model", "The model files do not choose a provider, so this runs on the processor"),
     ];
 
     /// <summary>
@@ -81,12 +83,12 @@ public static class SettingsText
 
     public static string ComputeTitle(string? stored) => ComputeOptions.First(o => o.Value == NormalizeCompute(stored)).Title;
 
-    /// <summary>Short form for the section subtitle: <c>CPU</c>, <c>GPU</c>, <c>GPU (power saving)</c>, <c>by model</c>.</summary>
+    /// <summary>Short form for the section subtitle: <c>CPU</c>, <c>GPU</c>, <c>GPU (power saving)</c>, <c>CPU (by model)</c> (the model files choose no provider: it runs on the processor).</summary>
     public static string ComputeShort(string? stored) => NormalizeCompute(stored) switch
     {
         ComputeGpuPerformance => "GPU",
         ComputeGpuPowerSaving => "GPU (power saving)",
-        ComputeFollowModel => "by model",
+        ComputeFollowModel => "CPU (by model)",
         _ => "CPU",
     };
 

@@ -68,6 +68,31 @@ public sealed class Unit_AutomaticGainControlTests
         Assert.Equal(1f, agc.Gain);
     }
 
+    [Theory]
+    [InlineData(float.NaN)]
+    [InlineData(float.PositiveInfinity)]
+    [InlineData(float.NegativeInfinity)]
+    public void Process_NonFiniteSamples_ShouldBecomeSilenceAndNeverPoisonTheGain(float bad)
+    {
+        // A faulty source (a broken resampler, an unplugged device driver) can deliver NaN or Infinity. Infinity used to make the
+        // level estimate NaN for good, so the output stayed NaN after the source recovered.
+        var agc = new AutomaticGainControl();
+        agc.Process(Sine(0.005f, 1.0));
+        var glitch = Sine(0.005f, 0.05);
+        glitch[100] = bad;
+        glitch[101] = bad;
+
+        var during = agc.Process(glitch);
+        var after = agc.Process(Sine(0.005f, 1.0));
+
+        Assert.All(during, s => Assert.True(float.IsFinite(s)));
+        Assert.Equal(0f, during[100]);
+        Assert.Equal(0f, during[101]);
+        Assert.True(float.IsFinite(agc.Gain));
+        Assert.All(after, s => Assert.True(float.IsFinite(s)));
+        Assert.InRange(Rms(after.AsSpan(after.Length - 1600)), AutomaticGainControl.TargetRms * 0.8f, AutomaticGainControl.TargetRms * 1.2f);
+    }
+
     [Fact]
     public void Process_ShouldNotModifyInput()
     {

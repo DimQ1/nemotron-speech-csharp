@@ -11,10 +11,9 @@
   </PropertyGroup>
 
   <!-- Plain ONNX Runtime, used by the universal Silero VAD filter
-       (Audio/SileroVadFilter.cs). Model-specific providers (Nemotron GenAI,
-       Parakeet) keep their own ORT references in their own projects.
-       Keep this version in lockstep with SpeechLib.Providers, which pins the
-       ORT version required by ONNX Runtime GenAI. -->
+       (Audio/SileroVadFilter.cs). The model-specific providers (Nemotron,
+       Parakeet, Qwen3-ASR, VibeVoice) reference ORT in SpeechLib.Providers.
+       Keep this version in lockstep with SpeechLib.Providers. -->
   <ItemGroup>
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" />
   </ItemGroup>
@@ -22,7 +21,7 @@
   <!--
     SpeechLib is the portable contract layer. Runtime/model/audio providers are
     separate projects so applications pay only for the provider they select.
-    The ONNX Runtime GenAI sources (ModelSession, LanguageMapper, the GenAi
-    helpers) live in SpeechLib.Providers next to the package they depend on.
+    The model-specific recognizers and the LanguageMapper live in
+    SpeechLib.Providers next to the ONNX Runtime package they depend on.
   -->
 </Project>

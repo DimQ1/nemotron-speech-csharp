@@ -1,3 +1,4 @@
+using SpeechLib.Models;
 using VoiceType.Uno.History;
 using Xunit;
 
@@ -205,6 +206,109 @@ public class LiveSegmentTimerTests
 
         Assert.Equal("ru", timer.DetectedLanguage);
         Assert.Equal("Привет мир.", Assert.Single(timer.Segments).Text);
+    }
+
+    // ── a transducer reports the closing mark / the rest of a late word with the NEXT utterance ──
+
+    private static WordTiming W(string word, double start, double end) =>
+        new() { Word = word, StartSeconds = start, EndSeconds = end };
+
+    [Fact]
+    public void Utterance_WithALeadingMark_ShouldMoveItToThePreviousSegment()
+    {
+        var timer = new LiveSegmentTimer(Rate, utteranceCommits: true, commitLagSeconds: 1.04);
+
+        timer.OnBatch(Batch, "", "They went home", null, [W("They", 1.0, 1.2), W("went", 1.3, 1.6), W("home", 1.7, 2.0)]);
+        // the model writes the "." and the tag only when the next speech begins: they lead its Final
+        timer.OnBatch(Batch, "", ". <en-US> You are rude", null, [W(".", 5.0, 5.0), W("You", 5.0, 5.2), W("are", 5.3, 5.5), W("rude", 5.6, 6.0)],
+            committedContinuesPrevious: true);
+
+        Assert.Equal(["They went home.", "You are rude"], timer.Segments.Select(s => s.Text));
+        Assert.Equal(["They", "went", "home."], timer.Segments[0].Words.Select(w => w.Text));
+        Assert.Equal(2.0, timer.Segments[0].End);                                                 // a mark has no speech of its own
+        Assert.Equal((5.0, 6.0), (timer.Segments[1].Start, timer.Segments[1].End));               // the segment starts where the speech does
+        Assert.Equal(["You", "are", "rude"], timer.Segments[1].Words.Select(w => w.Text));
+        Assert.All(timer.Segments, s => Assert.Equal(WordTimingKinds.Decoder, s.WordTiming));
+        Assert.Equal("en-us", timer.DetectedLanguage);
+        Assert.Equal("They went home. You are rude", timer.BuildDocument().Text);
+    }
+
+    [Fact]
+    public void Utterance_WithTheRestOfALateWord_ShouldCompleteTheLastWordOfThePreviousSegment()
+    {
+        var timer = new LiveSegmentTimer(Rate, utteranceCommits: true, commitLagSeconds: 1.04);
+
+        timer.OnBatch(Batch, "", "Reading able", null, [W("Reading", 1.0, 1.4), W("able", 1.5, 2.0)]);
+        timer.OnBatch(Batch, "", "s are good", null, [W("s", 3.0, 3.1), W("are", 3.2, 3.5), W("good", 3.6, 4.0)], committedContinuesPrevious: true);
+
+        Assert.Equal(["Reading ables", "are good"], timer.Segments.Select(s => s.Text));
+        Assert.Equal(["Reading", "ables"], timer.Segments[0].Words.Select(w => w.Text));
+        Assert.Equal((1.0, 3.1), (timer.Segments[0].Start, timer.Segments[0].End));               // the word ends where its late piece does
+        Assert.Equal([("are", 3.2, 3.5), ("good", 3.6, 4.0)], timer.Segments[1].Words.Select(w => (w.Text, w.Start, w.End)));
+        Assert.All(timer.Segments, s => Assert.Equal(WordTimingKinds.Decoder, s.WordTiming));
+    }
+
+    [Fact]
+    public void Utterance_WithAFirstWordThatContinuesNothing_ShouldKeepIt()
+    {
+        var timer = new LiveSegmentTimer(Rate, utteranceCommits: true, commitLagSeconds: 1.04);
+
+        timer.OnBatch(Batch, "", "s are", null, [W("s", 3.0, 3.1), W("are", 3.2, 3.5)], committedContinuesPrevious: true);   // the first segment of the recording
+        timer.OnBatch(Batch, "", ". Next", null, [W(".", 5.0, 5.0), W("Next", 5.0, 5.3)]);
+
+        Assert.Equal(["s are.", "Next"], timer.Segments.Select(s => s.Text));
+        Assert.Equal(["s", "are."], timer.Segments[0].Words.Select(w => w.Text));
+    }
+
+    [Fact]
+    public void OnFlush_WithOnlyAMark_ShouldAttachItToTheLastSegmentWithoutANewOne()
+    {
+        var timer = new LiveSegmentTimer(Rate, utteranceCommits: true, commitLagSeconds: 1.04);
+        timer.OnBatch(Batch, "", "They went home", null, [W("They", 1.0, 1.2), W("went", 1.3, 1.6), W("home", 1.7, 2.0)]);
+
+        timer.OnFlush(".", [W(".", 4.0, 4.0)], committedContinuesPrevious: true);
+
+        var segment = Assert.Single(timer.Segments);
+        Assert.Equal("They went home.", segment.Text);
+        Assert.Equal("home.", segment.Words[^1].Text);
+    }
+
+    [Fact]
+    public void Utterance_OfAParakeetStyleRecognizer_ShouldMoveALeadingMarkEvenWithoutTheContinuationFlag()
+    {
+        // Parakeet never sets FinalContinuesPrevious, but its Final can start with a mark: every utterance recognizer gets the rule
+        var timer = new LiveSegmentTimer(Rate, utteranceCommits: true, commitLagSeconds: 1.04);
+
+        timer.OnBatch(Batch, "", "Is it ready", null, [W("Is", 1.0, 1.1), W("it", 1.1, 1.2), W("ready", 1.2, 1.6)]);
+        timer.OnBatch(Batch, "", "? Yes it is", null, [W("?", 4.0, 4.0), W("Yes", 4.0, 4.3), W("it", 4.3, 4.4), W("is", 4.4, 4.7)]);
+
+        Assert.Equal(["Is it ready?", "Yes it is"], timer.Segments.Select(s => s.Text));
+        Assert.Equal(["Is", "it", "ready?"], timer.Segments[0].Words.Select(w => w.Text));
+        Assert.Equal([("Yes", 4.0, 4.3), ("it", 4.3, 4.4), ("is", 4.4, 4.7)], timer.Segments[1].Words.Select(w => (w.Text, w.Start, w.End)));
+    }
+
+    [Fact]
+    public void Utterance_OfAParakeetStyleRecognizer_ShouldKeepOrdinarySegmentsAsTheyWere()
+    {
+        var timer = new LiveSegmentTimer(Rate, utteranceCommits: true, commitLagSeconds: 1.04);
+
+        timer.OnBatch(Batch, "", "How are you", null, [W("How", 1.0, 1.2), W("are", 1.2, 1.4), W("you", 1.4, 1.6)]);
+        timer.OnBatch(Batch, "", "Fine thanks", null, [W("Fine", 4.0, 4.3), W("thanks", 4.3, 4.7)]);
+
+        Assert.Equal(["How are you", "Fine thanks"], timer.Segments.Select(s => s.Text));
+        Assert.Equal((1.0, 1.6), (timer.Segments[0].Start, timer.Segments[0].End));
+        Assert.Equal((4.0, 4.7), (timer.Segments[1].Start, timer.Segments[1].End));
+    }
+
+    [Fact]
+    public void Plain_Recognizer_ShouldKeepALeadingMarkInItsSegment()
+    {
+        var timer = new LiveSegmentTimer(Rate, utteranceCommits: false);
+        timer.OnBatch(Batch, null, "One.");
+        timer.OnBatch(Batch, null, ". Two");
+        timer.OnFlush(null);
+
+        Assert.Equal(["One.", ". Two"], timer.Segments.Select(s => s.Text));          // only utterance recognizers get the continuation rule
     }
 
     [Fact]

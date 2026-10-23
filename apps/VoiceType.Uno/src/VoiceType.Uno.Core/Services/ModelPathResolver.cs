@@ -173,8 +173,8 @@ public static class ModelPathResolver
     }
 
     /// <summary>
-    /// A model directory is usable when the shared scanner recognises it (Nemotron
-    /// GenAI, Parakeet TDT, VibeVoice, Qwen3) and it is not broken. Earlier this
+    /// A model directory is usable when the shared scanner recognises it (Nemotron,
+    /// Parakeet TDT, VibeVoice, Qwen3) and it is not broken. Earlier this
     /// accepted only Nemotron/Qwen3-streaming folders, so a Parakeet or VibeVoice
     /// model picked in Settings was silently replaced by the first Nemotron folder.
     /// </summary>
@@ -193,7 +193,8 @@ public static class ModelPathResolver
     }
 
     /// <summary>
-    /// Validates a model directory. Parses <c>genai_config.json</c>, collects every
+    /// Validates a model directory. Parses <c>genai_config.json</c> (the config file name
+    /// of the ONNX Runtime GenAI export format the models are published in), collects every
     /// <c>filename</c> it references (encoder/decoder/joiner/vad + their .onnx.data
     /// companions), and verifies each file exists and is non-empty. Also flags stale
     /// <c>.part</c> artifacts from interrupted downloads. This tells the UI whether a

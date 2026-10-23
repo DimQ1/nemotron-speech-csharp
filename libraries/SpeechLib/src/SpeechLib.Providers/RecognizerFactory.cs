@@ -1,7 +1,7 @@
 using SpeechLib;
 using SpeechLib.Audio;
-using SpeechLib.Decorators;
 using SpeechLib.ModelFormats;
+using SpeechLib.Nemotron;
 using SpeechLib.ParakeetTdt;
 using SpeechLib.Qwen3;
 using SpeechLib.VibeVoice;
@@ -10,9 +10,9 @@ namespace SpeechLib.Providers;
 
 /// <summary>
 /// Builds a streaming recognizer for a model folder, hiding the provider choice
-/// (Nemotron GenAI vs Parakeet TDT ONNX) and the shared decorator wiring (Silero
-/// VAD gate, metrics) behind a single entry point. Applications work only with
-/// the returned <see cref="IStreamingSpeechRecognizer"/>.
+/// (Nemotron, Parakeet TDT, Qwen3, VibeVoice) and the shared Silero VAD gate behind a
+/// single entry point. Applications work only with the returned
+/// <see cref="IStreamingSpeechRecognizer"/>.
 /// </summary>
 public static class RecognizerFactory
 {
@@ -58,33 +58,32 @@ public static class RecognizerFactory
                 executionProvider: executionProvider,
                 previewPartials: options.StreamingPreview,
                 silenceContextSeconds: options.StreamingSilenceContextSeconds ?? ParakeetTdtRecognizer.DefaultSilenceContextSeconds)
-            // The Nemotron streaming model has no input normalization and returns
-            // nothing for quiet microphones (silent at a -40 dBFS peak), so its input
-            // goes through automatic gain control.
-            : new AutoGainRecognizerDecorator(new ModelSession(
-                options.ModelPath,
-                executionProvider,
-                langId,
-                options.UseVad,
-                new GeneratorParamsArgs
-                {
-                    do_sample = false,
-                    repetition_penalty = options.RepetitionPenalty
-                }));
+            : CreateNemotron(options, langId, executionProvider);
 
         if (recognizer is ITranslationConfigurable translationConfigurable)
             translationConfigurable.TrySetTranslation(options.TranslationEnabled, options.TranslationLanguage ?? "auto");
 
-        // Universal Silero VAD gate: recognizers without native VAD (GenAI VAD)
+        // Universal Silero VAD gate: recognizers without native VAD
         // or utterance endpointing get the shared external gate.
         if (recognizer is not IUtteranceStreamingRecognizer &&
             recognizer is not IRuntimeConfigurable)
             recognizer = WrapWithVad(recognizer, options.UseVad, options.SileroVadPath);
 
-        if (!isParakeet && !isVibeVoice && !isQwen3Streaming && !isQwen3)
-            recognizer = new MetricsRecognizerDecorator(recognizer, "ModelSession");
-
         return recognizer;
+    }
+
+    private static IStreamingSpeechRecognizer CreateNemotron(RecognizerFactoryOptions options, string? langId, string executionProvider)
+    {
+        // The model has no input normalization and returns nothing for quiet microphones (silent at a
+        // -40 dBFS peak), so its input goes through automatic gain control. The gain sits inside the
+        // recognizer rather than in a decorator: a decorator would hide the utterance and word-timing
+        // interfaces from the apps.
+        return new NemotronUtteranceRecognizer(
+            options.ModelPath,
+            executionProvider,
+            langId,
+            options.UseVad,
+            options: new NemotronUtteranceOptions { AutoGain = true, KeepLanguageTagInFinal = options.KeepLanguageTagInFinal });
     }
 
     private static IStreamingSpeechRecognizer WrapWithVad(
@@ -113,7 +112,11 @@ public sealed record RecognizerFactoryOptions
     /// <summary>Path to the model folder (genai_config.json or config.json).</summary>
     public string ModelPath { get; init; } = "";
 
-    /// <summary>Execution provider name (cpu/cuda/dml), provider-specific.</summary>
+    /// <summary>
+    /// Execution provider name: <c>cpu</c> (default) or <c>webgpu[:hp|:lp]</c>; stale <c>cuda</c>/<c>dml</c> values run on the CPU. Nemotron runs
+    /// only its encoder on WebGPU, on a discrete graphics card, and falls back to the CPU otherwise (see
+    /// <see cref="SpeechLib.Nemotron.NemotronProviderInfo"/>); Qwen3 always runs on the CPU.
+    /// </summary>
     public string ExecutionProvider { get; init; } = "cpu";
 
     /// <summary>BCP-47 language code or numeric lang_id; null = auto-detect.</summary>
@@ -128,8 +131,17 @@ public sealed record RecognizerFactoryOptions
     /// <summary>Enable voice activity detection where supported.</summary>
     public bool UseVad { get; init; }
 
-    /// <summary>Repetition penalty (Nemotron decoder).</summary>
+    /// <summary>
+    /// Kept for settings compatibility; no recognizer reads it (the Nemotron transducer has no repetition penalty).
+    /// </summary>
     public double RepetitionPenalty { get; init; } = 1.1;
+
+    /// <summary>
+    /// Nemotron: keep the closing language tag (<c>&lt;en-US&gt;</c>) in the text of a finished utterance, where History reads the
+    /// detected language from. False for a caller that types the growing text into another application: the text of an open
+    /// utterance never has the tag, so only a tag-free final text extends what was typed (see <c>IncrementalTextTyper</c>).
+    /// </summary>
+    public bool KeepLanguageTagInFinal { get; init; } = true;
 
     /// <summary>Path to the shared Silero VAD model, used when the provider has no native VAD.</summary>
     public string? SileroVadPath { get; init; }

@@ -126,9 +126,9 @@
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.19.0" />
     <!-- Audio: NAudio comes transitively via SpeechLib.Audio.NAudio3 provider -->
-    <!-- Exclude native ORT from Windows AI (managed via SpeechLib, which owns ORT GenAI dependencies) -->
+    <!-- Exclude native ORT from Windows AI (managed via SpeechLib, which owns the ONNX Runtime dependency) -->
     <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
-    <!-- GenAI 0.16.0 requires managed ORT 1.30.0. Native assets are copied below. -->
+    <!-- Managed ORT, kept in lockstep with SpeechLib.Providers. Native assets are copied below. -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" ExcludeAssets="native" GeneratePathProperty="true" />
     <!-- Windows App SDK 2.5 pulls Windows ML (Microsoft.WindowsAppSDK.ML), which
          brings the GPU-flavoured ONNX Runtime packages. This app is CPU-only and
@@ -179,20 +179,19 @@
 
   <!--
   Trimming suppressions for reflection-heavy libraries.
-  ONNX Runtime GenAI and NAudio use reflection — preserve their types.
+  ONNX Runtime and NAudio use reflection — preserve their types.
   -->
   <ItemGroup>
     <TrimmerRootDescriptor Include="TrimmerRoots.xml" Condition="Exists('TrimmerRoots.xml')" />
   </ItemGroup>
 
   <!-- Copy the ORT native DLL into AppX.
-      The managed ORT version required by GenAI 0.16.0 is pinned by the
-      PackageReference above; the source path below is derived from it through
+      The managed ORT version is pinned by the PackageReference above (its native
+      assets are excluded there); the source path below is derived from it through
       GeneratePathProperty, so an ORT upgrade never has to edit this target.
-       The stale transitive DLL from the GenAI dependency is overwritten.
        Also strips PDBs from AppX (Store submission requirement).
 
-       The app is CPU-only; SpeechLib.Providers references the CPU GenAI package. -->
+       The app is CPU-only. -->
   <Target Name="CopyOrtNativeAssetsToAppX" AfterTargets="Build">
     <!-- ORT native assets resolved from the NuGet restore (CPU-only, no CUDA providers). -->
     <PropertyGroup>
@@ -206,7 +205,6 @@
     <!-- Remove stale CUDA provider DLLs (no matching native provider ships, unused on CPU) -->
     <Delete Files="$(OutputPath)AppX\onnxruntime_providers_cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_cuda.dll')" />
     <Delete Files="$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime_providers_tensorrt.dll')" />
-    <Delete Files="$(OutputPath)AppX\onnxruntime-genai-cuda.dll" Condition="Exists('$(OutputPath)AppX\onnxruntime-genai-cuda.dll')" />
     <!-- VC++ Runtime (required by ONNX Runtime native DLLs) -->
     <ItemGroup>
       <_VcRuntime Include="$(SystemRoot)\System32\vcruntime140.dll" />

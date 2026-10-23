@@ -49,6 +49,17 @@ public class DecoderWordTimingsTests
         Assert.Equal((0.5, 0.9), (word.Start, word.End));
     }
 
+    [Fact]
+    public void Map_ShouldSkipTheLeadingDecoderWordsThatBelongToThePreviousSegment()
+    {
+        // "s" completed the last word of the previous segment; the mark in front of "are" is skipped on top of it
+        var words = DecoderWordTimings.Map([W("s", 0, 0.1), W("are", 0.2, 0.5)], ["are"], offsetSeconds: 10, skipLeadingWords: 1);
+
+        var word = Assert.Single(words!);
+        Assert.Equal(("are", 10.2, 10.5), (word.Text, word.Start, word.End));
+        Assert.Null(DecoderWordTimings.Map([W("s", 0, 0.1)], ["are"], skipLeadingWords: 1));
+    }
+
     // ── OfflineTranscriber with a timed recognizer ──────────────────────────
 
     private sealed class TimedScript(Func<long, StreamingResult> step, StreamingResult flush) : ITimedUtteranceRecognizer

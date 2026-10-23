@@ -52,7 +52,7 @@ public static class ModelCatalog
             Research: new ModelResearch(new WerMetrics(12.15, 9.82, 14.29), new SpeedMetrics(0.141), Cv17, "build/wer-reports/parakeet-tdt-int8-20260828.md"),
             QuantizationFolder: "int8"),
 
-        // ── Nemotron 3.5 ASR (RNN-T, ONNX Runtime GenAI, streaming) ──
+        // ── Nemotron 3.5 ASR (RNN-T, ONNX Runtime, streaming) ──
         new(
             CommercialName: "Nemotron 3.5 ASR",
             RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-c112-cpu",

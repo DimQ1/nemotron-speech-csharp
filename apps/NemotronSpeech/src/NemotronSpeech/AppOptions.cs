@@ -6,7 +6,7 @@ namespace NemotronSpeech;
 public sealed record AppOptions
 {
     public const string Usage =
-        "Usage: NemotronSpeech <model_path> <audio_file|--mic|--loopback|--mix> [ep] [--language <code>] " +
+        "Usage: NemotronSpeech <model_path> <audio_file|--mic|--loopback|--mix> [ep: cpu|webgpu|webgpu:hp] [--language <code>] " +
         "[--word-timestamps] [--translate <lang>] " +
         "[--translate-backend <http|native>] [--translate-url <url>] [--translate-model <name>] " +
         "[--litert-model-path <path>] [--litert-backend <cpu|gpu>] [--litert-num-threads <n>]";
@@ -91,7 +91,8 @@ public sealed record AppOptions
                     break;
                 default:
                     // Recognise known EP names first, then fall back to audio file
-                    if (args[i] is "cpu" or "cuda" or "dml" or "tensorrt" or "NvTensorRtRtx" or "follow_config")
+                    if (args[i] is "cpu" or "cuda" or "dml" or "tensorrt" or "NvTensorRtRtx" or "follow_config"
+                        || args[i].StartsWith("webgpu", StringComparison.OrdinalIgnoreCase))
                         opts = opts with { ExecutionProvider = args[i] };
                     else if (!args[i].StartsWith("--") && audioFile == null && args[i] != opts.ModelPath)
                         audioFile = args[i];

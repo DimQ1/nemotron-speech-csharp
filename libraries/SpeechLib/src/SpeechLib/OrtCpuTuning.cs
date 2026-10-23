@@ -13,8 +13,8 @@ public static class OrtCpuTuning
     /// <remarks>
     /// ORT's CPU kernels busy-wait for work by default. That helps a single
     /// long-running session, but this pipeline keeps several sessions alive at
-    /// once (encoder, decoder init, decoder step, Silero VAD, and ORT GenAI for
-    /// Nemotron) and they compete with each other and with the host-side mel pass.
+    /// once (encoder, decoder init, decoder step, Silero VAD, and the three
+    /// Nemotron graphs) and they compete with each other and with the host-side mel pass.
     /// Measured on Qwen3-ASR block streaming (20 logical cores, 5 CV17 files):
     /// raising decoder_init from 10 to 20 threads while spinning made *every*
     /// phase ~50% slower, including the host mel pass that owns no session at all

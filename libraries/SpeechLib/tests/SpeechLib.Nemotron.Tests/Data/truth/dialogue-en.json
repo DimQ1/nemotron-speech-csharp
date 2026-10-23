@@ -1,0 +1,204 @@
+{
+"lang": "en",
+"source": "en_dialogue_g11",
+"seconds": 6.303,
+"note": "TTS ground truth (SAPI word starts), first 3 turns of the two-voice dialogue group; see scratch truth README",
+"words": [
+{
+"w": "This",
+"s": 1.1586,
+"e": 1.2932,
+"clip": "0031",
+"voice": "Microsoft Zira"
+},
+{
+"w": "will",
+"s": 1.2932,
+"e": 1.3934,
+"clip": "0031",
+"voice": "Microsoft Zira"
+},
+{
+"w": "lead",
+"s": 1.3934,
+"e": 1.5376,
+"clip": "0031",
+"voice": "Microsoft Zira"
+},
+{
+"w": "the",
+"s": 1.5376,
+"e": 1.5967,
+"clip": "0031",
+"voice": "Microsoft Zira"
+},
+{
+"w": "world",
+"s": 1.5967,
+"e": 1.8197,
+"clip": "0031",
+"voice": "Microsoft Zira"
+},
+{
+"w": "to",
+"s": 1.8197,
+"e": 1.8804,
+"clip": "0031",
+"voice": "Microsoft Zira"
+},
+{
+"w": "more",
+"s": 1.8804,
+"e": 2.0434,
+"clip": "0031",
+"voice": "Microsoft Zira"
+},
+{
+"w": "sound",
+"s": 2.0434,
+"e": 2.2889,
+"clip": "0031",
+"voice": "Microsoft Zira"
+},
+{
+"w": "and",
+"s": 2.2889,
+"e": 2.3859,
+"clip": "0031",
+"voice": "Microsoft Zira"
+},
+{
+"w": "fury",
+"s": 2.3859,
+"e": 2.6834,
+"clip": "0031",
+"voice": "Microsoft Zira"
+},
+{
+"w": "The",
+"s": 2.9284,
+"e": 3.0073,
+"clip": "0067",
+"voice": "Microsoft Mark"
+},
+{
+"w": "tea",
+"s": 3.0073,
+"e": 3.1533,
+"clip": "0067",
+"voice": "Microsoft Mark"
+},
+{
+"w": "was",
+"s": 3.1533,
+"e": 3.2737,
+"clip": "0067",
+"voice": "Microsoft Mark"
+},
+{
+"w": "a",
+"s": 3.2737,
+"e": 3.3124,
+"clip": "0067",
+"voice": "Microsoft Mark"
+},
+{
+"w": "little",
+"s": 3.3124,
+"e": 3.4928,
+"clip": "0067",
+"voice": "Microsoft Mark"
+},
+{
+"w": "bit",
+"s": 3.4928,
+"e": 3.6206,
+"clip": "0067",
+"voice": "Microsoft Mark"
+},
+{
+"w": "too",
+"s": 3.6206,
+"e": 3.7499,
+"clip": "0067",
+"voice": "Microsoft Mark"
+},
+{
+"w": "hot",
+"s": 3.7499,
+"e": 3.9328,
+"clip": "0067",
+"voice": "Microsoft Mark"
+},
+{
+"w": "Groves",
+"s": 4.1897,
+"e": 4.4334,
+"clip": "0032",
+"voice": "Microsoft Zira"
+},
+{
+"w": "started",
+"s": 4.4334,
+"e": 4.7091,
+"clip": "0032",
+"voice": "Microsoft Zira"
+},
+{
+"w": "writing",
+"s": 4.7091,
+"e": 4.9201,
+"clip": "0032",
+"voice": "Microsoft Zira"
+},
+{
+"w": "songs",
+"s": 4.9201,
+"e": 5.2002,
+"clip": "0032",
+"voice": "Microsoft Zira"
+},
+{
+"w": "when",
+"s": 5.2002,
+"e": 5.3234,
+"clip": "0032",
+"voice": "Microsoft Zira"
+},
+{
+"w": "she",
+"s": 5.3234,
+"e": 5.4534,
+"clip": "0032",
+"voice": "Microsoft Zira"
+},
+{
+"w": "was",
+"s": 5.4534,
+"e": 5.5812,
+"clip": "0032",
+"voice": "Microsoft Zira"
+},
+{
+"w": "four",
+"s": 5.5812,
+"e": 5.7534,
+"clip": "0032",
+"voice": "Microsoft Zira"
+},
+{
+"w": "years",
+"s": 5.7534,
+"e": 5.9584,
+"clip": "0032",
+"voice": "Microsoft Zira"
+},
+{
+"w": "old",
+"s": 5.9584,
+"e": 6.1634,
+"clip": "0032",
+"voice": "Microsoft Zira"
+}
+]
+}

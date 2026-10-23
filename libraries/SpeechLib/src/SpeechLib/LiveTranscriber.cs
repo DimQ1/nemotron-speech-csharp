@@ -34,7 +34,7 @@ public static class LiveTranscriber
         using var captureState = new CaptureState();
         var transcript = new StringBuilder();
 
-        Warmup(recognizer);
+        RecognizerWarmup.Run(recognizer);
 
         Exception? captureError = null;
         var captureThread = new Thread(() =>
@@ -102,18 +102,6 @@ public static class LiveTranscriber
         Console.WriteLine(new string('=', 60));
 
         return transcript.ToString();
-    }
-
-    private static void Warmup(IStreamingSpeechRecognizer recognizer)
-    {
-        try
-        {
-            recognizer.ProcessAudio(new float[recognizer.ChunkSamples]);
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"[Transcriber] Warmup: {ex.Message}");
-        }
     }
 
     private static void AppendResult(StringBuilder transcript, string? text, Action<string>? onTextDelta)

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SpeechLib.Providers\SpeechLib.Providers.csproj" />
+    <!-- Built next to the tests, not referenced: the real WebGPU tests run it in a child process (E2E_NemotronWebGpuTests). -->
+    <ProjectReference Include="..\..\..\..\tools\WerEval\WerEval.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- Small fixtures: genai_config.json copies, vocab.txt, golden mel vectors, GenAI 0.16.0 token oracles. -->
+  <ItemGroup>
+    <None Include="Data\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

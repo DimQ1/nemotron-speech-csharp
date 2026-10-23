@@ -29,6 +29,38 @@ public class SettingsTextTests
         Assert.Equal("Recommended", SettingsText.ComputeOptions[0].Tag);
     }
 
+    [Fact]
+    public void ComputeOptions_AsSetByTheModel_ShouldSayItRunsOnTheProcessor_NotPromiseTheProviderOfTheModelConfig()
+    {
+        var detail = SettingsText.ComputeOptions.Single(o => o.Value == SettingsText.ComputeFollowModel).Detail;
+
+        Assert.Contains("processor", detail, StringComparison.OrdinalIgnoreCase);   // the recognizers map follow_config to the CPU
+        Assert.DoesNotContain("genai_config", detail, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ComputeOptions_GraphicsCard_ShouldSayWhatNemotronDoesWithIt()
+    {
+        // Nemotron: WebGPU runs the encoder on a discrete card only; the power-saving choice (integrated graphics) is the processor
+        var performance = SettingsText.ComputeOptions.Single(o => o.Value == SettingsText.ComputeGpuPerformance).Detail!;
+        var powerSaving = SettingsText.ComputeOptions.Single(o => o.Value == SettingsText.ComputeGpuPowerSaving).Detail!;
+
+        Assert.Contains("discrete", performance);
+        Assert.Contains("encoder", performance);
+        Assert.Contains("without a discrete card it runs on the processor", performance);
+        Assert.Contains("Nemotron does not use it", powerSaving);
+        Assert.Contains("processor", powerSaving);
+    }
+
+    [Fact]
+    public void ComputeShort_AsSetByTheModel_ShouldNameTheProcessorLikeTheDetailDoes()
+    {
+        // the section subtitle must not say something else than the option's own explanation
+        Assert.Equal("CPU (by model)", SettingsText.ComputeShort(SettingsText.ComputeFollowModel));
+        Assert.Equal("CPU", SettingsText.ComputeShort(SettingsText.ComputeCpu));
+        Assert.Equal("GPU", SettingsText.ComputeShort(SettingsText.ComputeGpuPerformance));
+    }
+
     [Theory]
     [InlineData("Mic", false, "Microphone")]
     [InlineData("Loopback", false, "System audio")]

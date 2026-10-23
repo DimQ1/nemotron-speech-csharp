@@ -169,6 +169,13 @@ public sealed class LiveRecordingSession : IRecognitionTap
     public void OnFlush(string? committed, IReadOnlyList<SpeechLib.Models.WordTiming>? committedWords) =>
         _timer.OnFlush(committed, committedWords);
 
+    public void OnStep(int samples, string? tail, string? committed, IReadOnlyList<SpeechLib.Models.WordTiming>? committedWords,
+        bool committedContinuesPrevious) =>
+        _timer.OnBatch(samples, tail, committed, _lastLevelDb, committedWords, committedContinuesPrevious);
+
+    public void OnFlush(string? committed, IReadOnlyList<SpeechLib.Models.WordTiming>? committedWords, bool committedContinuesPrevious) =>
+        _timer.OnFlush(committed, committedWords, committedContinuesPrevious);
+
     // ── Finish / abandon ────────────────────────────────────────────────────
 
     /// <summary>

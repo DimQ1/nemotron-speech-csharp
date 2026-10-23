@@ -18,9 +18,15 @@ public static class DecoderWordTimings
     /// <param name="decoderWords">Timed words in stream seconds.</param>
     /// <param name="textWords">The words of the segment text (whitespace split).</param>
     /// <param name="offsetSeconds">Added to every decoder time (the stream's start on the audio timeline).</param>
+    /// <param name="skipLeadingWords">
+    /// Decoder words that belong to the previous segment and are not part of the text (the rest of a word that was
+    /// completed late), in front of the marks that are skipped by themselves.
+    /// </param>
     public static List<TranscriptWord>? Map(
-        IReadOnlyList<WordTiming>? decoderWords, IReadOnlyList<string> textWords, double offsetSeconds = 0)
+        IReadOnlyList<WordTiming>? decoderWords, IReadOnlyList<string> textWords, double offsetSeconds = 0, int skipLeadingWords = 0)
     {
+        if (skipLeadingWords > 0 && decoderWords is not null)
+            decoderWords = decoderWords.Skip(skipLeadingWords).ToList();
         if (decoderWords is null || decoderWords.Count == 0 || textWords.Count == 0)
             return null;
 

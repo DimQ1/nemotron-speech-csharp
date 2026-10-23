@@ -10,17 +10,17 @@
   </PropertyGroup>
 
   <!--
-    Single recognition library: Nemotron (ORT GenAI) and Parakeet TDT (plain
-    ONNX Runtime) providers, plus the RecognizerFactory that selects between
-    them and applies shared decorators. Applications consume only the
-    IStreamingSpeechRecognizer interface returned by the factory.
+    Single recognition library: the Nemotron, Parakeet TDT, Qwen3-ASR and VibeVoice
+    providers, all on plain ONNX Runtime, plus the RecognizerFactory that selects
+    between them and applies the shared Silero VAD gate. Applications consume only
+    the IStreamingSpeechRecognizer interface returned by the factory.
   -->
   <ItemGroup>
     <ProjectReference Include="..\SpeechLib\SpeechLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Plain ONNX Runtime powers Parakeet TDT and the shared Silero VAD filter. -->
+    <!-- Plain ONNX Runtime powers every recognizer (Nemotron, Parakeet TDT, Qwen3-ASR, VibeVoice) and the shared Silero VAD filter. -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" GeneratePathProperty="true" />
     <!--
       WebGPU execution provider, shipped as a plugin EP: a standalone native library
@@ -31,21 +31,6 @@
     <PackageReference Include="Microsoft.ML.OnnxRuntime.EP.WebGpu" Version="0.4.0" GeneratePathProperty="true" />
     <!-- FFT for the host-side Whisper log-mel used by the Qwen3-ASR encoder. -->
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-  </ItemGroup>
-
-  <!--
-    CPU-only ONNX Runtime GenAI. The CUDA / DirectML / Blackwell variants that were
-    selected through the GpuArch property have been removed: every build
-    configuration in this repository (CI workflows, build scripts, both desktop apps
-    and their settings UI) already ran CPU-only, no source file consumed the GPU_*
-    constants, and an unqualified `dotnet build` silently pulled the CUDA flavour.
-
-    GenAI 0.16.0 depends on ONNX Runtime 1.30.0 (see its nuspec): the GenAI and
-    plain ORT PackageReference versions above must be bumped together, otherwise
-    the managed ORT assembly and the GenAI native DLL disagree.
-  -->
-  <ItemGroup>
-    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.16.0" />
   </ItemGroup>
 
   <!--

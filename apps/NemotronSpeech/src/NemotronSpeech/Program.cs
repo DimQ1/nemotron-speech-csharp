@@ -9,7 +9,9 @@ using SpeechLib.Decorators;
 using SpeechLib.LiteRT;
 using SpeechLib.LiteRT.Native;
 using SpeechLib.Models;
+using SpeechLib.Nemotron;
 using SpeechLib.ParakeetTdt;
+using SpeechLib.Providers;
 using SpeechLib.Translation;
 
 namespace NemotronSpeech;
@@ -38,10 +40,10 @@ internal static class Program
                 Console.WriteLine($"  Language: {opts.LanguageArg} -> lang_id={langId}");
 
             // The model folder selects the engine: a Parakeet TDT ONNX export (config.json)
-            // streams through ParakeetTdtRecognizer, anything else is a Nemotron GenAI model.
+            // streams through ParakeetTdtRecognizer, anything else is a Nemotron model.
             using IStreamingSpeechRecognizer session = ParakeetTdtRecognizer.IsParakeetTdtModel(opts.ModelPath)
                 ? CreateParakeet(opts)
-                : CreateNemotron(opts, langId);
+                : CreateNemotron(opts);
 
             // Wrap with decorators for metrics and logging
             using ITextTranslator? translator = CreateTranslator(opts);
@@ -88,7 +90,9 @@ internal static class Program
             }
             else
             {
-                var transcript = Transcriber.RunFile(opts.AudioFile!, recognizer, opts.WordTimestamps, out _);
+                // The decorators hide the timed interface: pass the recognizer itself for exact word times.
+                var transcript = Transcriber.RunFile(opts.AudioFile!, recognizer, opts.WordTimestamps, out _,
+                    session as ITimedUtteranceRecognizer);
 
                 if (translator is not null && !string.IsNullOrWhiteSpace(transcript))
                     await StreamTranslationAsync(translator, transcript, opts.TargetLanguage!);
@@ -113,13 +117,23 @@ internal static class Program
         }
     }
 
-    private static ModelSession CreateNemotron(AppOptions opts, string? langId)
+    private static IStreamingSpeechRecognizer CreateNemotron(AppOptions opts)
     {
-        var session = new ModelSession(opts.ModelPath, opts.ExecutionProvider, langId, opts.UseVad);
-        if (session.IsSingleLanguage)
-            Console.WriteLine("  Model: single-language (no lang_id needed)");
-        Console.WriteLine("  Use VAD: " + session.VadStatus);
-        return session;
+        var recognizer = RecognizerFactory.Create(new RecognizerFactoryOptions
+        {
+            ModelPath = opts.ModelPath,
+            ExecutionProvider = opts.ExecutionProvider,
+            Language = opts.LanguageArg,
+            UseVad = opts.UseVad,
+        });
+        if (recognizer is NemotronUtteranceRecognizer nemotron)
+        {
+            Console.WriteLine($"  EP effective: {nemotron.ExecutionProvider.Summary}");
+            if (nemotron.IsSingleLanguage)
+                Console.WriteLine("  Model: single-language (no lang_id needed)");
+            Console.WriteLine("  Use VAD: " + nemotron.VadStatus);
+        }
+        return recognizer;
     }
 
     private static ParakeetTdtRecognizer CreateParakeet(AppOptions opts)

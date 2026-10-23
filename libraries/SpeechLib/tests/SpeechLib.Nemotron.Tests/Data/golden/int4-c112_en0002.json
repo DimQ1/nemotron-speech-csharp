@@ -1,0 +1,1 @@
+{"variant":"int4-c112","clip":"en0002","audio":"cv17/en/0002.wav","chunkSamples":17920,"audioSamples":34944,"langId":"0","vad":false,"threads":4,"seconds":0.3885723,"genaiVersion":"0.16.0","text":" Should be","tokenCount":6,"chunks":[{"feed":0,"processed":true,"ids":[]},{"feed":1,"processed":false,"ids":[]},{"feed":"flush","processed":true,"ids":[2,193,276,1058,71,427]}]}

@@ -19,6 +19,8 @@
     <!-- UI-free core only: the app project targets Uno TFMs (net10.0-desktop /
          net10.0-windows…) that a plain test project cannot reference. -->
     <ProjectReference Include="..\..\src\VoiceType.Uno.Core\VoiceType.Uno.Core.csproj" />
+    <!-- The real Nemotron recognizer (RecognizerFactory) for the end-to-end tests of the History and live pipelines. -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Providers\SpeechLib.Providers.csproj" />
   </ItemGroup>
 
   <ItemGroup>

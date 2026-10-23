@@ -1,4 +1,5 @@
 using SpeechLib;
+using SpeechLib.Models;
 using VoiceType.Uno.History;
 using Xunit;
 
@@ -103,6 +104,138 @@ public class OfflineTranscriberTests : IDisposable
         Assert.Equal(["Hello world.", "Tail end"], result.Document.Segments.Select(s => s.Text));
         Assert.Equal(4.5, result.Document.Segments[1].Start); // absolute time, not relative to the resume point
         Assert.Equal(1, result.Document.Segments[1].Index);
+    }
+
+    private static WordTiming W(string word, double start, double end) =>
+        new() { Word = word, StartSeconds = start, EndSeconds = end };
+
+    // ── what a transducer reports with the NEXT utterance: closing marks, the rest of a late word, tag-closed Finals ──
+
+    [Fact]
+    public void Run_ShouldMoveALeadingMarkAndTheRestOfALateWordToThePreviousSegment()
+    {
+        var recognizer = new ScriptedUtteranceRecognizer(
+            fed => fed switch
+            {
+                3500 => new StreamingResult("", "Reading able") { FinalWords = [W("Reading", 1.0, 1.4), W("able", 1.5, 2.0)] },
+                8500 => new StreamingResult("", "s are good") { FinalContinuesPrevious = true, FinalWords = [W("s", 6.0, 6.1), W("are", 6.2, 6.5), W("good", 6.6, 7.0)] },
+                12500 => new StreamingResult("", ". <en-US> Done") { FinalContinuesPrevious = true, FinalWords = [W(".", 10.0, 10.0), W("Done", 10.0, 10.4)] },
+                _ => new StreamingResult("", null),
+            },
+            new StreamingResult("", null));
+
+        var segments = OfflineTranscriber.Run(recognizer, Audio(14), new OfflineTranscriptionOptions()).Document.Segments;
+
+        Assert.Equal(["Reading ables", "are good.", "Done"], segments.Select(s => s.Text));
+        Assert.All(segments, s => Assert.Equal(WordTimingKinds.Decoder, s.WordTiming));
+        Assert.Equal(["Reading", "ables"], segments[0].Words.Select(w => w.Text));
+        Assert.Equal((1.0, 6.1), (segments[0].Start, segments[0].End));                         // the word was completed by its late piece
+        Assert.Equal(6.1, segments[0].Words[^1].End);
+        Assert.Equal([("are", 6.2, 6.5), ("good.", 6.6, 7.0)], segments[1].Words.Select(w => (w.Text, w.Start, w.End)));
+        Assert.Equal((6.2, 7.0), (segments[1].Start, segments[1].End));                         // the mark has no time of its own
+        Assert.Equal([("Done", 10.0, 10.4)], segments[2].Words.Select(w => (w.Text, w.Start, w.End)));
+        Assert.Equal("Reading ables are good. Done", string.Join(' ', segments.Select(s => s.Text)));
+    }
+
+    [Fact]
+    public void Run_ShouldAttachAMarkThatIsStillOpenAfterTheFlushToTheLastSegment()
+    {
+        var recognizer = new ScriptedUtteranceRecognizer(
+            fed => fed == 3500 ? new StreamingResult("", "Hello world") { FinalWords = [W("Hello", 1.0, 1.4), W("world", 1.5, 2.0)] } : new StreamingResult("", null),
+            new StreamingResult(".", null) { PartialContinuesPrevious = true, PartialWords = [W(".", 9.0, 9.0)] });
+
+        var segments = OfflineTranscriber.Run(recognizer, Audio(10), new OfflineTranscriptionOptions()).Document.Segments;
+
+        var segment = Assert.Single(segments);
+        Assert.Equal("Hello world.", segment.Text);
+        Assert.Equal(["Hello", "world."], segment.Words.Select(w => w.Text));
+    }
+
+    // ── checkpoints of a recognizer with word times: in the silence in front of the segment just committed ──
+
+    /// <summary>Two utterances: "Hello world" (1.0-2.0 s) and then <paramref name="second"/> starting at <paramref name="secondStart"/> s.</summary>
+    private static ScriptedUtteranceRecognizer TwoUtterances(string second, double secondStart, bool continuesPrevious = false) =>
+        new(fed => fed switch
+            {
+                4000 => new StreamingResult("", "Hello world") { FinalWords = [W("Hello", 1.0, 1.4), W("world", 1.5, 2.0)] },
+                9000 => new StreamingResult("", second)
+                {
+                    FinalContinuesPrevious = continuesPrevious,
+                    FinalWords = TextTokens.SplitWords(second).Select((w, i) => W(w, secondStart + 0.3 * i, secondStart + 0.3 * i + 0.25)).ToList(),
+                },
+                _ => new StreamingResult("", null),
+            },
+            new StreamingResult("", null));
+
+    private static List<OfflineCheckpoint> Checkpoints(IUtteranceStreamingRecognizer recognizer, float[] audio)
+    {
+        var checkpoints = new List<OfflineCheckpoint>();
+        OfflineTranscriber.Run(recognizer, audio, new OfflineTranscriptionOptions { Checkpoint = checkpoints.Add });
+        return checkpoints;
+    }
+
+    [Fact]
+    public void Checkpoint_ShouldLieInTheSilenceInFrontOfTheSegmentThatWasJustCommitted()
+    {
+        var checkpoints = Checkpoints(TwoUtterances("Next one", 6.0), Audio(10));
+
+        // none for the first segment (nothing before it); for the second one a point between "world" (ends 2.0 s) and "Next" (6.0 s)
+        var checkpoint = Assert.Single(checkpoints);
+        Assert.InRange(checkpoint.Sample, 3980, 4020);                                  // the middle of the pause
+        Assert.Equal("Hello world", Assert.Single(checkpoint.Segments).Text);           // the segment itself is recognized again
+    }
+
+    [Fact]
+    public void Checkpoint_OfSegmentsThatFollowEachOtherClosely_ShouldStayInTheGapBetweenThem()
+    {
+        var checkpoints = Checkpoints(TwoUtterances("Next one", 2.15), Audio(10));
+
+        Assert.InRange(Assert.Single(checkpoints).Sample, 2000, 2150);                  // a gap of 0.15 s
+    }
+
+    [Fact]
+    public void Checkpoint_WithoutAPauseBetweenTheSegments_ShouldNotBeRaised()
+    {
+        Assert.Empty(Checkpoints(TwoUtterances("Next one", 2.05), Audio(10)));           // a gap of 0.05 s: nowhere to resume
+    }
+
+    [Fact]
+    public void Checkpoint_ShouldHoldTheClosingMarkThatLedTheSegmentJustCommitted()
+    {
+        // the model wrote the "." of the first sentence together with the next speech: it belongs to the first segment, and the run
+        // that resumes in front of the second one cannot produce it
+        var checkpoints = Checkpoints(TwoUtterances(". Next one", 6.0, continuesPrevious: true), Audio(10));
+
+        Assert.Equal("Hello world.", Assert.Single(Assert.Single(checkpoints).Segments).Text);
+    }
+
+    [Fact]
+    public void Checkpoint_ShouldLieInTheSilentStretchOfTheAudioWhateverTheBoundsOfTheSegmentsSay()
+    {
+        // speech until 3.2 s and from 3.4 s; the segments claim the first ends at 2.0 s and the second starts at 5.0 s, so their middle
+        // (3.5 s) is inside the second one's speech, the quietest stretch of the audio between them is 3.2-3.4 s
+        var audio = Audio(10);
+        for (var i = 1000; i < 3200; i++)
+            audio[i] = 0.5f * (i % 2 == 0 ? 1 : -1);
+        for (var i = 3400; i < 6000; i++)
+            audio[i] = 0.5f * (i % 2 == 0 ? 1 : -1);
+
+        var checkpoint = Assert.Single(Checkpoints(TwoUtterances("Next one", 5.0), audio));
+
+        Assert.InRange(checkpoint.Sample, 3200, 3400);
+    }
+
+    [Fact]
+    public void Checkpoint_WithoutWordTimes_ShouldBeTheEndOfTheBatch()
+    {
+        var recognizer = new ScriptedUtteranceRecognizer(
+            fed => fed == 3500 ? new StreamingResult("", "Hello world.") : new StreamingResult("", null),
+            new StreamingResult("", null));
+        var checkpoints = new List<OfflineCheckpoint>();
+
+        OfflineTranscriber.Run(recognizer, Audio(6), new OfflineTranscriptionOptions { Checkpoint = checkpoints.Add });
+
+        Assert.Equal(3500, Assert.Single(checkpoints).Sample);
     }
 
     [Fact]

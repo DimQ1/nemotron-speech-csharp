@@ -109,7 +109,7 @@ public static class LiveRecordingMetadata
     /// <summary>
     /// Recognizer family of a model folder, detected the same way
     /// <c>RecognizerFactory</c> picks the provider: VibeVoice, Qwen3Streaming, Qwen3,
-    /// ParakeetTdt, else Nemotron (ORT GenAI).
+    /// ParakeetTdt, else Nemotron.
     /// </summary>
     public static string? DetectFamily(string? modelPath)
     {

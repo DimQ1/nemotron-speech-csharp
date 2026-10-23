@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using Microsoft.ML.OnnxRuntime;
-using Microsoft.ML.OnnxRuntimeGenAI;
 
 namespace SpeechLib;
 
@@ -94,7 +93,8 @@ public static class WebGpuExecutionProvider
 
     /// <summary>Human-readable description of a discovered adapter, for settings UIs.</summary>
     public static string Describe(WebGpuDeviceInfo device) =>
-        $"[{device.Index}] {device.Vendor} (vendor 0x{device.VendorId:X4}, device 0x{device.DeviceId:X4})";
+        $"[{device.Index}] {device.Description ?? device.Vendor} (vendor 0x{device.VendorId:X4}, device 0x{device.DeviceId:X4}" +
+        $"{device.IsDiscrete switch { true => ", discrete", false => ", integrated", _ => "" }})";
 
     /// <summary>
     /// Appends the WebGPU provider to plain ONNX Runtime session options using the
@@ -118,38 +118,6 @@ public static class WebGpuExecutionProvider
         try
         {
             sessionOptions.AppendExecutionProvider(OrtEnv.Instance(), [target.Value.EpDevice], request.ToProviderOptions());
-            error = null;
-            return true;
-        }
-        catch (Exception e)
-        {
-            error = e.Message;
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Applies WebGPU to an ONNX Runtime GenAI configuration. GenAI has no
-    /// device-based append API, so this registers the plugin (making the EP
-    /// available to its sessions) and selects it by provider name.
-    /// </summary>
-    public static bool TryApplyToGenAi(Config config, WebGpuRequest request, out string? error)
-    {
-        if (!TryRegister(out error))
-            return false;
-
-        if (request.DeviceIndex is not null && _devices.Count <= request.DeviceIndex)
-        {
-            error = $"WebGPU device index {request.DeviceIndex} out of range ({_devices.Count} available)";
-            return false;
-        }
-
-        try
-        {
-            config.ClearProviders();
-            config.AppendProvider("WebGPU");
-            foreach (var (key, value) in request.ToProviderOptions())
-                config.SetProviderOption("WebGPU", key, value);
             error = null;
             return true;
         }
@@ -193,12 +161,24 @@ public static class WebGpuExecutionProvider
                 {
                     if (!IsWebGpuEpName(device.EpName)) continue;
                     var hardware = device.HardwareDevice;
+                    // Only describes the adapter: a plugin that does not provide it still works, the adapter is just of unknown type.
+                    Dictionary<string, string> metadata;
+                    try
+                    {
+                        metadata = new(hardware.Metadata.Entries);
+                    }
+                    catch (Exception)
+                    {
+                        metadata = [];
+                    }
                     var info = new WebGpuDeviceInfo(
                         _devices.Count,
                         device.EpName,
                         string.IsNullOrEmpty(hardware.Vendor) ? device.EpVendor : hardware.Vendor,
                         hardware.VendorId,
-                        hardware.DeviceId);
+                        hardware.DeviceId,
+                        metadata.TryGetValue("Discrete", out var discrete) ? discrete == "1" : null,
+                        metadata.TryGetValue("Description", out var description) ? description : null);
                     _devices.Add(new DiscoveredDevice(info, device));
                 }
 
@@ -265,7 +245,13 @@ public static class WebGpuExecutionProvider
 /// <param name="Vendor">Adapter vendor (for example "NVIDIA").</param>
 /// <param name="VendorId">PCI vendor id.</param>
 /// <param name="DeviceId">PCI device id.</param>
-public sealed record WebGpuDeviceInfo(int Index, string EpName, string Vendor, uint VendorId, uint DeviceId);
+/// <param name="IsDiscrete">
+/// True for a discrete graphics card, false for integrated graphics, <see langword="null"/> when the plugin does not say
+/// (its <c>Discrete</c> hardware-device metadata entry is the source; measured on Windows with DXGI, not known for the other
+/// platforms the plugin ships for).
+/// </param>
+/// <param name="Description">Adapter name from the plugin's hardware-device metadata (for example "NVIDIA GeForce RTX 5070 Ti Laptop GPU"), or null.</param>
+public sealed record WebGpuDeviceInfo(int Index, string EpName, string Vendor, uint VendorId, uint DeviceId, bool? IsDiscrete = null, string? Description = null);
 
 /// <summary>
 /// A parsed <c>webgpu[:selector][,key=value...]</c> execution-provider request.

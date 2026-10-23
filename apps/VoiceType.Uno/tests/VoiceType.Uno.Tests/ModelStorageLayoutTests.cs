@@ -9,7 +9,7 @@ internal static class ModelFixtures
 {
     private const string GenAiConfig = """{"decoder":{"filename":"decoder.onnx"}}""";
 
-    /// <summary>A complete Nemotron-style GenAI speech model folder at <paramref name="path"/>.</summary>
+    /// <summary>A complete Nemotron-style speech model folder (<c>genai_config.json</c> manifest) at <paramref name="path"/>.</summary>
     public static void AsrModel(string path)
     {
         Directory.CreateDirectory(path);

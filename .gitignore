@@ -21,6 +21,8 @@ Test-Audio/
 
 # ── VoiceType app data (settings, sessions, models, logs) ───
 data/
+# Test fixtures that live in a folder called Data (vocabulary, config copies, golden token streams, mel dumps)
+!libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/
 
 # ── Olive cache ──────────────────────────────────
 .olive-cache/

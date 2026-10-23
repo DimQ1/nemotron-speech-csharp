@@ -74,7 +74,9 @@
                             <!-- WebGPU plugin EP: hp = discrete GPU, lp = integrated GPU.
                                  The adapter list itself is not selectable (the EP picks its
                                  Dawn adapter by power preference). Falls back to CPU when the
-                                 plugin or a suitable adapter is missing. -->
+                                 plugin or a suitable adapter is missing. Nemotron runs only its
+                                 encoder on WebGPU, and only on a discrete GPU: webgpu:lp and an
+                                 integrated-only machine mean CPU for it. -->
                             <ComboBoxItem Content="webgpu:hp"/>
                             <ComboBoxItem Content="webgpu:lp"/>
                             <ComboBoxItem Content="follow_config"/>

@@ -111,8 +111,12 @@ public sealed partial class LiveSegmentTimer
     /// session's sample timeline), when it provides them: the segment gets <c>decoder</c> word times
     /// and spans its first to last word.
     /// </param>
+    /// <param name="committedContinuesPrevious">
+    /// The committed text starts with the rest of the previous segment's last word
+    /// (<see cref="SpeechLib.StreamingResult.FinalContinuesPrevious"/>); a leading sentence mark is recognized by itself.
+    /// </param>
     public void OnBatch(int samples, string? tail, string? committed, double? levelDb = null,
-        IReadOnlyList<WordTiming>? committedWords = null)
+        IReadOnlyList<WordTiming>? committedWords = null, bool committedContinuesPrevious = false)
     {
         if (samples < 0)
             throw new ArgumentOutOfRangeException(nameof(samples));
@@ -135,7 +139,7 @@ public sealed partial class LiveSegmentTimer
             {
                 var lagged = batchEnd - ToSamples(_commitLagSeconds);
                 var end = _lastActivityEnd is { } activity ? Math.Min(lagged, activity) : lagged;
-                CloseSegment(committed!, _openStart, end, batchEnd, committedWords);
+                CloseSegment(committed!, _openStart, end, batchEnd, committedWords, committedContinuesPrevious);
             }
         }
         else if (hasCommit)
@@ -164,13 +168,13 @@ public sealed partial class LiveSegmentTimer
     }
 
     /// <summary>Text the recognizer produced when the stream was flushed (end of session).</summary>
-    public void OnFlush(string? committed, IReadOnlyList<WordTiming>? committedWords = null)
+    public void OnFlush(string? committed, IReadOnlyList<WordTiming>? committedWords = null, bool committedContinuesPrevious = false)
     {
         DetectLanguage(committed);
         if (_utteranceCommits)
         {
             if (!string.IsNullOrWhiteSpace(committed))
-                CloseSegment(committed, _openStart, _lastActivityEnd ?? Position, Position, committedWords);
+                CloseSegment(committed, _openStart, _lastActivityEnd ?? Position, Position, committedWords, committedContinuesPrevious);
         }
         else
         {
@@ -233,9 +237,16 @@ public sealed partial class LiveSegmentTimer
     }
 
     private void CloseSegment(string rawText, long? openStart, long end, long limit,
-        IReadOnlyList<WordTiming>? decoderWords = null)
+        IReadOnlyList<WordTiming>? decoderWords = null, bool continuesPrevious = false)
     {
         var text = CleanText(rawText);
+        var skippedWords = 0;
+        if (_utteranceCommits)
+        {
+            // The sentence end of the previous utterance (or the rest of its last word) can arrive with the next commit
+            // (". She'll be alright"): it belongs to the previous segment.
+            text = SegmentContinuation.MoveToPrevious(_segments, text, continuesPrevious, decoderWords, 0, out skippedWords);
+        }
         if (text.Length == 0)
         {
             ResetOpen();
@@ -243,7 +254,7 @@ public sealed partial class LiveSegmentTimer
         }
 
         var textWords = TextTokens.SplitWords(text);
-        if (DecoderWordTimings.Map(decoderWords, textWords) is { } exact)
+        if (DecoderWordTimings.Map(decoderWords, textWords, skipLeadingWords: skippedWords) is { } exact)
         {
             // Exact decoder alignment: no estimate from batches needed.
             var first = exact[0].Start;
