@@ -1,0 +1,23 @@
+docs/ci.md
+  s_20e41f7f2d2ce6::t_15fd8ba2834dcc 262-264
+.github/workflows/release-voicetype-uno.yml
+  s_20e41f7f2d2ce6::t_a6b4c7f65bfafc 115,118-137
+apps/VoiceType.Uno/src/VoiceType.Uno/build-macos-app.sh
+  s_20e41f7f2d2ce6::t_f06935af2a1584 78-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "424034a2d73d8bd8ddd9009b5c644223d1d3ec92",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
