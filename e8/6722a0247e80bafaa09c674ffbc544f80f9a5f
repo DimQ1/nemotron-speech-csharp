@@ -1,0 +1,47 @@
+AGENTS.md
+  s_20e41f7f2d2ce6::t_95b1864e7edd2a 161
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/LiveRecordingPlan.cs
+  s_20e41f7f2d2ce6::t_a2ad3e2b3d4b0b 182-184,192-193,215-219
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/RecordingManifest.cs
+  s_20e41f7f2d2ce6::t_a495c5304d3e6e 150,153-158,169-180
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Settings/SettingsText.cs
+  s_20e41f7f2d2ce6::t_500418ad59ea0b 154-155
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/SwitchableCapture.cs
+  s_20e41f7f2d2ce6::t_ab8aee04777c2e 1-342
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/History/LiveRecordingSession.cs
+  s_20e41f7f2d2ce6::t_878284c3d0c0ae 41-44,57,143,152-153,289-290
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/Fakes/FakeAudioSources.cs
+  s_20e41f7f2d2ce6::t_54ae63c26369a9 1-108
+docs/design/voicetype-uno-mobile/README.md
+  s_20e41f7f2d2ce6::t_332c2efd04f325 138,144-156,537-542
+docs/design/voicetype-uno-mobile/mockup.html
+  s_20e41f7f2d2ce6::t_42fbc7bdd7ea6c 657
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/MainViewModel.cs
+  s_20e41f7f2d2ce6::t_dbf83a064638e2 5,798-799,815-852,1384,1386
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/RecognitionService.cs
+  s_20e41f7f2d2ce6::t_db9265f13bc6a7 23,191,201-204,211-213,215-217,219-223,225-254,260,325-326,330-331,334,337-343,363-364,385,455-456,530-535
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/SwitchableCaptureTests.cs
+  s_20e41f7f2d2ce6::t_6c952db554c4b5 1-291
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/SourceChangeLog.cs
+  s_20e41f7f2d2ce6::t_ab13e69b3d8855 1-29
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/History/LiveRecordingMetadataTests.cs
+  s_20e41f7f2d2ce6::t_7dcf2942206696 120-143
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/History/SourceChangeLogTests.cs
+  s_20e41f7f2d2ce6::t_4f2687fb4b6dcc 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "e86722a0247e80bafaa09c674ffbc544f80f9a5f",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
