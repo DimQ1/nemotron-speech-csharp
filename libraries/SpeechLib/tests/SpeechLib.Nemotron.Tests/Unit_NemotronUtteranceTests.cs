@@ -987,7 +987,7 @@ public sealed class Unit_NemotronUtteranceTests
 
     // ── gain control ────────────────────────────────────────────────────
 
-    private const float QuietSyllableRms = 0.005f;   // about -46 dBFS: the gain raises it about 12 times, to the target
+    private const float QuietSyllableRms = 0.005f;   // about -46 dBFS: the gain raises it about 6 times, to the target
 
     private static float Rms(float[] samples) => (float)Math.Sqrt(samples.Sum(s => (double)s * s) / samples.Length);
 

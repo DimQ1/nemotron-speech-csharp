@@ -6,7 +6,7 @@ public sealed record AutomaticGainControlOptions
     /// <summary>The defaults.</summary>
     public static AutomaticGainControlOptions Default { get; } = new();
 
-    /// <summary>Speech RMS the gain aims for (default about -24 dBFS).</summary>
+    /// <summary>Speech RMS the gain aims for (default about -30 dBFS).</summary>
     public float TargetRms { get; init; } = AutomaticGainControl.TargetRms;
 
     /// <summary>Largest boost (default 20 = +26 dB).</summary>
@@ -49,8 +49,12 @@ public sealed record AutomaticGainControlOptions
 /// </remarks>
 public sealed class AutomaticGainControl
 {
-    /// <summary>Default speech RMS the gain aims for (about -24 dBFS).</summary>
-    public const float TargetRms = 0.06f;
+    /// <summary>
+    /// Default speech RMS the gain aims for (about -30 dBFS, measured on the level envelope of the syllables). The rule before G1
+    /// aimed at -24 dBFS, which raised a quarter of the Common Voice recordings that the model reads as well unprocessed; -30 dBFS
+    /// keeps the quiet-microphone rescue (measured down to a -46 dBFS peak) and leaves those alone, -34 dBFS rescues less.
+    /// </summary>
+    public const float TargetRms = 0.03f;
 
     /// <summary>Default largest boost (+26 dB).</summary>
     public const float MaxGain = 20f;

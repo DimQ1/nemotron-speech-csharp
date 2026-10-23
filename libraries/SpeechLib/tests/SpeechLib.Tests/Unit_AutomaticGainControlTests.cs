@@ -8,6 +8,7 @@ public sealed class Unit_AutomaticGainControlTests
     private const int Rate = 16000;
     private const int SyllablePeriod = 4800;        // a syllable every 300 ms...
     private const int SyllableLength = 2880;        // ...180 ms long, the fourth slot of every word is a pause
+    private const double QuietTalkerDbfs = -52;     // a quiet microphone: the gain raises it about 12 times, to the target
 
     private static float Db(double dbfs) => (float)Math.Pow(10, dbfs / 20);
 
@@ -67,7 +68,7 @@ public sealed class Unit_AutomaticGainControlTests
     public void Process_QuietSpeechInAQuietRoom_ShouldBoostItTowardTheTarget()
     {
         var agc = new AutomaticGainControl();
-        var output = agc.Process(Mix(Syllables(4, Db(-46)), RoomTone(4, Db(-80))));
+        var output = agc.Process(Mix(Syllables(4, Db(QuietTalkerDbfs)), RoomTone(4, Db(-80))));
 
         Assert.True(agc.HasHeardSpeech);
         Assert.InRange(SyllableRms(output, 12), AutomaticGainControl.TargetRms * 0.8f, AutomaticGainControl.TargetRms * 1.2f);
@@ -100,7 +101,7 @@ public sealed class Unit_AutomaticGainControlTests
         // the model drops an utterance whose level jumps after its first word, so the first syllable is not left at its quiet level
         var agc = new AutomaticGainControl();
         var lead = RoomTone(1, Db(-80));
-        var input = Concat(lead, Mix(Syllables(2, Db(-46)), RoomTone(2, Db(-80), seed: 2)));
+        var input = Concat(lead, Mix(Syllables(2, Db(QuietTalkerDbfs)), RoomTone(2, Db(-80), seed: 2)));
         var output = agc.Process(input);
 
         Assert.Equal(lead, output[..lead.Length]);                                      // the room before it as it came
@@ -156,7 +157,7 @@ public sealed class Unit_AutomaticGainControlTests
         // the gain rises only when a syllable has ended, but it falls at once: a louder talker is not played 10 dB too loud for a
         // whole syllable with only the peak limiter keeping it from clipping
         var agc = new AutomaticGainControl();
-        agc.Process(Mix(Syllables(3, Db(-46)), RoomTone(3, Db(-80))));
+        agc.Process(Mix(Syllables(3, Db(QuietTalkerDbfs)), RoomTone(3, Db(-80))));
         Assert.True(agc.Gain > 10);
 
         var loud = Mix(Syllables(1, Db(-18)), RoomTone(1, Db(-80), seed: 2));
@@ -169,7 +170,7 @@ public sealed class Unit_AutomaticGainControlTests
     public void Process_PauseAfterSpeech_ShouldKeepTheGainInsteadOfPumping()
     {
         var agc = new AutomaticGainControl();
-        agc.Process(Mix(Syllables(3, Db(-46)), RoomTone(3, Db(-74))));
+        agc.Process(Mix(Syllables(3, Db(QuietTalkerDbfs)), RoomTone(3, Db(-74))));
         var gain = agc.Gain;
         var pause = RoomTone(5, Db(-74), seed: 2);
         var output = agc.Process(pause);
@@ -230,7 +231,7 @@ public sealed class Unit_AutomaticGainControlTests
     public void Process_ARoomThatGetsLouderAfterSpeech_ShouldLowerTheGainToTheCeilingWithinTwoSeconds()
     {
         var agc = new AutomaticGainControl();
-        agc.Process(Mix(Syllables(3, Db(-46)), RoomTone(3, Db(-85))));
+        agc.Process(Mix(Syllables(3, Db(QuietTalkerDbfs)), RoomTone(3, Db(-85))));
         Assert.True(agc.Gain > 10, $"quiet speech in a quiet room should get a large boost, gain {agc.Gain}");
 
         var fan = RoomTone(4, Db(-58), seed: 2);
@@ -247,7 +248,7 @@ public sealed class Unit_AutomaticGainControlTests
     public void Process_LoudBurstAfterQuietSpeech_ShouldNotClip()
     {
         var agc = new AutomaticGainControl();
-        agc.Process(Mix(Syllables(3, Db(-46)), RoomTone(3, Db(-80))));
+        agc.Process(Mix(Syllables(3, Db(QuietTalkerDbfs)), RoomTone(3, Db(-80))));
         var burst = agc.Process(Sine(0.5f, 0.5));
 
         // After the first 10 ms frame the gain has dropped below the clipping point.
@@ -277,17 +278,22 @@ public sealed class Unit_AutomaticGainControlTests
     [Fact]
     public void Options_ShouldSetTheTargetTheCapAndTheCeiling()
     {
-        var input = Mix(Syllables(4, Db(-46)), RoomTone(4, Db(-62)));
-        var noCeiling = new AutomaticGainControl(Rate, AutomaticGainControlOptions.Default with { NoiseCeilingRms = 0 });
-        var withCeiling = new AutomaticGainControl();
-        var capped = new AutomaticGainControl(Rate, AutomaticGainControlOptions.Default with { NoiseCeilingRms = 0, MaxGain = 4 });
+        // a talker 22 dB above a -68 dBFS room: the speech alone asks for +16 dB (+22 dB with a -24 dBFS target), the room allows +18
+        var input = Mix(Syllables(4, Db(-46)), RoomTone(4, Db(-68)));
+        var defaults = new AutomaticGainControl();
+        var louderTarget = new AutomaticGainControl(Rate, AutomaticGainControlOptions.Default with { TargetRms = 0.06f });
+        var lowCeiling = new AutomaticGainControl(Rate, AutomaticGainControlOptions.Default with { NoiseCeilingRms = Db(-62) });
+        var capped = new AutomaticGainControl(Rate, AutomaticGainControlOptions.Default with { MaxGain = 4 });
 
-        noCeiling.Process(input);
-        withCeiling.Process(input);
+        defaults.Process(input);
+        louderTarget.Process(input);
+        lowCeiling.Process(input);
         capped.Process(input);
 
-        Assert.InRange(noCeiling.Gain, 10f, AutomaticGainControl.MaxGain);              // the speech alone asks for about +22 dB
-        Assert.InRange(withCeiling.Gain, 1f, 4.5f);                                       // a -62 dBFS floor may be raised by 12 dB
+        var asked = AutomaticGainControl.TargetRms / Db(-46);
+        Assert.InRange(defaults.Gain, asked * 0.8f, asked * 1.2f);
+        Assert.InRange(louderTarget.Gain, defaults.Gain * 1.3f, Db(-50) / Db(-68) * 1.1f);   // more, up to the -50 dBFS ceiling
+        Assert.InRange(lowCeiling.Gain, 1f, Db(-62) / Db(-68) * 1.1f);                  // the room may only be raised by 6 dB
         Assert.Equal(4f, capped.Gain);
     }
 
@@ -300,13 +306,13 @@ public sealed class Unit_AutomaticGainControlTests
         // A faulty source (a broken resampler, an unplugged device driver) can deliver NaN or Infinity. Infinity used to make the
         // level estimate NaN for good, so the output stayed NaN after the source recovered.
         var agc = new AutomaticGainControl();
-        agc.Process(Mix(Syllables(2, Db(-46)), RoomTone(2, Db(-80))));
-        var glitch = Mix(Syllables(0.05, Db(-46)), RoomTone(0.05, Db(-80)));
+        agc.Process(Mix(Syllables(2, Db(QuietTalkerDbfs)), RoomTone(2, Db(-80))));
+        var glitch = Mix(Syllables(0.05, Db(QuietTalkerDbfs)), RoomTone(0.05, Db(-80)));
         glitch[100] = bad;
         glitch[101] = bad;
 
         var during = agc.Process(glitch);
-        var after = agc.Process(Mix(Syllables(2, Db(-46)), RoomTone(2, Db(-80), seed: 2)));
+        var after = agc.Process(Mix(Syllables(2, Db(QuietTalkerDbfs)), RoomTone(2, Db(-80), seed: 2)));
 
         Assert.All(during, s => Assert.True(float.IsFinite(s)));
         Assert.Equal(0f, during[100]);
@@ -320,7 +326,7 @@ public sealed class Unit_AutomaticGainControlTests
     public void Process_ShouldNotModifyInput()
     {
         var agc = new AutomaticGainControl();
-        var input = Mix(Syllables(1, Db(-46)), RoomTone(1, Db(-80)));
+        var input = Mix(Syllables(1, Db(QuietTalkerDbfs)), RoomTone(1, Db(-80)));
         var copy = input.ToArray();
         agc.Process(input);
 
