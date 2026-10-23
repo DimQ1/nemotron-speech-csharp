@@ -1,0 +1,43 @@
+tools/converters/EncoderRepack/README.md
+  s_20e41f7f2d2ce6::t_57d26cba333ad2 1-115
+tools/converters/EncoderRepack/bench_encoder.py
+  s_20e41f7f2d2ce6::t_c16fe294cdbbaf 1-147
+tools/converters/EncoderRepack/compare_recipes.py
+  s_20e41f7f2d2ce6::t_bad61865561186 1-109
+tools/converters/EncoderRepack/encoder_check.py
+  s_20e41f7f2d2ce6::t_9756a88c097d26 1-233
+tools/converters/EncoderRepack/graph_surgery.py
+  s_20e41f7f2d2ce6::t_4c1754f20f800a 1-306
+tools/converters/EncoderRepack/quant_recipes.py
+  s_20e41f7f2d2ce6::t_f466418d16ecd2 1-144
+tools/converters/EncoderRepack/requirements.txt
+  s_20e41f7f2d2ce6::t_700185fd943bbf 1-7
+tools/converters/EncoderRepack/model_folder.py
+  s_750dcaa06ccbff::t_38f133ce9a39e8 1-240
+tools/converters/EncoderRepack/repack_encoder.py
+  s_750dcaa06ccbff::t_38ff2bf1f2ea9e 1-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "f104b7c61497571e20478447facc5b8d713e1e5a",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_750dcaa06ccbff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a577cfbf40763ff28",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
