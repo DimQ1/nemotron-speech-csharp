@@ -1,0 +1,21 @@
+libraries/SpeechLib/src/SpeechLib/Audio/AutomaticGainControl.cs
+  s_974258c65088b5::t_938bea8f928670 42-44,101,106,211,234-251,253,259,281,294,298
+libraries/SpeechLib/tests/SpeechLib.Tests/Unit_AutomaticGainControlTests.cs
+  s_974258c65088b5::t_52691f75f7fa4b 153-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "3f57f348930731a8e3620242c60eb1e181914b2e",
+  "prompts": {},
+  "sessions": {
+    "s_974258c65088b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3fc81e050ed2b18f",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
