@@ -1,0 +1,27 @@
+.gitignore
+  s_20e41f7f2d2ce6::t_0a188dc2ba859a 26-27
+docs/research/nemotron-pure-ort-followups.md
+  s_20e41f7f2d2ce6::t_23798b67f92892 73,100
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/truth/README.md
+  s_20e41f7f2d2ce6::t_6b3e52bbeb7979 1-9
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/E2E_NemotronUtteranceTests.cs
+  s_20e41f7f2d2ce6::t_88fa314076bf4d 13,253,300,303,306,309
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/NemotronTestEnvironment.cs
+  s_20e41f7f2d2ce6::t_15b2232938be2a 250-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "7b36241b04d3b1237e997a09002a5ed9f4fe1daa",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
