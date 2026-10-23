@@ -1,0 +1,19 @@
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/E2E_NemotronPauseStateTests.cs
+  s_e365ef0b0f7316::t_69a9c0e9a8ed45 1-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "a101d288a95b5865a1ad3b98d558f991ec8fe106",
+  "prompts": {},
+  "sessions": {
+    "s_e365ef0b0f7316": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6babba9bead5f63",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
