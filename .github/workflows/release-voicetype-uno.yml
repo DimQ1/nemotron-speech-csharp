@@ -2,8 +2,8 @@ name: VoiceType.Uno Tagged Release
 
 run-name: VoiceType.Uno Release · ${{ github.ref_name }}
 
-# Tag uno-vX.Y.Z -> Windows zip, Linux tar.gz + .deb, Android AAB + APK and the two unsigned iOS builds (Simulator, device)
-# as GitHub release assets. The jobs live in uno-publish.yml, which also sets the app version.
+# Tag uno-vX.Y.Z -> Windows zip, Linux tar.gz + .deb, Android AAB + APK, macOS .dmg + .zip (Apple silicon, ad-hoc signed)
+# and the two unsigned iOS builds (Simulator, device) as GitHub release assets. The jobs live in uno-publish.yml, which also sets the app version.
 
 on:
   push:
@@ -45,6 +45,7 @@ jobs:
       require-android-signing: false
       # The Mac build adds about 40 minutes; both iOS builds are unsigned (docs/ci.md, iOS).
       ios: true
+      macos: true
       retention-days: 3
     secrets: inherit
 
@@ -80,6 +81,17 @@ jobs:
           name: VoiceType.Uno-android
           path: release-assets/android
 
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: VoiceType.Uno-macos-arm64
+          path: release-assets/macos
+
+      - name: Name the macOS notes apart from the Linux ones (release asset names are flat)
+        run: |
+          mv release-assets/macos/README.md release-assets/macos/macOS-README.md
+          mv release-assets/macos/SHA256SUMS release-assets/macos/macOS-SHA256SUMS
+
       - name: Download iOS Simulator artifact
         uses: actions/download-artifact@v4
         with:
@@ -100,6 +112,7 @@ jobs:
             **Not store-ready.** Nothing in this release is signed with a release identity:
             - **Android** `.apk` / `.aab` are signed with a throw-away debug key (no release keystore is configured). They cannot update an installed copy (uninstall first, which deletes the downloaded models) and Google Play rejects them.
             - **iOS**: `VoiceType.Uno-ios-simulator.zip` runs in the Xcode Simulator on a Mac; `VoiceType.Uno-ios-device-unsigned.zip` is the device build and needs an Apple signature before it installs (no Apple account is configured). Only microphone capture is implemented on iOS.
+            - **macOS** `VoiceType.Uno-macos-arm64.dmg` (Apple silicon, macOS 14+) is signed ad hoc, not with a Developer ID: macOS refuses the first start until it is allowed in System Settings › Privacy & Security › Open Anyway (steps in `macOS-README.md`).
             - **Windows** and **Linux** packages are unsigned.
 
           # Releases published by this workflow had empty bodies; generate the notes
@@ -114,5 +127,9 @@ jobs:
             release-assets/linux-deb/SHA256SUMS
             release-assets/android/*-Signed.aab
             release-assets/android/*-Signed.apk
+            release-assets/macos/VoiceType.Uno-macos-arm64.dmg
+            release-assets/macos/VoiceType.Uno-macos-arm64.zip
+            release-assets/macos/macOS-README.md
+            release-assets/macos/macOS-SHA256SUMS
             release-assets/ios-simulator/VoiceType.Uno-ios-simulator.zip
             release-assets/ios-device/VoiceType.Uno-ios-device-unsigned.zip

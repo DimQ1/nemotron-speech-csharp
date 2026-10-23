@@ -166,11 +166,12 @@ public partial class App : Application
 #else
                     // Skia desktop head. Audio capture is picked at runtime:
                     //   Windows → NAudio 3.0.1 (WASAPI) so dictation works on a dev box;
+                    //   macOS   → the voicetype-audio helper in VoiceType.app (Packaging/macOS);
                     //   Linux   → PulseAudio (libpulse-simple) for the real target.
                     services.AddSingleton<SpeechLib.IAudioSourceFactory>(_ =>
-                        OperatingSystem.IsWindows()
-                            ? (SpeechLib.IAudioSourceFactory)new SpeechLib.Audio.NAudio3AudioSourceFactory()
-                            : new PulseAudioSourceFactory());
+                        OperatingSystem.IsWindows() ? new SpeechLib.Audio.NAudio3AudioSourceFactory()
+                        : OperatingSystem.IsMacOS() ? new MacAudioSourceFactory()
+                        : new PulseAudioSourceFactory());
 #endif
                     services.AddSingleton<RecognitionService>();
 
