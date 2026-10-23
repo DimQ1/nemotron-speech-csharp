@@ -1,0 +1,41 @@
+.github/actions/setup-build/action.yml
+  s_20e41f7f2d2ce6::t_deb7bfb3c3d622 1-32
+.github/workflows/build-voicetype-uno.yml
+  s_20e41f7f2d2ce6::t_f3aa5b17edfe78 5-8,11-19,25-26,30-31,33,37-38,42-43,45,47-49,51-52,54-67
+.github/workflows/build-voicetype-winui-msix.yml
+  s_20e41f7f2d2ce6::t_d802ebe8aadcb4 1,3-10,13,16,19-20,22,28-29,31-36,38-41,43,45-51,56-57,59
+.github/workflows/release-voicetype-uno-android.yml
+  s_20e41f7f2d2ce6::t_5e592f0afddfc1 5-7,15,18-23,25-29,31-44,46-58,63,65-66,78-79
+.github/workflows/release-voicetype-uno.yml
+  s_20e41f7f2d2ce6::t_5664a9cffc5f82 5-7,14,17-18,20-22,24,26,28-47,52-54,87
+.github/workflows/uno-publish.yml
+  s_20e41f7f2d2ce6::t_8a65513b9d5e9e 1-339
+.github/workflows/voicetype-uno-linux-smoke.yml
+  s_20e41f7f2d2ce6::t_ba633a1b729a57 5-9,17,22,26,31-38,43-44,50-51,60,66,88,91,93-94,96,98,101-106,113-115,117
+.github/workflows/ci.yml
+  s_643c1c634973a4::t_62be0ecfa0d822 1,3-9,16-18,20-35,39-45,51-52,57-68,70-75,77-86,88-123,125-130,132-133,136-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "f7164263db67a33ff8683a46706d596845ff7495",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_643c1c634973a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae796bc09d00f414c",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
