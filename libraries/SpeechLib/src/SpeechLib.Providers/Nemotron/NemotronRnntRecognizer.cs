@@ -716,8 +716,12 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
         }
 
         if (PauseDecided is { } decided)
+        {
+            int[] PerChunk(List<NemotronToken> tokens) => window.Chunks.Select(c => tokens.Count(k => k.Chunk == c && lexical[k.Id])).ToArray();
             decided(new NemotronPauseDecision(window.FirstChunk, window.Chunks.Count, window.SilentChunks, keepLetters, freshLetters, freshWins,
-                Vocabulary.Detokenize(window.Keep.Select(k => k.Id).ToArray()), Vocabulary.Detokenize(window.Fresh.Select(k => k.Id).ToArray())));
+                Vocabulary.Detokenize(window.Keep.Select(k => k.Id).ToArray()), Vocabulary.Detokenize(window.Fresh.Select(k => k.Id).ToArray()),
+                PerChunk(window.Keep), PerChunk(window.Fresh)));
+        }
     }
 
     // The keep branch's tokens in front of its first letter token, up to its last mark or tag (a bare word marker after it

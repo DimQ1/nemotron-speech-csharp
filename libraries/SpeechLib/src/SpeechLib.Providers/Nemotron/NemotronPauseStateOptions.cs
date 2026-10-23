@@ -89,5 +89,7 @@ public sealed record NemotronPauseStateOptions
 /// <param name="FreshWon">The fresh branch continues the stream.</param>
 /// <param name="KeepText">What the kept state decoded in the window.</param>
 /// <param name="FreshText">What the fresh state decoded in the window.</param>
+/// <param name="KeepLettersPerChunk">Letter tokens of the kept state per chunk of the window.</param>
+/// <param name="FreshLettersPerChunk">Letter tokens of the fresh state per chunk of the window.</param>
 public sealed record NemotronPauseDecision(int FirstChunk, int Chunks, int SilentChunks, int KeepLetters, int FreshLetters, bool FreshWon,
-    string KeepText, string FreshText);
+    string KeepText, string FreshText, IReadOnlyList<int> KeepLettersPerChunk, IReadOnlyList<int> FreshLettersPerChunk);

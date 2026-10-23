@@ -158,9 +158,10 @@ if (recognizer is NemotronUtteranceRecognizer nemotronInfo)
     if (pauseLog is not null)
     {
         pauseWriter = new StreamWriter(pauseLog, append: false, new UTF8Encoding(false));
-        pauseWriter.WriteLine("file\tfirstChunk\tchunks\tsilentChunks\tkeepLetters\tfreshLetters\tfreshWon\tkeepText\tfreshText");
+        pauseWriter.WriteLine("file\tfirstChunk\tchunks\tsilentChunks\tkeepLetters\tfreshLetters\tfreshWon\tkeepPerChunk\tfreshPerChunk\tkeepText\tfreshText");
         nemotronInfo.PauseDecided += d => pauseWriter.WriteLine(
-            $"{currentFile}\t{d.FirstChunk}\t{d.Chunks}\t{d.SilentChunks}\t{d.KeepLetters}\t{d.FreshLetters}\t{d.FreshWon}\t{d.KeepText.Trim()}\t{d.FreshText.Trim()}");
+            $"{currentFile}\t{d.FirstChunk}\t{d.Chunks}\t{d.SilentChunks}\t{d.KeepLetters}\t{d.FreshLetters}\t{d.FreshWon}\t" +
+            $"{string.Join(',', d.KeepLettersPerChunk)}\t{string.Join(',', d.FreshLettersPerChunk)}\t{d.KeepText.Trim()}\t{d.FreshText.Trim()}");
     }
 }
 StreamWriter? hypWriter = hypOut is null ? null : new StreamWriter(hypOut, append: false, new UTF8Encoding(false));
