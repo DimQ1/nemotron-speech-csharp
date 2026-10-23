@@ -1,0 +1,27 @@
+.github/workflows/uno-publish.yml
+  s_20e41f7f2d2ce6::t_f37c05da98081b 287-290,298,302-303,305,307
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/History/DiarizeJobWorkerTests.cs
+  s_20e41f7f2d2ce6::t_1fc4590a5af467 316
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/Settings/StorageMigrationTests.cs
+  s_20e41f7f2d2ce6::t_f772d08824ea2f 59,178,279,378-383,558
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/Settings/StorageTextTests.cs
+  s_20e41f7f2d2ce6::t_5b91f6ceb90af2 11-13,93-96,186,381-382,384
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/WindowsFactAttribute.cs
+  s_20e41f7f2d2ce6::t_114d9409fde38d 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "ab9d911f180e309979e4ffe48ab1f4e2737dc9f1",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
