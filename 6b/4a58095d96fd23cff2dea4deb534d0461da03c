@@ -1,0 +1,37 @@
+.github/workflows/build-voicetype-uno-ios.yml
+  s_20e41f7f2d2ce6::t_e65ea9f9a1f298 1-59
+.github/workflows/build-voicetype-uno.yml
+  s_20e41f7f2d2ce6::t_d3c38df4e8384e 7
+.github/workflows/ci.yml
+  s_20e41f7f2d2ce6::t_ec9b915f852cf7 16,114-126
+.github/workflows/uno-publish.yml
+  s_20e41f7f2d2ce6::t_44cdd4cb7865fc 29,49,256-260,263,268-278,290-308,310-325,328,331-332,334,339-340
+apps/VoiceType.Uno/src/VoiceType.Uno/App.xaml.cs
+  s_20e41f7f2d2ce6::t_abdf2f65131d14 162-165
+apps/VoiceType.Uno/src/VoiceType.Uno/Platforms/iOS/Entitlements.plist
+  s_20e41f7f2d2ce6::t_517a517f8165e9 1-6
+apps/VoiceType.Uno/src/VoiceType.Uno/Platforms/iOS/Info.plist
+  s_20e41f7f2d2ce6::t_923e27f085e784 1-43
+apps/VoiceType.Uno/src/VoiceType.Uno/Platforms/iOS/Main.iOS.cs
+  s_20e41f7f2d2ce6::t_8cc8f54045a935 1-17
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/Audio/IosAudioSourceFactory.cs
+  s_20e41f7f2d2ce6::t_edd22d4daf43cf 1-136
+apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+  s_20e41f7f2d2ce6::t_338f614e1e052b 13-17,60-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "6b4a58095d96fd23cff2dea4deb534d0461da03c",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
