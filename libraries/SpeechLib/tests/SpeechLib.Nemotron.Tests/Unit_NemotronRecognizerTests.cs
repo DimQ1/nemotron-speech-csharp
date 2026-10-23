@@ -25,7 +25,7 @@ public sealed class Unit_NemotronRecognizerTests
     }
 
     private static Rig Make(int chunk = N, int frames = Frames, int lookahead = 0, bool useVad = false, Func<int, bool>? speech = null,
-        string? langId = null, bool supportsLanguage = true, Func<IChunkSpeechGate>? gateFactory = null)
+        string? langId = null, bool supportsLanguage = true, Func<IChunkSpeechGate>? gateFactory = null, int closing = 0)
     {
         var variant = chunk == 17920 ? "int4-c112" : "int4-c056";
         var engine = new FakeChunkEngine(chunk, frames, lookahead, supportsLanguage);
@@ -37,7 +37,8 @@ public sealed class Unit_NemotronRecognizerTests
             gates.Add(gate);
             return gate;
         };
-        var recognizer = new NemotronRnntRecognizer(engine, NemotronTestEnvironment.LoadConfig(variant), VocabularyOf.Value, gateFactory, useVad, langId);
+        var recognizer = new NemotronRnntRecognizer(engine, NemotronTestEnvironment.LoadConfig(variant), VocabularyOf.Value, gateFactory, useVad, langId,
+            new NemotronRecognizerOptions { FlushClosingChunks = closing });
         return new Rig { Recognizer = recognizer, Engine = engine, Gates = gates };
     }
 
@@ -304,6 +305,84 @@ public sealed class Unit_NemotronRecognizerTests
         Assert.Equal(2, call.ChunkIndex);                 // the padded chunk keeps its place on the timeline
         Assert.Equal(next, call.Chunk);
         Assert.Equal(3L * N, rig.Recognizer.StreamPositionSamples);
+    }
+
+    // ── flush: closing chunks ───────────────────────────────────────────
+
+    [Fact]
+    public void Flush_WithClosingChunks_ShouldEncodeZeroChunksAfterThePaddedRemainderAndReturnTheirTokens()
+    {
+        using var rig = Make(closing: 1);
+        rig.Recognizer.ProcessAudio(TestAudio.Ramp(N + 1000));
+        rig.Engine.Calls.Clear();
+        rig.Engine.Script = (index, _) => index == 2 ? [(Id("▁go"), 1)] : [];   // the late last word
+
+        var text = rig.Recognizer.Flush();
+
+        Assert.Equal(" go", text);
+        Assert.Equal([1, 2], rig.Engine.Calls.Select(c => c.ChunkIndex));
+        Assert.Equal(TestAudio.Ramp(1000, N), rig.Engine.Calls[0].Chunk[..1000]);
+        Assert.All(rig.Engine.Calls[1].Chunk, v => Assert.Equal(0f, v));
+        Assert.Equal(3, rig.Recognizer.ChunksConsumed);
+        Assert.Equal([1, 2], rig.Recognizer.LastChunks.Select(c => c.Index));
+        Assert.Equal(2L * Frames + 1, rig.Recognizer.LastTokens.Single().GlobalFrame);
+        Assert.Equal(1, rig.Recognizer.FlushClosingChunks);
+    }
+
+    [Fact]
+    public void Flush_WithClosingChunks_AndAnEmptyRemainder_ShouldStillCloseTheLastEncodedChunk()
+    {
+        using var rig = Make(closing: 2);
+        rig.Recognizer.ProcessAudio(TestAudio.Ramp(2 * N));
+        rig.Engine.Calls.Clear();
+
+        Assert.Equal("", rig.Recognizer.Flush());
+
+        Assert.Equal([2, 3], rig.Engine.Calls.Select(c => c.ChunkIndex));
+        Assert.Equal(4, rig.Recognizer.ChunksConsumed);
+    }
+
+    [Fact]
+    public void Flush_WithClosingChunks_ASecondFlushOrAFreshRecognizer_ShouldAddNothing()
+    {
+        using var rig = Make(closing: 1);
+        Assert.Null(rig.Recognizer.Flush());
+        Assert.Empty(rig.Engine.Calls);
+
+        rig.Recognizer.ProcessAudio(TestAudio.Ramp(N + 10));
+        rig.Recognizer.Flush();
+        rig.Engine.Calls.Clear();
+
+        Assert.Null(rig.Recognizer.Flush());
+        Assert.Empty(rig.Engine.Calls);
+        Assert.Equal(3, rig.Recognizer.ChunksConsumed);
+    }
+
+    [Fact]
+    public void Flush_WithClosingChunks_AfterADroppedChunk_ShouldAddNone()
+    {
+        // speech in chunk 0 only; silent chunks 1-6, chunk 6 is the 6th and is dropped: the model heard the pause already
+        using var rig = Make(useVad: true, speech: index => index == 0, closing: 1);
+        rig.Recognizer.ProcessAudio(TestAudio.Ramp(7 * N));
+        Assert.Equal(1, rig.Recognizer.ChunksDropped);
+        rig.Engine.Calls.Clear();
+
+        Assert.Null(rig.Recognizer.Flush());
+
+        Assert.Empty(rig.Engine.Calls);
+    }
+
+    [Fact]
+    public void Flush_WithClosingChunks_ThenMoreAudio_ShouldContinueBehindThem()
+    {
+        using var rig = Make(closing: 1);
+        rig.Recognizer.ProcessAudio(TestAudio.Ramp(N + 500));
+        rig.Recognizer.Flush();                           // chunk 1 = 500 samples + padding, chunk 2 = closing
+        rig.Engine.Calls.Clear();
+
+        rig.Recognizer.ProcessAudio(TestAudio.Ramp(N, 99000));
+
+        Assert.Equal(3, Assert.Single(rig.Engine.Calls).ChunkIndex);
     }
 
     // ── reset ───────────────────────────────────────────────────────────

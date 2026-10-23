@@ -162,6 +162,13 @@ public sealed class NemotronUtteranceRecognizer : ITimedUtteranceRecognizer, ILa
     /// <summary>The streaming engine underneath (diagnostics and tests).</summary>
     internal NemotronRnntRecognizer Engine => _engine;
 
+    /// <summary>The engine's pause-state decisions (<see cref="NemotronRnntRecognizer.PauseDecided"/>), for diagnostics and evaluation.</summary>
+    public event Action<NemotronPauseDecision>? PauseDecided
+    {
+        add => _engine.PauseDecided += value;
+        remove => _engine.PauseDecided -= value;
+    }
+
     /// <inheritdoc />
     public bool TrySetLanguage(string language) => _engine.TrySetLanguage(language);
 
@@ -349,14 +356,17 @@ public sealed class NemotronUtteranceRecognizer : ITimedUtteranceRecognizer, ILa
     {
         _lastTokenCount = 0;
         var chunk = _engine.ChunkSamples;
-        var remainder = _engine.BufferedSamples % chunk;
+        var consumedBefore = _engine.ChunksConsumed;
+        var buffered = _engine.BufferedSamples;
         var text = _engine.Flush();
         _lastTokenCount = _engine.LastTokenCount;
 
-        if (remainder > 0)
+        // The padded zeros and the closing chunks are on the engine's grid but were never fed: later chunks sit that much earlier
+        // on the clock. Everything the flush consumed beyond the buffered samples is such padding.
+        var padding = (long)(_engine.ChunksConsumed - consumedBefore) * chunk - buffered;
+        if (padding > 0)
         {
-            // the padded zeros are on the engine's grid but were never fed: later chunks sit that much earlier on the clock
-            var total = (_paddings.Count > 0 ? _paddings[^1].CumulativeSamples : 0) + (chunk - remainder);
+            var total = (_paddings.Count > 0 ? _paddings[^1].CumulativeSamples : 0) + padding;
             _paddings.Add((_engine.ChunksConsumed, total));
         }
         Absorb();
