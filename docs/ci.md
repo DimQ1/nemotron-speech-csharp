@@ -256,13 +256,14 @@ The Skia desktop head (`net10.0-desktop`, `UseMacOS()`) published for `osx-arm64
   `/bin/sh` helper on Linux/macOS).
 * **Permissions** belong to VoiceType.app because the helper is its child process: `Packaging/macOS/Info.plist` has
   `NSMicrophoneUsageDescription` and `NSAudioCaptureUsageDescription`. Run from Terminal, Terminal is asked instead.
-* **Bundle**: `Contents/MacOS` holds only the Mach-O files of the publish output (executable, .NET and native `.dylib`s) and the
-  helper; every other file and folder (assemblies, json, `Assets`, the `Uno.Fonts.*` folders) is moved to `Contents/Resources` and
-  linked back into `MacOS`, because the .NET host looks next to the executable and `codesign` treats anything in `MacOS` as nested code
-  (the first run failed with "bundle format unrecognized" on the folder `Uno.Fonts.OpenSans`). `Info.plist` (`@VERSION@` replaced),
-  `Resources/AppIcon.icns` from `Packaging/macOS/AppIcon.png` (rendered from the two `Assets/Icons` SVG layers). The Mach-O files are
-  signed ad hoc, then the bundle. Output `build/macos-packages`: `.dmg` (with an Applications link), `.zip`, `README.md` (user
-  instructions, Gatekeeper "Open Anyway"), `SHA256SUMS`.
+* **Bundle**: the files of the publish output stay in `Contents/MacOS` next to the executable; its folders (`Assets`, the
+  `Uno.Fonts.*` folders) move to `Contents/Resources` and are linked back. Both halves are forced: `codesign` treats a folder in `MacOS`
+  as nested code ("bundle format unrecognized" on `Uno.Fonts.OpenSans`), and the .NET host resolves a linked `VoiceType.Uno.dll` to
+  its real folder and then misses `libhostpolicy.dylib` ("Failed to run as a self-contained app"). `Info.plist` (`@VERSION@`
+  replaced), `Resources/AppIcon.icns` from `Packaging/macOS/AppIcon.png` (rendered from the two `Assets/Icons` SVG layers). Every
+  file in `MacOS` is signed ad hoc (non-Mach-O files keep the signature in extended attributes, which Finder, `ditto` and the disk
+  image preserve, `unzip` does not), then the bundle. Output `build/macos-packages`: `.dmg` (with an Applications link), `.zip`,
+  `README.md` (user instructions, Gatekeeper "Open Anyway"), `SHA256SUMS`.
 * **LiteRT-LM (Gemma)**: `VoiceType.Uno.csproj` references `LiteRtLmSharp.runtime.osx-arm64` only when `RuntimeIdentifier` is `osx-arm64`,
   so other builds do not need it in the folder feed; the job fetches it with `fetch-litertlmsharp-feed.ps1 -Rid osx-arm64`. The Android
   head is excluded for this RID like for the other desktop RIDs.

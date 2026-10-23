@@ -6,9 +6,9 @@
 # PUBLISH_DIR: an existing `dotnet publish -f net10.0-desktop -r osx-arm64 --self-contained` output (published here
 # when it has no VoiceType.Uno). Output: build/macos-packages/{VoiceType.Uno-macos-arm64.dmg,.zip,README.md,SHA256SUMS}.
 #
-# The bundle: the published app (Mach-O files in Contents/MacOS, everything else in Contents/Resources linked back into
-# MacOS, because the .NET host looks for its files next to the executable), the voicetype-audio capture helper compiled
-# from Packaging/macOS/voicetype-audio.swift, Info.plist and the icon. There is no Apple Developer ID yet, so the code is
+# The bundle: the published files in Contents/MacOS (the .NET host looks for them next to the executable), its folders
+# in Contents/Resources linked back into MacOS, the voicetype-audio capture helper compiled from
+# Packaging/macOS/voicetype-audio.swift, Info.plist and the icon. There is no Apple Developer ID yet, so everything is
 # signed ad hoc (Gatekeeper asks the user once, README.md).
 set -euo pipefail
 
@@ -64,21 +64,20 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 
-# codesign treats everything in Contents/MacOS as nested code (a folder such as Uno.Fonts.OpenSans would have to be a
-# bundle), so only the Mach-O files stay there: the executable, the .NET and native libraries, the helper. Managed
-# assemblies, json files, fonts and asset folders move to Contents/Resources (sealed by the bundle signature) and are
-# linked back, so the .NET host still finds the whole app in one folder.
-echo "Moving the non-code files to Resources"
+# codesign treats every folder in Contents/MacOS as nested code (Uno.Fonts.OpenSans would have to be a bundle), so the
+# folders (Assets, fonts) move to Contents/Resources and are linked back. The files stay: the .NET host resolves the
+# app assembly to its real path and looks for libhostpolicy.dylib next to it, so a linked VoiceType.Uno.dll fails.
+echo "Moving the folders to Resources"
 for item in "$APP/Contents/MacOS"/*; do
-    name="$(basename "$item")"
-    if [[ -f "$item" ]] && file -b "$item" | grep -q 'Mach-O'; then
-        continue
+    if [[ -d "$item" ]]; then
+        name="$(basename "$item")"
+        mv "$item" "$APP/Contents/Resources/$name"
+        ln -s "../Resources/$name" "$APP/Contents/MacOS/$name"
     fi
-    mv "$item" "$APP/Contents/Resources/$name"
-    ln -s "../Resources/$name" "$APP/Contents/MacOS/$name"
 done
 
-# Ad-hoc signature, inside out: the Mach-O files, then the bundle, which seals Info.plist, Resources and the executable.
+# Ad-hoc signature, inside out: every file in Contents/MacOS (a non-Mach-O file keeps its signature in extended
+# attributes, which Finder, ditto and disk images preserve), then the bundle, which seals Info.plist and Resources.
 echo "Signing (ad hoc)"
 find "$APP/Contents/MacOS" -type f ! -path "$APP/Contents/MacOS/VoiceType.Uno" -print0 |
     xargs -0 -n 50 codesign --force --sign - --timestamp=none
