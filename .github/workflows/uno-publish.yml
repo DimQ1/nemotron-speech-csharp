@@ -3,7 +3,8 @@ name: VoiceType.Uno publish (reusable)
 # One definition of the platform packages, called by build-voicetype-uno.yml (CI artifacts),
 # release-voicetype-uno.yml (tag uno-v*) and release-voicetype-uno-android.yml (tag uno-android-v*).
 # It replaces the Windows / Linux / Android job copies that lived in all three workflows.
-# Artifact names are unchanged (VoiceType.Uno-win-x64, -linux-x64, -linux-deb-amd64, -android).
+# Artifact names are unchanged (VoiceType.Uno-win-x64, -linux-x64, -linux-deb-amd64, -android); the opt-in jobs add
+# VoiceType.Uno-macos-arm64 (macos) and VoiceType.Uno-ios-simulator / -ios-device-unsigned (ios).
 
 on:
   workflow_call:
@@ -27,6 +28,10 @@ on:
         default: true
       ios:
         description: Build the iOS head (net10.0-ios) for the Simulator and for a device, both unsigned - see docs/ci.md, iOS
+        type: boolean
+        default: false
+      macos:
+        description: Build VoiceType.app for Apple silicon (Skia desktop head + audio helper, ad-hoc signed) - see docs/ci.md, macOS
         type: boolean
         default: false
       require-android-signing:
@@ -250,6 +255,98 @@ jobs:
           name: VoiceType.Uno-android
           path: build/voicetype-uno-android
           if-no-files-found: error
+          retention-days: ${{ inputs.retention-days }}
+
+  # ------------------------------------------------------------------------------------------------
+  # macOS: the Skia desktop head published for osx-arm64, wrapped into VoiceType.app by build-macos-app.sh together with
+  # the voicetype-audio helper (Swift: microphone + Core Audio process tap), signed ad hoc, packed as .dmg and .zip.
+  # ------------------------------------------------------------------------------------------------
+  macos:
+    name: Publish macOS (osx-arm64, Skia, ad-hoc signed)
+    if: ${{ inputs.macos }}
+    # Same image as the iOS job (macOS 26 arm64, Xcode 26.x with the Swift compiler for the helper).
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
+        uses: ./.github/actions/setup-build
+
+      - name: Fetch the LiteRT-LM runtime for Apple silicon
+        # Referenced by VoiceType.Uno.csproj only for RuntimeIdentifier osx-arm64, so the default feed does not carry it.
+        shell: pwsh
+        run: ./tools/scripts/fetch-litertlmsharp-feed.ps1 -Rid osx-arm64
+
+      - name: Publish VoiceType.Uno (osx-arm64, self-contained)
+        run: >-
+          dotnet publish ${{ env.UNO_PROJECT }}
+          -c Release -f net10.0-desktop -r osx-arm64
+          -p:ApplicationDisplayVersion=${{ inputs.version }}
+          --self-contained true -o build/voicetype-uno-osx-arm64
+
+      - name: Build VoiceType.app (audio helper, Info.plist, icon, ad-hoc signature), .dmg and .zip
+        env:
+          APP_VERSION: ${{ inputs.version }}
+          PUBLISH_DIR: ${{ github.workspace }}/build/voicetype-uno-osx-arm64
+        run: bash apps/VoiceType.Uno/src/VoiceType.Uno/build-macos-app.sh "$APP_VERSION"
+
+      - name: Upload artifact
+        # Before the checks, so that a package whose start check fails can still be tried on a real Mac.
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceType.Uno-macos-arm64
+          path: build/macos-packages
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention-days }}
+
+      - name: Check the packed app (signature after unzip, the app starts)
+        # Unzips like Finder does (ditto), checks the signature and starts the app through LaunchServices; it must still be
+        # running after 40 s. The window is kept as a screenshot.
+        run: |
+          mkdir -p build/macos-check
+          ditto -x -k build/macos-packages/VoiceType.Uno-macos-arm64.zip build/macos-check
+          app=build/macos-check/VoiceType.app
+          codesign --verify --strict --verbose=2 "$app"
+          "$app/Contents/MacOS/voicetype-audio" check
+          open "$app"
+          sleep 40
+          if ! pgrep -x VoiceType.Uno > /dev/null; then
+            echo "::error::VoiceType.app is not running 40 s after it was opened"
+            # What it says when started directly (stdout/stderr of the .NET host), then the crash report macOS wrote.
+            "$app/Contents/MacOS/VoiceType.Uno" > build/macos-check/direct.log 2>&1 &
+            sleep 30
+            pkill -x VoiceType.Uno || true
+            echo "---- direct start, last 120 lines"; tail -n 120 build/macos-check/direct.log
+            find "$HOME/Library/Application Support/VoiceType" -name '*.log' -exec tail -n 60 {} \; 2>/dev/null || true
+            report=$(find "$HOME/Library/Logs/DiagnosticReports" -name 'VoiceType*' -newer "$app/Contents/Info.plist" 2>/dev/null | head -n 1)
+            if [[ -n "$report" ]]; then echo "---- $report"; head -c 6000 "$report"; fi
+            exit 1
+          fi
+          screencapture -x build/macos-check/started.png || true
+          pkill -x VoiceType.Uno || true
+
+      - name: Probe the capture helper on the runner (information only)
+        # A hosted runner has no microphone and grants no audio permissions, so this only shows what the helper reports.
+        continue-on-error: true
+        run: |
+          helper=build/macos-check/VoiceType.app/Contents/MacOS/voicetype-audio
+          for mode in mic system; do
+            bytes=$( (sleep 3 | perl -e 'alarm 15; exec @ARGV' "$helper" "$mode" 2> "build/macos-check/$mode.log") | wc -c)
+            echo "$mode: $bytes bytes in 3 s; stderr: $(tr '\n' ' ' < "build/macos-check/$mode.log")"
+          done
+
+      - name: Upload the start check (screenshot, logs)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceType.Uno-macos-check
+          path: |
+            build/macos-check/*.png
+            build/macos-check/*.log
+          if-no-files-found: ignore
           retention-days: ${{ inputs.retention-days }}
 
   # ------------------------------------------------------------------------------------------------

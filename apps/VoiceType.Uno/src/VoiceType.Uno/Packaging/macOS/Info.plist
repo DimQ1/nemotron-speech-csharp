@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- VoiceType.app/Contents/Info.plist; build-macos-app.sh replaces @VERSION@. The usage texts are what macOS shows when
+     it asks for the microphone and for system audio; the voicetype-audio helper inherits them as a child process. -->
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>VoiceType</string>
+    <key>CFBundleDisplayName</key>
+    <string>VoiceType</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.companyname.voicetype-uno</string>
+    <key>CFBundleExecutable</key>
+    <string>VoiceType.Uno</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>@VERSION@</string>
+    <key>CFBundleVersion</key>
+    <string>@VERSION@</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>VoiceType turns what you say into text, on this Mac.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>VoiceType turns the sound your Mac plays (a call, a video) into text when the audio source is System audio or Mic + system.</string>
+</dict>
+</plist>

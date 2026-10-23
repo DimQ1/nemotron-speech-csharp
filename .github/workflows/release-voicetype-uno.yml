@@ -2,8 +2,8 @@ name: VoiceType.Uno Tagged Release
 
 run-name: VoiceType.Uno Release · ${{ github.ref_name }}
 
-# Tag uno-vX.Y.Z -> Windows zip, Linux tar.gz + .deb, Android AAB + APK and the two unsigned iOS builds (Simulator, device)
-# as GitHub release assets. The jobs live in uno-publish.yml, which also sets the app version.
+# Tag uno-vX.Y.Z -> Windows zip, Linux tar.gz + .deb, Android AAB + APK, macOS .dmg + .zip (Apple silicon, ad-hoc signed)
+# and the two unsigned iOS builds (Simulator, device) as GitHub release assets. The jobs live in uno-publish.yml, which also sets the app version.
 
 on:
   push:
@@ -45,6 +45,7 @@ jobs:
       require-android-signing: false
       # The Mac build adds about 40 minutes; both iOS builds are unsigned (docs/ci.md, iOS).
       ios: true
+      macos: true
       retention-days: 3
     secrets: inherit
 
@@ -80,6 +81,17 @@ jobs:
           name: VoiceType.Uno-android
           path: release-assets/android
 
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: VoiceType.Uno-macos-arm64
+          path: release-assets/macos
+
+      - name: Name the macOS notes apart from the Linux ones (release asset names are flat)
+        run: |
+          mv release-assets/macos/README.md release-assets/macos/macOS-README.md
+          mv release-assets/macos/SHA256SUMS release-assets/macos/macOS-SHA256SUMS
+
       - name: Download iOS Simulator artifact
         uses: actions/download-artifact@v4
         with:
@@ -100,7 +112,28 @@ jobs:
             **Not store-ready.** Nothing in this release is signed with a release identity:
             - **Android** `.apk` / `.aab` are signed with a throw-away debug key (no release keystore is configured). They cannot update an installed copy (uninstall first, which deletes the downloaded models) and Google Play rejects them.
             - **iOS**: `VoiceType.Uno-ios-simulator.zip` runs in the Xcode Simulator on a Mac; `VoiceType.Uno-ios-device-unsigned.zip` is the device build and needs an Apple signature before it installs (no Apple account is configured). Only microphone capture is implemented on iOS.
+            - **macOS** `VoiceType.Uno-macos-arm64.dmg` is signed ad hoc, not with an Apple Developer ID, so macOS asks once before the first start (below).
             - **Windows** and **Linux** packages are unsigned.
+
+            ### Install on a Mac
+
+            Needs a Mac with Apple silicon (M1 or newer) and macOS 14 Sonoma or newer. Intel Macs are not supported.
+
+            1. Download **`VoiceType.Uno-macos-arm64.dmg`**, open it and drag **VoiceType** onto the **Applications** folder. (The `.zip` holds the same app: double-click it in Finder and move VoiceType to Applications; do not unpack it with `unzip`.)
+            2. Open **VoiceType** from Applications, Launchpad or Spotlight. The first start is refused because the app is not from an identified developer:
+               - **macOS 15 or newer:** close the warning with **Done**, open **System Settings › Privacy & Security**, scroll down to *"VoiceType" was blocked…* and click **Open Anyway**, then confirm with your password or Touch ID.
+               - **macOS 14:** right-click VoiceType in Applications, choose **Open**, then **Open** again.
+               - **Or in Terminal:** `xattr -dr com.apple.quarantine /Applications/VoiceType.app`, then open the app as usual.
+
+               This is needed once per version.
+            3. Download a speech model in VoiceType (**Models**), as on the other platforms, and start a recording.
+            4. Permissions, asked by macOS the first time a source is used:
+               - **Microphone:** allow it in the dialog (later: **System Settings › Privacy & Security › Microphone**).
+               - **System audio** and **Mic + system** (what the Mac plays: calls, videos; macOS 14.2 or newer): **System Settings › Privacy & Security › Screen & System Audio Recording**, section *System Audio Recording Only*, turn on **VoiceType**.
+
+               If a permission is missing the recording stops and says which switch to turn on.
+
+            Not on macOS yet: typing the text into other apps (use **Copy**), global hotkeys, playing recordings back in History. Settings, models and recordings are kept in `~/Library/Application Support/VoiceType`; to uninstall, move VoiceType from Applications to the Bin (and delete that folder to remove the data too). The same notes are attached as `macOS-README.md`.
 
           # Releases published by this workflow had empty bodies; generate the notes
           # from the commits between the previous tag and this one instead.
@@ -114,5 +147,9 @@ jobs:
             release-assets/linux-deb/SHA256SUMS
             release-assets/android/*-Signed.aab
             release-assets/android/*-Signed.apk
+            release-assets/macos/VoiceType.Uno-macos-arm64.dmg
+            release-assets/macos/VoiceType.Uno-macos-arm64.zip
+            release-assets/macos/macOS-README.md
+            release-assets/macos/macOS-SHA256SUMS
             release-assets/ios-simulator/VoiceType.Uno-ios-simulator.zip
             release-assets/ios-device/VoiceType.Uno-ios-device-unsigned.zip

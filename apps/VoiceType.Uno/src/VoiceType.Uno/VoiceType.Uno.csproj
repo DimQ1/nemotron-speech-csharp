@@ -5,11 +5,11 @@
          net10.0-android = Android head (Skia). The Microsoft.ML.OnnxRuntime package ships the
          android native (onnxruntime.aar), so the recognizers run on the CPU of the device.
          The android head is excluded when publishing for a desktop RID: a desktop RID
-         (linux-x64 / win-x64) would make the android head resolve a non-existent Mono
-         runtime pack during restore (dotnet publish -r <desktop-rid>). The android head
+         (linux-x64 / win-x64 / osx-arm64) would make the android head resolve a non-existent
+         Mono runtime pack during restore (dotnet publish -r <desktop-rid>). The android head
          is published with its own TFM (no -r). -->
     <TargetFrameworks>net10.0-windows10.0.26100;net10.0-desktop</TargetFrameworks>
-    <TargetFrameworks Condition="'$(RuntimeIdentifier)' != 'linux-x64' and '$(RuntimeIdentifier)' != 'win-x64'">$(TargetFrameworks);net10.0-android</TargetFrameworks>
+    <TargetFrameworks Condition="'$(RuntimeIdentifier)' != 'linux-x64' and '$(RuntimeIdentifier)' != 'win-x64' and '$(RuntimeIdentifier)' != 'osx-arm64'">$(TargetFrameworks);net10.0-android</TargetFrameworks>
     <!-- iOS head, opt-in: -p:UnoIosOnly=true builds ONLY net10.0-ios (build with -f net10.0-ios, never with
          -p:TargetFrameworks: a global property leaks into every referenced library). It is not part of the default
          set because the iOS target needs the ios workload and an Xcode, which only a Mac (or a machine with the
@@ -41,6 +41,10 @@
       SkiaRenderer;
       Toolkit;
     </UnoFeatures>
+
+    <!-- Packaging/ holds installer inputs (Linux .deb files, the macOS bundle sources): the Uno SDK would otherwise copy
+         every *.png in the project (Packaging/macOS/AppIcon.png) into the app output of every head. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Packaging/**</DefaultItemExcludes>
 
     <!-- Match repository conventions -->
     <Nullable>enable</Nullable>
@@ -103,6 +107,15 @@
                       Condition="'$(TargetFramework)' != 'net10.0-ios'" />
     <!-- Recordings history audio: Ogg Opus / WAV writers, offline reader, streaming playback reader -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.AudioStorage\SpeechLib.AudioStorage.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">
+    <!-- macOS (Apple silicon) publish: the LiteRT-LM native runtime for the in-process Gemma engine. Referenced here and
+         only for this RID, so other builds do not need the package in the folder feed; the macOS CI job fetches it with
+         tools/scripts/fetch-litertlmsharp-feed.ps1 -Rid osx-arm64. Audio capture on macOS is the voicetype-audio helper
+         that build-macos-app.sh compiles into VoiceType.app (Packaging/macOS). The version is in ..\Directory.Packages.props
+         (central package management of the Uno SDK). -->
+    <PackageReference Include="LiteRtLmSharp.runtime.osx-arm64" />
   </ItemGroup>
 
 </Project>

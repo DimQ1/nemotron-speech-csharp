@@ -3,14 +3,18 @@ name: VoiceType.Uno CI
 run-name: VoiceType.Uno CI · ${{ github.ref_name }} · #${{ github.run_number }}
 
 # Platform packages of every master push and of pull requests that touch the app (the build + unit tests are in ci.yml).
-# The jobs themselves live in uno-publish.yml. Pull requests build Windows + Linux only; Android (~15 min) runs on
-# master pushes and on demand. iOS has its own workflow (build-voicetype-uno-ios.yml).
+# The jobs themselves live in uno-publish.yml. Pull requests build Windows + Linux only; Android (~15 min) and macOS
+# (a Mac runner) run on master pushes and on demand. iOS has its own workflow (build-voicetype-uno-ios.yml).
 
 on:
   workflow_dispatch:
     inputs:
       android:
         description: Build the Android AAB + APK
+        type: boolean
+        default: true
+      macos:
+        description: Build VoiceType.app for macOS (Apple silicon)
         type: boolean
         default: true
   push:
@@ -57,6 +61,7 @@ jobs:
       # Not `inputs.android != false`: on a push `inputs.android` is null and `null != false` is false in a workflow
       # expression, which would silently switch the master Android build off.
       android: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.android) }}
+      macos: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.macos) }}
       retention-days: 7
     # No secrets are needed for a CI package: without the keystore the APK is debug-signed (and says so).
     secrets: inherit

@@ -10,10 +10,10 @@ answered yet carry the default that was applied and the words *default, maintain
 | File | Name in the UI | Runs on | What it does |
 |---|---|---|---|
 | `.github/workflows/ci.yml` | `CI` | pull request, push to `master` (not for docs-only changes), manual | Build + model-free unit tests of 9 test projects on `windows-latest` and `ubuntu-latest`; no-GenAI guard on Windows; `actionlint` over the workflows |
-| `.github/workflows/build-voicetype-uno.yml` | `VoiceType.Uno CI` | pull request and push to `master` that touch the app, the libraries, the feed script, `nuget.config` or the workflows; manual | Platform packages through `uno-publish.yml`: Windows, Linux, Android (not on pull requests) |
-| `.github/workflows/uno-publish.yml` | `VoiceType.Uno publish (reusable)` | called by the three workflows around it | The one definition of the Windows / Linux / Android / iOS jobs |
+| `.github/workflows/build-voicetype-uno.yml` | `VoiceType.Uno CI` | pull request and push to `master` that touch the app, the libraries, the feed script, `nuget.config` or the workflows; manual | Platform packages through `uno-publish.yml`: Windows, Linux, Android and macOS (the last two not on pull requests) |
+| `.github/workflows/uno-publish.yml` | `VoiceType.Uno publish (reusable)` | called by the three workflows around it | The one definition of the Windows / Linux / Android / macOS / iOS jobs |
 | `.github/workflows/build-voicetype-uno-ios.yml` | `VoiceType.Uno iOS` | pull request and push to `master` with the same path filter as the Uno CI (without the Linux-only script), manual | Unsigned iOS builds on a Mac runner, Simulator and device, through the `ios` job of `uno-publish.yml`. Separate from the Uno CI so that a slow or red iOS build never blocks the other platforms |
-| `.github/workflows/release-voicetype-uno.yml` | `VoiceType.Uno Tagged Release` | tag `uno-v*` | Version from the tag, all platform packages (Windows, Linux, Android, and the two unsigned iOS builds), GitHub release |
+| `.github/workflows/release-voicetype-uno.yml` | `VoiceType.Uno Tagged Release` | tag `uno-v*` | Version from the tag, all platform packages (Windows, Linux, Android, macOS, and the two unsigned iOS builds), GitHub release |
 | `.github/workflows/release-voicetype-uno-android.yml` | `VoiceType.Uno Android Release` | tag `uno-android-v*`, manual | Android package only; only a tag creates a release |
 | `.github/workflows/voicetype-uno-linux-smoke.yml` | `VoiceType.Uno Linux Smoke` | pull request and push to `master` with nearly the same path filter as the Uno CI, manual | Publish the Linux head and start it under Xvfb without a model for 10 s |
 | `.github/workflows/build-voicetype-winui-msix.yml` | `VoiceType.WinUI MSIX` | manual only | EXPERIMENTAL: unsigned MSIX of the WinUI app (Store / WACK candidate) |
@@ -41,10 +41,10 @@ push since 2026-08-04, the second (tag `v*`) was dormant and would have failed.
 | Event | `CI` | `VoiceType.Uno CI` | `Linux Smoke` | Releases |
 |---|---|---|---|---|
 | pull request | yes, unless only `docs/**` or `*.md` changed | Windows + Linux packages (path filter) | yes (path filter) | no |
-| push to `master` | same | Windows + Linux + **Android** (path filter) | yes (path filter) | no |
+| push to `master` | same | Windows + Linux + **Android** + **macOS** (path filter) | yes (path filter) | no |
 | tag `uno-vX.Y.Z` | no | no | no | `VoiceType.Uno Tagged Release` |
 | tag `uno-android-vX.Y.Z` | no | no | no | `VoiceType.Uno Android Release` |
-| manual | yes | yes (input `android`) | yes | Android release workflow: build only |
+| manual | yes | yes (inputs `android`, `macos`) | yes | Android release workflow: build only |
 
 Path filter of the Uno CI and the smoke test (the smoke test has no entry for the two `tools/scripts` files): the workflow files, `.github/actions/**`, `apps/VoiceType.Uno/**`, `libraries/SpeechLib/**`,
 `libraries/VoiceType.Hotkeys/**`, `nuget.config`, `global.json` (does not exist yet), and for the Uno CI also `tools/scripts/fetch-litertlmsharp-feed.ps1`
@@ -125,9 +125,11 @@ Other local facts that matter for CI parity:
    git tag uno-v1.9.0
    git push origin uno-v1.9.0
    ```
-   `VoiceType.Uno Tagged Release` builds Windows, Linux and Android and publishes the GitHub release (not a draft) with generated notes.
-   Assets: `VoiceType.Uno-win-x64.zip`, `VoiceType.Uno-linux-x64.tar.gz`, `voicetype-uno_<version>_amd64.deb`, the `README.md` and
-   `SHA256SUMS` of the `.deb` folder, `*-Signed.aab`, `*-Signed.apk`. The release step fails when one of them is missing.
+   `VoiceType.Uno Tagged Release` builds Windows, Linux, Android, macOS and iOS and publishes the GitHub release (not a draft) with
+   generated notes. Assets: `VoiceType.Uno-win-x64.zip`, `VoiceType.Uno-linux-x64.tar.gz`, `voicetype-uno_<version>_amd64.deb`, the
+   `README.md` and `SHA256SUMS` of the `.deb` folder, `*-Signed.aab`, `*-Signed.apk`, `VoiceType.Uno-macos-arm64.dmg` and `.zip` with
+   `macOS-README.md` and `macOS-SHA256SUMS` (renamed in the release job: asset names are flat), the two iOS zips. The release step fails
+   when one of them is missing.
 3. Android-only hotfix: tag `uno-android-vMAJOR.MINOR.PATCH`; the workflow can also be started by hand, which builds and keeps the
    packages as workflow artifacts without a release.
 4. Version numbers come from the tag: `ApplicationDisplayVersion` = `X.Y.Z` (the app reads it back for the History `app.version`, the
@@ -187,8 +189,9 @@ Secrets are not available to pull requests from forks; every check of `CI` works
   them (decision D10).
 * **The real WebGPU execution provider** (plugin or driver faults end the test process; it is tested only in a child process on a machine
   with a discrete GPU), live audio capture (microphone, loopback), typing into other applications (`SendInput`, XTest), UIA layout checks.
-* **Android on a device or emulator** (the job only builds the AAB and APK), **iOS on a device or in the Simulator** (the job only compiles and links; the microphone code has never run), **macOS** (the Skia head lists
-  `UseMacOS()`, nothing builds or tests it), **Windows ARM64 and Linux arm64**.
+* **Android on a device or emulator** (the job only builds the AAB and APK), **iOS on a device or in the Simulator** (the job only compiles and links; the microphone code has never run),
+  **macOS capture** (the `macos` job starts the app, but a hosted runner has no microphone and grants no audio permission, so the helper's
+  capture paths have not run on a real Mac yet), **Windows ARM64 and Linux arm64**.
 * **Windows signing and the Store**: the Uno zip and the MSIX are unsigned; `build-voicetype-winui-msix.yml` is manual and never run.
 * **Bit identity of the mel front end on Linux**: the strict test is Windows x64 only, a tolerance test runs everywhere
   (`docs/research/nemotron-pure-ort-followups.md`, P1).
@@ -236,6 +239,46 @@ What is missing for the next stages (stop after any of them if the product decis
    key (the six secrets in the table above) and a final bundle id: `ApplicationId` is still the template value
    `com.companyname.voicetype-uno`; decide it together with D3 and D6 before the first upload.
 
+## macOS
+
+The Skia desktop head (`net10.0-desktop`, `UseMacOS()`) published for `osx-arm64` and wrapped into **VoiceType.app** by
+`apps/VoiceType.Uno/src/VoiceType.Uno/build-macos-app.sh`. Apple silicon only, macOS 14 or newer (system audio needs 14.2).
+
+* **Audio capture** has no .NET binding on the desktop head, so it lives in a Swift helper, `Packaging/macOS/voicetype-audio.swift`,
+  compiled by the build script into `Contents/MacOS/voicetype-audio`. `voicetype-audio mic` = `AVAudioEngine` input tap (asks for the
+  microphone permission, restarts when the default input changes); `voicetype-audio system` = a global Core Audio process tap
+  (`CATapDescription`, macOS 14.2) carried by a private aggregate device clocked by the default output (rebuilt when the output changes);
+  `voicetype-audio check` prints what the Mac supports. The stream on stdout: Int32 sample rate, then Float32 mono samples; the bytes
+  `AD DE C0 7F` + Int32 announce a new rate. Closing stdin stops it. The app side is `VoiceType.Uno.Core/Services/Audio/HelperAudioSource.cs`
+  (`MacAudioSourceFactory`, `HelperAudioSource`, `HelperPcmDecoder`, `ProcessPcmHelper`): resampling to 16 kHz with `StreamingResampler`,
+  Mic + system through `MultiSourceMixer`, a helper that ends before any audio (a refused permission) fails the recording with the
+  helper's last stderr line, which names the switch in System Settings. Tests: `HelperAudioSourceTests` (a fake helper everywhere, a
+  `/bin/sh` helper on Linux/macOS).
+* **Permissions** belong to VoiceType.app because the helper is its child process: `Packaging/macOS/Info.plist` has
+  `NSMicrophoneUsageDescription` and `NSAudioCaptureUsageDescription`. Run from Terminal, Terminal is asked instead.
+* **Bundle**: the files of the publish output stay in `Contents/MacOS` next to the executable; its folders (`Assets`, the
+  `Uno.Fonts.*` folders) move to `Contents/Resources` and are linked back. Both halves are forced: `codesign` treats a folder in `MacOS`
+  as nested code ("bundle format unrecognized" on `Uno.Fonts.OpenSans`), and the .NET host resolves a linked `VoiceType.Uno.dll` to
+  its real folder and then misses `libhostpolicy.dylib` ("Failed to run as a self-contained app"). `Contents/MacOS/Resources` links
+  to `../Resources`: inside a bundle the Uno macOS host reads `ms-appx:///` content (the icon font `Uno.Fonts.Fluent`, Open Sans,
+  `Assets`) from the folder `Resources` next to the app assembly; without it every icon was a "?". `Info.plist` (`@VERSION@`
+  replaced), `Resources/AppIcon.icns` from `Packaging/macOS/AppIcon.png` (rendered from the two `Assets/Icons` SVG layers). Every
+  file in `MacOS` is signed ad hoc (non-Mach-O files keep the signature in extended attributes, which Finder, `ditto` and the disk
+  image preserve, `unzip` does not), then the bundle. Output `build/macos-packages`: `.dmg` (with an Applications link), `.zip`,
+  `README.md` (user instructions, Gatekeeper "Open Anyway"), `SHA256SUMS`.
+* **LiteRT-LM (Gemma)**: `VoiceType.Uno.csproj` references `LiteRtLmSharp.runtime.osx-arm64` only when `RuntimeIdentifier` is `osx-arm64`,
+  so other builds do not need it in the folder feed; the job fetches it with `fetch-litertlmsharp-feed.ps1 -Rid osx-arm64`. The Android
+  head is excluded for this RID like for the other desktop RIDs.
+* **CI**: job `macos` of `uno-publish.yml` (`macos-26`), on `master` pushes, by hand (input `macos`) and in tagged releases. After
+  packing it unzips the app like Finder, checks the signature, starts it with `open` and fails when it is not running after 40 s; a
+  screenshot of the start goes into the artifact `VoiceType.Uno-macos-check`. A last step (information only) runs the helper on the
+  runner, which has no microphone and no audio permission.
+
+Not on macOS yet (null services, as on iOS): typing into other applications, global hotkeys, playback of recordings, the tray indicator.
+Next steps: a Developer ID signature with notarization (needs the Apple Developer Program; then hardened runtime with the
+`com.apple.security.device.audio-input` entitlement), typing through `CGEventPost` (Accessibility permission), playback through the helper,
+an x64 build if Intel Macs matter.
+
 ## Open decisions
 
 The maintainer has not answered these. The default column is what is in the repository now; every row is *default, maintainer to confirm*.
@@ -274,7 +317,7 @@ The maintainer has not answered these. The default column is what is in the repo
   `--no-restore` and a `-PublishDir` parameter for `check-no-genai.ps1` so that it can check the folder that ships; Android on `ubuntu-24.04` with
   a single `AndroidPackageFormat=aab;apk` publish (roughly halves the job, unverified); win-arm64 and linux-arm64 packages.
 * Runner pins: `ubuntu-24.04` for the Linux package and smoke job (the `.deb` `Depends` names the 24.04 libraries), `windows-latest` for Windows and
-  Android (the known-green image of earlier releases), `macos-26` for the iOS job.
+  Android (the known-green image of earlier releases), `macos-26` for the iOS and macOS jobs.
 
 ## What could not be verified and how to try it safely
 
