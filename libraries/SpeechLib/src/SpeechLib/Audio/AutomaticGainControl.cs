@@ -39,9 +39,9 @@ public sealed record AutomaticGainControlOptions
 /// speech frame by frame from the third frame on (the loudest of the first three sets the level, louder frames lower the gain at
 /// once; speech that needs less than +6 dB is not raised yet). A burst that turns out to be a click (fewer than 50 ms above the
 /// speech margin) or a steady sound (no dip within half a second) takes its boost back; the first syllable keeps it.</para>
-/// <para><b>Then the gain changes only between syllables and never in a pause.</b> Every later syllable moves the level when it has
-/// ended (louder speech at once, quieter speech slowly), so a pause or a steady sound keeps the gain it had instead of pumping a
-/// room tone up.</para>
+/// <para><b>Then the gain never rises in a pause.</b> Louder speech lowers it at once, frame by frame; the quieter frames of a
+/// syllable lower the level (and so raise the gain, slowly) only when the syllable has ended, so a pause or a steady sound keeps the
+/// gain it had instead of pumping a room tone up.</para>
 /// <para><b>Room tone stays below the model's speech range.</b> The boost never lifts the measured floor above
 /// <see cref="AutomaticGainControlOptions.NoiseCeilingRms"/>; in a quiet room this leaves the full <see cref="AutomaticGainControlOptions.MaxGain"/>.
 /// A frame whose peak would clip lowers the gain at once.</para>
@@ -98,11 +98,12 @@ public sealed class AutomaticGainControl
     private int _sinceFloorUpdate;
     private double _floor;
 
-    // the burst in progress; after the first syllable its frames wait until it has ended as a syllable
+    // the burst in progress; after the first syllable its quieter frames wait until it has ended as a syllable
     private bool _inBurst;
     private bool _steady;
     private bool _probation;
     private int _burstFrames;
+    private int _burstStrong;
     private double _burstPeak;
     private readonly float[] _burstLevels = new float[MaxSyllableFrames];
     private int _burstLevelCount;
@@ -207,6 +208,7 @@ public sealed class AutomaticGainControl
         _probation = !_heardSpeech;
         _burstFrames = 0;
         _burstPeak = 0;
+        _burstStrong = 0;
         _burstLevelCount = 0;
         ContinueBurst(meanSquare, rms, strong: true);
     }
@@ -229,14 +231,32 @@ public sealed class AutomaticGainControl
         if (!strong)
             return;
 
+        _burstStrong++;
+        if (!_probation)
+        {
+            if (rms > _speechLevel)
+            {
+                // Louder speech lowers the gain at once: waiting for the end of the syllable would play the first word of a louder
+                // talker (or the first word after a click that was taken for a syllable) 10 to 20 dB too loud, the peak limiter
+                // only keeps it from clipping. Lowering the gain on a sound that is not speech costs nothing.
+                _speechLevel += (rms - _speechLevel) * LevelAttack;
+                _gain = Math.Min(_gain, DesiredGain());
+            }
+            else
+            {
+                _burstLevels[_burstLevelCount++] = rms;     // quieter frames move the level once the syllable has ended
+            }
+            return;
+        }
+
         _burstLevels[_burstLevelCount++] = rms;
-        if (_probation && _burstLevelCount >= ProbationOnsetFrames)
+        if (_burstStrong >= ProbationOnsetFrames)
         {
             // The first burst is boosted as it comes. Its loudest of the first three frames sets the level (a single onset frame is
             // quieter than the syllable and would overshoot, a blip of the room shorter than that is never raised), every frame after
             // that follows, louder ones lower the gain at once. Speech that needs less than +6 dB is left alone until it has proven
             // to be speech.
-            var first = _burstLevelCount == ProbationOnsetFrames;
+            var first = _burstStrong == ProbationOnsetFrames;
             if (first)
             {
                 _speechLevel = 0f;
@@ -258,7 +278,7 @@ public sealed class AutomaticGainControl
     private void EndBurst()
     {
         _inBurst = false;
-        var syllable = !_steady && _burstLevelCount >= MinSyllableFrames;
+        var syllable = !_steady && _burstStrong >= MinSyllableFrames;
         if (_probation)
         {
             _probation = false;
@@ -271,11 +291,11 @@ public sealed class AutomaticGainControl
         if (!syllable)
             return;
 
-        // a later syllable moves the level and the gain once it has ended: louder speech at once, quieter speech slowly
+        // a later syllable lets its quieter frames lower the level once it has ended, which raises the gain slowly
         for (var i = 0; i < _burstLevelCount; i++)
             UpdateLevel(_burstLevels[i]);
         var desired = DesiredGain();
-        _gain = desired > _gain ? _gain + (desired - _gain) * (1f - MathF.Pow(1f - GainRise, _burstLevelCount)) : desired;
+        _gain = desired > _gain ? _gain + (desired - _gain) * (1f - MathF.Pow(1f - GainRise, _burstStrong)) : desired;
     }
 
     // Before the first syllable the gain is 1 and there is no level: back to that.

@@ -151,6 +151,21 @@ public sealed class Unit_AutomaticGainControlTests
     }
 
     [Fact]
+    public void Process_LouderTalkerAfterQuietSpeech_ShouldLowerTheGainWithinTheFirstFramesOfTheSyllable()
+    {
+        // the gain rises only when a syllable has ended, but it falls at once: a louder talker is not played 10 dB too loud for a
+        // whole syllable with only the peak limiter keeping it from clipping
+        var agc = new AutomaticGainControl();
+        agc.Process(Mix(Syllables(3, Db(-46)), RoomTone(3, Db(-80))));
+        Assert.True(agc.Gain > 10);
+
+        var loud = Mix(Syllables(1, Db(-18)), RoomTone(1, Db(-80), seed: 2));
+        var output = agc.Process(loud);
+
+        Assert.InRange(SyllableRms(output, 0) / SyllableRms(loud, 0), 0.99f, 1.3f);
+    }
+
+    [Fact]
     public void Process_PauseAfterSpeech_ShouldKeepTheGainInsteadOfPumping()
     {
         var agc = new AutomaticGainControl();
