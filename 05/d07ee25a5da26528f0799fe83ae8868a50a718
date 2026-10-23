@@ -1,0 +1,31 @@
+.github/workflows/uno-publish.yml
+  s_20e41f7f2d2ce6::t_f5938fec20dbbb 297-298
+AGENTS.md
+  s_20e41f7f2d2ce6::t_5f2674f8a39c2f 158
+apps/VoiceType.Uno/src/VoiceType.Uno/Packaging/macOS/README.md
+  s_20e41f7f2d2ce6::t_63dbd51d8bc6cc 14
+docs/ci.md
+  s_20e41f7f2d2ce6::t_19ed5e0faf1302 13-14,16,44,47,128-132,192-194,242-278,317
+tools/scripts/fetch-litertlmsharp-feed.ps1
+  s_20e41f7f2d2ce6::t_9ecec802890a64 18
+apps/VoiceType.Uno/src/VoiceType.Uno/Packaging/macOS/voicetype-audio.swift
+  s_20e41f7f2d2ce6::t_ae4dccd754e4c2 153
+apps/VoiceType.Uno/src/VoiceType.Uno/build-macos-app.sh
+  s_20e41f7f2d2ce6::t_3c0a313b3c15b6 9-12,67-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "05d07ee25a5da26528f0799fe83ae8868a50a718",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
