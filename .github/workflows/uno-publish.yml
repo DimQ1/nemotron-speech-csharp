@@ -294,8 +294,8 @@ jobs:
         run: bash apps/VoiceType.Uno/src/VoiceType.Uno/build-macos-app.sh "$APP_VERSION"
 
       - name: Check the packed app (signature after unzip, the app starts)
-        # Unzips like Finder does (ditto keeps the signatures of the non-Mach-O files), checks the signature and starts
-        # the app through LaunchServices; it must still be running after 40 s. The window is kept as a screenshot.
+        # Unzips like Finder does (ditto), checks the signature and starts the app through LaunchServices; it must still be
+        # running after 40 s. The window is kept as a screenshot.
         run: |
           mkdir -p build/macos-check
           ditto -x -k build/macos-packages/VoiceType.Uno-macos-arm64.zip build/macos-check

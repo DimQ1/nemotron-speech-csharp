@@ -11,7 +11,7 @@
 ## Install
 
 1. Open the `.dmg` and drag **VoiceType** to **Applications** (or double-click the `.zip` in Finder and move the app
-   to Applications; unzip it with Finder, not with `unzip`, which drops the app signature).
+   to Applications).
 2. Open VoiceType. The app is signed ad hoc, not by an identified developer, so the first start is refused:
    - macOS 15 and newer: **System Settings › Privacy & Security**, scroll to *"VoiceType" was blocked*, click
      **Open Anyway** and confirm.

@@ -150,7 +150,7 @@ func address(_ selector: AudioObjectPropertySelector) -> AudioObjectPropertyAddr
 func getProperty<T>(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector, _ value: inout T) -> OSStatus {
     var property = address(selector)
     var size = UInt32(MemoryLayout<T>.size)
-    return AudioObjectGetPropertyData(object, &property, 0, nil, &size, &value)
+    return withUnsafeMutablePointer(to: &value) { AudioObjectGetPropertyData(object, &property, 0, nil, &size, $0) }
 }
 
 /// The UID of the current default output device; nil when there is none.

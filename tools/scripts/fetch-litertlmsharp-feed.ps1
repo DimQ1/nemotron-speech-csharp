@@ -15,6 +15,7 @@ Run once after cloning (and in CI before building a project that consumes Speech
 
   pwsh tools/scripts/fetch-litertlmsharp-feed.ps1                    # the packages this repo references
   pwsh tools/scripts/fetch-litertlmsharp-feed.ps1 -Rid win-x64       # add/refresh one runtime package
+  pwsh tools/scripts/fetch-litertlmsharp-feed.ps1 -Rid osx-arm64     # macOS publish (VoiceType.Uno references it for that RID only)
   pwsh tools/scripts/fetch-litertlmsharp-feed.ps1 -All               # every package the release carries
   pwsh tools/scripts/fetch-litertlmsharp-feed.ps1 -Version 1.4.0 -Force
 
