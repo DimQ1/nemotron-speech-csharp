@@ -1,0 +1,164 @@
+{
+ "schema": 1,
+ "scenarios": [
+  {
+   "id": "gen-vad-a4-exact",
+   "root": "golden",
+   "path": "gen-vad-a4-exact.f32.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0,
+    800
+   ],
+   "note": "A4's exact exp1 input (float32, System.Random(7)): c056 dropped chunks 18-30 in A4's logs"
+  },
+  {
+   "id": "gen-vad-a4-10s",
+   "root": "golden",
+   "path": "gen-vad-a4-10s.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0,
+    800,
+    3200
+   ],
+   "note": "A4 exp1 recipe (10 s pause): 0 = chunk-aligned feed (A4's S3), 800 = live-like 50 ms (A4's S1)"
+  },
+  {
+   "id": "gen-vad-pause-2s",
+   "root": "golden",
+   "path": "gen-vad-pause-2s.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0,
+    800
+   ],
+   "note": "2 s pause: fewer than 6 silent c056 chunks (and 3 silent c112 chunks 1.12 s each = 3.36 s needs 3), see the dropped list"
+  },
+  {
+   "id": "gen-vad-gap-4chunks",
+   "root": "golden",
+   "path": "gen-vad-gap-4chunks.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0,
+    800
+   ]
+  },
+  {
+   "id": "gen-vad-gap-5chunks",
+   "root": "golden",
+   "path": "gen-vad-gap-5chunks.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0,
+    800
+   ]
+  },
+  {
+   "id": "gen-vad-gap-6chunks",
+   "root": "golden",
+   "path": "gen-vad-gap-6chunks.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0,
+    800
+   ]
+  },
+  {
+   "id": "gen-vad-gap-7chunks",
+   "root": "golden",
+   "path": "gen-vad-gap-7chunks.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0,
+    800
+   ]
+  },
+  {
+   "id": "gen-silence-room-5s",
+   "root": "golden",
+   "path": "gen-silence-room-5s.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0,
+    800
+   ],
+   "note": "pure room tone: the VAD drops from the 6th (c056) / 3rd (c112) chunk"
+  },
+  {
+   "id": "gen-silence-zeros-2s",
+   "root": "golden",
+   "path": "gen-silence-zeros-2s.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0
+   ]
+  },
+  {
+   "id": "cv17-en-0001",
+   "root": "TestAudio",
+   "path": "cv17/en/0001.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0
+   ],
+   "note": "speech only: nothing may be dropped"
+  },
+  {
+   "id": "cv17-ru-0001",
+   "root": "TestAudio",
+   "path": "cv17/ru/0001.wav",
+   "lang": "11",
+   "langName": "ru",
+   "feeds": [
+    0
+   ],
+   "note": "speech only: nothing may be dropped"
+  },
+  {
+   "id": "cv17-en-0003",
+   "root": "TestAudio",
+   "path": "cv17/en/0003.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0
+   ],
+   "note": "clip with no GenAI tokens"
+  },
+  {
+   "id": "gen-concat-en-gaps",
+   "root": "golden",
+   "path": "gen-concat-en-gaps.wav",
+   "lang": "0",
+   "langName": "en",
+   "feeds": [
+    0,
+    800
+   ],
+   "note": "gaps of 1, 2, 3 s between sentences"
+  },
+  {
+   "id": "tts-ru-ru-0001",
+   "root": "TestAudio",
+   "path": "tts-ru/ru/ru-0001.wav",
+   "lang": "11",
+   "langName": "ru",
+   "feeds": [
+    0
+   ],
+   "note": "2 s pauses inside digital silence"
+  }
+ ]
+}

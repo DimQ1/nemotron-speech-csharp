@@ -1,0 +1,1900 @@
+{
+ "fp32-c056": {
+  "cv17-en-0001": {
+   "tokens": 33,
+   "chunks": 12,
+   "samples": 100800,
+   "langId": "0",
+   "idsSha256_16": "4e343cf9e5754dd3",
+   "bytes": 2098,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the medium"
+  },
+  "cv17-en-0002": {
+   "tokens": 6,
+   "chunks": 4,
+   "samples": 34944,
+   "langId": "0",
+   "idsSha256_16": "ccee9a2b2724d308",
+   "bytes": 1132,
+   "text": " Should be"
+  },
+  "cv17-en-0003": {
+   "tokens": 0,
+   "chunks": 12,
+   "samples": 105216,
+   "langId": "0",
+   "idsSha256_16": "cff6369ac3b08a70",
+   "bytes": 1737,
+   "text": ""
+  },
+  "cv17-en-0024": {
+   "tokens": 0,
+   "chunks": 17,
+   "samples": 148224,
+   "langId": "0",
+   "idsSha256_16": "d246a53c41cf2a41",
+   "bytes": 2147,
+   "text": ""
+  },
+  "cv17-ru-0001": {
+   "tokens": 38,
+   "chunks": 11,
+   "samples": 92736,
+   "langId": "11",
+   "idsSha256_16": "24bec1120bf717da",
+   "bytes": 2113,
+   "text": " Мы надеялись продвинуться вперед в преодолении затянувшегося тупика"
+  },
+  "cv17-ru-0002": {
+   "tokens": 57,
+   "chunks": 15,
+   "samples": 134208,
+   "langId": "11",
+   "idsSha256_16": "35b37f2e083eb677",
+   "bytes": 2657,
+   "text": " Все государства должны передавать свои споры в суд для урегулирования их мирными средствами"
+  },
+  "cv17-ru-0003": {
+   "tokens": 45,
+   "chunks": 12,
+   "samples": 104256,
+   "langId": "11",
+   "idsSha256_16": "91228329f2613bdf",
+   "bytes": 2307,
+   "text": " Мы считаем, что для достижения нашей цели эти консультации следует активизировать"
+  },
+  "gen-concat-mix-auto": {
+   "tokens": 306,
+   "chunks": 144,
+   "samples": 1286400,
+   "langId": "101",
+   "idsSha256_16": "08eaa5be1b6e4f3d",
+   "bytes": 16535,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium. <en-US> Мы наделись продвинуться вперед в преодолении, затянувшегося тупика. <ru-RU> Все государства должны передавать свои споры в суд для урегулирования их мирными средствами. <ru-RU> Мы считаем, что для достижения нашей цели эти консультации следует активизировать. <ru-RU> Список таких успехов, несомненно, гораздо длиннее, но и потребностей в посредничестве также не меньше. <ru-RU> Предя-маркет тон серпс аландр я выслушал ряд выступлений, касающихся Палестины"
+  },
+  "gen-exact-53761-en": {
+   "tokens": 20,
+   "chunks": 7,
+   "samples": 53761,
+   "langId": "0",
+   "idsSha256_16": "990e2881d2df4df9",
+   "bytes": 1523,
+   "text": " Joe Keaton disapproved of films and Buster"
+  },
+  "gen-short-0p3s-en": {
+   "tokens": 0,
+   "chunks": 1,
+   "samples": 4800,
+   "langId": "0",
+   "idsSha256_16": "a683096011db3975",
+   "bytes": 826,
+   "text": ""
+  },
+  "gen-silence-room-5s": {
+   "tokens": 0,
+   "chunks": 9,
+   "samples": 80000,
+   "langId": "0",
+   "idsSha256_16": "3cb845f78f7c3bdc",
+   "bytes": 1481,
+   "text": ""
+  },
+  "tts-long-en-0001": {
+   "tokens": 276,
+   "chunks": 105,
+   "samples": 932720,
+   "langId": "0",
+   "idsSha256_16": "07c1808f67819d02",
+   "bytes": 12569,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the medium. <en-US> She'll be all right six alls well that ends well it is a busy market town that serves a large surrounding area we are going to the football game tonight Elizabeth was about the same age as Maria. <en-US> Do you mean it? <en-US> How is Mazilla going to handle ambiguities like Q and Q you are so rude? <en-US> I guess you must think I'm kind of baddy no one near the remote machine you could ring. <en-US> Groves started riding songs when she was four years old. <en-US> This led to both the Red Terror and the White Terror"
+  },
+  "tts-ru-ru-0002": {
+   "tokens": 33,
+   "chunks": 15,
+   "samples": 134160,
+   "langId": "11",
+   "idsSha256_16": "d255a0d6d35ed0a4",
+   "bytes": 2399,
+   "text": " Раз, два, три, четыре, пять небольшой тест про вставку текста"
+  }
+ },
+ "fp32-c112": {
+  "cv17-en-0001": {
+   "tokens": 33,
+   "chunks": 6,
+   "samples": 100800,
+   "langId": "0",
+   "idsSha256_16": "4a6ce91434c3302d",
+   "bytes": 1750,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the medium"
+  },
+  "cv17-en-0002": {
+   "tokens": 6,
+   "chunks": 2,
+   "samples": 34944,
+   "langId": "0",
+   "idsSha256_16": "c89bf72263e5d4e0",
+   "bytes": 1016,
+   "text": " Should be"
+  },
+  "cv17-en-0003": {
+   "tokens": 0,
+   "chunks": 6,
+   "samples": 105216,
+   "langId": "0",
+   "idsSha256_16": "112a471e4665f855",
+   "bytes": 1381,
+   "text": ""
+  },
+  "cv17-en-0024": {
+   "tokens": 0,
+   "chunks": 9,
+   "samples": 148224,
+   "langId": "0",
+   "idsSha256_16": "3cb845f78f7c3bdc",
+   "bytes": 1665,
+   "text": ""
+  },
+  "cv17-ru-0001": {
+   "tokens": 39,
+   "chunks": 6,
+   "samples": 92736,
+   "langId": "11",
+   "idsSha256_16": "902670e642c812b3",
+   "bytes": 1815,
+   "text": " Мы наделись продвинцы вперед в преодолении, затянувшегося тупика"
+  },
+  "cv17-ru-0002": {
+   "tokens": 57,
+   "chunks": 8,
+   "samples": 134208,
+   "langId": "11",
+   "idsSha256_16": "68f761e7932cd779",
+   "bytes": 2249,
+   "text": " Все государства должны передавать свои споры в суд для урегулирования их мирными средствами"
+  },
+  "cv17-ru-0003": {
+   "tokens": 45,
+   "chunks": 6,
+   "samples": 104256,
+   "langId": "11",
+   "idsSha256_16": "6abb589c2d27a620",
+   "bytes": 1963,
+   "text": " Мы считаем, что для достижения нашей цели эти консультации следует активизировать"
+  },
+  "gen-concat-mix-auto": {
+   "tokens": 275,
+   "chunks": 72,
+   "samples": 1286400,
+   "langId": "101",
+   "idsSha256_16": "3129d894000197c0",
+   "bytes": 11788,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the medium Мы наделись продвинуться вперед в преодолении, затянувшегося тупика. <ru-RU> Все государства должны передавать свои споры в суд для урегулирования их мирными средствами. <ru-RU> Мы считаем, что для достижения нашей цели эти консультации следует активизировать список таких успехов, несомненно, гораздо длиннее, но и потребностей в посредничестве также не меньше. <ru-RU> Я выслушил ряд выступлений, касающихся Палестины"
+  },
+  "gen-exact-53761-en": {
+   "tokens": 20,
+   "chunks": 4,
+   "samples": 53761,
+   "langId": "0",
+   "idsSha256_16": "833645f3935af6ce",
+   "bytes": 1354,
+   "text": " Joe Keaton disapproved of films and buster"
+  },
+  "gen-short-0p3s-en": {
+   "tokens": 0,
+   "chunks": 1,
+   "samples": 4800,
+   "langId": "0",
+   "idsSha256_16": "a683096011db3975",
+   "bytes": 828,
+   "text": ""
+  },
+  "gen-silence-room-5s": {
+   "tokens": 0,
+   "chunks": 5,
+   "samples": 80000,
+   "langId": "0",
+   "idsSha256_16": "4eceefa0f0e75652",
+   "bytes": 1248,
+   "text": ""
+  },
+  "tts-long-en-0001": {
+   "tokens": 287,
+   "chunks": 53,
+   "samples": 932720,
+   "langId": "0",
+   "idsSha256_16": "cb74539e8a73d25b",
+   "bytes": 9557,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the medium. <en-US> She'll be all right six alls well that ends well. <en-US> It is a busy market town that serves a large surrounding area. <en-US> We are going to the football game tonight. <en-US> Elizabeth was about the same age as Maria. <en-US> Do you mean it? <en-US> How is Mazilla going to handle ambiguities like Q and Q? <en-US> You are so rude. <en-US> I guess you must think I'm kind of baddy no one near the remote machine you could ring Groves started writing songs when she was four years old. <en-US> This led to both the Red Terror and the White Terror"
+  },
+  "tts-ru-ru-0002": {
+   "tokens": 33,
+   "chunks": 8,
+   "samples": 134160,
+   "langId": "11",
+   "idsSha256_16": "b8f57ca419a074df",
+   "bytes": 1987,
+   "text": " Раз, два, три, четыре, пять небольшой тест про вставку текста"
+  }
+ },
+ "int4-c056": {
+  "cv17-en-0001": {
+   "tokens": 33,
+   "chunks": 12,
+   "samples": 100800,
+   "langId": "0",
+   "idsSha256_16": "c377e26822971b80",
+   "bytes": 2096,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the medium"
+  },
+  "cv17-en-0002": {
+   "tokens": 6,
+   "chunks": 4,
+   "samples": 34944,
+   "langId": "0",
+   "idsSha256_16": "ccee9a2b2724d308",
+   "bytes": 1130,
+   "text": " Should be"
+  },
+  "cv17-en-0003": {
+   "tokens": 0,
+   "chunks": 12,
+   "samples": 105216,
+   "langId": "0",
+   "idsSha256_16": "cff6369ac3b08a70",
+   "bytes": 1737,
+   "text": ""
+  },
+  "cv17-en-0004": {
+   "tokens": 10,
+   "chunks": 8,
+   "samples": 66816,
+   "langId": "0",
+   "idsSha256_16": "2f0c49233cdab101",
+   "bytes": 1513,
+   "text": " All as well that ends well"
+  },
+  "cv17-en-0005": {
+   "tokens": 0,
+   "chunks": 12,
+   "samples": 106560,
+   "langId": "0",
+   "idsSha256_16": "cff6369ac3b08a70",
+   "bytes": 1735,
+   "text": ""
+  },
+  "cv17-en-0006": {
+   "tokens": 21,
+   "chunks": 7,
+   "samples": 59904,
+   "langId": "0",
+   "idsSha256_16": "df4c574cfbdb9e06",
+   "bytes": 1534,
+   "text": " They're going to the football game tonight"
+  },
+  "cv17-en-0007": {
+   "tokens": 0,
+   "chunks": 13,
+   "samples": 109440,
+   "langId": "0",
+   "idsSha256_16": "be7b36e0c0ab9edb",
+   "bytes": 1806,
+   "text": ""
+  },
+  "cv17-en-0008": {
+   "tokens": 0,
+   "chunks": 11,
+   "samples": 95616,
+   "langId": "0",
+   "idsSha256_16": "243b03250568a6d2",
+   "bytes": 1640,
+   "text": ""
+  },
+  "cv17-en-0009": {
+   "tokens": 30,
+   "chunks": 13,
+   "samples": 112896,
+   "langId": "0",
+   "idsSha256_16": "81fdacffefdba313",
+   "bytes": 2107,
+   "text": " Smo still are going to handle ambiguities like Q and Q"
+  },
+  "cv17-en-0010": {
+   "tokens": 8,
+   "chunks": 6,
+   "samples": 49536,
+   "langId": "0",
+   "idsSha256_16": "c24db7784087cdaa",
+   "bytes": 1301,
+   "text": " You are so rude"
+  },
+  "cv17-en-0011": {
+   "tokens": 7,
+   "chunks": 7,
+   "samples": 57600,
+   "langId": "0",
+   "idsSha256_16": "1d4f30fac04c8a54",
+   "bytes": 1366,
+   "text": " Westmost fire"
+  },
+  "cv17-en-0012": {
+   "tokens": 19,
+   "chunks": 8,
+   "samples": 66816,
+   "langId": "0",
+   "idsSha256_16": "f32d036b4427d880",
+   "bytes": 1606,
+   "text": " No one near the remote machine you could ring"
+  },
+  "cv17-en-0013": {
+   "tokens": 29,
+   "chunks": 13,
+   "samples": 112512,
+   "langId": "0",
+   "idsSha256_16": "19453112212b3718",
+   "bytes": 2105,
+   "text": " Grafs is started writing songs when she was four years old"
+  },
+  "cv17-en-0014": {
+   "tokens": 26,
+   "chunks": 9,
+   "samples": 78336,
+   "langId": "0",
+   "idsSha256_16": "cca7e42476ee43c5",
+   "bytes": 1748,
+   "text": " This led to both the red tear and the white tear"
+  },
+  "cv17-en-0015": {
+   "tokens": 34,
+   "chunks": 14,
+   "samples": 118080,
+   "langId": "0",
+   "idsSha256_16": "80f75087c9224770",
+   "bytes": 2211,
+   "text": " The Sacramento Valley Rail Station is just a short walk away"
+  },
+  "cv17-en-0016": {
+   "tokens": 51,
+   "chunks": 16,
+   "samples": 138624,
+   "langId": "0",
+   "idsSha256_16": "b1e2d4492588c950",
+   "bytes": 2606,
+   "text": " The most recent presidents of the United States are Donald Trump, Barack Obama, and George W. <en-US> Bush"
+  },
+  "cv17-en-0017": {
+   "tokens": 10,
+   "chunks": 9,
+   "samples": 79104,
+   "langId": "0",
+   "idsSha256_16": "59623547c4a84b5e",
+   "bytes": 1598,
+   "text": " There was nothing to hold"
+  },
+  "cv17-en-0018": {
+   "tokens": 26,
+   "chunks": 11,
+   "samples": 95616,
+   "langId": "0",
+   "idsSha256_16": "31c0c02ce05e787f",
+   "bytes": 1904,
+   "text": " These locomotives are serviced at Washwood Heath"
+  },
+  "cv17-en-0019": {
+   "tokens": 20,
+   "chunks": 10,
+   "samples": 85248,
+   "langId": "0",
+   "idsSha256_16": "2b85106493f2f6d4",
+   "bytes": 1756,
+   "text": " It might be in this writer's top ten"
+  },
+  "cv17-en-0020": {
+   "tokens": 5,
+   "chunks": 7,
+   "samples": 56832,
+   "langId": "0",
+   "idsSha256_16": "7bdca0ca83161801",
+   "bytes": 1364,
+   "text": " We spoke often"
+  },
+  "cv17-en-0021": {
+   "tokens": 23,
+   "chunks": 10,
+   "samples": 88704,
+   "langId": "0",
+   "idsSha256_16": "de997a860488baeb",
+   "bytes": 1801,
+   "text": " Mrs Lewis was selected as the new commissioner"
+  },
+  "cv17-en-0022": {
+   "tokens": 13,
+   "chunks": 7,
+   "samples": 60288,
+   "langId": "0",
+   "idsSha256_16": "82ce0ff2b9088f67",
+   "bytes": 1449,
+   "text": " The depression lift puzzle"
+  },
+  "cv17-en-0023": {
+   "tokens": 20,
+   "chunks": 8,
+   "samples": 66816,
+   "langId": "0",
+   "idsSha256_16": "f821fbf00e10db15",
+   "bytes": 1622,
+   "text": " The ladder of the fire truck was not long enough"
+  },
+  "cv17-en-0024": {
+   "tokens": 0,
+   "chunks": 17,
+   "samples": 148224,
+   "langId": "0",
+   "idsSha256_16": "d246a53c41cf2a41",
+   "bytes": 2147,
+   "text": ""
+  },
+  "cv17-en-0025": {
+   "tokens": 44,
+   "chunks": 18,
+   "samples": 153216,
+   "langId": "0",
+   "idsSha256_16": "8bfb1babe2911484",
+   "bytes": 2664,
+   "text": "  Speech and belongs to the class of trips owners blow molecular weight of instan"
+  },
+  "cv17-en-0026": {
+   "tokens": 22,
+   "chunks": 6,
+   "samples": 52224,
+   "langId": "0",
+   "idsSha256_16": "cdaf8804253a2135",
+   "bytes": 1435,
+   "text": " I guess it's a never ending story"
+  },
+  "cv17-en-0027": {
+   "tokens": 14,
+   "chunks": 8,
+   "samples": 67968,
+   "langId": "0",
+   "idsSha256_16": "0c5c7449691eefcb",
+   "bytes": 1551,
+   "text": " Good things come in small packages"
+  },
+  "cv17-en-0028": {
+   "tokens": 0,
+   "chunks": 11,
+   "samples": 95616,
+   "langId": "0",
+   "idsSha256_16": "243b03250568a6d2",
+   "bytes": 1641,
+   "text": ""
+  },
+  "cv17-en-0029": {
+   "tokens": 36,
+   "chunks": 12,
+   "samples": 105984,
+   "langId": "0",
+   "idsSha256_16": "1ce2a6d812c3670a",
+   "bytes": 2113,
+   "text": " I like apples, pears, and pomegranate, but I do like strawberries or grapes"
+  },
+  "cv17-en-0030": {
+   "tokens": 8,
+   "chunks": 7,
+   "samples": 61440,
+   "langId": "0",
+   "idsSha256_16": "e9d1b9715f2cfc08",
+   "bytes": 1436,
+   "text": " You want to take this outside"
+  },
+  "cv17-en-0031": {
+   "tokens": 22,
+   "chunks": 12,
+   "samples": 98688,
+   "langId": "0",
+   "idsSha256_16": "399f6fb57bd219ce",
+   "bytes": 1960,
+   "text": " The immersion and hot water also kills the sick worn"
+  },
+  "cv17-en-0032": {
+   "tokens": 22,
+   "chunks": 8,
+   "samples": 64896,
+   "langId": "0",
+   "idsSha256_16": "9ee22d43025e05f4",
+   "bytes": 1605,
+   "text": " She married her business partner Steven Lee"
+  },
+  "cv17-en-0033": {
+   "tokens": 11,
+   "chunks": 7,
+   "samples": 55296,
+   "langId": "0",
+   "idsSha256_16": "0bd8cb5811159483",
+   "bytes": 1423,
+   "text": " Who has already arrived"
+  },
+  "cv17-en-0034": {
+   "tokens": 31,
+   "chunks": 13,
+   "samples": 111744,
+   "langId": "0",
+   "idsSha256_16": "3d10bb19eb605ba1",
+   "bytes": 2126,
+   "text": " Atake on your road server over strained our senior administrator"
+  },
+  "cv17-en-0035": {
+   "tokens": 6,
+   "chunks": 8,
+   "samples": 68736,
+   "langId": "0",
+   "idsSha256_16": "3feb09f8ac53e3b5",
+   "bytes": 1458,
+   "text": " Do you want me"
+  },
+  "cv17-en-0036": {
+   "tokens": 11,
+   "chunks": 6,
+   "samples": 46080,
+   "langId": "0",
+   "idsSha256_16": "fc302dd5067c783a",
+   "bytes": 1350,
+   "text": " That would be funny if he did"
+  },
+  "cv17-en-0037": {
+   "tokens": 34,
+   "chunks": 13,
+   "samples": 114816,
+   "langId": "0",
+   "idsSha256_16": "e59994c2df888c2c",
+   "bytes": 2164,
+   "text": " Although seahead flowers and applause may be said she was not content"
+  },
+  "cv17-en-0038": {
+   "tokens": 36,
+   "chunks": 10,
+   "samples": 81024,
+   "langId": "0",
+   "idsSha256_16": "f96d898ecaaf9c92",
+   "bytes": 1930,
+   "text": " When the user's identity has been accepted by the server, you will be notified"
+  },
+  "cv17-en-0039": {
+   "tokens": 34,
+   "chunks": 11,
+   "samples": 96192,
+   "langId": "0",
+   "idsSha256_16": "936de5b2daccb6e2",
+   "bytes": 2011,
+   "text": " Madden was a significant figure of post war Birmingham architecture. <en-US>"
+  },
+  "cv17-en-0040": {
+   "tokens": 17,
+   "chunks": 9,
+   "samples": 72192,
+   "langId": "0",
+   "idsSha256_16": "02d31e0015214aa3",
+   "bytes": 1646,
+   "text": " At the column and put the sum here"
+  },
+  "cv17-en-0086": {
+   "tokens": 37,
+   "chunks": 16,
+   "samples": 135936,
+   "langId": "0",
+   "idsSha256_16": "b3f02a734c1570d8",
+   "bytes": 2441,
+   "text": " Lawrange is listed as a Swiss Heritage Site of National Significance"
+  },
+  "cv17-ru-0001": {
+   "tokens": 39,
+   "chunks": 11,
+   "samples": 92736,
+   "langId": "11",
+   "idsSha256_16": "9be6723ebfee908b",
+   "bytes": 2119,
+   "text": " Мы надеялись продвинуться вперед в преодолении, затянувшегося тупика"
+  },
+  "cv17-ru-0002": {
+   "tokens": 57,
+   "chunks": 15,
+   "samples": 134208,
+   "langId": "11",
+   "idsSha256_16": "7e689ec66225fd34",
+   "bytes": 2657,
+   "text": " Все государства должны передавать свои споры в суд для урегулирования их мирными средствами"
+  },
+  "cv17-ru-0003": {
+   "tokens": 45,
+   "chunks": 12,
+   "samples": 104256,
+   "langId": "11",
+   "idsSha256_16": "9da31989f1387b27",
+   "bytes": 2307,
+   "text": " Мы считаем, что для достижения нашей цели эти консультации следует активизировать"
+  },
+  "cv17-ru-0004": {
+   "tokens": 61,
+   "chunks": 16,
+   "samples": 139776,
+   "langId": "11",
+   "idsSha256_16": "0a5ccc1e9d7e95df",
+   "bytes": 2798,
+   "text": " Список таких успехов, несомненно, гораздо длиннее, но и потребностей в посредничестве также не меньше"
+  },
+  "cv17-ru-0005": {
+   "tokens": 31,
+   "chunks": 8,
+   "samples": 65088,
+   "langId": "11",
+   "idsSha256_16": "1adb839acfa3bd82",
+   "bytes": 1758,
+   "text": " Я выслушал ряд выступлений, касающихся Палестины"
+  },
+  "cv17-ru-0006": {
+   "tokens": 50,
+   "chunks": 12,
+   "samples": 105984,
+   "langId": "11",
+   "idsSha256_16": "f6267f0d83af952f",
+   "bytes": 2313,
+   "text": " В период блокады их жители не имели доступа к воде продовольствию и медикаментам"
+  },
+  "cv17-ru-0007": {
+   "tokens": 26,
+   "chunks": 8,
+   "samples": 66240,
+   "langId": "11",
+   "idsSha256_16": "20f2740067078d75",
+   "bytes": 1687,
+   "text": " В дворе 4 Сашки на траве играли в шашки"
+  },
+  "cv17-ru-0008": {
+   "tokens": 38,
+   "chunks": 12,
+   "samples": 105408,
+   "langId": "11",
+   "idsSha256_16": "a9162278ba41dd56",
+   "bytes": 2203,
+   "text": " Новая Ливия может и вперед, рассчитывать на поддержку Португалии"
+  },
+  "cv17-ru-0009": {
+   "tokens": 17,
+   "chunks": 8,
+   "samples": 62784,
+   "langId": "11",
+   "idsSha256_16": "3ef5c89ce6346658",
+   "bytes": 1564,
+   "text": " Монтаж серверов в стойку"
+  },
+  "cv17-ru-0010": {
+   "tokens": 32,
+   "chunks": 8,
+   "samples": 70848,
+   "langId": "11",
+   "idsSha256_16": "4355e5238be663dc",
+   "bytes": 1816,
+   "text": " Доброноша все было уложено вторую комментанскую повозку"
+  },
+  "cv17-ru-0011": {
+   "tokens": 23,
+   "chunks": 11,
+   "samples": 97536,
+   "langId": "11",
+   "idsSha256_16": "d5eaa10960532aed",
+   "bytes": 1953,
+   "text": " Эта задача решению которой привержена Америка"
+  },
+  "cv17-ru-0012": {
+   "tokens": 21,
+   "chunks": 7,
+   "samples": 57600,
+   "langId": "11",
+   "idsSha256_16": "3137e5d994794f1d",
+   "bytes": 1522,
+   "text": " Я еду в Белогорскую крепость"
+  },
+  "cv17-ru-0013": {
+   "tokens": 52,
+   "chunks": 14,
+   "samples": 118080,
+   "langId": "11",
+   "idsSha256_16": "0d311b673bcba0a0",
+   "bytes": 2528,
+   "text": " Оборудование той мощности, которая соответствует запросам будущих задач на должности. <ru-RU>"
+  },
+  "cv17-ru-0014": {
+   "tokens": 26,
+   "chunks": 15,
+   "samples": 128640,
+   "langId": "11",
+   "idsSha256_16": "89f2296b92264b41",
+   "bytes": 2270,
+   "text": " и найти альтернативные варианты действий"
+  },
+  "cv17-ru-0015": {
+   "tokens": 0,
+   "chunks": 4,
+   "samples": 32256,
+   "langId": "11",
+   "idsSha256_16": "217dfe378d888901",
+   "bytes": 1055,
+   "text": ""
+  },
+  "cv17-ru-0016": {
+   "tokens": 10,
+   "chunks": 7,
+   "samples": 61056,
+   "langId": "11",
+   "idsSha256_16": "a03df8427f46f97a",
+   "bytes": 1458,
+   "text": " Так и рождается работа"
+  },
+  "cv17-ru-0017": {
+   "tokens": 39,
+   "chunks": 16,
+   "samples": 135936,
+   "langId": "11",
+   "idsSha256_16": "59b9eeeb199a2b43",
+   "bytes": 2551,
+   "text": " Переядерного разоружения в последнее время имел место ряд достижений"
+  },
+  "cv17-ru-0018": {
+   "tokens": 19,
+   "chunks": 6,
+   "samples": 53760,
+   "langId": "11",
+   "idsSha256_16": "dcb1a19242e825e3",
+   "bytes": 1367,
+   "text": " Бескорня и полный не растет"
+  },
+  "cv17-ru-0019": {
+   "tokens": 51,
+   "chunks": 16,
+   "samples": 135360,
+   "langId": "11",
+   "idsSha256_16": "6aac2d36cef73d1a",
+   "bytes": 2689,
+   "text": " Работу Совета будут оценивать по его готовности вести борьбу с нарушениями прав человека"
+  },
+  "cv17-ru-0020": {
+   "tokens": 37,
+   "chunks": 13,
+   "samples": 111744,
+   "langId": "11",
+   "idsSha256_16": "d6d3d371756dbdbc",
+   "bytes": 2286,
+   "text": " Рынок коммерческой недвижимости переживает самое сильное торможение"
+  },
+  "cv17-ru-0021": {
+   "tokens": 52,
+   "chunks": 11,
+   "samples": 94080,
+   "langId": "11",
+   "idsSha256_16": "02abe807330a9c46",
+   "bytes": 2288,
+   "text": " Ядерное разоружение по-прежнему представляет собой угрозу международной безопасности. <ru-RU>"
+  },
+  "cv17-ru-0022": {
+   "tokens": 23,
+   "chunks": 8,
+   "samples": 63360,
+   "langId": "11",
+   "idsSha256_16": "a84e9f219550d163",
+   "bytes": 1649,
+   "text": " Папа так расстерялся, что упал и умер"
+  },
+  "cv17-ru-0023": {
+   "tokens": 41,
+   "chunks": 11,
+   "samples": 95616,
+   "langId": "11",
+   "idsSha256_16": "d5ba1bcece45e6bf",
+   "bytes": 2178,
+   "text": " Из подпригорка, из-под выподверта зайчик с преподвыподвертом переподвырдался"
+  },
+  "cv17-ru-0024": {
+   "tokens": 31,
+   "chunks": 10,
+   "samples": 85248,
+   "langId": "11",
+   "idsSha256_16": "af6c6c1c088969e4",
+   "bytes": 1939,
+   "text": " Шестой комитет принял проект резолюции без голосования"
+  },
+  "cv17-ru-0025": {
+   "tokens": 26,
+   "chunks": 11,
+   "samples": 93888,
+   "langId": "11",
+   "idsSha256_16": "9978dd6791dc0e70",
+   "bytes": 1918,
+   "text": " Долли едва могла удерживать улыбку"
+  },
+  "cv17-ru-0026": {
+   "tokens": 39,
+   "chunks": 11,
+   "samples": 89856,
+   "langId": "11",
+   "idsSha256_16": "3a16acbd564882af",
+   "bytes": 2139,
+   "text": " Мы предпочитаем чередовать заседание рабочих клуб по нескольким причинам"
+  },
+  "cv17-ru-0027": {
+   "tokens": 17,
+   "chunks": 9,
+   "samples": 72000,
+   "langId": "11",
+   "idsSha256_16": "192b934547eab22d",
+   "bytes": 1697,
+   "text": " Ты понял все, но как всегда не так"
+  },
+  "cv17-ru-0028": {
+   "tokens": 49,
+   "chunks": 13,
+   "samples": 109056,
+   "langId": "11",
+   "idsSha256_16": "bc533688c54394df",
+   "bytes": 2384,
+   "text": " По нашему мнению, аргумент в пользу сохранения традиции не имеет никакого смысла"
+  },
+  "cv17-ru-0029": {
+   "tokens": 37,
+   "chunks": 12,
+   "samples": 103680,
+   "langId": "11",
+   "idsSha256_16": "b11fbfeff747e90c",
+   "bytes": 2237,
+   "text": " В заключение я хотел бы сказать, что давать нам оценку будет только история"
+  },
+  "cv17-ru-0030": {
+   "tokens": 58,
+   "chunks": 14,
+   "samples": 116736,
+   "langId": "11",
+   "idsSha256_16": "dff0c29947e01d24",
+   "bytes": 2580,
+   "text": " Россия неоднократно заявляла о своей приверженности целей избавления мира от ядерного оружия. <ru-RU>"
+  },
+  "cv17-ru-0031": {
+   "tokens": 17,
+   "chunks": 7,
+   "samples": 60480,
+   "langId": "11",
+   "idsSha256_16": "71ae94d5ffb9b3d5",
+   "bytes": 1538,
+   "text": " В нем еще много непонятно мистично"
+  },
+  "cv17-ru-0032": {
+   "tokens": 59,
+   "chunks": 16,
+   "samples": 142848,
+   "langId": "11",
+   "idsSha256_16": "cd3ef849a4e36451",
+   "bytes": 2762,
+   "text": " Мир тесно взаимосвязан, поэтому последствия любого кризиса не могут носить локальный характер"
+  },
+  "cv17-ru-0033": {
+   "tokens": 36,
+   "chunks": 9,
+   "samples": 76608,
+   "langId": "11",
+   "idsSha256_16": "f417e0be92c76214",
+   "bytes": 1914,
+   "text": " А три ардзурина должен был выступить из города в тот же день"
+  },
+  "cv17-ru-0034": {
+   "tokens": 27,
+   "chunks": 8,
+   "samples": 63360,
+   "langId": "11",
+   "idsSha256_16": "7df059ffb0bdc689",
+   "bytes": 1692,
+   "text": " Мы будем рад и работать и сотруднича с вами"
+  },
+  "cv17-ru-0035": {
+   "tokens": 41,
+   "chunks": 10,
+   "samples": 86784,
+   "langId": "11",
+   "idsSha256_16": "b31380727d08f0fb",
+   "bytes": 2036,
+   "text": " Эта общая проблема, которая требует сотрудничества и координации"
+  },
+  "cv17-ru-0036": {
+   "tokens": 40,
+   "chunks": 11,
+   "samples": 95616,
+   "langId": "11",
+   "idsSha256_16": "bbc678411a1bbe89",
+   "bytes": 2146,
+   "text": " В параметре решения израильско-палестинского конфликта хорошо известны"
+  },
+  "cv17-ru-0037": {
+   "tokens": 9,
+   "chunks": 5,
+   "samples": 44544,
+   "langId": "11",
+   "idsSha256_16": "23a0b07721d0ad8a",
+   "bytes": 1276,
+   "text": " Извините, дорогой"
+  },
+  "cv17-ru-0038": {
+   "tokens": 4,
+   "chunks": 4,
+   "samples": 27648,
+   "langId": "11",
+   "idsSha256_16": "68a311fbbd55d081",
+   "bytes": 1086,
+   "text": " Где мы"
+  },
+  "cv17-ru-0039": {
+   "tokens": 5,
+   "chunks": 6,
+   "samples": 52416,
+   "langId": "11",
+   "idsSha256_16": "6f652724430deb83",
+   "bytes": 1286,
+   "text": " Тимур"
+  },
+  "cv17-ru-0040": {
+   "tokens": 37,
+   "chunks": 8,
+   "samples": 66816,
+   "langId": "11",
+   "idsSha256_16": "696f97b593447ee5",
+   "bytes": 1819,
+   "text": " А я пишу дальше. <ru-RU> Подмидливаю и улыбаю своим мыслям"
+  },
+  "cv17-ru-0069": {
+   "tokens": 29,
+   "chunks": 10,
+   "samples": 86784,
+   "langId": "11",
+   "idsSha256_16": "94d67509375d77b6",
+   "bytes": 1907,
+   "text": " Настройка базовых и инфраструктурных сервисов"
+  },
+  "cv17hard-en-0051": {
+   "tokens": 21,
+   "chunks": 10,
+   "samples": 81408,
+   "langId": "0",
+   "idsSha256_16": "7e3d224ea48b8e20",
+   "bytes": 1756,
+   "text": " At the hospital, I met a very nice nurse"
+  },
+  "cv17long-en-0001": {
+   "tokens": 302,
+   "chunks": 177,
+   "samples": 1581696,
+   "langId": "0",
+   "idsSha256_16": "71328d224f1b5de7",
+   "bytes": 19023,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the medium should be all right, all as well that ends well symarket town that serves allows surrounded area going to the football game tonight. <en-US> Elizabeth was about the same age as Maria going to handle ambiguities like Q and Q you are so rude now near the remote machine you could ring graphs is started writing songs when she was four years old. <en-US> This led to both the red hair and the white tear the Sacramento Valley Rail Station is just a short walk away. <en-US> The most recent presidents of the United States are Donald Trump, Barack Obama and George W. <en-US> Bush"
+  },
+  "cv17longnorm-en-0001": {
+   "tokens": 282,
+   "chunks": 177,
+   "samples": 1581696,
+   "langId": "0",
+   "idsSha256_16": "8de05872a15c9101",
+   "bytes": 18812,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the medium should be all right all as well that ends well that serves allows surrounded area football game tonight. <en-US> Elizabeth was about the same age as Maria going to handle ambiguties like Q and Q are so rudes now near the remote machine you could ring graphs distorted writing songs when she was four years old. <en-US> This led to both the red hair and the white tear the Sacramento Valley Rail Station is just a short walk away the most recent presidents of the United States are Donald Trump, Barack Obama and George W. <en-US> Bush"
+  },
+  "cv17short-en-0001": {
+   "tokens": 38,
+   "chunks": 30,
+   "samples": 263360,
+   "langId": "0",
+   "idsSha256_16": "2f3106169c6b1213",
+   "bytes": 3704,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the medium should be all right"
+  },
+  "gen-concat-en-gaps": {
+   "tokens": 171,
+   "chunks": 151,
+   "samples": 1350144,
+   "langId": "0",
+   "idsSha256_16": "e257506632c75871",
+   "bytes": 15385,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium should be all right all is well that ends well it's a busy market town that serves allows surrounded area going to the football game tonight elcebath was same age as Maria. <en-US> How is Most Sila going to handle ambiguties like Q and Q are so rude no one near the remote machine you could ring"
+  },
+  "gen-concat-mix-auto": {
+   "tokens": 306,
+   "chunks": 144,
+   "samples": 1286400,
+   "langId": "101",
+   "idsSha256_16": "b24479a2a8c40481",
+   "bytes": 16558,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium. <en-US> Мы наделись продвинуться вперед в преодолении, затянувшегося тупика. <ru-RU> Все государства должны передавать свои споры в суд для урегулирования их мирными средствами. <ru-RU> Мы считаем, что для достижения нашей цели эти консультации следует активизировать список таких успехов, несомненно, гораздо длиннее, но и потребностей в посредничестве также не меньше. <ru-RU> Встретиться BC Market Town that Serbs Alas surrounded are выслушил ряд выступлений, касающихся Палестины"
+  },
+  "gen-concat-ru-gaps": {
+   "tokens": 432,
+   "chunks": 166,
+   "samples": 1486464,
+   "langId": "11",
+   "idsSha256_16": "90db1bfbc829a88f",
+   "bytes": 19985,
+   "text": " Мы наделись продвинуться вперед в преодолении, затянувшегося тупика. <ru-RU> Все государства должны передавать свои споры в суд для урегулирования их мирными средствами. <ru-RU> Следует активизировать список таких успехов, несомненно, гораздо длиннее, но и потребностей в посредничестве также не меньше. <ru-RU> Я выслушал ряд выступлений, касающихся плестины. <ru-RU> В период блокады их жители не имели доступа к воде, продовольствию медикаментам. <ru-RU> Во дворе 4 Сашки на траве играли в шашки. <ru-RU> Новая Ливия может и вперед рассчитывать на поддержку Португалии. <ru-RU> Монтаж сервер в стойку Доброноша все было уложено вторую комитетскую повозку. <ru-RU> Эта задача решению которой привержена Америка. <ru-RU> Я еду в Белогорскую крепость"
+  },
+  "gen-exact-17920-en": {
+   "tokens": 0,
+   "chunks": 2,
+   "samples": 17920,
+   "langId": "0",
+   "idsSha256_16": "a683096011db3975",
+   "bytes": 826,
+   "text": ""
+  },
+  "gen-exact-53759-en": {
+   "tokens": 17,
+   "chunks": 6,
+   "samples": 53759,
+   "langId": "0",
+   "idsSha256_16": "58bffe3a99cefb24",
+   "bytes": 1431,
+   "text": " Joe Keaton disapproved of films and"
+  },
+  "gen-exact-53760-en": {
+   "tokens": 17,
+   "chunks": 6,
+   "samples": 53760,
+   "langId": "0",
+   "idsSha256_16": "34c4a8aca272e77e",
+   "bytes": 1354,
+   "text": " Joe Keaton disapproved of films and"
+  },
+  "gen-exact-53760-ru": {
+   "tokens": 22,
+   "chunks": 6,
+   "samples": 53760,
+   "langId": "11",
+   "idsSha256_16": "f608681c5f7c1159",
+   "bytes": 1450,
+   "text": " Мы надеялись продвинуться вперед в прео"
+  },
+  "gen-exact-53761-en": {
+   "tokens": 20,
+   "chunks": 7,
+   "samples": 53761,
+   "langId": "0",
+   "idsSha256_16": "f2ffea33fe6e898d",
+   "bytes": 1524,
+   "text": " Joe Keaton disapproved of films and buster"
+  },
+  "gen-exact-8960-en": {
+   "tokens": 0,
+   "chunks": 1,
+   "samples": 8960,
+   "langId": "0",
+   "idsSha256_16": "cf1cbb66a638b486",
+   "bytes": 755,
+   "text": ""
+  },
+  "gen-quiet-30dB-en0001": {
+   "tokens": 33,
+   "chunks": 12,
+   "samples": 100800,
+   "langId": "0",
+   "idsSha256_16": "a58dc088023f4bf3",
+   "bytes": 2113,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the musion"
+  },
+  "gen-quiet-30dB-ru0001": {
+   "tokens": 38,
+   "chunks": 11,
+   "samples": 92736,
+   "langId": "11",
+   "idsSha256_16": "93003bc20e2d0a67",
+   "bytes": 2124,
+   "text": " Мы наделись продвинуться вперед в преодолении, затянувшегося тупика"
+  },
+  "gen-short-0p3s-en": {
+   "tokens": 0,
+   "chunks": 1,
+   "samples": 4800,
+   "langId": "0",
+   "idsSha256_16": "a683096011db3975",
+   "bytes": 826,
+   "text": ""
+  },
+  "gen-silence-room-5s": {
+   "tokens": 0,
+   "chunks": 9,
+   "samples": 80000,
+   "langId": "0",
+   "idsSha256_16": "3cb845f78f7c3bdc",
+   "bytes": 1481,
+   "text": ""
+  },
+  "gen-silence-zeros-2s": {
+   "tokens": 0,
+   "chunks": 4,
+   "samples": 32000,
+   "langId": "0",
+   "idsSha256_16": "217dfe378d888901",
+   "bytes": 1060,
+   "text": ""
+  },
+  "gen-vad-a4-10s": {
+   "tokens": 56,
+   "chunks": 47,
+   "samples": 415360,
+   "langId": "0",
+   "idsSha256_16": "fb76bd513d2fc16e",
+   "bytes": 5278,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium market town that serves alas surrounded are"
+  },
+  "gen-vad-a4-exact": {
+   "tokens": 43,
+   "chunks": 47,
+   "samples": 415360,
+   "langId": "0",
+   "idsSha256_16": "82b37d56ca5a6572",
+   "bytes": 5147,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium that serves alas"
+  },
+  "gen-vad-gap-4chunks": {
+   "tokens": 47,
+   "chunks": 34,
+   "samples": 299840,
+   "langId": "0",
+   "idsSha256_16": "dfc8c127f40777b5",
+   "bytes": 4108,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium that serves allounded are"
+  },
+  "gen-vad-gap-5chunks": {
+   "tokens": 52,
+   "chunks": 35,
+   "samples": 308800,
+   "langId": "0",
+   "idsSha256_16": "8490855f6c2d427c",
+   "bytes": 4230,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium that serves a large surrounded area"
+  },
+  "gen-vad-gap-6chunks": {
+   "tokens": 52,
+   "chunks": 36,
+   "samples": 317760,
+   "langId": "0",
+   "idsSha256_16": "983b9494843a2e9f",
+   "bytes": 4315,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium that serves a large surrounded area"
+  },
+  "gen-vad-gap-7chunks": {
+   "tokens": 48,
+   "chunks": 37,
+   "samples": 326720,
+   "langId": "0",
+   "idsSha256_16": "65d1b6097ba82138",
+   "bytes": 4364,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium that serves allounded area"
+  },
+  "gen-vad-pause-2s": {
+   "tokens": 56,
+   "chunks": 33,
+   "samples": 287360,
+   "langId": "0",
+   "idsSha256_16": "f947a1f241032b42",
+   "bytes": 4090,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium market town that serves alas surrounded are"
+  },
+  "sample-0-mp3": {
+   "tokens": 66,
+   "chunks": 19,
+   "samples": 161786,
+   "langId": "0",
+   "idsSha256_16": "90021d71f8514f5e",
+   "bytes": 2990,
+   "text": " Perhaps he made up to the party afterwards and took her, and his heart at hand continued, It was not fearize set it over her. <en-US> Edmund"
+  },
+  "truth-en-0001": {
+   "tokens": 38,
+   "chunks": 10,
+   "samples": 88240,
+   "langId": "0",
+   "idsSha256_16": "bff1ee9ff45aedc8",
+   "bytes": 1970,
+   "text": " Since their inception, Harris has been the band's principal composer and lyricist"
+  },
+  "truth-en-0002": {
+   "tokens": 18,
+   "chunks": 6,
+   "samples": 51040,
+   "langId": "0",
+   "idsSha256_16": "a49db296787b57ea",
+   "bytes": 1435,
+   "text": " Why can't this researcher check your facts"
+  },
+  "truth-en-0003": {
+   "tokens": 18,
+   "chunks": 6,
+   "samples": 46480,
+   "langId": "0",
+   "idsSha256_16": "8c171dc0150e9f2b",
+   "bytes": 1409,
+   "text": " Since that time he has lived in London"
+  },
+  "truth-en-0004": {
+   "tokens": 38,
+   "chunks": 10,
+   "samples": 88720,
+   "langId": "0",
+   "idsSha256_16": "69eea397f01444cd",
+   "bytes": 1962,
+   "text": " Major bodies of water include Lake Shastina, Dwinel Reservoir, and Trout Lake"
+  },
+  "truth-en-0005": {
+   "tokens": 37,
+   "chunks": 9,
+   "samples": 72160,
+   "langId": "0",
+   "idsSha256_16": "8993a386e99379ea",
+   "bytes": 1838,
+   "text": " There is a small vicinity center's shopping complex in Albion Park"
+  },
+  "truth-en-0006": {
+   "tokens": 33,
+   "chunks": 8,
+   "samples": 70880,
+   "langId": "0",
+   "idsSha256_16": "dcc259d4ec76087a",
+   "bytes": 1777,
+   "text": " Every day was there to be lived or to mark one's departure from this world"
+  },
+  "truth-en-0007": {
+   "tokens": 28,
+   "chunks": 6,
+   "samples": 48480,
+   "langId": "0",
+   "idsSha256_16": "559e161762d7b12f",
+   "bytes": 1494,
+   "text": " She takes him to the lift, sending him downwards"
+  },
+  "truth-en-0008": {
+   "tokens": 14,
+   "chunks": 4,
+   "samples": 27520,
+   "langId": "0",
+   "idsSha256_16": "2bdd4c18943999c5",
+   "bytes": 1181,
+   "text": " They had a lot to divulge"
+  },
+  "truth-en-0009": {
+   "tokens": 22,
+   "chunks": 6,
+   "samples": 46160,
+   "langId": "0",
+   "idsSha256_16": "a0644e0d7e19c293",
+   "bytes": 1449,
+   "text": " She married her business partner Steve Lane"
+  },
+  "truth-en-0010": {
+   "tokens": 27,
+   "chunks": 6,
+   "samples": 46000,
+   "langId": "0",
+   "idsSha256_16": "84e0f8d347fb1a04",
+   "bytes": 1504,
+   "text": " Tie dancers happily going through their steps in unison"
+  },
+  "truth-ru-0001": {
+   "tokens": 45,
+   "chunks": 14,
+   "samples": 118032,
+   "langId": "11",
+   "idsSha256_16": "4ca007a885b19047",
+   "bytes": 2337,
+   "text": " Он же сказал ей, что его зовут Георгий, фамилия его Гараев"
+  },
+  "truth-ru-0002": {
+   "tokens": 51,
+   "chunks": 15,
+   "samples": 132928,
+   "langId": "11",
+   "idsSha256_16": "781e413773c912c0",
+   "bytes": 2543,
+   "text": " Я поздравляю его и желаю ему успехов во время его второго срока полномочий"
+  },
+  "truth-ru-0003": {
+   "tokens": 57,
+   "chunks": 18,
+   "samples": 160416,
+   "langId": "11",
+   "idsSha256_16": "53b5b49c05e42810",
+   "bytes": 2936,
+   "text": " Это представляет собой важный шаг на пути к достижению конечной цели ликвидации ядерного оружия. <ru-RU>"
+  },
+  "truth-ru-0004": {
+   "tokens": 34,
+   "chunks": 12,
+   "samples": 101152,
+   "langId": "11",
+   "idsSha256_16": "e1ad449801ad8fea",
+   "bytes": 2140,
+   "text": " Добро наши все было уложено в старую комендантскую повозку"
+  },
+  "truth-ru-0005": {
+   "tokens": 44,
+   "chunks": 17,
+   "samples": 143440,
+   "langId": "11",
+   "idsSha256_16": "98970a1563604594",
+   "bytes": 2722,
+   "text": " Однако наибольшую значимость имеет существующее значительное схожесть наших мнений. <ru-RU>"
+  },
+  "truth-ru-0006": {
+   "tokens": 24,
+   "chunks": 8,
+   "samples": 71056,
+   "langId": "11",
+   "idsSha256_16": "92ed887f56663e2d",
+   "bytes": 1693,
+   "text": " Сегодня мы ищем свой собственный путь"
+  },
+  "truth-ru-0007": {
+   "tokens": 62,
+   "chunks": 17,
+   "samples": 149440,
+   "langId": "11",
+   "idsSha256_16": "f971b2194780c88b",
+   "bytes": 2901,
+   "text": " Китай считает, что введение санкций и оказания давления не способствуют надлежащему урегулированию проблем"
+  },
+  "truth-ru-0008": {
+   "tokens": 49,
+   "chunks": 14,
+   "samples": 121680,
+   "langId": "11",
+   "idsSha256_16": "b868495f55f42bc7",
+   "bytes": 2494,
+   "text": " Оборудование той мощности, которая соответствует запросам будущих задач на должности"
+  },
+  "truth-ru-0009": {
+   "tokens": 20,
+   "chunks": 8,
+   "samples": 62800,
+   "langId": "11",
+   "idsSha256_16": "d6184f6ae13a6614",
+   "bytes": 1617,
+   "text": " Но ваш вид, ваши странные поведение"
+  },
+  "truth-ru-0010": {
+   "tokens": 58,
+   "chunks": 15,
+   "samples": 133520,
+   "langId": "11",
+   "idsSha256_16": "23bee4eb3f6b527e",
+   "bytes": 2682,
+   "text": " Мы согласны с тем, что нам следует проводить различия между краткосрочными и долгосрочными целями"
+  },
+  "tts-long-en-0001": {
+   "tokens": 280,
+   "chunks": 105,
+   "samples": 932720,
+   "langId": "0",
+   "idsSha256_16": "36dda32a8a5fcb56",
+   "bytes": 12615,
+   "text": " Joe Keaton disapproved of films, and Buster also had reservations about the medium. <en-US> She'll be all right six. <en-US> Alls well that ends well it is a busy market town that serves a large surrounding area we are going to the football game tonight Elizabeth was about the same age as Maria. <en-US> Do you mean it? <en-US> How is Mazilla going to handle ambiguities like Q and Q you are so rude? <en-US> I guess you must think I'm kind of baddy no one near the remote machine you could ring. <en-US> Groves started riding songs when she was four years old. <en-US> This led to both the Red Terror and the White Terror"
+  },
+  "tts-ru-ru-0001": {
+   "tokens": 81,
+   "chunks": 32,
+   "samples": 278400,
+   "langId": "11",
+   "idsSha256_16": "c4ca153927d64546",
+   "bytes": 4460,
+   "text": " Сейчас мы начали сначала и можем посмотреть, как это работает. <ru-RU> После паузы начинается дублирование перевода. <ru-RU> Скорее всего, это связано с каким-то багом"
+  },
+  "tts-ru-ru-0002": {
+   "tokens": 34,
+   "chunks": 15,
+   "samples": 134160,
+   "langId": "11",
+   "idsSha256_16": "c96dc4b9c2e55c80",
+   "bytes": 2424,
+   "text": " Раз два, три, четыре, пять. <ru-RU> Небольшой тест про вставку текста"
+  }
+ },
+ "int4-c112": {
+  "cv17-en-0001": {
+   "tokens": 34,
+   "chunks": 6,
+   "samples": 100800,
+   "langId": "0",
+   "idsSha256_16": "61e7100ca29f2526",
+   "bytes": 1760,
+   "text": " Joe Keaton disapprouved of films and Buster also had reservations about the medium"
+  },
+  "cv17-en-0002": {
+   "tokens": 6,
+   "chunks": 2,
+   "samples": 34944,
+   "langId": "0",
+   "idsSha256_16": "c89bf72263e5d4e0",
+   "bytes": 1015,
+   "text": " Should be"
+  },
+  "cv17-en-0003": {
+   "tokens": 0,
+   "chunks": 6,
+   "samples": 105216,
+   "langId": "0",
+   "idsSha256_16": "112a471e4665f855",
+   "bytes": 1382,
+   "text": ""
+  },
+  "cv17-en-0004": {
+   "tokens": 10,
+   "chunks": 4,
+   "samples": 66816,
+   "langId": "0",
+   "idsSha256_16": "63df91eb733b56c2",
+   "bytes": 1282,
+   "text": " All as well that ends well"
+  },
+  "cv17-en-0005": {
+   "tokens": 33,
+   "chunks": 6,
+   "samples": 106560,
+   "langId": "0",
+   "idsSha256_16": "2024b64796ae59a4",
+   "bytes": 1713,
+   "text": " It's a busy market town that serves allows surrounded area"
+  },
+  "cv17-en-0006": {
+   "tokens": 21,
+   "chunks": 4,
+   "samples": 59904,
+   "langId": "0",
+   "idsSha256_16": "66d0c7553b4fc1a8",
+   "bytes": 1364,
+   "text": " They're going to the football game tonight"
+  },
+  "cv17-en-0007": {
+   "tokens": 0,
+   "chunks": 7,
+   "samples": 109440,
+   "langId": "0",
+   "idsSha256_16": "e0af4f4b011b185c",
+   "bytes": 1448,
+   "text": ""
+  },
+  "cv17-en-0008": {
+   "tokens": 0,
+   "chunks": 6,
+   "samples": 95616,
+   "langId": "0",
+   "idsSha256_16": "112a471e4665f855",
+   "bytes": 1345,
+   "text": ""
+  },
+  "cv17-en-0009": {
+   "tokens": 31,
+   "chunks": 7,
+   "samples": 112896,
+   "langId": "0",
+   "idsSha256_16": "81526e5ec19adb5a",
+   "bytes": 1768,
+   "text": " How is most silver going to handle ambiguities like Q and Q"
+  },
+  "cv17-en-0010": {
+   "tokens": 8,
+   "chunks": 3,
+   "samples": 49536,
+   "langId": "0",
+   "idsSha256_16": "659044331135a22d",
+   "bytes": 1127,
+   "text": " You are so rude"
+  },
+  "cv17-en-0014": {
+   "tokens": 26,
+   "chunks": 5,
+   "samples": 78336,
+   "langId": "0",
+   "idsSha256_16": "e026929d17d0935d",
+   "bytes": 1521,
+   "text": " This led to both the red tear and the white tear"
+  },
+  "cv17-en-0024": {
+   "tokens": 0,
+   "chunks": 9,
+   "samples": 148224,
+   "langId": "0",
+   "idsSha256_16": "3cb845f78f7c3bdc",
+   "bytes": 1664,
+   "text": ""
+  },
+  "cv17-en-0034": {
+   "tokens": 31,
+   "chunks": 7,
+   "samples": 111744,
+   "langId": "0",
+   "idsSha256_16": "800b5f5d7110154c",
+   "bytes": 1778,
+   "text": " Atake on your road server over strained our senior administrator"
+  },
+  "cv17-ru-0001": {
+   "tokens": 38,
+   "chunks": 6,
+   "samples": 92736,
+   "langId": "11",
+   "idsSha256_16": "dea271425994ebb8",
+   "bytes": 1819,
+   "text": " Мы наделись продвинуться вперед в преодолении, затянувшегося тупика"
+  },
+  "cv17-ru-0002": {
+   "tokens": 57,
+   "chunks": 8,
+   "samples": 134208,
+   "langId": "11",
+   "idsSha256_16": "68f761e7932cd779",
+   "bytes": 2248,
+   "text": " Все государства должны передавать свои споры в суд для урегулирования их мирными средствами"
+  },
+  "cv17-ru-0003": {
+   "tokens": 45,
+   "chunks": 6,
+   "samples": 104256,
+   "langId": "11",
+   "idsSha256_16": "6abb589c2d27a620",
+   "bytes": 1963,
+   "text": " Мы считаем, что для достижения нашей цели эти консультации следует активизировать"
+  },
+  "cv17-ru-0004": {
+   "tokens": 61,
+   "chunks": 8,
+   "samples": 139776,
+   "langId": "11",
+   "idsSha256_16": "647d8dd5df50617b",
+   "bytes": 2329,
+   "text": " Список таких успехов, несомненно, гораздо длиннее, но и потребностей в посредничестве также не меньше"
+  },
+  "cv17-ru-0005": {
+   "tokens": 31,
+   "chunks": 4,
+   "samples": 65088,
+   "langId": "11",
+   "idsSha256_16": "f9c44e974c7cf705",
+   "bytes": 1532,
+   "text": " Я выслушал ряд выступлений, касающихся Палестины"
+  },
+  "cv17-ru-0006": {
+   "tokens": 51,
+   "chunks": 6,
+   "samples": 105984,
+   "langId": "11",
+   "idsSha256_16": "f906f66a168330fd",
+   "bytes": 1977,
+   "text": " В период блокады их жители не имели доступа к воде, продовольствию и медикаментам"
+  },
+  "cv17-ru-0007": {
+   "tokens": 27,
+   "chunks": 4,
+   "samples": 66240,
+   "langId": "11",
+   "idsSha256_16": "f5d370bb66f4b79a",
+   "bytes": 1489,
+   "text": " Во дворе четыре Сашки на траве играли в Шашки"
+  },
+  "cv17-ru-0008": {
+   "tokens": 37,
+   "chunks": 6,
+   "samples": 105408,
+   "langId": "11",
+   "idsSha256_16": "fad6c0037e62e3af",
+   "bytes": 1845,
+   "text": " Новая Ливия может и вперед рассчитывать на поддержку Португалии"
+  },
+  "cv17-ru-0009": {
+   "tokens": 17,
+   "chunks": 4,
+   "samples": 62784,
+   "langId": "11",
+   "idsSha256_16": "eb584a49f1fe0fb0",
+   "bytes": 1335,
+   "text": " Монтаж серверов в стойку"
+  },
+  "cv17-ru-0010": {
+   "tokens": 33,
+   "chunks": 4,
+   "samples": 70848,
+   "langId": "11",
+   "idsSha256_16": "678099b511fad44c",
+   "bytes": 1587,
+   "text": " Доброноша все было вложено в старую комитенскую повозку"
+  },
+  "cv17hard-en-0051": {
+   "tokens": 21,
+   "chunks": 5,
+   "samples": 81408,
+   "langId": "0",
+   "idsSha256_16": "ea19dc425351613e",
+   "bytes": 1468,
+   "text": " At the hospital, I met a very nice nurse"
+  },
+  "cv17long-en-0001": {
+   "tokens": 289,
+   "chunks": 89,
+   "samples": 1581696,
+   "langId": "0",
+   "idsSha256_16": "ee7ab480195ce495",
+   "bytes": 13409,
+   "text": " Joe Keaton disapprouved of films and Buster also had reservations about the medium all as well that ends well that serves a large surrounded area they're going to the football game tonight. <en-US> Elizabeth was about the same age as Maria going to handle ambiguties like Q and Q you are so rude now near the remote machine you could ring graphs distorted writing songs when she was four years old. <en-US> This led to both the red hair and the white tear the Sacramento Valley Rail Station is just a short walk away the most recent presidents of the United States are Donald Trump, Barack Obama and George W. <en-US> Bush"
+  },
+  "cv17short-en-0001": {
+   "tokens": 34,
+   "chunks": 15,
+   "samples": 263360,
+   "langId": "0",
+   "idsSha256_16": "b7b2cfe98b8ef37b",
+   "bytes": 2736,
+   "text": " Joe Keaton disapprouved of films and Buster also had reservations about the medium"
+  },
+  "gen-concat-en-gaps": {
+   "tokens": 165,
+   "chunks": 76,
+   "samples": 1350144,
+   "langId": "0",
+   "idsSha256_16": "2d1a40cab0374c35",
+   "bytes": 10716,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium should be all right all as well that ends well it's a busy market town that serves alas surrounded are going to the football game tonight Elizabeth was the same age as Maria. <en-US> How is Mossilla going to handbiguties like Q and Q you are so rude no one near the remote machine you could ring"
+  },
+  "gen-concat-mix-auto": {
+   "tokens": 272,
+   "chunks": 72,
+   "samples": 1286400,
+   "langId": "101",
+   "idsSha256_16": "1f3a8107e89b7a53",
+   "bytes": 11751,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium Мы наделись продвинуться вперед в преодолении, затянувшегося тупика все государства должны передавать свои споры в суд для урегулирования их мирными средствами. <ru-RU> Мы считаем, что для достижения нашей цели эти консультации следует активизировать список таких успехов, несомненно, гораздо длиннее, но и потребностей в посредничестве также не меньше. <ru-RU> Я выслушал ряд выступлений, касающихся Палестины"
+  },
+  "gen-concat-ru-gaps": {
+   "tokens": 469,
+   "chunks": 83,
+   "samples": 1486464,
+   "langId": "11",
+   "idsSha256_16": "fd1afe1cae689026",
+   "bytes": 15327,
+   "text": " Мы надеялись продвинуться вперед в преодолении, затянувшегося тупика. <ru-RU> Все государства должны передавать свои споры в суд для урегулирования их мирными средствами. <ru-RU> Мы считаем, что для достижения нашей цели эти консультации следует активизировать Список таких успехов, несомненно, гораздо длиннее, но и потребностей в посредничестве также не меньше. <ru-RU> Я выслушал ряд выступлений, касающихся плестины. <ru-RU> В период блокады их жители не имели доступа к воде, продовольствию и медикаментам. <ru-RU> Во дворе 4 Сашки на траве играли в Шашки. <ru-RU> Новая Ливия может и вперед рассчитывать на поддержку Португалии. <ru-RU> Монтаж серверов в стойку Доброноша все было уложено в старую комитенскую повозку. <ru-RU> Эта задача решению которой привержена Америка. <ru-RU> Я еду в Белогорскую крепость"
+  },
+  "gen-exact-17920-en": {
+   "tokens": 0,
+   "chunks": 1,
+   "samples": 17920,
+   "langId": "0",
+   "idsSha256_16": "cf1cbb66a638b486",
+   "bytes": 768,
+   "text": ""
+  },
+  "gen-exact-53759-en": {
+   "tokens": 18,
+   "chunks": 3,
+   "samples": 53759,
+   "langId": "0",
+   "idsSha256_16": "fe81a7d2094a8d7b",
+   "bytes": 1270,
+   "text": " Joe Keaton disapprouved of films and"
+  },
+  "gen-exact-53760-en": {
+   "tokens": 18,
+   "chunks": 3,
+   "samples": 53760,
+   "langId": "0",
+   "idsSha256_16": "28a4b951bf45353e",
+   "bytes": 1191,
+   "text": " Joe Keaton disapprouved of films and"
+  },
+  "gen-exact-53760-ru": {
+   "tokens": 22,
+   "chunks": 3,
+   "samples": 53760,
+   "langId": "11",
+   "idsSha256_16": "fd18dfb407e2d6e3",
+   "bytes": 1287,
+   "text": " Мы наделись продвинуться вперед в преодо"
+  },
+  "gen-exact-53761-en": {
+   "tokens": 21,
+   "chunks": 4,
+   "samples": 53761,
+   "langId": "0",
+   "idsSha256_16": "50e9c4b5150fbdb1",
+   "bytes": 1363,
+   "text": " Joe Keaton disapprouved of films and buster"
+  },
+  "gen-exact-8960-en": {
+   "tokens": 0,
+   "chunks": 1,
+   "samples": 8960,
+   "langId": "0",
+   "idsSha256_16": "a683096011db3975",
+   "bytes": 827,
+   "text": ""
+  },
+  "gen-quiet-30dB-en0001": {
+   "tokens": 33,
+   "chunks": 6,
+   "samples": 100800,
+   "langId": "0",
+   "idsSha256_16": "a6b627f85cb998fb",
+   "bytes": 1766,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the musion"
+  },
+  "gen-quiet-30dB-ru0001": {
+   "tokens": 37,
+   "chunks": 6,
+   "samples": 92736,
+   "langId": "11",
+   "idsSha256_16": "bd43e252a1da178d",
+   "bytes": 1830,
+   "text": " Мы наделись продвинуться вперед в преодолении затянувшегося тупика"
+  },
+  "gen-short-0p3s-en": {
+   "tokens": 0,
+   "chunks": 1,
+   "samples": 4800,
+   "langId": "0",
+   "idsSha256_16": "a683096011db3975",
+   "bytes": 828,
+   "text": ""
+  },
+  "gen-silence-room-5s": {
+   "tokens": 0,
+   "chunks": 5,
+   "samples": 80000,
+   "langId": "0",
+   "idsSha256_16": "4eceefa0f0e75652",
+   "bytes": 1248,
+   "text": ""
+  },
+  "gen-silence-zeros-2s": {
+   "tokens": 0,
+   "chunks": 2,
+   "samples": 32000,
+   "langId": "0",
+   "idsSha256_16": "f865256c77f3fc9f",
+   "bytes": 947,
+   "text": ""
+  },
+  "gen-vad-a4-10s": {
+   "tokens": 56,
+   "chunks": 24,
+   "samples": 415360,
+   "langId": "0",
+   "idsSha256_16": "eff4d16616e4e63d",
+   "bytes": 3890,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium market town that serves alas surrounded are"
+  },
+  "gen-vad-a4-exact": {
+   "tokens": 56,
+   "chunks": 24,
+   "samples": 415360,
+   "langId": "0",
+   "idsSha256_16": "eff4d16616e4e63d",
+   "bytes": 3900,
+   "text": " Joe Keatson disapproved of films and Buster also had reservations about the medium market town that serves alas surrounded are"
+  },
+  "gen-vad-pause-2s": {
+   "tokens": 58,
+   "chunks": 17,
+   "samples": 287360,
+   "langId": "0",
+   "idsSha256_16": "a76464a813fcf616",
+   "bytes": 3149,
+   "text": " Joe Keatson disapprouved of films and Buster also had reservations about the medium market town that serves alas surrounded Iria"
+  },
+  "sample-0-mp3": {
+   "tokens": 60,
+   "chunks": 10,
+   "samples": 161786,
+   "langId": "0",
+   "idsSha256_16": "c7bd7362ae2e6649",
+   "bytes": 2385,
+   "text": " Perhaps he made up to the party afterwards and took her, and his heart at hand continued, It was not fearize set it over herm"
+  },
+  "truth-en-0001": {
+   "tokens": 38,
+   "chunks": 5,
+   "samples": 88240,
+   "langId": "0",
+   "idsSha256_16": "6dd551dc8ee9b40d",
+   "bytes": 1688,
+   "text": " Since their inception, Harris has been the band's principal composer and lyricist"
+  },
+  "truth-en-0002": {
+   "tokens": 18,
+   "chunks": 3,
+   "samples": 51040,
+   "langId": "0",
+   "idsSha256_16": "9c5937059d00c0a7",
+   "bytes": 1265,
+   "text": " Why can't this researcher check your facts"
+  },
+  "truth-en-0003": {
+   "tokens": 18,
+   "chunks": 3,
+   "samples": 46480,
+   "langId": "0",
+   "idsSha256_16": "17117cb3a11351bc",
+   "bytes": 1240,
+   "text": " Since that time he has lived in London"
+  },
+  "truth-ru-0001": {
+   "tokens": 45,
+   "chunks": 7,
+   "samples": 118032,
+   "langId": "11",
+   "idsSha256_16": "4f839aa9766bf035",
+   "bytes": 1929,
+   "text": " Он же сказал ей, что его зовут Георгий, фамилия его Гараев"
+  },
+  "truth-ru-0002": {
+   "tokens": 51,
+   "chunks": 8,
+   "samples": 132928,
+   "langId": "11",
+   "idsSha256_16": "40e2b07ab9467f63",
+   "bytes": 2136,
+   "text": " Я поздравляю его и желаю ему успехов во время его второго срока полномочий"
+  },
+  "truth-ru-0003": {
+   "tokens": 54,
+   "chunks": 9,
+   "samples": 160416,
+   "langId": "11",
+   "idsSha256_16": "8818e91ed63c9cbf",
+   "bytes": 2372,
+   "text": " Это представляет собой важный шаг на пути к достижению конечной цели ликвидации ядерного оружия"
+  },
+  "tts-long-en-0001": {
+   "tokens": 274,
+   "chunks": 53,
+   "samples": 932720,
+   "langId": "0",
+   "idsSha256_16": "fcf4746b65a06ba6",
+   "bytes": 9401,
+   "text": " Joe Keaton disapproved of films and Buster also had reservations about the medium. <en-US> She'll be all right six alls well that ends well it is a busy market town that serves a large surrounding area we are going to the football game tonight Elizabeth was about the same age as Maria. <en-US> Do you mean it? <en-US> How is Mazilla going to handle ambiguities like Q and Q you are so rude? <en-US> I guess you must think I'm kind of baddy no one near the remote machine you could ring Grove started writing songs when she was four years old. <en-US> This led to both the Red Terror and the White Terror"
+  },
+  "tts-ru-ru-0001": {
+   "tokens": 81,
+   "chunks": 16,
+   "samples": 278400,
+   "langId": "11",
+   "idsSha256_16": "59bbad11800ed6a6",
+   "bytes": 3500,
+   "text": " Сейчас мы начали сначала и можем посмотреть, как это работает. <ru-RU> После паузы начинается дублирование перевода. <ru-RU> Скорее всего, это связано с каким-то багом"
+  },
+  "tts-ru-ru-0002": {
+   "tokens": 28,
+   "chunks": 8,
+   "samples": 134160,
+   "langId": "11",
+   "idsSha256_16": "1aad29c428e23744",
+   "bytes": 1956,
+   "text": " Раз два три четыре пять Небольшой тест про вставку текста"
+  }
+ }
+}

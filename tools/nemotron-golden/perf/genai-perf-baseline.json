@@ -1,0 +1,470 @@
+{
+ "what": "ORT GenAI 0.16.0 offline decode time of the Nemotron streaming models, CPU provider. One warm-up run, then 3 timed runs per clip, aligned feeding (chunk_samples per call), fresh StreamingProcessor+Generator per run, model loaded once per process. seconds = feed+decode+flush wall time of the run (model load excluded). RTF = seconds / audio seconds. cpu = process CPU seconds consumed during a run.",
+ "machine": "Intel Core Ultra 7 255HX (20 logical cores), 31 GB RAM, Windows 11 26300, shared with other agents: other processes used 10-40 % CPU during the runs (sampled values below), so wall times are upper bounds",
+ "versions": "managed 0.0.0.0, onnxruntime-genai.dll 0.16.0, onnxruntime.dll 1.30.0.20260909.8.f2c39fe",
+ "threadsNote": "threads=12 is what ModelSession picks on this machine (ComputeOptimalIntraThreads(20 logical cores) = max(8, 20-8) = 12); threads=4 is the golden-run setting",
+ "configs": [
+  {
+   "variant": "fp32-c056",
+   "threads": 12,
+   "modelLoadSeconds": 4.072,
+   "peakWorkingSetMB": 2494,
+   "cpuLoadPercentBefore": "28,14,10,23",
+   "availableMBBefore": 8732,
+   "cpuLoadPercentAfter": "82,45,25,37",
+   "results": [
+    {
+     "clip": "cv17-en-0025",
+     "audioSeconds": 9.576,
+     "warmupSeconds": 3.989,
+     "warmupCpuSeconds": 29.297,
+     "runs": [
+      3.843,
+      4.089,
+      3.993
+     ],
+     "cpuRuns": [
+      26.766,
+      31.5,
+      29.188
+     ],
+     "medianSeconds": 3.993,
+     "medianRtf": 0.417,
+     "medianCpuSeconds": 29.188,
+     "peakWorkingSetMB": 2470,
+     "bestSeconds": 3.843,
+     "bestRtf": 0.4013
+    },
+    {
+     "clip": "cv17-ru-0032",
+     "audioSeconds": 8.928,
+     "warmupSeconds": 3.568,
+     "warmupCpuSeconds": 26.844,
+     "runs": [
+      3.542,
+      3.719,
+      3.718
+     ],
+     "cpuRuns": [
+      25.578,
+      26.391,
+      28.672
+     ],
+     "medianSeconds": 3.718,
+     "medianRtf": 0.4164,
+     "medianCpuSeconds": 26.391,
+     "peakWorkingSetMB": 2479,
+     "bestSeconds": 3.542,
+     "bestRtf": 0.3967
+    },
+    {
+     "clip": "tts-long-en-0001",
+     "audioSeconds": 58.295,
+     "warmupSeconds": 24.023,
+     "warmupCpuSeconds": 166.125,
+     "runs": [
+      22.795,
+      23.182,
+      25.468
+     ],
+     "cpuRuns": [
+      156.781,
+      166.938,
+      167.672
+     ],
+     "medianSeconds": 23.182,
+     "medianRtf": 0.3977,
+     "medianCpuSeconds": 166.938,
+     "peakWorkingSetMB": 2494,
+     "bestSeconds": 22.795,
+     "bestRtf": 0.391
+    }
+   ]
+  },
+  {
+   "variant": "fp32-c056",
+   "threads": 4,
+   "modelLoadSeconds": 4.669,
+   "peakWorkingSetMB": 2489,
+   "cpuLoadPercentBefore": "9,26,27,31",
+   "availableMBBefore": 9799,
+   "cpuLoadPercentAfter": "37,16,22,26",
+   "results": [
+    {
+     "clip": "cv17-en-0025",
+     "audioSeconds": 9.576,
+     "warmupSeconds": 5.017,
+     "warmupCpuSeconds": 17.203,
+     "runs": [
+      4.658,
+      5.068,
+      4.551
+     ],
+     "cpuRuns": [
+      15.906,
+      16.578,
+      15.625
+     ],
+     "medianSeconds": 4.658,
+     "medianRtf": 0.4864,
+     "medianCpuSeconds": 15.906,
+     "peakWorkingSetMB": 2471,
+     "bestSeconds": 4.551,
+     "bestRtf": 0.4753
+    },
+    {
+     "clip": "cv17-ru-0032",
+     "audioSeconds": 8.928,
+     "warmupSeconds": 4.064,
+     "warmupCpuSeconds": 13.812,
+     "runs": [
+      4.842,
+      3.784,
+      4.335
+     ],
+     "cpuRuns": [
+      16.141,
+      13.094,
+      14.172
+     ],
+     "medianSeconds": 4.335,
+     "medianRtf": 0.4855,
+     "medianCpuSeconds": 14.172,
+     "peakWorkingSetMB": 2475,
+     "bestSeconds": 3.784,
+     "bestRtf": 0.4238
+    },
+    {
+     "clip": "tts-long-en-0001",
+     "audioSeconds": 58.295,
+     "warmupSeconds": 29.104,
+     "warmupCpuSeconds": 97.047,
+     "runs": [
+      27.409,
+      24.651,
+      23.281
+     ],
+     "cpuRuns": [
+      92.734,
+      83.062,
+      79.609
+     ],
+     "medianSeconds": 24.651,
+     "medianRtf": 0.4229,
+     "medianCpuSeconds": 83.062,
+     "peakWorkingSetMB": 2489,
+     "bestSeconds": 23.281,
+     "bestRtf": 0.3994
+    }
+   ]
+  },
+  {
+   "variant": "int4-c056",
+   "threads": 12,
+   "modelLoadSeconds": 1.55,
+   "peakWorkingSetMB": 994,
+   "cpuLoadPercentBefore": "26,21,14,9",
+   "availableMBBefore": 10381,
+   "cpuLoadPercentAfter": "27,28,34,40",
+   "results": [
+    {
+     "clip": "cv17-en-0025",
+     "audioSeconds": 9.576,
+     "warmupSeconds": 2.48,
+     "warmupCpuSeconds": 12.391,
+     "runs": [
+      2.688,
+      2.493,
+      2.316
+     ],
+     "cpuRuns": [
+      13.922,
+      11.953,
+      12.547
+     ],
+     "medianSeconds": 2.493,
+     "medianRtf": 0.2603,
+     "medianCpuSeconds": 12.547,
+     "peakWorkingSetMB": 970,
+     "bestSeconds": 2.316,
+     "bestRtf": 0.2419
+    },
+    {
+     "clip": "cv17-ru-0032",
+     "audioSeconds": 8.928,
+     "warmupSeconds": 2.081,
+     "warmupCpuSeconds": 9.984,
+     "runs": [
+      1.953,
+      2.017,
+      2.133
+     ],
+     "cpuRuns": [
+      9.844,
+      9.234,
+      10.969
+     ],
+     "medianSeconds": 2.017,
+     "medianRtf": 0.2259,
+     "medianCpuSeconds": 9.844,
+     "peakWorkingSetMB": 974,
+     "bestSeconds": 1.953,
+     "bestRtf": 0.2188
+    },
+    {
+     "clip": "tts-long-en-0001",
+     "audioSeconds": 58.295,
+     "warmupSeconds": 13.492,
+     "warmupCpuSeconds": 65.391,
+     "runs": [
+      15.296,
+      19.41,
+      19.335
+     ],
+     "cpuRuns": [
+      75.344,
+      93.938,
+      99.406
+     ],
+     "medianSeconds": 19.335,
+     "medianRtf": 0.3317,
+     "medianCpuSeconds": 93.938,
+     "peakWorkingSetMB": 994,
+     "bestSeconds": 13.492,
+     "bestRtf": 0.2314
+    }
+   ]
+  },
+  {
+   "variant": "int4-c056",
+   "threads": 4,
+   "modelLoadSeconds": 1.815,
+   "peakWorkingSetMB": 990,
+   "cpuLoadPercentBefore": "20,27,14,25",
+   "availableMBBefore": 10939,
+   "cpuLoadPercentAfter": "21,37,26,26",
+   "results": [
+    {
+     "clip": "cv17-en-0025",
+     "audioSeconds": 9.576,
+     "warmupSeconds": 2.238,
+     "warmupCpuSeconds": 6.562,
+     "runs": [
+      2.597,
+      2.86,
+      3.225
+     ],
+     "cpuRuns": [
+      7.297,
+      8.578,
+      9.531
+     ],
+     "medianSeconds": 2.86,
+     "medianRtf": 0.2986,
+     "medianCpuSeconds": 8.578,
+     "peakWorkingSetMB": 966,
+     "bestSeconds": 2.238,
+     "bestRtf": 0.2337
+    },
+    {
+     "clip": "cv17-ru-0032",
+     "audioSeconds": 8.928,
+     "warmupSeconds": 2.698,
+     "warmupCpuSeconds": 7.922,
+     "runs": [
+      2.485,
+      2.53,
+      2.795
+     ],
+     "cpuRuns": [
+      7.406,
+      7.484,
+      8.031
+     ],
+     "medianSeconds": 2.53,
+     "medianRtf": 0.2834,
+     "medianCpuSeconds": 7.484,
+     "peakWorkingSetMB": 975,
+     "bestSeconds": 2.485,
+     "bestRtf": 0.2783
+    },
+    {
+     "clip": "tts-long-en-0001",
+     "audioSeconds": 58.295,
+     "warmupSeconds": 17.203,
+     "warmupCpuSeconds": 49.875,
+     "runs": [
+      17.859,
+      17.495,
+      16.875
+     ],
+     "cpuRuns": [
+      50.188,
+      50.328,
+      48.234
+     ],
+     "medianSeconds": 17.495,
+     "medianRtf": 0.3001,
+     "medianCpuSeconds": 50.188,
+     "peakWorkingSetMB": 990,
+     "bestSeconds": 16.875,
+     "bestRtf": 0.2895
+    }
+   ]
+  },
+  {
+   "variant": "int4-c112",
+   "threads": 12,
+   "modelLoadSeconds": 1.435,
+   "peakWorkingSetMB": 1007,
+   "cpuLoadPercentBefore": "8,29,24,15",
+   "availableMBBefore": 10417,
+   "cpuLoadPercentAfter": "11,4,10,10",
+   "results": [
+    {
+     "clip": "cv17-en-0025",
+     "audioSeconds": 9.576,
+     "warmupSeconds": 1.976,
+     "warmupCpuSeconds": 12.281,
+     "runs": [
+      1.99,
+      1.933,
+      2.07
+     ],
+     "cpuRuns": [
+      12.062,
+      11.609,
+      10.062
+     ],
+     "medianSeconds": 1.99,
+     "medianRtf": 0.2078,
+     "medianCpuSeconds": 11.609,
+     "peakWorkingSetMB": 982,
+     "bestSeconds": 1.933,
+     "bestRtf": 0.2019
+    },
+    {
+     "clip": "cv17-ru-0032",
+     "audioSeconds": 8.928,
+     "warmupSeconds": 2.122,
+     "warmupCpuSeconds": 11.391,
+     "runs": [
+      1.976,
+      1.689,
+      1.866
+     ],
+     "cpuRuns": [
+      9.703,
+      8.953,
+      8.922
+     ],
+     "medianSeconds": 1.866,
+     "medianRtf": 0.2091,
+     "medianCpuSeconds": 8.953,
+     "peakWorkingSetMB": 987,
+     "bestSeconds": 1.689,
+     "bestRtf": 0.1892
+    },
+    {
+     "clip": "tts-long-en-0001",
+     "audioSeconds": 58.295,
+     "warmupSeconds": 11.74,
+     "warmupCpuSeconds": 60.266,
+     "runs": [
+      11.839,
+      12.165,
+      12.581
+     ],
+     "cpuRuns": [
+      57.234,
+      61,
+      62.922
+     ],
+     "medianSeconds": 12.165,
+     "medianRtf": 0.2087,
+     "medianCpuSeconds": 61,
+     "peakWorkingSetMB": 1007,
+     "bestSeconds": 11.74,
+     "bestRtf": 0.2014
+    }
+   ]
+  },
+  {
+   "variant": "int4-c112",
+   "threads": 4,
+   "modelLoadSeconds": 2.295,
+   "peakWorkingSetMB": 1003,
+   "cpuLoadPercentBefore": "18,36,9,28",
+   "availableMBBefore": 10534,
+   "cpuLoadPercentAfter": "37,16,31,31",
+   "results": [
+    {
+     "clip": "cv17-en-0025",
+     "audioSeconds": 9.576,
+     "warmupSeconds": 2.676,
+     "warmupCpuSeconds": 8.203,
+     "runs": [
+      2.622,
+      2.669,
+      2.582
+     ],
+     "cpuRuns": [
+      7.75,
+      7.859,
+      7.516
+     ],
+     "medianSeconds": 2.622,
+     "medianRtf": 0.2738,
+     "medianCpuSeconds": 7.75,
+     "peakWorkingSetMB": 978,
+     "bestSeconds": 2.582,
+     "bestRtf": 0.2696
+    },
+    {
+     "clip": "cv17-ru-0032",
+     "audioSeconds": 8.928,
+     "warmupSeconds": 2.722,
+     "warmupCpuSeconds": 7.281,
+     "runs": [
+      2.644,
+      2.51,
+      2.423
+     ],
+     "cpuRuns": [
+      7.734,
+      7.344,
+      7.125
+     ],
+     "medianSeconds": 2.51,
+     "medianRtf": 0.2811,
+     "medianCpuSeconds": 7.344,
+     "peakWorkingSetMB": 987,
+     "bestSeconds": 2.423,
+     "bestRtf": 0.2714
+    },
+    {
+     "clip": "tts-long-en-0001",
+     "audioSeconds": 58.295,
+     "warmupSeconds": 13.868,
+     "warmupCpuSeconds": 39.844,
+     "runs": [
+      16.33,
+      17.711,
+      19.785
+     ],
+     "cpuRuns": [
+      46.203,
+      49.016,
+      51.484
+     ],
+     "medianSeconds": 17.711,
+     "medianRtf": 0.3038,
+     "medianCpuSeconds": 49.016,
+     "peakWorkingSetMB": 1003,
+     "bestSeconds": 13.868,
+     "bestRtf": 0.2379
+    }
+   ]
+  }
+ ]
+}

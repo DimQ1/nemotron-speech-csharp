@@ -1,0 +1,17 @@
+cv17-en-0001               chunk-level=identical ragged-interface-text=identical tokens=33
+cv17-en-0002               chunk-level=identical ragged-interface-text=identical tokens=6
+cv17-en-0003               chunk-level=identical ragged-interface-text=identical tokens=0
+cv17-en-0004               chunk-level=identical ragged-interface-text=identical tokens=10
+cv17-ru-0001               chunk-level=identical ragged-interface-text=identical tokens=39
+cv17-ru-0002               chunk-level=identical ragged-interface-text=identical tokens=57
+cv17-ru-0004               chunk-level=identical ragged-interface-text=identical tokens=61
+tts-ru-ru-0002             chunk-level=identical ragged-interface-text=identical tokens=34
+gen-short-0p3s-en          chunk-level=identical ragged-interface-text=identical tokens=0
+gen-exact-53761-en         chunk-level=identical ragged-interface-text=identical tokens=20
+gen-exact-53760-en         chunk-level=identical ragged-interface-text=identical tokens=17
+gen-silence-room-5s        chunk-level=identical ragged-interface-text=identical tokens=0
+gen-quiet-30dB-en0001      chunk-level=identical ragged-interface-text=identical tokens=33
+truth-en-0001              chunk-level=identical ragged-interface-text=identical tokens=38
+truth-ru-0001              chunk-level=identical ragged-interface-text=identical tokens=45
+gen-vad-pause-2s           chunk-level=identical ragged-interface-text=identical tokens=56
+ALL IDENTICAL

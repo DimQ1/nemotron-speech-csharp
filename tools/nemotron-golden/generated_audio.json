@@ -1,0 +1,166 @@
+{
+  "rate": 16000,
+  "roomSigmaLsb": 66,
+  "clips": [
+    {
+      "id": "gen-concat-en-gaps",
+      "file": "gen-concat-en-gaps.wav",
+      "samples": 1350144,
+      "seconds": 84.384,
+      "sha256Pcm": "3bc3d9e70a151f220139babdfcbc3be1679c8e395be5c5c75a388ce3ce91d21e",
+      "recipe": "seed 101: 1 s room tone, cv17/en 0001..0012 in order separated by room tone gaps of 1,2,3,1,2,3,1,2,3,1,2 s, 2 s room tone tail"
+    },
+    {
+      "id": "gen-concat-ru-gaps",
+      "file": "gen-concat-ru-gaps.wav",
+      "samples": 1486464,
+      "seconds": 92.904,
+      "sha256Pcm": "392c129aac0bf2db75d3b8c8de0085cce72eb6a27a58b47d91f5d8c9c5457f0c",
+      "recipe": "seed 102: 1 s room tone, cv17/ru 0001..0012 in order separated by room tone gaps of 1,2,3,1,2,3,1,2,3,1,2 s, 2 s room tone tail"
+    },
+    {
+      "id": "gen-concat-mix-auto",
+      "file": "gen-concat-mix-auto.wav",
+      "samples": 1286400,
+      "seconds": 80.4,
+      "sha256Pcm": "a394776d28c6a9d2c4abd1500803d7e52aa650b41e2debb750c46a7e2f5ceaf1",
+      "recipe": "seed 103: 1 s room tone, cv17 en0001 ru0001 en0002 ru0002 ... en0005 ru0005 separated by room tone gaps of 1,2,3,1,2,3,1,2,3 s, 2 s tail (use lang_id 101 = auto)"
+    },
+    {
+      "id": "gen-short-0p3s-en",
+      "file": "gen-short-0p3s-en.wav",
+      "samples": 4800,
+      "seconds": 0.3,
+      "sha256Pcm": "b4ae2f4708a13f7aeb54b2e682c353ab154e4d0017ef2300c6a11be3d9af391e",
+      "recipe": "cv17/en/0001 samples [11200, 16000) = the highest-energy 0.3 s window (shorter than one chunk of either variant)"
+    },
+    {
+      "id": "gen-exact-8960-en",
+      "file": "gen-exact-8960-en.wav",
+      "samples": 8960,
+      "seconds": 0.56,
+      "sha256Pcm": "4d3a7405595f73aed9c14bc6f55a601dc226b818ca1a60adec872f15120c126a",
+      "recipe": "cv17/en/0001 first 8960 samples = exactly one c056 chunk, half a c112 chunk"
+    },
+    {
+      "id": "gen-exact-17920-en",
+      "file": "gen-exact-17920-en.wav",
+      "samples": 17920,
+      "seconds": 1.12,
+      "sha256Pcm": "10e18d899d02e5d91c1897ba860329aa5b6ea18c0633af5b8f92fa63057db976",
+      "recipe": "cv17/en/0002 first 17920 samples = exactly one c112 chunk (two c056 chunks)"
+    },
+    {
+      "id": "gen-exact-53760-en",
+      "file": "gen-exact-53760-en.wav",
+      "samples": 53760,
+      "seconds": 3.36,
+      "sha256Pcm": "4fd7b473e3dc224ab1bd9cece5899c0234b087852849d0a102ccca45f6e348aa",
+      "recipe": "cv17/en/0001 first 53760 samples = 6 c056 chunks = 3 c112 chunks exactly (no flush chunk)"
+    },
+    {
+      "id": "gen-exact-53761-en",
+      "file": "gen-exact-53761-en.wav",
+      "samples": 53761,
+      "seconds": 3.36,
+      "sha256Pcm": "76547ee5003877d89c9dbf77cb1f91c5daa5fbf4d6a52f1c8de4450f97dbbc24",
+      "recipe": "cv17/en/0001 first 53761 samples = the above plus ONE sample (flush pads 8959 zeros)"
+    },
+    {
+      "id": "gen-exact-53760-ru",
+      "file": "gen-exact-53760-ru.wav",
+      "samples": 53760,
+      "seconds": 3.36,
+      "sha256Pcm": "459605ebbc17625cf2ae794fd6868feece16e5f3ba8f56e9ede38f440ea44714",
+      "recipe": "cv17/ru/0001 first 53760 samples = 6 c056 chunks = 3 c112 chunks exactly"
+    },
+    {
+      "id": "gen-exact-53759-en",
+      "file": "gen-exact-53759-en.wav",
+      "samples": 53759,
+      "seconds": 3.36,
+      "sha256Pcm": "6138d6a16d6b746ab90921187a7dc1b79af84ed0f198c57f95605139c72dcb7e",
+      "recipe": "cv17/en/0001 first 53759 samples = one sample short of 6 c056 chunks (flush pads 1 zero)"
+    },
+    {
+      "id": "gen-silence-room-5s",
+      "file": "gen-silence-room-5s.wav",
+      "samples": 80000,
+      "seconds": 5,
+      "sha256Pcm": "1d6c7b79d64d91e1bc7ce83608170d5f42b05551b1206a7c4fddbb8629198b48",
+      "recipe": "seed 201: 5 s of room tone only (white noise sigma 66 LSB = -54 dBFS rms)"
+    },
+    {
+      "id": "gen-silence-zeros-2s",
+      "file": "gen-silence-zeros-2s.wav",
+      "samples": 32000,
+      "seconds": 2,
+      "sha256Pcm": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+      "recipe": "2 s of exact digital zeros (log(0 \u002B eps) path)"
+    },
+    {
+      "id": "gen-quiet-30dB-en0001",
+      "file": "gen-quiet-30dB-en0001.wav",
+      "samples": 100800,
+      "seconds": 6.3,
+      "sha256Pcm": "3d56a3ff6453320ba4271c1f5d420a6ec36f0eb99dd3484680b5dacea82f4456",
+      "recipe": "cv17/en/0001 attenuated by 1/32 (-30.1 dB), rounded half away from zero"
+    },
+    {
+      "id": "gen-quiet-30dB-ru0001",
+      "file": "gen-quiet-30dB-ru0001.wav",
+      "samples": 92736,
+      "seconds": 5.796,
+      "sha256Pcm": "400f4e4d93ebae694fc0a6838ffe0ec403f1196ac7960f8dd686e97b64cafc6a",
+      "recipe": "cv17/ru/0001 attenuated by 1/32 (-30.1 dB), rounded half away from zero"
+    },
+    {
+      "id": "gen-vad-a4-10s",
+      "file": "gen-vad-a4-10s.wav",
+      "samples": 415360,
+      "seconds": 25.96,
+      "sha256Pcm": "8c96c6d8b02603025bfbe041c9a33995177b85c7919d2a806c41fa4282f57736",
+      "recipe": "seed 301: 1 s room tone, cv17/en/0001, 10 s room tone, cv17/en/0005, 2 s room tone (A4 exp1 recipe; native VAD drops the 6th..13th silent chunk on c056)"
+    },
+    {
+      "id": "gen-vad-pause-2s",
+      "file": "gen-vad-pause-2s.wav",
+      "samples": 287360,
+      "seconds": 17.96,
+      "sha256Pcm": "883b8cdd98b628ba1f6dcb45c794438cc62cc8a6251a6ae5b9753876816af187",
+      "recipe": "seed 302: 1 s room tone, cv17/en/0001, 2 s room tone, cv17/en/0005, 2 s room tone (no chunk dropped expected: needs 6 silent c056 chunks = 3.36 s)"
+    },
+    {
+      "id": "gen-vad-gap-4chunks",
+      "file": "gen-vad-gap-4chunks.wav",
+      "samples": 299840,
+      "seconds": 18.74,
+      "sha256Pcm": "0260b3a059686fc7721e7d57558ca63bb9ea149fd1b4046e48e264a0f9caf320",
+      "recipe": "seed 314: 1 s room tone \u002B cv17/en/0001 padded with room tone to a multiple of 17920 samples, then exactly 4 x 8960 samples of room tone (chunk aligned for c056 and, when even, for c112), cv17/en/0005, 2 s room tone"
+    },
+    {
+      "id": "gen-vad-gap-5chunks",
+      "file": "gen-vad-gap-5chunks.wav",
+      "samples": 308800,
+      "seconds": 19.3,
+      "sha256Pcm": "add8691dfeb730a3d888b39b4f8caf117bfd8321ce20e71d2c5bbe5728a22015",
+      "recipe": "seed 315: 1 s room tone \u002B cv17/en/0001 padded with room tone to a multiple of 17920 samples, then exactly 5 x 8960 samples of room tone (chunk aligned for c056 and, when even, for c112), cv17/en/0005, 2 s room tone"
+    },
+    {
+      "id": "gen-vad-gap-6chunks",
+      "file": "gen-vad-gap-6chunks.wav",
+      "samples": 317760,
+      "seconds": 19.86,
+      "sha256Pcm": "1e9455d1c973625a797b112a747d5d4c7ae0ac42d406a34893a1d3fe9f01537d",
+      "recipe": "seed 316: 1 s room tone \u002B cv17/en/0001 padded with room tone to a multiple of 17920 samples, then exactly 6 x 8960 samples of room tone (chunk aligned for c056 and, when even, for c112), cv17/en/0005, 2 s room tone"
+    },
+    {
+      "id": "gen-vad-gap-7chunks",
+      "file": "gen-vad-gap-7chunks.wav",
+      "samples": 326720,
+      "seconds": 20.42,
+      "sha256Pcm": "4b0a5a159b0d3bd5095810fc7ee129e2f8e830de06a7ee692375204f53e9210e",
+      "recipe": "seed 317: 1 s room tone \u002B cv17/en/0001 padded with room tone to a multiple of 17920 samples, then exactly 7 x 8960 samples of room tone (chunk aligned for c056 and, when even, for c112), cv17/en/0005, 2 s room tone"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+A2 overlap int4-c056/cv17-en-0001: identical
+A2 overlap int4-c056/cv17-en-0002: identical
+A2 overlap int4-c056/cv17-en-0003: identical
+A2 overlap int4-c056/cv17-ru-0001: identical
+A2 overlap int4-c056/cv17-ru-0002: identical
+A2 overlap int4-c056/cv17-ru-0003: identical
+A2 overlap int4-c056/tts-long-en-0001: identical
+A2 overlap int4-c056/tts-ru-ru-0001: identical
+A2 overlap int4-c056/tts-ru-ru-0002: identical
+A2 overlap int4-c056/cv17long-en-0001: identical
+A2 overlap int4-c112/cv17-en-0001: identical
+A2 overlap int4-c112/cv17-en-0002: identical
+A2 overlap int4-c112/cv17-ru-0001: identical
+A2 overlap int4-c112/cv17-ru-0002: identical
+A2 overlap int4-c112/cv17-ru-0003: identical
+A2 overlap int4-c112/tts-long-en-0001: identical
+A2 overlap int4-c112/tts-ru-ru-0001: identical
+A2 overlap int4-c112/tts-ru-ru-0002: identical
+A2 overlap int4-c112/cv17long-en-0001: identical
+210 golden files checked, index -> index.json (next to the goldens)
+no problems

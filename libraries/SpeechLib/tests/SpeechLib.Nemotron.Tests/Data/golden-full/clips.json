@@ -1,0 +1,2232 @@
+{
+ "schema": 1,
+ "note": "ids, language ids (LanguageMapper numeric lang_id), audio location and membership in the variant sets (primary = int4-c056, c112 = int4-c112, fp32 = fp32-c056 and fp32-c112)",
+ "clips": [
+  {
+   "id": "cv17-en-0001",
+   "root": "TestAudio",
+   "path": "cv17/en/0001.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 100800,
+   "seconds": 6.3,
+   "wavFormat": "pcm16",
+   "sha256File": "ed606d30b7e8bab6d3b357d3268643de7a4d5e9a38c8cc6590fd19334a20188d",
+   "sha256Pcm": "535cacaed9e309369b24d0844e4ad99576254980f34a06ca8cda5bcf30efa8b8"
+  },
+  {
+   "id": "cv17-en-0002",
+   "root": "TestAudio",
+   "path": "cv17/en/0002.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 34944,
+   "seconds": 2.184,
+   "wavFormat": "pcm16",
+   "sha256File": "5dd3ca90ecf2a8d6284d9861b6efe66328829f6f876fc3be1237376fd6c93bf3",
+   "sha256Pcm": "3c7c51793558850e1b356232e969bd95a551324a9cb68fef312fc6bec63ccf80"
+  },
+  {
+   "id": "cv17-en-0003",
+   "root": "TestAudio",
+   "path": "cv17/en/0003.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 105216,
+   "seconds": 6.576,
+   "wavFormat": "pcm16",
+   "sha256File": "2f70e80c14049a42f15fa54f625949e8eac3c401fe2aaa1af12065a8e8020a28",
+   "sha256Pcm": "d4797437cf8729ae3172262910c0114b6625c1ceaaea4f11f3ce696cbe23c955",
+   "note": "GenAI INT4 c056 emits no token at all for this clip (A2)"
+  },
+  {
+   "id": "cv17-en-0004",
+   "root": "TestAudio",
+   "path": "cv17/en/0004.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 66816,
+   "seconds": 4.176,
+   "wavFormat": "pcm16",
+   "sha256File": "3cc2af2683f53645ab92e549185411c49d3de6ea6c2895a001692068e3badeca",
+   "sha256Pcm": "d3e9a0b7c1da05f5ea42b15ebc77a32d464fc0748502f1479115e8cb0d34229c"
+  },
+  {
+   "id": "cv17-en-0005",
+   "root": "TestAudio",
+   "path": "cv17/en/0005.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 106560,
+   "seconds": 6.66,
+   "wavFormat": "pcm16",
+   "sha256File": "2229f4a4b22d313291c04f3d2233c0ba51764d80f4e954ea12cbd1856083289e",
+   "sha256Pcm": "c8344d7ed6f0a440a31cc57ec3c6303aaa644bfde5334804d7917f7865a70d82"
+  },
+  {
+   "id": "cv17-en-0006",
+   "root": "TestAudio",
+   "path": "cv17/en/0006.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 59904,
+   "seconds": 3.744,
+   "wavFormat": "pcm16",
+   "sha256File": "6a1d55fdd3401ab956ee38be3c5ac655118d296ee1003758f36464ddccbd94ba",
+   "sha256Pcm": "f54c7160d93ca0a28c0b6bd727472118102b81f542f536812952130ce49cfb38"
+  },
+  {
+   "id": "cv17-en-0007",
+   "root": "TestAudio",
+   "path": "cv17/en/0007.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 109440,
+   "seconds": 6.84,
+   "wavFormat": "pcm16",
+   "sha256File": "5600da200a5e1c452d87484887e696df4a0e2df1c62993ad0664f6adf120e19f",
+   "sha256Pcm": "a1bd48559601982afc62f65794a9976f4fa5f24c4b321b9553bc578a8f561406",
+   "hard": true,
+   "note": "also in Test-Audio/cv17-hard/en (byte identical)"
+  },
+  {
+   "id": "cv17-en-0008",
+   "root": "TestAudio",
+   "path": "cv17/en/0008.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 95616,
+   "seconds": 5.976,
+   "wavFormat": "pcm16",
+   "sha256File": "a28bbf994fd8cbeacb6008fe6ea3514d4e0fa35c57000963bc6361626794cd4a",
+   "sha256Pcm": "616b096e7a3d4737464c0357b4fe4f776bed0154475d982a7785b10fc92617cb",
+   "hard": true,
+   "note": "also in Test-Audio/cv17-hard/en (byte identical)"
+  },
+  {
+   "id": "cv17-en-0009",
+   "root": "TestAudio",
+   "path": "cv17/en/0009.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 112896,
+   "seconds": 7.056,
+   "wavFormat": "pcm16",
+   "sha256File": "b4d31cd3da271f939759c1a0c43bf86eb2aac28b88036135f133aea3dc962e1e",
+   "sha256Pcm": "c219c21aedecf1f4c501acc6bf0432cf8838521936bca255e2964dcff2c2fde4",
+   "hard": true,
+   "note": "also in Test-Audio/cv17-hard/en (byte identical)"
+  },
+  {
+   "id": "cv17-en-0010",
+   "root": "TestAudio",
+   "path": "cv17/en/0010.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 49536,
+   "seconds": 3.096,
+   "wavFormat": "pcm16",
+   "sha256File": "1463e149bde00079087fccfaf0df0ed2a876003508dc5258a94e4a9658fb71f6",
+   "sha256Pcm": "9c2ed6f23bd0270ddf8a457b41d667c1819967cb015763e4debb23a6fa208954"
+  },
+  {
+   "id": "cv17-en-0011",
+   "root": "TestAudio",
+   "path": "cv17/en/0011.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 57600,
+   "seconds": 3.6,
+   "wavFormat": "pcm16",
+   "sha256File": "a304f61b962221db99f288f0ea42e3d00f684572b485934aedf903a41a1097ee",
+   "sha256Pcm": "b9cc557fb051ea316b976a79ff663f04f02a3ed752b19bb6e6d88f62fec262fa"
+  },
+  {
+   "id": "cv17-en-0012",
+   "root": "TestAudio",
+   "path": "cv17/en/0012.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 66816,
+   "seconds": 4.176,
+   "wavFormat": "pcm16",
+   "sha256File": "bf982b4e8f05fef2b6ef228f0ae3729675a99de23e73b07210d7a9dd88d2247c",
+   "sha256Pcm": "3f4975fa730e0f0bd273134b986966e1eaa6bce9a0d8ffca52fe58b480fea842"
+  },
+  {
+   "id": "cv17-en-0013",
+   "root": "TestAudio",
+   "path": "cv17/en/0013.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 112512,
+   "seconds": 7.032,
+   "wavFormat": "pcm16",
+   "sha256File": "74efbc409bce25a60ca73015e60fdfeb56a4303d835c50d9ce2b1a488be8f85d",
+   "sha256Pcm": "87c2870f21a57bce67194eb09c5278f7c8eff7f2181aacd6f2ae6b178b39afa7"
+  },
+  {
+   "id": "cv17-en-0014",
+   "root": "TestAudio",
+   "path": "cv17/en/0014.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 78336,
+   "seconds": 4.896,
+   "wavFormat": "pcm16",
+   "sha256File": "5d2137a5e4513c1490cb45861692e6c30e2e50204d8989881cc9be56f4cd3f7d",
+   "sha256Pcm": "8dc961a9194c9033e043b3d7991fa5e3fbb071e564734b0bc35b81f40e94138e",
+   "hard": true,
+   "note": "also in Test-Audio/cv17-hard/en (byte identical)"
+  },
+  {
+   "id": "cv17-en-0015",
+   "root": "TestAudio",
+   "path": "cv17/en/0015.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 118080,
+   "seconds": 7.38,
+   "wavFormat": "pcm16",
+   "sha256File": "50b68e2222f631bd400fb792b8fc57e25dd6e98c1c9133200c0a0922dcfec497",
+   "sha256Pcm": "0149f046ed6330e3329023263b5e2e94fa380c1a07de71b110dc2c95ffca60b7"
+  },
+  {
+   "id": "cv17-en-0016",
+   "root": "TestAudio",
+   "path": "cv17/en/0016.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 138624,
+   "seconds": 8.664,
+   "wavFormat": "pcm16",
+   "sha256File": "c8f5b1a3066a79b7da28852620a4644ce27b87e36d560f431008514c313b3cf4",
+   "sha256Pcm": "320ed2d3d2541a2c74334baebff765638ae5ff9045cf0d141e7285b0926bf5a1"
+  },
+  {
+   "id": "cv17-en-0017",
+   "root": "TestAudio",
+   "path": "cv17/en/0017.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 79104,
+   "seconds": 4.944,
+   "wavFormat": "pcm16",
+   "sha256File": "9a5c5ae45cd069e830609438cf958549a38f3506da536d8e0d3b93277feb5d5c",
+   "sha256Pcm": "04689ae6b1e4de209dd5812814659b8bc929d141a7edc23c6f9f81eee58d5bc0"
+  },
+  {
+   "id": "cv17-en-0018",
+   "root": "TestAudio",
+   "path": "cv17/en/0018.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 95616,
+   "seconds": 5.976,
+   "wavFormat": "pcm16",
+   "sha256File": "5c019c2f5571d8f3d2797445e69a26104cfe85fb64c56367338a4c6ab95c95c0",
+   "sha256Pcm": "8d88066c80a09d794798556aee50ea72f52bda94ee8395b249962c9c318fecb7"
+  },
+  {
+   "id": "cv17-en-0019",
+   "root": "TestAudio",
+   "path": "cv17/en/0019.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 85248,
+   "seconds": 5.328,
+   "wavFormat": "pcm16",
+   "sha256File": "dd7d2bfdd2d152c475513cb45751b1be9157a088bfa79b5d81e18f5123353b82",
+   "sha256Pcm": "a948ad0ad6465d781b0273c4a4a3333ee4895aa23109f79c62034c0a305ad48a"
+  },
+  {
+   "id": "cv17-en-0020",
+   "root": "TestAudio",
+   "path": "cv17/en/0020.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 56832,
+   "seconds": 3.552,
+   "wavFormat": "pcm16",
+   "sha256File": "9896fdd79126abbc8f86301139c0b799d71b296ff08f95dedf14aa9ef451a318",
+   "sha256Pcm": "832fd53a3f1d621d32fff741314a8aa086a09188ce42d5245d27aecf7d1d4f9c"
+  },
+  {
+   "id": "cv17-en-0021",
+   "root": "TestAudio",
+   "path": "cv17/en/0021.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 88704,
+   "seconds": 5.544,
+   "wavFormat": "pcm16",
+   "sha256File": "e782960259b2b586eafd4d614f7eb4e549c28694fff7515062306ae511831f35",
+   "sha256Pcm": "c3542b7bbefab2f539be50715157b719dfb74f57e73647b6ce6ee931fea65309"
+  },
+  {
+   "id": "cv17-en-0022",
+   "root": "TestAudio",
+   "path": "cv17/en/0022.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 60288,
+   "seconds": 3.768,
+   "wavFormat": "pcm16",
+   "sha256File": "07d71898437fb3cf0ffb7eaf39236582e584a8de54c0a087bebac22737842d34",
+   "sha256Pcm": "ab96c72c6cd6f5a9a27e7886764a3099284a8337729e55c71795123cfa68a69a"
+  },
+  {
+   "id": "cv17-en-0023",
+   "root": "TestAudio",
+   "path": "cv17/en/0023.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 66816,
+   "seconds": 4.176,
+   "wavFormat": "pcm16",
+   "sha256File": "f2c64996991c53627b3fdaa0427e86807bcfb6756e117e6f4a2bc090f51dea67",
+   "sha256Pcm": "f2e5266d2e0d36c787c81284c08f647b8b076708d8cb251d5219a80b2b15f12c"
+  },
+  {
+   "id": "cv17-en-0024",
+   "root": "TestAudio",
+   "path": "cv17/en/0024.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 148224,
+   "seconds": 9.264,
+   "wavFormat": "pcm16",
+   "sha256File": "d9fd90f1fc233c559fb394f1ed0e6de3c8c65d7dcb7c99e53f21e96cebc16b7d",
+   "sha256Pcm": "da49b3ef7085a724fb57f15e39bbaa9bc679f8ed586ec4ef5d50f5da97cc006c",
+   "note": "peak -55 dBFS (quietest CV clip); raw recognizer, no AGC; also in Test-Audio/cv17-hard/en (byte identical)",
+   "hard": true
+  },
+  {
+   "id": "cv17-en-0025",
+   "root": "TestAudio",
+   "path": "cv17/en/0025.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 153216,
+   "seconds": 9.576,
+   "wavFormat": "pcm16",
+   "sha256File": "f1ea7f44950ef250ecc0caccb923050e7acb59697cc2e088bb9d20bc85012ce0",
+   "sha256Pcm": "43885bdca90d7ba111c3d1ed9fb4dbe4a55efcfedcb6eb20fb254ac9c369466f"
+  },
+  {
+   "id": "cv17-en-0026",
+   "root": "TestAudio",
+   "path": "cv17/en/0026.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 52224,
+   "seconds": 3.264,
+   "wavFormat": "pcm16",
+   "sha256File": "619bb5b6a9a84638cc85b05fb5f8ea9937f017baa61ca99fefb0036a891d994c",
+   "sha256Pcm": "7dd136acf7bca29c2e243762c1ec0db9c00bd9db44ff198fbdb527bde92171e3"
+  },
+  {
+   "id": "cv17-en-0027",
+   "root": "TestAudio",
+   "path": "cv17/en/0027.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 67968,
+   "seconds": 4.248,
+   "wavFormat": "pcm16",
+   "sha256File": "9a167d2c969082b692fc0c6f929e2b0c5a1ce99dc337452fe5df42cb44d900a7",
+   "sha256Pcm": "beceaf63fe4b2614d352cc214fcb00047e17f72768e15e0b75a72af423c02b8f"
+  },
+  {
+   "id": "cv17-en-0028",
+   "root": "TestAudio",
+   "path": "cv17/en/0028.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 95616,
+   "seconds": 5.976,
+   "wavFormat": "pcm16",
+   "sha256File": "2a74aa0b8b31bfc273c0e7b8df82c22162e677bf59c2f0e3255cecfa7d7d2220",
+   "sha256Pcm": "fa5f8ecb4d400b0216283b043b66cbaa5379bf34ce3a9703cafe3c25bddd7768"
+  },
+  {
+   "id": "cv17-en-0029",
+   "root": "TestAudio",
+   "path": "cv17/en/0029.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 105984,
+   "seconds": 6.624,
+   "wavFormat": "pcm16",
+   "sha256File": "d702553534b63df8fd5ac6d4340f6426694c9c650afba2a46a693ea2f23ec7f0",
+   "sha256Pcm": "60edc6b2556cecf90bc9a8054543d03a1603e7fe527b359d1ecee6059633c3f5"
+  },
+  {
+   "id": "cv17-en-0030",
+   "root": "TestAudio",
+   "path": "cv17/en/0030.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 61440,
+   "seconds": 3.84,
+   "wavFormat": "pcm16",
+   "sha256File": "a791b9488a0b985edcbf0d26c0a01810a9ec6c2aa8783a937c036e447da440c1",
+   "sha256Pcm": "6e8d46281a5bf1057e005ab1e1869a64f78eeb064d5b610491babdbbdd394cf5"
+  },
+  {
+   "id": "cv17-en-0031",
+   "root": "TestAudio",
+   "path": "cv17/en/0031.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 98688,
+   "seconds": 6.168,
+   "wavFormat": "pcm16",
+   "sha256File": "9218c5164ec55848010d9ef4070e2d111a8c8334a1a939df963f84130658ac2a",
+   "sha256Pcm": "fefe135d748e20962dbc13749d35e700ad0e384a8e70ea4f700123ff6d6d67b1"
+  },
+  {
+   "id": "cv17-en-0032",
+   "root": "TestAudio",
+   "path": "cv17/en/0032.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 64896,
+   "seconds": 4.056,
+   "wavFormat": "pcm16",
+   "sha256File": "edd175f27d743fe8e49e13b0a4e8527842763e2314d8a14b681d6ac61c20d075",
+   "sha256Pcm": "14ef7514c7862aa866f60b3b7726a8f4297e3668d124a5b2911a8f209cb3c0de"
+  },
+  {
+   "id": "cv17-en-0033",
+   "root": "TestAudio",
+   "path": "cv17/en/0033.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 55296,
+   "seconds": 3.456,
+   "wavFormat": "pcm16",
+   "sha256File": "8e19a0ffb2ae481606037d19e3853ff6e14b200c244f2ca19cfe3f69735cbb23",
+   "sha256Pcm": "bc0d939823186d141fb79e6f5b92612425f3824c4271982983384d8f605a28c0"
+  },
+  {
+   "id": "cv17-en-0034",
+   "root": "TestAudio",
+   "path": "cv17/en/0034.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 111744,
+   "seconds": 6.984,
+   "wavFormat": "pcm16",
+   "sha256File": "dbc1c0d2d85975f3e8cb2998bdab17546d9ad3cd1f39142e7dfa39974b27ea1b",
+   "sha256Pcm": "ba4143e1bee96dc0c6bb1e5626b084b1f203820e0f1ff8af7817449f8c5f6f2d",
+   "hard": true,
+   "note": "also in Test-Audio/cv17-hard/en (byte identical)"
+  },
+  {
+   "id": "cv17-en-0035",
+   "root": "TestAudio",
+   "path": "cv17/en/0035.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 68736,
+   "seconds": 4.296,
+   "wavFormat": "pcm16",
+   "sha256File": "969f02d5321ea954e7d1359d4d6d5055cc33525344d2dceeb272b3fe18e1abc6",
+   "sha256Pcm": "cc5f424bcb0eca9f496a7f61d5646d4d9c8a19dbb14d2862e2843c22e9dd6790"
+  },
+  {
+   "id": "cv17-en-0036",
+   "root": "TestAudio",
+   "path": "cv17/en/0036.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 46080,
+   "seconds": 2.88,
+   "wavFormat": "pcm16",
+   "sha256File": "336a69264c017f63e8264f0d1038de7ca458570503a6c2665f39be2ffffe16fd",
+   "sha256Pcm": "7fdf45c2ce44148d638c241f7e247415e5117a24ba5e41e7f5f7956600bafe66"
+  },
+  {
+   "id": "cv17-en-0037",
+   "root": "TestAudio",
+   "path": "cv17/en/0037.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 114816,
+   "seconds": 7.176,
+   "wavFormat": "pcm16",
+   "sha256File": "83fa1d3e90dbff4032f23127cb761038f772bf156b7171a3647842ff430a2ead",
+   "sha256Pcm": "9c725f38e89e6108013b8a00d08c9c676b8935719353549724ee96f004354b74"
+  },
+  {
+   "id": "cv17-en-0038",
+   "root": "TestAudio",
+   "path": "cv17/en/0038.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 81024,
+   "seconds": 5.064,
+   "wavFormat": "pcm16",
+   "sha256File": "5b3c84d88437ee5050a1ccfa190ee31537d5e1e238f74d55b5f027b24039a991",
+   "sha256Pcm": "fbfac1dba8448a0671c611e9fe3ef35ec6cb319e44b61838ecee6b818d59e155"
+  },
+  {
+   "id": "cv17-en-0039",
+   "root": "TestAudio",
+   "path": "cv17/en/0039.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 96192,
+   "seconds": 6.012,
+   "wavFormat": "pcm16",
+   "sha256File": "16d8bcf8f7e4e9cffaeba03d41b8e29872675b77106d2b0fd55c8511cb174e96",
+   "sha256Pcm": "8f5a25f7e2621faedb1cee09e53b9e170475b1efa87f3209617b08c86651b2b5"
+  },
+  {
+   "id": "cv17-en-0040",
+   "root": "TestAudio",
+   "path": "cv17/en/0040.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 72192,
+   "seconds": 4.512,
+   "wavFormat": "pcm16",
+   "sha256File": "1a9b1a52ce763d921d3ba71b6e187c4fc63c4fa3654ffe8006cad6148ab289b4",
+   "sha256Pcm": "e92522bd752c1eb667f4fd790421accae991467779f3be3ac3b744c785751880"
+  },
+  {
+   "id": "cv17-ru-0001",
+   "root": "TestAudio",
+   "path": "cv17/ru/0001.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 92736,
+   "seconds": 5.796,
+   "wavFormat": "pcm16",
+   "sha256File": "3a9bdcd58ea150e54a5f439d59cd79cb9f845e1ec94d02e7e6e469848427afe0",
+   "sha256Pcm": "01a9b5b0a6980609f461e4f18a67167f3df6db95b708230dc0a9b77163c119a0"
+  },
+  {
+   "id": "cv17-ru-0002",
+   "root": "TestAudio",
+   "path": "cv17/ru/0002.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 134208,
+   "seconds": 8.388,
+   "wavFormat": "pcm16",
+   "sha256File": "9002ec6d4afabe3aa4452f395ab2253d094631ddb6d745808812f1a0921807b1",
+   "sha256Pcm": "320095249faa3aa8a93697930021c18dfbed53b9efe1ba4866deb00d227b35fc"
+  },
+  {
+   "id": "cv17-ru-0003",
+   "root": "TestAudio",
+   "path": "cv17/ru/0003.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 104256,
+   "seconds": 6.516,
+   "wavFormat": "pcm16",
+   "sha256File": "c601e3fac0a644628f1e4093e120ddce0aa0462648fa59562ab91da2eb565ed5",
+   "sha256Pcm": "9ed8cb1ba74aff22ae06dfecfb437182348e539d9a93cf8fefa896cc0f707ebc"
+  },
+  {
+   "id": "cv17-ru-0004",
+   "root": "TestAudio",
+   "path": "cv17/ru/0004.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 139776,
+   "seconds": 8.736,
+   "wavFormat": "pcm16",
+   "sha256File": "24fb51f7138dfd79a55482cc9542baf725c24b62b28806645a332bc99b461902",
+   "sha256Pcm": "ef2e78af5b26659d006ccc3410a9d98d9a0299a5f60edf462ed1d03cac23d011"
+  },
+  {
+   "id": "cv17-ru-0005",
+   "root": "TestAudio",
+   "path": "cv17/ru/0005.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 65088,
+   "seconds": 4.068,
+   "wavFormat": "pcm16",
+   "sha256File": "a33e337f39fee0ba5130d16ac33faa075a6b51e14d182d76376d9d2f0f85d904",
+   "sha256Pcm": "1f2e73289c3b4692f777da75b7108e5dd7251c8b6227059fa29eb4161e66dc1f"
+  },
+  {
+   "id": "cv17-ru-0006",
+   "root": "TestAudio",
+   "path": "cv17/ru/0006.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 105984,
+   "seconds": 6.624,
+   "wavFormat": "pcm16",
+   "sha256File": "68f871355161d820e45be433aac5f01c7983ceffcadeb2af5b8614aa72664902",
+   "sha256Pcm": "c9c55916114994d17a9f2787dbf0213b1c0dcaf84ca0b02f3abdc9b9fe099de2"
+  },
+  {
+   "id": "cv17-ru-0007",
+   "root": "TestAudio",
+   "path": "cv17/ru/0007.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 66240,
+   "seconds": 4.14,
+   "wavFormat": "pcm16",
+   "sha256File": "5abd722fad2935f7372835a9c34e8e0f0535861554990c1dfb0edad345228237",
+   "sha256Pcm": "eb6502689d7b3248b43a5d3b8573a930ce9aed336a674bd7ad9012c9dd910a50"
+  },
+  {
+   "id": "cv17-ru-0008",
+   "root": "TestAudio",
+   "path": "cv17/ru/0008.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 105408,
+   "seconds": 6.588,
+   "wavFormat": "pcm16",
+   "sha256File": "f56e2cce26cf6f996e1df6351b28707acc17b694f157f3c265154681c5058564",
+   "sha256Pcm": "e97fcacca5a8076706d2a8fcee196d69891ca3f3305bf381a6b12bb0a05f7add"
+  },
+  {
+   "id": "cv17-ru-0009",
+   "root": "TestAudio",
+   "path": "cv17/ru/0009.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 62784,
+   "seconds": 3.924,
+   "wavFormat": "pcm16",
+   "sha256File": "c5f25fac8a27ba343741590c72c75e0c0f65d9f39ca0b29d1b3d2a567a36b6c6",
+   "sha256Pcm": "28191e422461d45ec24bf8bb8c7f53229f73db13038b7cac0d6aba6c79336623"
+  },
+  {
+   "id": "cv17-ru-0010",
+   "root": "TestAudio",
+   "path": "cv17/ru/0010.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 70848,
+   "seconds": 4.428,
+   "wavFormat": "pcm16",
+   "sha256File": "1dd824b5e0ce8a178908cabe51ca2036d682ac37bb1e5fb595b5c5bbbe1de32d",
+   "sha256Pcm": "648447af5a38c1ddcc6e531d3e7f4e7ddbcdd1905d058176ff94eea60d0a4623"
+  },
+  {
+   "id": "cv17-ru-0011",
+   "root": "TestAudio",
+   "path": "cv17/ru/0011.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 97536,
+   "seconds": 6.096,
+   "wavFormat": "pcm16",
+   "sha256File": "a5d69b9f0f82666495140d255425eb2666db02e48422955e22d21ac3cd0fb647",
+   "sha256Pcm": "50b07e7d52360f474a45803a5055c77342dca6532ff798f2015a1cb50a91ba9b"
+  },
+  {
+   "id": "cv17-ru-0012",
+   "root": "TestAudio",
+   "path": "cv17/ru/0012.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 57600,
+   "seconds": 3.6,
+   "wavFormat": "pcm16",
+   "sha256File": "e1e3a62a28d9be496f61b2544523c316d4a2bd8d11560cca833ced456696b1aa",
+   "sha256Pcm": "8a8cb3e69dd7d1028273770d508bd57af43811e8e747fa714a8c1f216c4ea863"
+  },
+  {
+   "id": "cv17-ru-0013",
+   "root": "TestAudio",
+   "path": "cv17/ru/0013.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 118080,
+   "seconds": 7.38,
+   "wavFormat": "pcm16",
+   "sha256File": "1f8ec410e315ba4c266903cf4c885e02125449d54df76b99fcd251a4b02a12cb",
+   "sha256Pcm": "ddd5fccf654ba4bb2aab8bd5ced0553b5e1e1aa4593ca64dbbea588a2f74b437"
+  },
+  {
+   "id": "cv17-ru-0014",
+   "root": "TestAudio",
+   "path": "cv17/ru/0014.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 128640,
+   "seconds": 8.04,
+   "wavFormat": "pcm16",
+   "sha256File": "bc8be9293ba732150f3cb03c239f347216111d009f1a3075a169ede61bfd31fb",
+   "sha256Pcm": "d027994c10cec4faf8ee2464b94d6e34ba343ef62614ba621a8d9d54ccda2000"
+  },
+  {
+   "id": "cv17-ru-0015",
+   "root": "TestAudio",
+   "path": "cv17/ru/0015.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 32256,
+   "seconds": 2.016,
+   "wavFormat": "pcm16",
+   "sha256File": "8076e57c14a636234a3292bd8054d25441230cf4c78e3caab8664a95ebb25f26",
+   "sha256Pcm": "3e91269132aca9006112326ffd15d02890d73732f0696a81176ffbda4405e0a4"
+  },
+  {
+   "id": "cv17-ru-0016",
+   "root": "TestAudio",
+   "path": "cv17/ru/0016.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 61056,
+   "seconds": 3.816,
+   "wavFormat": "pcm16",
+   "sha256File": "8445132ad4c468ce8948689da51c38d879d21eabe001b01b87d9e56ba37dc546",
+   "sha256Pcm": "400392cf107c5f617609ad94d25135c21e208f48087311d3d37d77b73a359dce"
+  },
+  {
+   "id": "cv17-ru-0017",
+   "root": "TestAudio",
+   "path": "cv17/ru/0017.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 135936,
+   "seconds": 8.496,
+   "wavFormat": "pcm16",
+   "sha256File": "f78fc62e3c838bc6f91ea44c7a8602d83912adc67a9433f762eed0d6b18f0b0d",
+   "sha256Pcm": "ae84b2566bdb1a3a53a291cce479ddb5298799cd9e8f9763dfe9d72cf8b0349e"
+  },
+  {
+   "id": "cv17-ru-0018",
+   "root": "TestAudio",
+   "path": "cv17/ru/0018.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 53760,
+   "seconds": 3.36,
+   "wavFormat": "pcm16",
+   "sha256File": "8877d8ed03fd123fc24d362b3577fe444fb94acf92850caf93144c9533491658",
+   "sha256Pcm": "09df537cd1feb89887c9842f397dd95300078a9e030fee819a0a37b003148c7a"
+  },
+  {
+   "id": "cv17-ru-0019",
+   "root": "TestAudio",
+   "path": "cv17/ru/0019.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 135360,
+   "seconds": 8.46,
+   "wavFormat": "pcm16",
+   "sha256File": "b794285513df89ee15393995e00257c2a088d90ee3c834f90a0f27459d1f8b35",
+   "sha256Pcm": "f26c5168f1f13db902a826d7ed6cd35bacc8cbe63c83b9f675a3625ad4b1356b"
+  },
+  {
+   "id": "cv17-ru-0020",
+   "root": "TestAudio",
+   "path": "cv17/ru/0020.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 111744,
+   "seconds": 6.984,
+   "wavFormat": "pcm16",
+   "sha256File": "23e49c5bb3afdd0a36f10588e933aeb9204ff9b072bdd8f72b61342cf2163bb6",
+   "sha256Pcm": "ae55727ae1cd0e3e26c24b619648d3506492acbfeef6b2d5128a73b76b4d4c1e"
+  },
+  {
+   "id": "cv17-ru-0021",
+   "root": "TestAudio",
+   "path": "cv17/ru/0021.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 94080,
+   "seconds": 5.88,
+   "wavFormat": "pcm16",
+   "sha256File": "caa3621c76529693bc5e7b26fc3dff2012c7c4abfb87a52b8d98d2efc0ca86d2",
+   "sha256Pcm": "b9ecc66e8ef88149bd2c8c5517df7fd656f3602576c348c33235225b51b4b641"
+  },
+  {
+   "id": "cv17-ru-0022",
+   "root": "TestAudio",
+   "path": "cv17/ru/0022.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 63360,
+   "seconds": 3.96,
+   "wavFormat": "pcm16",
+   "sha256File": "e719fbf7e5f13982c5f9155a6d166c57627c097dc2872dc7c3188c1a6533fdf7",
+   "sha256Pcm": "0540769e4790c48fd542195b84d1f81e142edee0d8a188a4cc416a64b9326ec8"
+  },
+  {
+   "id": "cv17-ru-0023",
+   "root": "TestAudio",
+   "path": "cv17/ru/0023.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 95616,
+   "seconds": 5.976,
+   "wavFormat": "pcm16",
+   "sha256File": "26df317126b286451448d03149b6dd64862f5513ec53c8cb6a3c96254428d766",
+   "sha256Pcm": "ed1285eda1c927734ea180072a6bebc40f4dcd30a5c80c4ae9cee1433b058a26"
+  },
+  {
+   "id": "cv17-ru-0024",
+   "root": "TestAudio",
+   "path": "cv17/ru/0024.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 85248,
+   "seconds": 5.328,
+   "wavFormat": "pcm16",
+   "sha256File": "a66519e9c9a35b44d8490f367eb301c516249f98f4eacffc35d148e8d4d5c6e0",
+   "sha256Pcm": "69f3aabe407624244c83006e537a5c77ae46c7071f25b87228460234f78a78c2"
+  },
+  {
+   "id": "cv17-ru-0025",
+   "root": "TestAudio",
+   "path": "cv17/ru/0025.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 93888,
+   "seconds": 5.868,
+   "wavFormat": "pcm16",
+   "sha256File": "6a38f2b1573f6f660800e3d4ccc65a33276fc7bc15fb913e566e84f31fab3e4d",
+   "sha256Pcm": "367be809ac8f49ec4b5ea36cf0fb5240bebb6ae8acbb1d6fb0185d55b1592c4b"
+  },
+  {
+   "id": "cv17-ru-0026",
+   "root": "TestAudio",
+   "path": "cv17/ru/0026.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 89856,
+   "seconds": 5.616,
+   "wavFormat": "pcm16",
+   "sha256File": "3ffecdb92cc4305b1237619597b6488a3f2fbb846a347ff05ffe621b45e33f5b",
+   "sha256Pcm": "34d168e73a41b8d1f01ae8becc2d6d0626c6ed7975aed7c215d47db8d886d8d2"
+  },
+  {
+   "id": "cv17-ru-0027",
+   "root": "TestAudio",
+   "path": "cv17/ru/0027.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 72000,
+   "seconds": 4.5,
+   "wavFormat": "pcm16",
+   "sha256File": "4ea59d19a64bcbd662cab194b44820c6b25f651381e2d4106e3335a810389fd5",
+   "sha256Pcm": "6c6dc7214840c1f2019a35489d8b339fadce78ea3e723c6130c9d97f385eab2e"
+  },
+  {
+   "id": "cv17-ru-0028",
+   "root": "TestAudio",
+   "path": "cv17/ru/0028.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 109056,
+   "seconds": 6.816,
+   "wavFormat": "pcm16",
+   "sha256File": "849ba06dd4c56a0118140b08acd2275571e63438d42a29f12f3b1cd95a0b77e8",
+   "sha256Pcm": "6cbf36612e049ddd43cf86f6b40061c08a06c88f01d27731fe6a318977fa7a3b"
+  },
+  {
+   "id": "cv17-ru-0029",
+   "root": "TestAudio",
+   "path": "cv17/ru/0029.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 103680,
+   "seconds": 6.48,
+   "wavFormat": "pcm16",
+   "sha256File": "b18624ffa99048a1a5171f914ff4aa6bd86c7425a486c240afad0b85627fc3c0",
+   "sha256Pcm": "c22d7b3e0c54b32a6b195c7fb0079ce82a8d1f9d9e227a4b57193aa9f5ded7ab"
+  },
+  {
+   "id": "cv17-ru-0030",
+   "root": "TestAudio",
+   "path": "cv17/ru/0030.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 116736,
+   "seconds": 7.296,
+   "wavFormat": "pcm16",
+   "sha256File": "36e0ed9d7442c7419ffd488b4a0206630d9328b57c70cf15a6c498972fa75f76",
+   "sha256Pcm": "8f524f2bb9de6779aba8949eef496fafd591163f98e770e90911d36e3d22cb39"
+  },
+  {
+   "id": "cv17-ru-0031",
+   "root": "TestAudio",
+   "path": "cv17/ru/0031.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 60480,
+   "seconds": 3.78,
+   "wavFormat": "pcm16",
+   "sha256File": "a2be41b32ccd64c23026feca89acb8cafe9ac3067fc004b6a638d9ff3d77cdfa",
+   "sha256Pcm": "488eacc788e206fadf080df012377e9d52d0f056239118a5995a8a3a364afd78"
+  },
+  {
+   "id": "cv17-ru-0032",
+   "root": "TestAudio",
+   "path": "cv17/ru/0032.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 142848,
+   "seconds": 8.928,
+   "wavFormat": "pcm16",
+   "sha256File": "4d51dcc7901d9edfb2470ea73e93597b7b4113f7938cde2a5446f1372786e88c",
+   "sha256Pcm": "11d2a1262c0338d90356d6847cdbb3804459fb5126a1f0f60d09e062ea0289b7"
+  },
+  {
+   "id": "cv17-ru-0033",
+   "root": "TestAudio",
+   "path": "cv17/ru/0033.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 76608,
+   "seconds": 4.788,
+   "wavFormat": "pcm16",
+   "sha256File": "9e7f6dd3ec97383e5cfc64d5bd2eaa7118a16951cb96f50b8d0bc6ac2471673c",
+   "sha256Pcm": "77eba84c1c4738b8d769235f39bb1a00b83bd8589c658a476c93d19f3b703a37"
+  },
+  {
+   "id": "cv17-ru-0034",
+   "root": "TestAudio",
+   "path": "cv17/ru/0034.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 63360,
+   "seconds": 3.96,
+   "wavFormat": "pcm16",
+   "sha256File": "13f1c0ca566ff020a2e8853fa5fac0174974ca2102f7eed680884c730381423d",
+   "sha256Pcm": "fd94cd321541bef9bc8002034ea7d927dcc44da9dc2f70eac9d8ba8d53104d46"
+  },
+  {
+   "id": "cv17-ru-0035",
+   "root": "TestAudio",
+   "path": "cv17/ru/0035.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 86784,
+   "seconds": 5.424,
+   "wavFormat": "pcm16",
+   "sha256File": "1ddd37badf017a30027f355314eea3b20a394cdf325552948ee3ff58cf57f0e1",
+   "sha256Pcm": "ffa5c0f65c7a7f7f37c14c6462e76d97cd4f061a46d207a33e79ce92bdc93e91"
+  },
+  {
+   "id": "cv17-ru-0036",
+   "root": "TestAudio",
+   "path": "cv17/ru/0036.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 95616,
+   "seconds": 5.976,
+   "wavFormat": "pcm16",
+   "sha256File": "4b555cd665590e3dc5392eda17ceee9d473227f0475598bd3eba68bd8512f480",
+   "sha256Pcm": "2b5183fbc00f721b0cc80129a6cb1e374bcfd9b10f521bb795652aaf648af5bb"
+  },
+  {
+   "id": "cv17-ru-0037",
+   "root": "TestAudio",
+   "path": "cv17/ru/0037.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 44544,
+   "seconds": 2.784,
+   "wavFormat": "pcm16",
+   "sha256File": "d197f3f218203fa611ab663f9ddb2f5789e39a0e93c643cbde760873875d9058",
+   "sha256Pcm": "ac96315c010860e0da8a3d6aa4103c264b2db11372b3065939dba866a474d09c"
+  },
+  {
+   "id": "cv17-ru-0038",
+   "root": "TestAudio",
+   "path": "cv17/ru/0038.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 27648,
+   "seconds": 1.728,
+   "wavFormat": "pcm16",
+   "sha256File": "8214c5f177a5b71d355e39195afdf4cdeaee8199aa8b463d1fd27d82660b8ec2",
+   "sha256Pcm": "5b8bcb3645cc5a5d0e08c2082fa92c4e8393c533c28ba23663924bd88fc7a25e"
+  },
+  {
+   "id": "cv17-ru-0039",
+   "root": "TestAudio",
+   "path": "cv17/ru/0039.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 52416,
+   "seconds": 3.276,
+   "wavFormat": "pcm16",
+   "sha256File": "df5415a392532e336db72923a6e7119e291f779c8004643f4a69f68c55d64235",
+   "sha256Pcm": "74159aa7543d1f03730bd012eaf93d1ddf4a49c85b4fc1ce44597eb7f1d69641"
+  },
+  {
+   "id": "cv17-ru-0040",
+   "root": "TestAudio",
+   "path": "cv17/ru/0040.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17",
+   "sets": [
+    "primary"
+   ],
+   "samples": 66816,
+   "seconds": 4.176,
+   "wavFormat": "pcm16",
+   "sha256File": "cd9f3edc0f16b6708eb546a8c703e8b53fe59c8d643148c59fbd5f8bf00c1768",
+   "sha256Pcm": "04ee50674dd02531136a2a22ba6af1a5f74e105d573dea0cee491e63a01f31a7"
+  },
+  {
+   "id": "cv17-en-0086",
+   "root": "TestAudio",
+   "path": "cv17/en/0086.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17-quiet",
+   "sets": [
+    "primary"
+   ],
+   "samples": 135936,
+   "seconds": 8.496,
+   "wavFormat": "pcm16",
+   "sha256File": "d3e6858386aeed45913d2af44e005e82fa59f849d2264ef2e81bcc9fd7b76f48",
+   "sha256Pcm": "c9bb7d5e47ef3925b8a4a0b075830df453f626dd138ff94694fcd76679190e95",
+   "note": "peak -22.8 dBFS"
+  },
+  {
+   "id": "cv17-ru-0069",
+   "root": "TestAudio",
+   "path": "cv17/ru/0069.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "cv17-quiet",
+   "sets": [
+    "primary"
+   ],
+   "samples": 86784,
+   "seconds": 5.424,
+   "wavFormat": "pcm16",
+   "sha256File": "57e625cc72d6b88425c336ac982d8e7e9248d9b73cc2804e5cf6770864d3a4ea",
+   "sha256Pcm": "37f0e15192cebcb79ec2e13479d41cacbaf75da72ff34d960247a5ea2699ec5b",
+   "note": "peak -22.5 dBFS"
+  },
+  {
+   "id": "cv17hard-en-0051",
+   "root": "TestAudio",
+   "path": "cv17-hard/en/0051.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17-hard",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 81408,
+   "seconds": 5.088,
+   "wavFormat": "pcm16",
+   "sha256File": "d94335dae5e2ba9f9a3e791aba33e6bd1858437aad8108f018ffc17fa00e82a5",
+   "sha256Pcm": "6855ca47115ce082a82d57a922e8a41ab67f40c276f7959ad475938cf6a3e47a",
+   "note": "peak -26.7 dBFS; identical to cv17/en/0051"
+  },
+  {
+   "id": "cv17long-en-0001",
+   "root": "TestAudio",
+   "path": "cv17-long/en/long-0001.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17-long",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 1581696,
+   "seconds": 98.856,
+   "wavFormat": "pcm16",
+   "sha256File": "1badc0ff6f63ed83dad4503f3b9b726348df56b787091a5bb1de8fe27a4bbc31",
+   "sha256Pcm": "a505381b07fe0ea885ffcd765af4b0cc3ad954749f96014c5f53c2397d96b769",
+   "note": "98.9 s, 24 CV sentences back to back (peak -1.2 dBFS)"
+  },
+  {
+   "id": "cv17longnorm-en-0001",
+   "root": "TestAudio",
+   "path": "cv17-long-norm/en/long-0001.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17-long",
+   "sets": [
+    "primary"
+   ],
+   "samples": 1581696,
+   "seconds": 98.856,
+   "wavFormat": "pcm16",
+   "sha256File": "586a579e09a3f10f87cffa842ab9c3a7cccd3c12cdd6ae9879a8176256f7731b",
+   "sha256Pcm": "51a6a938e51c6bc476d92123f02b72412093205a1e7b190ef203504edc3fed6f",
+   "note": "same as cv17-long, peak-normalized to 0 dBFS"
+  },
+  {
+   "id": "cv17short-en-0001",
+   "root": "TestAudio",
+   "path": "cv17-short/en/short-0001.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "cv17-short",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 263360,
+   "seconds": 16.46,
+   "wavFormat": "pcm16",
+   "sha256File": "3b23a075da04a86e1906af4bac9065eb29fc091042d33300a34490f9501ae183",
+   "sha256Pcm": "212634fe0ff9b846995ba799f6dbe552f3e9472b3c688e98808b816cd9722986",
+   "note": "16.5 s"
+  },
+  {
+   "id": "tts-long-en-0001",
+   "root": "TestAudio",
+   "path": "tts-long/en/tts-0001.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "tts",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 932720,
+   "seconds": 58.295,
+   "wavFormat": "pcm16",
+   "sha256File": "0aeba81401066b9df3a54b70e9cfcb86c30ce1771cb8853036d4d865c2ad8017",
+   "sha256Pcm": "dd512b818b222022b099feb28ab496c51c5d7b2e3c88fc9bef42a3fe2c4fa776",
+   "note": "58.3 s English TTS"
+  },
+  {
+   "id": "tts-ru-ru-0001",
+   "root": "TestAudio",
+   "path": "tts-ru/ru/ru-0001.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "tts",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 278400,
+   "seconds": 17.4,
+   "wavFormat": "pcm16",
+   "sha256File": "236ed296639f4ab70f8a4c6342fe5ed56831ed834b136724459c9a1dc5996165",
+   "sha256Pcm": "19872597c53576e64099c608ffa19378e9835361db757f28eb01e863544ecf61",
+   "note": "17.4 s Russian TTS (pauses)"
+  },
+  {
+   "id": "tts-ru-ru-0002",
+   "root": "TestAudio",
+   "path": "tts-ru/ru/ru-0002.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "tts",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 134160,
+   "seconds": 8.385,
+   "wavFormat": "pcm16",
+   "sha256File": "1c874120564a74230e2797583d480c306d4b2a811a57269f8d4dcfd856281683",
+   "sha256Pcm": "b08162e6bee975e2a8dab3c2492246b7831cc33a240868d0f57c79a3d38ced63",
+   "note": "8.4 s Russian TTS"
+  },
+  {
+   "id": "sample-0-mp3",
+   "root": "golden",
+   "path": "sample-0.f32.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "mp3",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 161786,
+   "seconds": 10.112,
+   "wavFormat": "float32",
+   "sha256File": null,
+   "sha256Pcm": "6873610c7f9f5a8950471b2c6a10316fa57e5ccc6884f0e8dd71f44da5eda951",
+   "note": "Test-Audio/sample-0.mp3 decoded by SpeechLib.Audio.AudioUtils.LoadFile(path,16000) into float32 (IEEE-float wav); Media Foundation adds ~70 ms of decoder delay vs libsndfile (161786 samples)"
+  },
+  {
+   "id": "truth-en-0001",
+   "root": "golden",
+   "path": "truth/en/0001.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "truth-tts",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 88240,
+   "seconds": 5.515,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "635121aebee7b6bf7ef22db9c0111490aa71e7d668a2c117fc0e1b90209e7b95",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-en-0002",
+   "root": "golden",
+   "path": "truth/en/0002.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "truth-tts",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 51040,
+   "seconds": 3.19,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "9d92eaabd00c16292f8a0548dc0fb7c4b23d3b6c7dbfdce23a81c1090092c67a",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-en-0003",
+   "root": "golden",
+   "path": "truth/en/0003.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "truth-tts",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 46480,
+   "seconds": 2.905,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "3e47e2cdea2dec86da1a8cef4946ba0547fff83a5c4c42ca459de4617e25ffde",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-en-0004",
+   "root": "golden",
+   "path": "truth/en/0004.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 88720,
+   "seconds": 5.545,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "ec0f533fd321b64fae06343ffd2fb6559b1164b6235b7c0f27f49594a0efcfa7",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-en-0005",
+   "root": "golden",
+   "path": "truth/en/0005.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 72160,
+   "seconds": 4.51,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "48c4f7d5776aa86b94b67a593ec9264e211c4d2f350b8ba0893491819518e3b0",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-en-0006",
+   "root": "golden",
+   "path": "truth/en/0006.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 70880,
+   "seconds": 4.43,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "d6da9f7aa7117967dd61d33614896ac4bab5a60670573ee4e11b5b63aafc0946",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-en-0007",
+   "root": "golden",
+   "path": "truth/en/0007.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 48480,
+   "seconds": 3.03,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "1592cc5401afd19b53216b8d8658ecc7cbe46b609ec312316a00c902ac962a9e",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-en-0008",
+   "root": "golden",
+   "path": "truth/en/0008.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 27520,
+   "seconds": 1.72,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "16d133ba82f34e9e0b18aa2ceb1c1e482895c50d2d19b16cfcadecd26aeaab28",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-en-0009",
+   "root": "golden",
+   "path": "truth/en/0009.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 46160,
+   "seconds": 2.885,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "b0716a23893c194c81a4ab3a1787d76bc48ce88d1c6118990b2bcd426e90502a",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-en-0010",
+   "root": "golden",
+   "path": "truth/en/0010.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 46000,
+   "seconds": 2.875,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "9188b76bf57f4291c9f8b84f83cab157f0803e06d4b4d4f614571f6730a20b03",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-ru-0001",
+   "root": "golden",
+   "path": "truth/ru/0001.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "truth-tts",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 118032,
+   "seconds": 7.377,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "6ec179d3155b0323613cf2bd2b41a0dc9cbab5b6dc74a68f002b135fcaa349d2",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-ru-0002",
+   "root": "golden",
+   "path": "truth/ru/0002.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "truth-tts",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 132928,
+   "seconds": 8.308,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "d430634dc1dc00e546ec4e5b1d4f3224790940953576d39be2dc53b8399db24e",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-ru-0003",
+   "root": "golden",
+   "path": "truth/ru/0003.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "truth-tts",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 160416,
+   "seconds": 10.026,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "cf7fa997e07d1873815ca99027f3f7232bf7523e19c4db2325a5d46d87830175",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-ru-0004",
+   "root": "golden",
+   "path": "truth/ru/0004.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 101152,
+   "seconds": 6.322,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "faeb57f9db8f5b9c12c12faeda217f738c8748b23449aee7f474b2c75c61d768",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-ru-0005",
+   "root": "golden",
+   "path": "truth/ru/0005.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 143440,
+   "seconds": 8.965,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "b4637ac17e3c751e185778f79d0e8cc9997856c3406472469e5f3b0bd7b384a8",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-ru-0006",
+   "root": "golden",
+   "path": "truth/ru/0006.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 71056,
+   "seconds": 4.441,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "b6b59c6065c34861e83ca8c96e8cc041b259123e2f20de367f91291a0514e1eb",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-ru-0007",
+   "root": "golden",
+   "path": "truth/ru/0007.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 149440,
+   "seconds": 9.34,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "7977d5ba4bc84ebc9f74c6bd8370f001a40cfb637005c9cd2c1d71d4e0e3319f",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-ru-0008",
+   "root": "golden",
+   "path": "truth/ru/0008.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 121680,
+   "seconds": 7.605,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "a8afcdc811cd1754a2e5ab824dac6e0fb366a6ffaf074cd8d5f25e3c1c7b67c3",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-ru-0009",
+   "root": "golden",
+   "path": "truth/ru/0009.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 62800,
+   "seconds": 3.925,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "8e5b71bfd5e69631c6f3ddd30fbef90ece34f46384c2216bc9e5ca6552a1e343",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "truth-ru-0010",
+   "root": "golden",
+   "path": "truth/ru/0010.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "truth-tts",
+   "sets": [
+    "primary"
+   ],
+   "samples": 133520,
+   "seconds": 8.345,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "73c2de5c7b8ce7babf058bbf3694bdc20c72a0572074d86f9d7f9649c2fa018f",
+   "note": "SAPI TTS fixture of the word-timing study (not in the repo)"
+  },
+  {
+   "id": "gen-vad-a4-exact",
+   "root": "golden",
+   "path": "gen-vad-a4-exact.f32.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 415360,
+   "seconds": 25.96,
+   "wavFormat": "float32",
+   "sha256File": null,
+   "sha256Pcm": "827e2f0a0a4125ba11cf5a211bccfd7131044cc9499a6f86a3902a81daa02955",
+   "note": "tools/gen_a4_exact.cs: A4 exp1 input bit-for-bit (System.Random(7) + Box-Muller sigma 0.002 float32 room tone): lead 1 s, cv17/en/0001, 10 s, cv17/en/0005, 2 s tail"
+  },
+  {
+   "id": "gen-concat-en-gaps",
+   "root": "golden",
+   "path": "gen-concat-en-gaps.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 1350144,
+   "seconds": 84.384,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "3bc3d9e70a151f220139babdfcbc3be1679c8e395be5c5c75a388ce3ce91d21e",
+   "note": "seed 101: 1 s room tone, cv17/en 0001..0012 in order separated by room tone gaps of 1,2,3,1,2,3,1,2,3,1,2 s, 2 s room tone tail"
+  },
+  {
+   "id": "gen-concat-ru-gaps",
+   "root": "golden",
+   "path": "gen-concat-ru-gaps.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 1486464,
+   "seconds": 92.904,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "392c129aac0bf2db75d3b8c8de0085cce72eb6a27a58b47d91f5d8c9c5457f0c",
+   "note": "seed 102: 1 s room tone, cv17/ru 0001..0012 in order separated by room tone gaps of 1,2,3,1,2,3,1,2,3,1,2 s, 2 s room tone tail"
+  },
+  {
+   "id": "gen-concat-mix-auto",
+   "root": "golden",
+   "path": "gen-concat-mix-auto.wav",
+   "lang": "101",
+   "langName": "auto",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 1286400,
+   "seconds": 80.4,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "a394776d28c6a9d2c4abd1500803d7e52aa650b41e2debb750c46a7e2f5ceaf1",
+   "note": "seed 103: 1 s room tone, cv17 en0001 ru0001 en0002 ru0002 ... en0005 ru0005 separated by room tone gaps of 1,2,3,1,2,3,1,2,3 s, 2 s tail (use lang_id 101 = auto)"
+  },
+  {
+   "id": "gen-short-0p3s-en",
+   "root": "golden",
+   "path": "gen-short-0p3s-en.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 4800,
+   "seconds": 0.3,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "b4ae2f4708a13f7aeb54b2e682c353ab154e4d0017ef2300c6a11be3d9af391e",
+   "note": "cv17/en/0001 samples [11200, 16000) = the highest-energy 0.3 s window (shorter than one chunk of either variant)"
+  },
+  {
+   "id": "gen-exact-8960-en",
+   "root": "golden",
+   "path": "gen-exact-8960-en.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 8960,
+   "seconds": 0.56,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "4d3a7405595f73aed9c14bc6f55a601dc226b818ca1a60adec872f15120c126a",
+   "note": "cv17/en/0001 first 8960 samples = exactly one c056 chunk, half a c112 chunk"
+  },
+  {
+   "id": "gen-exact-17920-en",
+   "root": "golden",
+   "path": "gen-exact-17920-en.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 17920,
+   "seconds": 1.12,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "10e18d899d02e5d91c1897ba860329aa5b6ea18c0633af5b8f92fa63057db976",
+   "note": "cv17/en/0002 first 17920 samples = exactly one c112 chunk (two c056 chunks)"
+  },
+  {
+   "id": "gen-exact-53760-en",
+   "root": "golden",
+   "path": "gen-exact-53760-en.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 53760,
+   "seconds": 3.36,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "4fd7b473e3dc224ab1bd9cece5899c0234b087852849d0a102ccca45f6e348aa",
+   "note": "cv17/en/0001 first 53760 samples = 6 c056 chunks = 3 c112 chunks exactly (no flush chunk)"
+  },
+  {
+   "id": "gen-exact-53761-en",
+   "root": "golden",
+   "path": "gen-exact-53761-en.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 53761,
+   "seconds": 3.36,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "76547ee5003877d89c9dbf77cb1f91c5daa5fbf4d6a52f1c8de4450f97dbbc24",
+   "note": "cv17/en/0001 first 53761 samples = the above plus ONE sample (flush pads 8959 zeros)"
+  },
+  {
+   "id": "gen-exact-53760-ru",
+   "root": "golden",
+   "path": "gen-exact-53760-ru.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 53760,
+   "seconds": 3.36,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "459605ebbc17625cf2ae794fd6868feece16e5f3ba8f56e9ede38f440ea44714",
+   "note": "cv17/ru/0001 first 53760 samples = 6 c056 chunks = 3 c112 chunks exactly"
+  },
+  {
+   "id": "gen-exact-53759-en",
+   "root": "golden",
+   "path": "gen-exact-53759-en.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 53759,
+   "seconds": 3.36,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "6138d6a16d6b746ab90921187a7dc1b79af84ed0f198c57f95605139c72dcb7e",
+   "note": "cv17/en/0001 first 53759 samples = one sample short of 6 c056 chunks (flush pads 1 zero)"
+  },
+  {
+   "id": "gen-silence-room-5s",
+   "root": "golden",
+   "path": "gen-silence-room-5s.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112",
+    "fp32"
+   ],
+   "samples": 80000,
+   "seconds": 5.0,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "1d6c7b79d64d91e1bc7ce83608170d5f42b05551b1206a7c4fddbb8629198b48",
+   "note": "seed 201: 5 s of room tone only (white noise sigma 66 LSB = -54 dBFS rms)"
+  },
+  {
+   "id": "gen-silence-zeros-2s",
+   "root": "golden",
+   "path": "gen-silence-zeros-2s.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 32000,
+   "seconds": 2.0,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+   "note": "2 s of exact digital zeros (log(0 + eps) path)"
+  },
+  {
+   "id": "gen-quiet-30dB-en0001",
+   "root": "golden",
+   "path": "gen-quiet-30dB-en0001.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 100800,
+   "seconds": 6.3,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "3d56a3ff6453320ba4271c1f5d420a6ec36f0eb99dd3484680b5dacea82f4456",
+   "note": "cv17/en/0001 attenuated by 1/32 (-30.1 dB), rounded half away from zero"
+  },
+  {
+   "id": "gen-quiet-30dB-ru0001",
+   "root": "golden",
+   "path": "gen-quiet-30dB-ru0001.wav",
+   "lang": "11",
+   "langName": "ru",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 92736,
+   "seconds": 5.796,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "400f4e4d93ebae694fc0a6838ffe0ec403f1196ac7960f8dd686e97b64cafc6a",
+   "note": "cv17/ru/0001 attenuated by 1/32 (-30.1 dB), rounded half away from zero"
+  },
+  {
+   "id": "gen-vad-a4-10s",
+   "root": "golden",
+   "path": "gen-vad-a4-10s.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 415360,
+   "seconds": 25.96,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "8c96c6d8b02603025bfbe041c9a33995177b85c7919d2a806c41fa4282f57736",
+   "note": "seed 301: 1 s room tone, cv17/en/0001, 10 s room tone, cv17/en/0005, 2 s room tone (A4 exp1 recipe; native VAD drops the 6th..13th silent chunk on c056)"
+  },
+  {
+   "id": "gen-vad-pause-2s",
+   "root": "golden",
+   "path": "gen-vad-pause-2s.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary",
+    "c112"
+   ],
+   "samples": 287360,
+   "seconds": 17.96,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "883b8cdd98b628ba1f6dcb45c794438cc62cc8a6251a6ae5b9753876816af187",
+   "note": "seed 302: 1 s room tone, cv17/en/0001, 2 s room tone, cv17/en/0005, 2 s room tone (no chunk dropped expected: needs 6 silent c056 chunks = 3.36 s)"
+  },
+  {
+   "id": "gen-vad-gap-4chunks",
+   "root": "golden",
+   "path": "gen-vad-gap-4chunks.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary"
+   ],
+   "samples": 299840,
+   "seconds": 18.74,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "0260b3a059686fc7721e7d57558ca63bb9ea149fd1b4046e48e264a0f9caf320",
+   "note": "seed 314: 1 s room tone + cv17/en/0001 padded with room tone to a multiple of 17920 samples, then exactly 4 x 8960 samples of room tone (chunk aligned for c056 and, when even, for c112), cv17/en/0005, 2 s room tone"
+  },
+  {
+   "id": "gen-vad-gap-5chunks",
+   "root": "golden",
+   "path": "gen-vad-gap-5chunks.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary"
+   ],
+   "samples": 308800,
+   "seconds": 19.3,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "add8691dfeb730a3d888b39b4f8caf117bfd8321ce20e71d2c5bbe5728a22015",
+   "note": "seed 315: 1 s room tone + cv17/en/0001 padded with room tone to a multiple of 17920 samples, then exactly 5 x 8960 samples of room tone (chunk aligned for c056 and, when even, for c112), cv17/en/0005, 2 s room tone"
+  },
+  {
+   "id": "gen-vad-gap-6chunks",
+   "root": "golden",
+   "path": "gen-vad-gap-6chunks.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary"
+   ],
+   "samples": 317760,
+   "seconds": 19.86,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "1e9455d1c973625a797b112a747d5d4c7ae0ac42d406a34893a1d3fe9f01537d",
+   "note": "seed 316: 1 s room tone + cv17/en/0001 padded with room tone to a multiple of 17920 samples, then exactly 6 x 8960 samples of room tone (chunk aligned for c056 and, when even, for c112), cv17/en/0005, 2 s room tone"
+  },
+  {
+   "id": "gen-vad-gap-7chunks",
+   "root": "golden",
+   "path": "gen-vad-gap-7chunks.wav",
+   "lang": "0",
+   "langName": "en",
+   "kind": "generated",
+   "sets": [
+    "primary"
+   ],
+   "samples": 326720,
+   "seconds": 20.42,
+   "wavFormat": "pcm16",
+   "sha256File": null,
+   "sha256Pcm": "4b0a5a159b0d3bd5095810fc7ee129e2f8e830de06a7ee692375204f53e9210e",
+   "note": "seed 317: 1 s room tone + cv17/en/0001 padded with room tone to a multiple of 17920 samples, then exactly 7 x 8960 samples of room tone (chunk aligned for c056 and, when even, for c112), cv17/en/0005, 2 s room tone"
+  }
+ ]
+}

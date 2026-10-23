@@ -1,0 +1,215 @@
+{
+  "schema": 1,
+  "variant": "int4-c112",
+  "clip": "cv17-en-0001",
+  "chunkSamples": 17920,
+  "langId": "0",
+  "threads": 4,
+  "scenarios": [
+    {
+      "name": "5 chunks in one call, then 7 one-sample calls, then 2 flushes",
+      "steps": [
+        {
+          "call": "process",
+          "samples": 89600,
+          "returnedChunk": true,
+          "ids": []
+        },
+        {
+          "call": "process-1-sample",
+          "samples": 1,
+          "returnedChunk": true,
+          "ids": [
+            2,
+            228,
+            46,
+            26,
+            543,
+            26,
+            416,
+            128,
+            1280,
+            40,
+            3092,
+            59
+          ]
+        },
+        {
+          "call": "process-1-sample",
+          "samples": 1,
+          "returnedChunk": true,
+          "ids": [
+            3117,
+            2816,
+            1639,
+            2299,
+            40,
+            2812
+          ]
+        },
+        {
+          "call": "process-1-sample",
+          "samples": 1,
+          "returnedChunk": true,
+          "ids": [
+            9834,
+            257,
+            130,
+            2970,
+            1708,
+            2,
+            2991,
+            130
+          ]
+        },
+        {
+          "call": "process-1-sample",
+          "samples": 1,
+          "returnedChunk": true,
+          "ids": [
+            141,
+            466,
+            40,
+            2856,
+            150,
+            425,
+            47
+          ]
+        },
+        {
+          "call": "process-1-sample",
+          "samples": 1,
+          "returnedChunk": false,
+          "ids": []
+        },
+        {
+          "call": "process-1-sample",
+          "samples": 1,
+          "returnedChunk": false,
+          "ids": []
+        },
+        {
+          "call": "process-1-sample",
+          "samples": 1,
+          "returnedChunk": false,
+          "ids": []
+        },
+        {
+          "call": "flush",
+          "samples": 0,
+          "returnedChunk": true,
+          "ids": [
+            565
+          ]
+        },
+        {
+          "call": "flush",
+          "samples": 0,
+          "returnedChunk": false,
+          "ids": []
+        }
+      ]
+    },
+    {
+      "name": "3 chunks in one call, then 3 flushes (excess beyond one chunk is truncated)",
+      "steps": [
+        {
+          "call": "process",
+          "samples": 53760,
+          "returnedChunk": true,
+          "ids": []
+        },
+        {
+          "call": "flush",
+          "samples": 0,
+          "returnedChunk": true,
+          "ids": [
+            2,
+            228,
+            46,
+            26,
+            543,
+            26,
+            416,
+            128,
+            1280,
+            40,
+            3092,
+            59
+          ]
+        },
+        {
+          "call": "flush",
+          "samples": 0,
+          "returnedChunk": false,
+          "ids": []
+        },
+        {
+          "call": "flush",
+          "samples": 0,
+          "returnedChunk": false,
+          "ids": []
+        }
+      ]
+    },
+    {
+      "name": "whole clip in ONE call, then 2 flushes",
+      "steps": [
+        {
+          "call": "process",
+          "samples": 100800,
+          "returnedChunk": true,
+          "ids": []
+        },
+        {
+          "call": "flush",
+          "samples": 0,
+          "returnedChunk": true,
+          "ids": [
+            2,
+            228,
+            46,
+            26,
+            543,
+            26,
+            416,
+            128,
+            1280,
+            40,
+            3092,
+            59
+          ]
+        },
+        {
+          "call": "flush",
+          "samples": 0,
+          "returnedChunk": false,
+          "ids": []
+        }
+      ]
+    },
+    {
+      "name": "chunk + 1 sample in one call, then 2 flushes",
+      "steps": [
+        {
+          "call": "process",
+          "samples": 17921,
+          "returnedChunk": true,
+          "ids": []
+        },
+        {
+          "call": "flush",
+          "samples": 0,
+          "returnedChunk": true,
+          "ids": []
+        },
+        {
+          "call": "flush",
+          "samples": 0,
+          "returnedChunk": false,
+          "ids": []
+        }
+      ]
+    }
+  ]
+}
