@@ -6,5 +6,8 @@
     See https://aka.platform.uno/using-uno-sdk#implicit-packages for more information regarding the Implicit Packages.
   -->
   <ItemGroup>
+    <!-- Only referenced by VoiceType.Uno for RuntimeIdentifier osx-arm64 (macOS publish). Keep the version in step with
+         the LiteRtLmSharp packages of libraries/SpeechLib/src/SpeechLib.LiteRT.Native. -->
+    <PackageVersion Include="LiteRtLmSharp.runtime.osx-arm64" Version="1.4.0" />
   </ItemGroup>
 </Project>

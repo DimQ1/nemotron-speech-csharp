@@ -42,6 +42,10 @@
       Toolkit;
     </UnoFeatures>
 
+    <!-- Packaging/ holds installer inputs (Linux .deb files, the macOS bundle sources): the Uno SDK would otherwise copy
+         every *.png in the project (Packaging/macOS/AppIcon.png) into the app output of every head. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Packaging/**</DefaultItemExcludes>
+
     <!-- Match repository conventions -->
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -109,8 +113,9 @@
     <!-- macOS (Apple silicon) publish: the LiteRT-LM native runtime for the in-process Gemma engine. Referenced here and
          only for this RID, so other builds do not need the package in the folder feed; the macOS CI job fetches it with
          tools/scripts/fetch-litertlmsharp-feed.ps1 -Rid osx-arm64. Audio capture on macOS is the voicetype-audio helper
-         that build-macos-app.sh compiles into VoiceType.app (Packaging/macOS). -->
-    <PackageReference Include="LiteRtLmSharp.runtime.osx-arm64" Version="1.4.0" />
+         that build-macos-app.sh compiles into VoiceType.app (Packaging/macOS). The version is in ..\Directory.Packages.props
+         (central package management of the Uno SDK). -->
+    <PackageReference Include="LiteRtLmSharp.runtime.osx-arm64" />
   </ItemGroup>
 
 </Project>
