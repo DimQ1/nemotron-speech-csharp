@@ -1,0 +1,19 @@
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/E2E_NemotronBatchedJointTests.cs
+  s_ac6e0785fbdb7d::t_2b785513f299ae 1-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "fc98b69b68cd50b73e9b6ecaeb85b2d06a9c5b24",
+  "prompts": {},
+  "sessions": {
+    "s_ac6e0785fbdb7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a252daefe3eccd856",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
