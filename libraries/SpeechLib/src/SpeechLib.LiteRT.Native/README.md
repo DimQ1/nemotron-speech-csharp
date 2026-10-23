@@ -45,7 +45,10 @@ Design numbers are from `docs/research/litert/engine-improvements.md`; the real-
 under *Measured* below.
 
 - **Lazy engine.** The model loads at the first request (`MaxNumTokens` 4096, about 3.2 GB, CPU, path from
-  `GemmaEngineHostOptions.ModelPath`), and is unloaded after `IdleUnloadAfter` (default 10 min) and on dispose;
+  `GemmaEngineHostOptions.ModelPath`), and is unloaded when it is not needed: `BackgroundIdleUnloadAfter` (default 15 s) after
+  the last request was Background work (the title or summary of a saved recording: nobody waits for the model), otherwise
+  `IdleUnloadAfter` (default 2 min, after live translation or chat), and on dispose. Measured in the app: the title job after a
+  recording took the process from about 670 to 3,200 MB commit; the old 10 minute timeout kept it there for the 10 minutes;
   the next request reloads it (2.4-2.9 s measured with a warm file cache, about 6 s cold). `IsModelInstalled`,
   `ContextTokens`, `Status` / `StatusChanged` (state, running priority, queue length, a "waiting for a cancel point"
   detail while a higher class waits for a prefill) are available at any time without blocking.

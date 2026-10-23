@@ -602,6 +602,74 @@ public sealed class Unit_GemmaEngineHostTests
         Assert.Equal(2, engines.Count);
     }
 
+    private static GemmaEngineHost NewIdleHost(FakeGemmaEngine engine, TimeSpan? idle, TimeSpan? background) =>
+        new(new GemmaEngineHostOptions { ModelPath = "fake", IdleUnloadAfter = idle, BackgroundIdleUnloadAfter = background }, () => engine);
+
+    [Fact]
+    public async Task IdleUnload_AfterBackgroundWork_ShouldUseTheShorterBackgroundTimeout()
+    {
+        // The title of a saved recording was the last thing asked: nobody waits for the model, so it goes soon.
+        var engine = new FakeGemmaEngine();
+        await using var host = NewIdleHost(engine, idle: TimeSpan.FromMinutes(5), background: TimeSpan.FromMilliseconds(150));
+
+        await host.GenerateAsync(Req(LlmPriority.Background, "title"));
+        Assert.True(host.IsEngineLoaded);
+
+        await WaitUntil(() => engine.Disposed);
+        Assert.False(host.IsEngineLoaded);
+    }
+
+    [Theory]
+    [InlineData(LlmPriority.Live)]
+    [InlineData(LlmPriority.Interactive)]
+    public async Task IdleUnload_AfterLiveOrChatWork_ShouldKeepTheEngineForTheLongerTimeout(LlmPriority priority)
+    {
+        var engine = new FakeGemmaEngine();
+        await using var host = NewIdleHost(engine, idle: TimeSpan.FromMinutes(5), background: TimeSpan.FromMilliseconds(100));
+
+        await host.GenerateAsync(Req(priority, "hi"));
+        await Task.Delay(700);
+
+        Assert.True(host.IsEngineLoaded);
+        Assert.False(engine.Disposed);
+    }
+
+    [Fact]
+    public async Task IdleUnload_ABackgroundJobBeforeAChatTurn_ShouldNotShortenTheChatsTimeout()
+    {
+        var engine = new FakeGemmaEngine();
+        await using var host = NewIdleHost(engine, idle: TimeSpan.FromMinutes(5), background: TimeSpan.FromMilliseconds(100));
+
+        await host.GenerateAsync(Req(LlmPriority.Background, "title"));
+        await host.GenerateAsync(Req(LlmPriority.Interactive, "question", "c1"));   // the last request decides
+        await Task.Delay(700);
+
+        Assert.True(host.IsEngineLoaded);
+    }
+
+    [Fact]
+    public async Task IdleUnload_WhenNeverUnloadIsSet_ShouldIgnoreTheBackgroundTimeout()
+    {
+        var engine = new FakeGemmaEngine();
+        await using var host = NewIdleHost(engine, idle: null, background: TimeSpan.FromMilliseconds(100));
+
+        await host.GenerateAsync(Req(LlmPriority.Background, "title"));
+        await Task.Delay(700);
+
+        Assert.True(host.IsEngineLoaded);
+    }
+
+    [Fact]
+    public async Task IdleUnload_ABackgroundTimeoutLongerThanTheGeneralOne_ShouldNotExtendIt()
+    {
+        var engine = new FakeGemmaEngine();
+        await using var host = NewIdleHost(engine, idle: TimeSpan.FromMilliseconds(150), background: TimeSpan.FromMinutes(5));
+
+        await host.GenerateAsync(Req(LlmPriority.Background, "title"));
+
+        await WaitUntil(() => engine.Disposed);
+    }
+
     [Fact]
     public async Task Dispose_ShouldFailPendingRequestsAndReleaseEverything()
     {

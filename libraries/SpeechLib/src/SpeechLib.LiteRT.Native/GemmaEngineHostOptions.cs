@@ -28,10 +28,20 @@ public sealed class GemmaEngineHostOptions
     public LiteRTLmLogLevel LogLevel { get; init; } = LiteRTLmLogLevel.Warning;
 
     /// <summary>
-    /// The engine (about 3 GB) is unloaded when nothing was requested for this long, and reloads (about 0.2 s with a
-    /// warm file cache) at the next request. Null or zero keeps it loaded until the host is disposed.
+    /// The engine (about 3 GB) is unloaded when nothing was requested for this long, and reloads (2.4-2.9 s with a
+    /// warm file cache, about 6 s cold) at the next request. Null or zero keeps it loaded until the host is disposed (and then
+    /// <see cref="BackgroundIdleUnloadAfter"/> does not apply either). Applies after live translation and chat; after
+    /// background work the shorter <see cref="BackgroundIdleUnloadAfter"/> does.
     /// </summary>
-    public TimeSpan? IdleUnloadAfter { get; init; } = TimeSpan.FromMinutes(10);
+    public TimeSpan? IdleUnloadAfter { get; init; } = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// How long the engine stays loaded after the last request was <see cref="SpeechLib.Llm.LlmPriority.Background"/> work (the
+    /// title and summary of a saved recording): nobody is waiting for the model then, so it is released soon, but not at
+    /// once: the next job of a queue that is being worked off follows within seconds. Never longer than
+    /// <see cref="IdleUnloadAfter"/>; null or zero uses that value.
+    /// </summary>
+    public TimeSpan? BackgroundIdleUnloadAfter { get; init; } = TimeSpan.FromSeconds(15);
 
     /// <summary>Live stateful chat conversations kept on the engine (least recently used are dropped).</summary>
     public int MaxLiveConversations { get; init; } = 3;
@@ -65,6 +75,7 @@ public sealed class GemmaEngineHostOptions
         Cache = Cache,
         LogLevel = LogLevel,
         IdleUnloadAfter = IdleUnloadAfter,
+        BackgroundIdleUnloadAfter = BackgroundIdleUnloadAfter,
         MaxLiveConversations = MaxLiveConversations,
         DefaultMaxOutputTokens = DefaultMaxOutputTokens,
         LiveNoRepeatNgramSize = LiveNoRepeatNgramSize,

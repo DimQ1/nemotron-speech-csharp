@@ -54,6 +54,7 @@ public sealed class GemmaEngineHost : ILlmHost, ILlmHostConfiguration
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly Task _loop;
     private long _lastActivityTimestamp = Stopwatch.GetTimestamp();
+    private volatile bool _lastActivityWasBackground;
     private volatile bool _samplerDisabled;
     private int _pendingReconfigures;
 
@@ -470,7 +471,7 @@ public sealed class GemmaEngineHost : ILlmHost, ILlmHostConfiguration
     private async Task<bool> WaitForWorkAsync()
     {
         TimeSpan? wait = null;
-        if (_options.IdleUnloadAfter is { } idle && idle > TimeSpan.Zero && IsEngineLoaded)
+        if (CurrentIdleTimeout() is { } idle && IsEngineLoaded)
         {
             var remaining = idle - Stopwatch.GetElapsedTime(Volatile.Read(ref _lastActivityTimestamp));
             if (remaining <= TimeSpan.Zero)
@@ -497,7 +498,8 @@ public sealed class GemmaEngineHost : ILlmHost, ILlmHostConfiguration
 
             // Re-check: activity may have happened right at the deadline.
             return IsEngineLoaded
-                   && Stopwatch.GetElapsedTime(Volatile.Read(ref _lastActivityTimestamp)) < _options.IdleUnloadAfter!.Value;
+                   && CurrentIdleTimeout() is { } current
+                   && Stopwatch.GetElapsedTime(Volatile.Read(ref _lastActivityTimestamp)) < current;
         }
         catch (OperationCanceledException)
         {
@@ -519,7 +521,26 @@ public sealed class GemmaEngineHost : ILlmHost, ILlmHostConfiguration
 
     private void Wake() => _wake.Writer.TryWrite(0);
 
-    private void Touch() => Volatile.Write(ref _lastActivityTimestamp, Stopwatch.GetTimestamp());
+    /// <param name="finished">The request that has just finished; null for work that is not a model request (reconfigure, unload).</param>
+    private void Touch(LlmPriority? finished)
+    {
+        _lastActivityWasBackground = finished == LlmPriority.Background;
+        Volatile.Write(ref _lastActivityTimestamp, Stopwatch.GetTimestamp());
+    }
+
+    /// <summary>
+    /// How long the loaded engine may stay idle: <see cref="GemmaEngineHostOptions.IdleUnloadAfter"/>, or the shorter
+    /// <see cref="GemmaEngineHostOptions.BackgroundIdleUnloadAfter"/> when the last request was background work (nobody waits
+    /// for the model then). Null: never unload.
+    /// </summary>
+    private TimeSpan? CurrentIdleTimeout()
+    {
+        if (_options.IdleUnloadAfter is not { } idle || idle <= TimeSpan.Zero)
+            return null;
+        if (_lastActivityWasBackground && _options.BackgroundIdleUnloadAfter is { } background && background > TimeSpan.Zero && background < idle)
+            return background;
+        return idle;
+    }
 
     private async Task ExecuteAsync(Job job)
     {
@@ -571,7 +592,7 @@ public sealed class GemmaEngineHost : ILlmHost, ILlmHostConfiguration
 
             preempt.Dispose();
             DrainReleases();
-            Touch();
+            Touch(job.Request is null ? null : job.Priority);
             PublishStatus();
         }
     }
