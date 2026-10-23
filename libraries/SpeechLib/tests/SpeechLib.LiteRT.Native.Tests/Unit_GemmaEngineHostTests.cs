@@ -645,7 +645,15 @@ public sealed class Unit_GemmaEngineHostTests
     [Fact]
     public async Task MixedLoad_ShouldNeverOverlapNativeOperationsAndCompleteEverything()
     {
-        var engine = new FakeGemmaEngine { ChunkDelay = TimeSpan.FromMilliseconds(1), ReplyFor = _ => FakeReply.Text("a", "b", "c", "d") };
+        // An Interactive request that a higher class preempts is resumed on a fresh conversation, which continues the
+        // answer (like the real model asked to "continue"); a fake that restarted it would give "aabcd" whenever a
+        // preemption lands after the first chunk, and the host does not trim an overlap shorter than 6 characters.
+        string[] full = ["a", "b", "c", "d"];
+        var engine = new FakeGemmaEngine
+        {
+            ChunkDelay = TimeSpan.FromMilliseconds(1),
+            ReplyFor = call => FakeReply.Text(call.Conversation.IsResumed ? full[(call.Conversation.ResumedPartial?.Length ?? 0)..] : full),
+        };
         await using var host = NewHost(engine);
         var random = new Random(7);
 

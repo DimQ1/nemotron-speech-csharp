@@ -13,7 +13,6 @@ on:
   push:
     branches:
       - master
-      - feat/ios-build # TEMPORARY: CI on the iOS branch before the merge; remove with the merge
     paths-ignore:
       - 'docs/**'
       - '**/*.md'

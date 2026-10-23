@@ -12,7 +12,6 @@ on:
   push:
     branches:
       - master
-      - feat/ios-build # TEMPORARY: iterate on the iOS branch before the merge; remove with the merge
     paths:
       - '.github/workflows/build-voicetype-uno-ios.yml'
       - '.github/workflows/uno-publish.yml'

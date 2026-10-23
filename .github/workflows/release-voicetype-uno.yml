@@ -2,8 +2,8 @@ name: VoiceType.Uno Tagged Release
 
 run-name: VoiceType.Uno Release · ${{ github.ref_name }}
 
-# Tag uno-vX.Y.Z -> Windows zip, Linux tar.gz + .deb, Android AAB + APK as GitHub release assets.
-# Same assets and names as before; the jobs moved into uno-publish.yml and now also set the app version.
+# Tag uno-vX.Y.Z -> Windows zip, Linux tar.gz + .deb, Android AAB + APK and the two unsigned iOS builds (Simulator, device)
+# as GitHub release assets. The jobs live in uno-publish.yml, which also sets the app version.
 
 on:
   push:
@@ -43,6 +43,8 @@ jobs:
       version-code: ${{ fromJSON(needs.meta.outputs.code) }}
       # Flip to true once the release keystore secrets exist (docs/ci.md, Android signing; open decision D2).
       require-android-signing: false
+      # The Mac build adds about 40 minutes; both iOS builds are unsigned (docs/ci.md, iOS).
+      ios: true
       retention-days: 3
     secrets: inherit
 
@@ -78,9 +80,28 @@ jobs:
           name: VoiceType.Uno-android
           path: release-assets/android
 
+      - name: Download iOS Simulator artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: VoiceType.Uno-ios-simulator
+          path: release-assets/ios-simulator
+
+      - name: Download iOS device artifact (unsigned)
+        uses: actions/download-artifact@v4
+        with:
+          name: VoiceType.Uno-ios-device-unsigned
+          path: release-assets/ios-device
+
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
+          # Said up front, because none of the signing accounts exist yet (docs/ci.md, open decisions D2, D5, D8).
+          body: |
+            **Not store-ready.** Nothing in this release is signed with a release identity:
+            - **Android** `.apk` / `.aab` are signed with a throw-away debug key (no release keystore is configured). They cannot update an installed copy (uninstall first, which deletes the downloaded models) and Google Play rejects them.
+            - **iOS**: `VoiceType.Uno-ios-simulator.zip` runs in the Xcode Simulator on a Mac; `VoiceType.Uno-ios-device-unsigned.zip` is the device build and needs an Apple signature before it installs (no Apple account is configured). Only microphone capture is implemented on iOS.
+            - **Windows** and **Linux** packages are unsigned.
+
           # Releases published by this workflow had empty bodies; generate the notes
           # from the commits between the previous tag and this one instead.
           generate_release_notes: true
@@ -93,3 +114,5 @@ jobs:
             release-assets/linux-deb/SHA256SUMS
             release-assets/android/*-Signed.aab
             release-assets/android/*-Signed.apk
+            release-assets/ios-simulator/VoiceType.Uno-ios-simulator.zip
+            release-assets/ios-device/VoiceType.Uno-ios-device-unsigned.zip

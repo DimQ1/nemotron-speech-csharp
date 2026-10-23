@@ -11,8 +11,9 @@ answered yet carry the default that was applied and the words *default, maintain
 |---|---|---|---|
 | `.github/workflows/ci.yml` | `CI` | pull request, push to `master` (not for docs-only changes), manual | Build + model-free unit tests of 9 test projects on `windows-latest` and `ubuntu-latest`; no-GenAI guard on Windows; `actionlint` over the workflows |
 | `.github/workflows/build-voicetype-uno.yml` | `VoiceType.Uno CI` | pull request and push to `master` that touch the app, the libraries, the feed script, `nuget.config` or the workflows; manual | Platform packages through `uno-publish.yml`: Windows, Linux, Android (not on pull requests) |
-| `.github/workflows/uno-publish.yml` | `VoiceType.Uno publish (reusable)` | called by the three workflows around it | The one definition of the Windows / Linux / Android jobs and the iOS placeholder |
-| `.github/workflows/release-voicetype-uno.yml` | `VoiceType.Uno Tagged Release` | tag `uno-v*` | Version from the tag, all platform packages, GitHub release |
+| `.github/workflows/uno-publish.yml` | `VoiceType.Uno publish (reusable)` | called by the three workflows around it | The one definition of the Windows / Linux / Android / iOS jobs |
+| `.github/workflows/build-voicetype-uno-ios.yml` | `VoiceType.Uno iOS` | pull request and push to `master` with the same path filter as the Uno CI (without the Linux-only script), manual | Unsigned iOS builds on a Mac runner, Simulator and device, through the `ios` job of `uno-publish.yml`. Separate from the Uno CI so that a slow or red iOS build never blocks the other platforms |
+| `.github/workflows/release-voicetype-uno.yml` | `VoiceType.Uno Tagged Release` | tag `uno-v*` | Version from the tag, all platform packages (Windows, Linux, Android, and the two unsigned iOS builds), GitHub release |
 | `.github/workflows/release-voicetype-uno-android.yml` | `VoiceType.Uno Android Release` | tag `uno-android-v*`, manual | Android package only; only a tag creates a release |
 | `.github/workflows/voicetype-uno-linux-smoke.yml` | `VoiceType.Uno Linux Smoke` | pull request and push to `master` with nearly the same path filter as the Uno CI, manual | Publish the Linux head and start it under Xvfb without a model for 10 s |
 | `.github/workflows/build-voicetype-winui-msix.yml` | `VoiceType.WinUI MSIX` | manual only | EXPERIMENTAL: unsigned MSIX of the WinUI app (Store / WACK candidate) |
@@ -43,7 +44,7 @@ push since 2026-08-04, the second (tag `v*`) was dormant and would have failed.
 | push to `master` | same | Windows + Linux + **Android** (path filter) | yes (path filter) | no |
 | tag `uno-vX.Y.Z` | no | no | no | `VoiceType.Uno Tagged Release` |
 | tag `uno-android-vX.Y.Z` | no | no | no | `VoiceType.Uno Android Release` |
-| manual | yes | yes (inputs `android`, `ios`) | yes | Android release workflow: build only |
+| manual | yes | yes (input `android`) | yes | Android release workflow: build only |
 
 Path filter of the Uno CI and the smoke test (the smoke test has no entry for the two `tools/scripts` files): the workflow files, `.github/actions/**`, `apps/VoiceType.Uno/**`, `libraries/SpeechLib/**`,
 `libraries/VoiceType.Hotkeys/**`, `nuget.config`, `global.json` (does not exist yet), and for the Uno CI also `tools/scripts/fetch-litertlmsharp-feed.ps1`
@@ -173,7 +174,7 @@ Names only. No secret is created or required by the defaults; a missing optional
 | `ANDROID_KEYSTORE_PASSWORD` | same | same |
 | `ANDROID_KEY_PASSWORD` | same, optional | the keystore password is used |
 | `HF_TOKEN` | `convert-parakeet-tdt.yml` | nothing is uploaded (see Known issues) |
-| `IOS_CERTIFICATE_P12_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, `APPSTORE_API_KEY_ID`, `APPSTORE_API_ISSUER_ID`, `APPSTORE_API_PRIVATE_KEY` | declared by `uno-publish.yml` for the commented-out signed-IPA steps of the iOS placeholder | not read today |
+| `IOS_CERTIFICATE_P12_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, `APPSTORE_API_KEY_ID`, `APPSTORE_API_ISSUER_ID`, `APPSTORE_API_PRIVATE_KEY` | declared by `uno-publish.yml` for the commented-out signed-IPA steps of the `ios` job | not read today: the iOS builds are unsigned |
 | `WINUI_SIGNING_PFX_BASE64`, `WINUI_SIGNING_PFX_PASSWORD` | only named in a comment of `build-voicetype-winui-msix.yml` | not read |
 
 Secrets are not available to pull requests from forks; every check of `CI` works without them.
@@ -186,7 +187,7 @@ Secrets are not available to pull requests from forks; every check of `CI` works
   them (decision D10).
 * **The real WebGPU execution provider** (plugin or driver faults end the test process; it is tested only in a child process on a machine
   with a discrete GPU), live audio capture (microphone, loopback), typing into other applications (`SendInput`, XTest), UIA layout checks.
-* **Android on a device or emulator** (the job only builds the AAB and APK), **iOS** (no head exists), **macOS** (the Skia head lists
+* **Android on a device or emulator** (the job only builds the AAB and APK), **iOS on a device or in the Simulator** (the job only compiles and links; the microphone code has never run), **macOS** (the Skia head lists
   `UseMacOS()`, nothing builds or tests it), **Windows ARM64 and Linux arm64**.
 * **Windows signing and the Store**: the Uno zip and the MSIX are unsigned; `build-voicetype-winui-msix.yml` is manual and never run.
 * **Bit identity of the mel front end on Linux**: the strict test is Windows x64 only, a tolerance test runs everywhere
@@ -194,28 +195,46 @@ Secrets are not available to pull requests from forks; every check of `CI` works
 
 ## iOS
 
-There is no iOS head: `VoiceType.Uno.csproj` has no `net10.0-ios` target, there is no `Platforms/iOS`, no `Info.plist`, no iOS audio
-capture. `uno-publish.yml` carries an `ios` job as a **PLACEHOLDER**, off by default (`ios: false`; the manual input of `VoiceType.Uno CI`
-is `false` too). If somebody switches it on, its first step fails with a message that says the head does not exist.
+`VoiceType.Uno.csproj` has an **opt-in** `net10.0-ios` target (Uno 6, Skia on UIKit). It is opt-in because the iOS target needs the `ios`
+workload and an Xcode, which only a Mac has: `-p:UnoIosOnly=true` makes `net10.0-ios` the only target (build with `-f net10.0-ios`, never
+with `-p:TargetFrameworks`, which leaks into every referenced library). The default target set of the other platforms is unchanged.
 
-What the package inspection (not a build) found: Uno.Sdk 6.7.30 supports `net10.0-ios` with Skia; `Microsoft.ML.OnnxRuntime` 1.30.0 ships
-an iOS xcframework (linked statically, CoreML as a weak framework; no Mac Catalyst runtime); LiteRtLmSharp has no iOS native, so Gemma
-translation and chat would be off; typing into other applications is impossible on iOS; a Mac runner with exactly one matching Xcode is
-mandatory (`macos-26`, `xcode-select` to the version the workload requires). The laptop cannot even restore the iOS target (NETSDK1147), so
-the target must be an opt-in property (`UnoIosOnly`) or macOS-only.
+**Status (2026-10-23):** the first green run built both variants on `macos-26` (Simulator about 35 min, device/AOT about 40 min; artifacts
+82 MB and 61 MB). The first attempts failed on the unpinned workload (27.x needs Xcode 27.1), on the Xcode version (26.6, not 26.5) and on
+`NAudio.Lame.dll` in the AOT step (see below). The tagged release now attaches both unsigned builds.
 
-Staged path (stop after any stage if the product decision D5 changes):
+What is in the repository:
 
-0. **Now:** no iOS code; the placeholder job and the `ios` input only fix the shape of the pipeline.
-1. **Compile smoke, 3-5 working days:** csproj opt-in target, `Platforms/iOS`, `Info.plist` with `NSMicrophoneUsageDescription`, a stub audio source;
-   a non-blocking job (manual and nightly) on `macos-26`, Simulator Debug, unsigned. Done when the head compiles and the ORT xcframework links.
-2. **Device AOT build, 1-3 days:** `ios-arm64` Release with `EnableCodeSigning=false` to flush linker, trimming and AOT problems.
-3. **Minimal functional app, 2-3 weeks:** `AVAudioEngine` capture, recognizer, transcript and History on a device, Gemma off, foreground only; internal TestFlight.
-4. **Store pipeline, about 1 week plus review:** signed IPA and TestFlight upload in CI (secrets above), then the App Store.
+* `Platforms/iOS/Main.iOS.cs` (the `UseAppleUIKit()` host), `Info.plist` (microphone usage text, `audio` background mode, no non-exempt
+  encryption), an empty `Entitlements.plist`. Minimum iOS 15.
+* `Services/Audio/IosAudioSourceFactory.cs`: microphone capture with `AVAudioEngine` (permission request, input tap, conversion to the
+  recognizer rate and mono). Mic only: iOS gives an app no system-audio capture. **It compiles against the real iOS API and has never run.**
+* `uno-publish.yml`, job `ios` (matrix, `macos-26`): installs the `ios` workload **pinned** to 26.5.10318 and selects **Xcode 26.6** (the
+  pack says "requires Xcode 26.6"; the first two parts of the workload version are not the Xcode version). The unpinned workload is 27.x, whose
+  Xcode is not on the image. Two builds, both with `EnableCodeSigning=false` and the version of the run (`1.0.<run number>`, build number
+  `<run number>`): `iossimulator-arm64` (artifact `VoiceType.Uno-ios-simulator`, runs in the Xcode Simulator of an Apple-silicon Mac:
+  `xcrun simctl install booted VoiceType.Uno.app` after unzipping) and `ios-arm64` (artifact `VoiceType.Uno-ios-device-unsigned`: the
+  Release / linker / AOT pass for a real iPhone; **it cannot be installed**, a device needs a signature). When the build fails the first
+  distinct errors are repeated as annotations (hosted logs need a login).
+* The iOS target leaves the Windows audio stack out: no reference to `SpeechLib.Audio.NAudio3` (its `NAudio.Lame.dll` fails the AOT
+  compiler), no `WasapiPcmOutput.cs`, and `AudioPlayerFactory` returns the null player (no playback output on iOS yet).
+* `build-voicetype-uno-ios.yml` runs it (pull request, `master`, manual). It is its own workflow so that the 30+ minute Mac build and
+  any iOS problem stay away from the Windows / Linux / Android packages.
 
-Effort for a functional app is 4-7 weeks for one developer who knows the code; what remains is a recorder / transcriber, because text
-injection, global hotkeys and loopback do not exist on iOS. Accounts needed for stages 3-4: Apple Developer Program, an Apple
-Distribution certificate, a provisioning profile, an App Store Connect API key, a final bundle id, a Mac and an iPhone for device tests.
+What does not exist on iOS and is switched off or null: Gemma translation and chat (LiteRtLmSharp has no iOS native), typing into other
+applications, global hotkeys, loopback and mix capture, tray indicator, playback of recordings (`NullAudioPlayer`: the Skia head has no iOS
+output yet). `Microsoft.ML.OnnxRuntime` 1.30.0 ships the iOS xcframework (linked statically, CoreML as a weak framework) through the package's
+own targets; no Mac Catalyst runtime.
+
+What is missing for the next stages (stop after any of them if the product decision D5 changes):
+
+3. **Minimal functional app, 2-3 weeks:** run the Simulator build, then a device; check the recognizer on the device (ORT iOS, memory limits of
+   the 0.6B models, INT4 only), the AVAudioEngine capture and its interruptions (calls, route changes), model storage in the app sandbox,
+   background recording, an iOS playback output, the layout on a phone. Needs an iPhone and a Mac.
+4. **Store pipeline, about 1 week plus review:** signed IPA and TestFlight upload in CI. The commented steps at the end of the `ios` job
+   show the shape. Needs the Apple Developer Program, an Apple Distribution certificate, a provisioning profile, an App Store Connect API
+   key (the six secrets in the table above) and a final bundle id: `ApplicationId` is still the template value
+   `com.companyname.voicetype-uno`; decide it together with D3 and D6 before the first upload.
 
 ## Open decisions
 
@@ -227,7 +246,7 @@ The maintainer has not answered these. The default column is what is in the repo
 | D2 | Android release signing | **No keystore created.** The workflow reads the four secrets when present; otherwise debug-signed with a loud warning; `require-android-signing` stays `false` |
 | D3 | Android identity and versions | `ApplicationId` (`com.companyname.voicetype-uno`, a template placeholder) **unchanged**; display version and `versionCode` come from the tag (rule above) |
 | D4 | Pin the SDK with a root `global.json`? | **None yet** (to be added after the migration gate); `global.json` is already in the Uno path filters. Workload set not pinned either: `dotnet workload install android` takes the latest manifest; pin it with `--version <workload set>` after the first green run prints it |
-| D5 | iOS: do it at all, how far? | **Placeholder, off by default**, stage 0 above |
+| D5 | iOS: do it at all, how far? | **Stages 1 and 2 done** (head compiles, Simulator and device builds, both unsigned); stages 3 and 4 not started, see the iOS section |
 | D6 | Store naming (final bundle / package id, display name) | **Not decided**, nothing changed; decide together with D3 before the first Play or App Store upload |
 | D7 | Linux packaging scope | **Unchanged**: linux-x64 `.deb` and `tar.gz`; no arm64, AppImage, Flatpak or rpm |
 | D8 | Windows signing | **None**: the Uno zip and the MSIX are unsigned (SmartScreen warns) |
@@ -255,14 +274,15 @@ The maintainer has not answered these. The default column is what is in the repo
   `--no-restore` and a `-PublishDir` parameter for `check-no-genai.ps1` so that it can check the folder that ships; Android on `ubuntu-24.04` with
   a single `AndroidPackageFormat=aab;apk` publish (roughly halves the job, unverified); win-arm64 and linux-arm64 packages.
 * Runner pins: `ubuntu-24.04` for the Linux package and smoke job (the `.deb` `Depends` names the 24.04 libraries), `windows-latest` for Windows and
-  Android (the known-green image of earlier releases), `macos-26` for the iOS placeholder.
+  Android (the known-green image of earlier releases), `macos-26` for the iOS job.
 
 ## What could not be verified and how to try it safely
 
 Not verified, because it only exists on GitHub's runners: **every workflow run**, the cache behaviour, the Linux results of all nine test projects
 (WSL on the maintainer's laptop has no `dotnet` and no network), the `check-no-genai.ps1` step and the WinUI build on a hosted runner, the Android
-workload and the signing path (read from the documentation, never exercised), the `.deb` install step, and anything about macOS and iOS (no Mac, and
-`net10.0-ios` cannot be restored on the laptop). Hosted-runner facts (images, Xcode versions) come from the `actions/runner-images` README of
+workload and the signing path (read from the documentation, never exercised), the `.deb` install step, and anything about macOS and iOS (no Mac; the laptop's
+`ios` workload belongs to another SDK band, so `net10.0-ios` cannot be restored here; the iOS-only C# file was compiled against the iOS
+reference assembly in a scratch project). Hosted-runner facts (images, Xcode versions) come from the `actions/runner-images` README of
 2026-10-22 and move.
 
 What was done locally: `actionlint` 1.7.12 (official release binary, SHA-256 checked against the release's checksum file) over `.github`: 0 findings, but without
