@@ -247,6 +247,24 @@ public sealed class NemotronModelFactAttribute : FactAttribute
     }
 }
 
+/// <summary>
+/// Like <see cref="NemotronModelFactAttribute"/> for the timing tests on the synthetic two-voice dialogue: it also needs
+/// <c>Data/truth/dialogue-&lt;language&gt;.wav</c>. That audio is Windows SAPI speech and is deliberately NOT tracked in git
+/// (the redistribution terms of the Windows voices are unclear); the word-time truth next to it (the .json files) is tracked.
+/// Without the audio the test is skipped with that reason.
+/// </summary>
+public sealed class NemotronTruthFactAttribute : FactAttribute
+{
+    public NemotronTruthFactAttribute(string variant, string language)
+    {
+        if (NemotronTestEnvironment.LocateModel(variant) is null)
+            Skip = $"Nemotron model folder '{variant}' not found (see NemotronModelFactAttribute).";
+        else if (!File.Exists(NemotronTestEnvironment.DataPath("truth", $"dialogue-{language}.wav")))
+            Skip = $"Data/truth/dialogue-{language}.wav is not tracked in git (Windows SAPI voice audio, redistribution terms unclear): " +
+                   "regenerate it with the SAPI generator of the maintainer's work folder to run this timing test.";
+    }
+}
+
 /// <summary>Like <see cref="NemotronModelFactAttribute"/> for a theory; also needs the CV17 test audio.</summary>
 public sealed class NemotronModelTheoryAttribute : TheoryAttribute
 {

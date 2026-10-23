@@ -23,6 +23,8 @@ Test-Audio/
 data/
 # Test fixtures that live in a folder called Data (vocabulary, config copies, golden token streams, mel dumps)
 !libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/
+# ... except the Windows SAPI voice audio of the timing truth sample (redistribution terms unclear; kept local, see Data/truth/README.md)
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/truth/*.wav
 
 # ── Olive cache ──────────────────────────────────
 .olive-cache/
