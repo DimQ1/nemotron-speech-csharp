@@ -122,6 +122,26 @@ internal sealed class NemotronOnnxStepModel : IRnntStepModel, IDisposable
         _committed = 0;
     }
 
+    /// <summary>Floats of each of the two committed LSTM state tensors (h and c).</summary>
+    public int StateLength => _h[0].Length;
+
+    /// <summary>Copies the committed LSTM state (a branch of the stream is put aside); the pending prediction is not part of it.</summary>
+    public void SaveState(Span<float> h, Span<float> c)
+    {
+        _h[_committed].CopyTo(h);
+        _c[_committed].CopyTo(c);
+    }
+
+    /// <summary>
+    /// Makes a saved LSTM state the committed one. The pending prediction output belongs to the state it was computed from, so
+    /// the caller must run the prediction network again before the next joint (<see cref="RnntGreedyDecoder.Resume"/>).
+    /// </summary>
+    public void LoadState(ReadOnlySpan<float> h, ReadOnlySpan<float> c)
+    {
+        h.CopyTo(_h[_committed]);
+        c.CopyTo(_c[_committed]);
+    }
+
     public void Dispose()
     {
         _targetValue.Dispose();
