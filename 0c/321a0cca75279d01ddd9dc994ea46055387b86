@@ -1,0 +1,23 @@
+libraries/SpeechLib/src/SpeechLib/Audio/AutomaticGainControl.cs
+  s_974258c65088b5::t_2b0fb1742b5cd4 9,52-57
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronUtteranceTests.cs
+  s_974258c65088b5::t_c06657237dfc51 990
+libraries/SpeechLib/tests/SpeechLib.Tests/Unit_AutomaticGainControlTests.cs
+  s_974258c65088b5::t_6259cc01af98c3 11,71,104,160,173,234,251,281-290,293-296,309-310,315,329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "0c321a0cca75279d01ddd9dc994ea46055387b86",
+  "prompts": {},
+  "sessions": {
+    "s_974258c65088b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3fc81e050ed2b18f",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
