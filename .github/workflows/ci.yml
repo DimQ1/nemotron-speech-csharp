@@ -111,9 +111,12 @@ jobs:
             if ($LASTEXITCODE -ne 0) { $failed += $name }
             Write-Host '::endgroup::'
           }
-          # Hosted-runner logs need a login to read: repeat every failed test (name + first lines of the message) as an annotation.
+          # Repeat the failed tests as annotations, so they show on the run page without opening the log.
+          # GitHub shows at most 10 error annotations per step: one summary line with every name comes first,
+          # the messages of the first few follow.
           $ns = New-Object Xml.XmlNamespaceManager((New-Object Xml.NameTable))
           $ns.AddNamespace('t', 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010')
+          $failures = @()
           foreach ($trxFile in Get-ChildItem TestResults -Filter *.trx -ErrorAction SilentlyContinue) {
             $trx = [xml](Get-Content -LiteralPath $trxFile.FullName -Raw)
             foreach ($result in $trx.SelectNodes("//t:UnitTestResult[@outcome='Failed']", $ns)) {
@@ -121,8 +124,14 @@ jobs:
               if (-not $message) { $message = '' }
               $message = ($message -replace '\r?\n', ' | ')
               if ($message.Length -gt 600) { $message = $message.Substring(0, 600) }
-              Write-Host "::error::FAILED $($trxFile.BaseName) $($result.testName): $message"
+              $failures += [pscustomobject]@{ Project = $trxFile.BaseName; Test = $result.testName; Message = $message }
             }
+          }
+          if ($failures.Count -gt 0) {
+            $names = ($failures | ForEach-Object { $_.Test -replace '^.*\.([^.]+\.[^.]+)$', '$1' }) -join '; '
+            if ($names.Length -gt 3500) { $names = $names.Substring(0, 3500) + '...' }
+            Write-Host "::error::$($failures.Count) failed test(s): $names"
+            foreach ($f in $failures | Select-Object -First 8) { Write-Host "::error::FAILED $($f.Project) $($f.Test): $($f.Message)" }
           }
           if ($failed.Count -gt 0) { Write-Host "::error::failed test projects: $($failed -join ', ')"; exit 1 }
 

@@ -644,8 +644,9 @@ public class DataLocationTests
     [Fact]
     public void IsPointerFile_ShouldRecogniseTheKeptFiles()
     {
-        Assert.True(DataLocation.IsPointerFile(@"C:\x\data-location.txt"));
-        Assert.True(DataLocation.IsPointerFile(@"C:\x\Data-Location.pending.txt"));
-        Assert.False(DataLocation.IsPointerFile(@"C:\x\settings.json"));
+        var root = Path.Combine(Path.GetTempPath(), "x");
+        Assert.True(DataLocation.IsPointerFile(Path.Combine(root, "data-location.txt")));
+        Assert.True(DataLocation.IsPointerFile(Path.Combine(root, "Data-Location.pending.txt")));
+        Assert.False(DataLocation.IsPointerFile(Path.Combine(root, "settings.json")));
     }
 }
