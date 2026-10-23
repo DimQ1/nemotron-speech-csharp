@@ -1,0 +1,381 @@
+# ONNX Runtime GenAI idea backlog for our pure-ORT speech recognizers
+
+Status: M12 merge of three mining reports (M1 Nemotron / streaming / tokenizers, M2 ORT runtime / KV cache, M3 converters / Moonshine / timestamps+diarization), written 2026-10-13. Every item was re-checked against the upstream clone and against our code; weak items were fixed or dropped (Appendix A lists the verdict for each).
+
+Repository copy (2026-10-22). Stages 1-3b of the Nemotron migration are done: every recognizer runs on plain ONNX Runtime and the ONNX Runtime GenAI package is gone from the repository (the guard is `tools/scripts/check-no-genai.ps1`); the upstream clone `work/onnxruntime-genai` (the maintainer's local clone: `git clone https://github.com/microsoft/onnxruntime-genai work/onnxruntime-genai`) stays as the standing source of recipes and ideas, and this file is its backlog. Everything below is the 2026-10-13 text; the only edit is this note. Paths under `work/` (the clone, the companion reports in `work/nemotron-migration/reports/`, the probes and measurement scripts in `work/nemotron-migration/M12/`) live in the maintainer's gitignored `work/` folder: they are provenance for the measurements, not files of this repository, and a fresh clone does not have them. Paths without the `work/` prefix are relative to the repository root.
+
+Base versions. Upstream clone: `work/onnxruntime-genai`, `main` @ 0deac7ca (2026-10-13, describes as v0.12.2-377). The tag `v0.17.0` (1d67be30, 2026-09-25) lives on a release branch, not on `main`; the Nemotron files (`src/models/nemotron_speech.cpp`, `src/models/preprocessing/nemotron_streaming_processor.cpp`, `src/models/silero_vad.cpp`) are identical at `v0.17.0` and `main`, and `v0.16.0` (c458a1e9, the parity oracle of the pure-ORT Nemotron recognizer) differs only by the Moonshine plumbing around them. Our stack when this was written (2026-10-13): ONNX Runtime 1.30.0, GenAI 0.16.0 (to be deleted after the Nemotron migration), branch `feat/nemotron-pure-ort` (Stage 1 engine + Stage 2 utterance / word-timing layer present, Stage 3 = integration and GenAI removal still open). Status 2026-10-22: Stage 3 is done, GenAI is deleted, ONNX Runtime stays at 1.30.0; the token oracle recorded from GenAI 0.16.0 is tracked in `libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full` and the harness that recorded it in `tools/nemotron-golden` (so "the GenAI-equality tests" below are the golden replays, `NEMOTRON_FULL_GOLDEN=1`).
+
+## 1. Purpose
+
+On 2026-10-13 the maintainer decided that Nemotron leaves ONNX Runtime GenAI for plain ONNX Runtime and that the GenAI NuGet dependency is deleted once all tests pass. The GenAI repository stays on disk (`work/onnxruntime-genai`) as a permanent idea mine: it is where Microsoft's engineers solve, in production C++, the same problems our recognizers have (streaming RNN-T, KV caches, VAD gating, session tuning, word timestamps, quantisation recipes). This document is the filtered result of the first full pass: only ideas that were CHECKED against upstream path:line (or commit / PR) and against our code are listed, each with benefit, effort, validation and priority, plus everything that was examined and rejected so nobody repeats it. Three groups: (A) cheap items to apply during the Nemotron rewrite (Stages 2-3), (B) quick wins for the other recognizers (Parakeet, Qwen3, VibeVoice, diarization, converters), (C) strategic items.
+
+Reading guide. "Our state" is what the repository does today (paths relative to the repo root, `libraries/SpeechLib/src/...`). Evidence tags: [MEASURED] = somebody ran it on the development box (Core Ultra 7 255HX, 20 logical cores, Windows 11, ORT 1.30.0 in C#, ORT 1.24.4 in the python micro-benchmarks; the box was shared with other jobs, so trust within-run orderings, not absolute milliseconds); [code-read] = read in code or graph protos (no run); [estimate] = arithmetic from measured parts. Effort: S <= 1 day, M 2-4 days, L >= 5 days. Priority: H / M / L. Absolute WER values come from the hard Common Voice 17 test set (INT4 c056 EN is ~28 %) and are only meaningful as A/B differences.
+
+Companion reports (not committed, kept next to the clone): `work/nemotron-migration/reports/` holds M1 (Nemotron / streaming / tokenizers), M2 (ORT runtime / KV cache), M3 (converters / Moonshine / timestamps), I1 / I2 / I2b (Nemotron Stage 1 / Stage 2 and its continuation), A2 (protocol), A4 (consumers), S0 (safety net); the probes and measurement scripts written for this backlog are in `work/nemotron-migration/M12/`. Item ids below (A1...) are new; the source ids of the miners (N1, K1, R1, Q1, D1 ...) are given in brackets.
+
+## 2. How to use the upstream clone
+
+The clone is a full git clone (all branches and tags). It is read-only for analysis: never check out, never build, never modify.
+
+```powershell
+$G = "work/onnxruntime-genai"            # relative to the repo root
+
+# refresh (the only state-changing command; run it deliberately, e.g. monthly)
+git -C $G fetch --all --tags --prune
+git -C $G log --oneline -5 origin/main
+
+# read a file at main, at a release tag or at an unmerged PR branch (no checkout needed)
+git -C $G show origin/main:src/models/nemotron_speech.cpp | Select-Object -First 80
+git -C $G show v0.17.0:src/models/preprocessing/streaming_processor.cpp
+git -C $G show origin/users/masoncorey/Diarization/AddingWordLevelTimestampsToNemotronStreamingAttempt2:docs/nemotron_speech_timestamps.md
+
+# line numbers for citations
+git -C $G show origin/main:src/models/io/dynamic_kv_cache.cpp | Select-String -Pattern "Update" -Context 2
+
+# history: when did a symbol appear / change, who wrote a line
+git -C $G log -S"prune_lm_head" --oneline -- src/python/py/models
+git -C $G log -S"has_length_input_" --oneline -- src/models/nemotron_speech.cpp
+git -C $G blame -L 47,64 origin/main -- src/models/preprocessing/streaming_processor.cpp
+git -C $G log --oneline v0.16.0..origin/main -- src/models/nemotron_speech.cpp src/models/preprocessing
+
+# open upstream work: the clone carries the PR branches as remote refs
+git -C $G branch -r | Select-String -Pattern "nemotron|parakeet|moonshine|vad|diariz|timestamp|kv_cache"
+git -C $G log --format="%h %ad %an %s" --date=short origin/sunghcho/nemotron | Select-Object -First 8
+git -C $G diff --stat $(git -C $G merge-base origin/main origin/users/masoncorey/Diarization/AddingDiarizationModelToNemotronStreamingPipeline) origin/users/masoncorey/Diarization/AddingDiarizationModelToNemotronStreamingPipeline
+# PR pages need the network: gh pr view 2591 --repo microsoft/onnxruntime-genai --comments
+```
+
+Refs worth knowing (checked 2026-10-13):
+
+| ref | what it is | status |
+|---|---|---|
+| `origin/users/masoncorey/Diarization/AddingWordLevelTimestampsToNemotronStreamingAttempt2` | PR #2591 word / segment timestamps for Nemotron (docs `docs/metadata_decode.md`, `docs/nemotron_speech_timestamps.md`, `metadata_core_state.*`) | open, API review unresolved |
+| `origin/users/masoncorey/Diarization/AddingDiarizationModelToNemotronStreamingPipeline` | PR #2719 diarization model inside the ASR pipeline (`src/models/nemotron_diarization.*`) | open |
+| `origin/users/masoncorey/Diarization/UpdatingTranscriptExamples`, `.../Timestamps/UpdatingTranscriptExamples` | PR #2720 and timestamp examples | open |
+| `origin/sunghcho/nemotron` | the FIRST upstream Nemotron streaming ASR (Feb 2026) with stuck-state recovery + `tools/nemotron_export/` (export, graph fusion, INT4 recipes) | never merged; see item A1 |
+| `origin/gs/wgpu-nemotron` | Nemotron on WebGPU: device-resident caches, joiner with `start`/`end` inputs | prototype (May 2026) |
+| `origin/nebanfic/moonshine-streaming-pr` | Moonshine streaming incl. VAD | merged as #2302 |
+| `origin/asonawane/non-generative-runtime-cpu` | non-generative (CLM / ranking) runtime; not relevant to ASR | open |
+| `origin/tlwu/*windowed_kv_cache*`, `origin/tlwu/quantized_kv_cache_demo` | KV-cache variants for LLM decoders (see C2) | open |
+
+NOT in the clone: the onnxruntime-extensions sources that implement tokenization and word grouping (only the pins: main -> 58dfaaed, diarization branch -> ee0b98fd); read them through raw.githubusercontent.com when needed.
+
+## 3. Summary
+
+### 3.1 Top items (ranked by verified benefit x certainty / effort)
+
+| rank | id | what | verified benefit | effort | group |
+|---|---|---|---|---|---|
+| 1 | A1 | Pause-state policy for the Nemotron stream: keep / fresh state decided per pause (dual-branch), instead of GenAI's frozen state | English next-utterance WER 41-48 % -> 26-29 % with a fresh state, a plain reset costs 2-8 points when the speech continues the sentence; selector keeps 83-90 % of the gain without the regret (offline) | M (spike) | A |
+| 2 | B3 | VibeVoice: one decoder session instead of three | -2.1 GB RSS, -1.76 GB package, -4 s load, bit-exact | S | B |
+| 3 | B1 | Qwen3 `decoder_step`: persistent KV buffers + bound outputs | -8..30 % per step, Gen2 GCs 40 -> 1 per 40 steps, -200 MB peak, identical tokens | S-M | B |
+| 4 | B4 | mmap the embedding tables (Qwen3 594 MB, VibeVoice 933 MB) | -590 / -930 MB private RSS, reclaimable pages | S | B |
+| 5 | B2 | Last-position logits from the prefill graphs | -10..13 % prefill, -280 MB peak, bit-equal last row | S | B |
+| 6 | B6 | `accuracy_level` per graph: Qwen3 `decoder_init` -> 0 (level 4 is only right for M = 1 decode; blanket 4 on the Parakeet encoder would be 30-45 % slower) | -21..25 % Qwen3 prefill, attribute edit, no requantisation | S | B |
+| 7 | A3 | Batched joint over the remaining frames of a chunk | 5-8 % RTF, bit-identical rows measured | S-M | A |
+| 8 | A2 | Closing chunk at `Flush` | -1.7 (EN) / -0.8 (RU) points when the stream ends right after speech | S | A |
+| 9 | B5 | Audio-bounded token cap + repetition loop breaker | removes 14-25 s dead air per runaway decode | S | B |
+| 10 | C1 | Incremental Qwen3 decoding (`decoder_append` graph, forced prefix) | ~7x on the decoder part (estimate), exact in the growing phase | M-L | C |
+| 11 | B9 / C3 | Qwen3 package without the fp32 embedding (-1.24 GB disk); Nemotron / Parakeet encoder with INT4 pointwise convs (-250 MB, -5 % time) | disk / download / phone RAM | S-M / M | B / C |
+
+### 3.2 What changes in the Nemotron Stage 2 / Stage 3 plans now
+
+* ADD to Stage 2: the pause-state work item A1 (explicit stream-state object in the engine, model-state-only reset that keeps the clock, spike of the dual-branch selector on the Stage 2 harness; the three probes become regression tests). Do NOT ship a plain reset: it is wrong when the speech continues the sentence (EN +2..8 points, RU +3..7).
+* ADD to Stage 3: `FlushClosingChunks` (A2) at the apps' Flush call sites (RecognitionService Stop path, OfflineTranscriber), and the rule that GenAI-parity behaviour (frozen state across pauses, one padded flush chunk) is a TEST setting, not the product default: the S0 / I1 goldens contain pauses and will differ once A1 is on, so the A1 policy needs its own goldens.
+* ADD to Stage 2 polish: A3 (batched joint) with the GenAI-equality tests as the gate; A4 (the remaining invariants, including the pause regression tests).
+* DROP from the plans: M3 D4 (clamp to the fed audio: done), D2 (frame-gap rule: done), D5 (raw times for the assigner: superseded by I2's calibrated + snapped times); the idea of porting upstream's word grouping, 2-decimal rounding or tag handling (done better already).
+* KEEP as is: `genai_config.json` as the model-folder manifest until a replacement is defined (open question 11).
+
+### 3.3 Contradictions between the notes, resolved by opening the sources
+
+| contradiction | resolution |
+|---|---|
+| M3: "no Nemotron export recipe in the clone" vs M1/M12: prototype branch | `origin/sunghcho/nemotron` has `tools/nemotron_export/` (export, `optimize_encoder.py` with the methods `rtn`, `k_quant_mixed`, `hqq`, conformer fusion): M3 looked at `main` only |
+| M3 Q.1: "accuracy_level 4 everywhere" vs M2's open accuracy_level study | census of all shipped graphs: everything has 4 except the Parakeet INT4 encoder and decoder_joint (no attribute) -> B6 |
+| I1: batched joint "not parity-safe" vs M2 R2 "token-identical" | measured: 280 / 280 rows bit-identical (x64, ORT 1.24 python) -> A3, with the GenAI-equality tests as the gate for ORT 1.30 / ARM |
+| M2 K1: persistent buffers make `RewindTo` free vs M2 K4a: "a memmove of 28x2x8 slices" | K4a is right for the stacked KV layout (B1 caveat) |
+| M3 D5: feed the assigner raw emission times vs I2 / I2b: calibrated + snap | TTS + perfect diarizer 99.9 % / 99.6 % vs 99.6 % / 98.9 %; real speech + real diarizer within 0.4 points: superseded, one time base |
+| M3 D4 "to do" vs the Stage 2 code | already implemented and tested (NemotronWordTimer.Clamp) |
+| A2 section 7 "consider an extra zero chunk (not measured)" vs M1 item 10 | measured: -1.7 / -0.8 points -> A2 |
+| M2 R2 "6-10 % RTF" vs I1's profile | recomputed 5-8 % |
+| upstream docs vs upstream example: language ids | the example, the model's `prompt_dictionary` and our `LanguageMapper` agree; the doc table is wrong |
+| M1/M3 Q2 = M2 K2 | same idea, merged (B2) |
+
+## 4. Group A - apply during the Nemotron pure-ORT rewrite (Stages 2-3)
+
+Stage 1 (parity-exact engine, 241 tests, token-for-token equal to GenAI 0.16.0) and Stage 2 (utterance + word-timing layer) exist in the worktree; Stage 3 is the integration (factory, apps, GenAI removal). Items already done by Stage 2 (clamp to fed audio, frame-gap utterance rule, tag / mark handling) are listed in section 7. Everything below is OFF by default or parity-neutral until the GenAI parity tests are retired, then switched on in the apps.
+
+### A1. Pause-state policy: dual-branch ("keep" vs "fresh" state) at speech resumption   [source M1 N1 (M12 finding); priority H as a spike, NOT as a one-line reset; effort M]
+* The finding [MEASURED by M12 + M1, INT4 c056, six English settings on two clip sets plus Russian, details in the M1 report, section 10]: after a pause the model state is wrong in one of two cases. NEW sentence after a pause: the stale state (encoder caches + decoder LSTM) makes the model delete a fifth to a third of the next utterance's words in English (WER of the next utterance 41-48 % vs 26-29 % with a fresh state; deletions 32-53 vs 13-15 of 155 words; gaps 1 s to 6 s, room tone, louder noise or digital silence; Russian: 14.6 vs 13.2 % and 26.3 vs 21.0 % on two clip sets). Hesitation INSIDE a sentence: the fresh state is the wrong one (EN 20.1 -> 27.8 % and 21.3 -> 29.0 % on one set, 29.9 -> 33.7 % and 32.1 -> 34.2 % on another; RU 15.3 -> 22.5 % and 25.9 -> 29.0 %). Decoder-only reset is not enough (helps in 3 English settings, hurts in 3).
+* Proposal: when the silence gate has seen K >= 2 silent chunks, mark a pause; at the first speech chunk after it decode the next N = 3-4 chunks in BOTH a "keep" branch and a "fresh" branch (second ping-pong cache pair + LSTM state + mel overlap state; the Silero gate stays shared), then keep the branch with more non-blank tokens (tie -> keep) and drop the other. Offline-optimistic selector [MEASURED, WER of keep / fresh / SELECT]: EN gap 2 s new sentence 41.9 / 26.5 / 29.0 %, hesitation 32.1 / 34.2 / 30.4 %; EN gap 1 s 41.9 / 27.7 / 29.7 % and 29.9 / 33.7 / 28.3 %; RU gap 2 s 26.3 / 21.0 / 21.5 % and 25.9 / 29.0 / 26.5 % (M1 report, 10.4): within 0.5-2.6 points of the better fixed policy in every cell, best of the three in two, keeps 83-90 % of the reset gain and removes the reset regret. Cost: ~0.3 s of CPU per pause (N extra encoder passes), memory +6.3 MB.
+* Upstream evidence: none in `main` as a feature. (1) The transducer path has no reset and `RewindTo` is refused for it (`generators.cpp:970-977`); `NemotronSpeechState::ResetStreamingState()` (`src/models/nemotron_speech.cpp:497-515`, lists exactly what a reset must touch) exists since the first Nemotron commit but has no caller in `src/`. (2) The unmerged first prototype `origin/sunghcho/nemotron` (`git show 5c72fc8e:src/models/nemotron.cpp`, L462-565) resets the decoder after a zero-token chunk, zeroes the encoder caches after >= 2 blank chunks and REPLAYS the buffered mel chunks through the fresh state ("recover lost audio instead of hallucinating"). (3) FluidAudio PR #177 fixed dropped Parakeet sentences by not carrying decoder state across VAD chunks (v3 WER 9.25 -> 4.01 %); our own Parakeet recognizer already resets per pause. (4) Main's drop rule makes it worse: dropped chunks freeze the state for arbitrarily long.
+* Our state [code-read]: the engine `Reset()` (Nemotron/NemotronRnntEngine.cs:239-256) and the recognizer counters (NemotronRnntRecognizer.cs:321-334) are reset together; `NemotronUtteranceRecognizer` closes utterances (1.04 s gap, tag, 30 s cap) but never touches the engine (resets only at NemotronUtteranceRecognizer.cs:175-179 and in the offline worker :227-254). The silent-chunk counter needed for the trigger exists (NemotronSilenceGate.cs:45-57 `ConsecutiveSilentChunks`).
+* Plan: (1) Stage 2: split the engine state into an explicit stream-state object (caches x2 ping-pong, LSTM state, last token, mel overlap / cache rows) so a branch can be created; add `ResetModelState()` that keeps the stream clock; (2) a spike with the selector rule on the Stage 2 harness (truth sets `groups`, `groups_dense`, dialogue; the pair / hesitation probes of the M1 report become regression tests); (3) decide by data: a plain reset only where the measured new-sentence gain beats the continuation cost (EN: gain 13-19 points vs cost 2-8; RU: gain 1-5 vs cost 3-7, i.e. not for Russian), the dual-branch otherwise. Parity: OFF while GenAI goldens contain pauses (S0/I1 VAD scenarios), ON in the apps after Stage 3.
+* Risks: the first chunk after a reset has stream-start dynamics (A2 section 5: +45..+65 ms lag bump at chunk edges), so I2's `NemotronLagTable` and snap parameters must be re-measured with the policy on; selector quality on natural speech (all numbers are hard-accent CV17 sentences with synthetic pauses and clips A that end abruptly, i.e. the natural `. <en-US>` closing token before a pause is unmeasured; EN emits it in only 2.5 % of clips, RU 20 %, M1 item 7); a "fresh" branch that starts mid-onset (use K >= 2 so the reset chunk is silent by the gate); the closing mark and language tag of the PREVIOUS sentence are normally written when the next speech begins (I2b section 1: 75-85 % of the 1.0-3.6 s mid-stream gaps get a closer before the next letter, half of them within 2 frames of it), the fresh branch has no previous sentence and would not write them, but consumers rely on them (`DetectedLanguage`, `UtteranceText.Join`): take the closer tokens in front of the first letter token from the KEEP branch and the words from the winner. Validation: the probes in `work/nemotron-migration/M12/probe_src` (`pausereset`, `hesitate`, `selecttest`), WerEval 250 clips ru/en with concatenated pairs, `TruthEval` word timing and speaker accuracy with the policy on.
+* Evidence level: strong for the sign of the English new-sentence effect (six settings on two clip sets, all the same sign, sizes 6..19 points), medium for the continuation cost (three settings on two clip sets, sizes 2..8 points), selector result optimistic (one clip set, whole-region word count).
+
+### A2. Closing chunk at the end of a stream (Flush)   [source M1 N2; priority M; effort S]
+* What: option `FlushClosingChunks` (default 0 = GenAI parity, 1 in the apps): feed ONE extra chunk of zeros before the zero-padded remainder chunk of `Flush()`.
+* Evidence: upstream `Flush` pads one chunk and drops the rest (S0 quirks) and the unmerged diarization branch truncates encoder frames beyond the real audio (`encoded_len = min(encoded_len, ceil(valid/1280))`, `origin/users/masoncorey/Diarization/AddingDiarizationModelToNemotronStreamingPipeline:src/models/nemotron_speech.cpp`), which would DELETE late last words. [MEASURED, M1]: 8 % of EN clips (5 of 60, 8 tokens, 7 lexical, whole words among them) emit tokens in frames past the real end; a clip cut 100 ms after its last speech window: EN 37.47 -> 35.79 % (-1.7 points, 8 of 475 words), RU 28.00 -> 27.20 % (-0.8, 4 of 500); a second extra chunk changes nothing.
+* Our state [code-read]: `NemotronRnntRecognizer.Flush` (NemotronRnntRecognizer.cs:289-315) pads only the remainder and does nothing for an empty remainder; Stage 2 already clamps word times to the fed audio (NemotronWordTimer.cs:78, 126-150) and takes the padding out of the clock (NemotronUtteranceRecognizer.cs:290-309), so late tokens cannot produce times past the end.
+* Where it matters: Stop pressed right after the last word (live) and tightly cut files (History re-recognition); not when trailing room tone keeps streaming. Cost 0.1 s of compute at Stop. Validation: M1 probe `closing 100` (M1 report, 1.7 item 10), WerEval on cut clips; goldens unaffected with the option at 0. Risk: low. Small but cheap; applies in Stage 3 where the apps call `Flush`.
+
+### A3. Joint over the remaining frames of a chunk (batched joint) in `RnntGreedyDecoder`   [source M2 R2; priority M; effort S-M]
+* What: when a prediction output becomes valid, run the joint ONCE for frames `[f, T)` of the chunk against it, walk the `[T,13088]` block frame by frame; an emission invalidates the rest (re-run for `[f, T)` after the new prediction). Same tokens by construction. `IRnntStepModel.Join(int frame)` becomes `JoinFrom(int frame)` returning a row source; output buffer `[1,T,1,13088]` = 367 KB preallocated for `FramesPerChunk`.
+* Upstream evidence: none (GenAI runs the joiner once per frame and symbol, `nemotron_speech.cpp:423-434, 535-626`); a place where stage 1 can beat upstream.
+* Parity question RESOLVED by M12 [MEASURED]: I1 (section 7) declined this as "not parity-safe (different GEMM shapes)"; M12 compared `joint.onnx` with 1 frame vs 7 frames on the same decoder row (python ORT 1.24.4, INT4 c056 package, 40 random trials x 7 frames, 1 / 4 / 12 threads): 280 of 280 rows bit-identical in each setting (max abs diff 0.0, argmax flips 0). Not verified on ORT 1.30.0 in C# or on ARM64; the existing GenAI-equality tests are the oracle and must stay the gate.
+* Benefit [MEASURED op cost by M2, share recomputed by M12]: joint 1 frame 0.95-1.5 ms, 7 frames 1.5-2.3 ms (4-10 threads), decoder LSTM step 0.8 ms. I1's profile: 524 prediction + 1960 joint calls per 112 s (200 chunks) = 9.8 joint calls per chunk today; batched ~3.6 calls of ~1.9 ms => ~5.5 ms saved of a ~93 ms chunk = 5-8 % RTF (0.168 -> ~0.155); more on silence-heavy audio, nothing on the encoder-bound part. (M2 wrote 6-10 %; the recomputation gives the lower end.)
+* Validation: tokens identical to Stage 1 on all goldens, `PredictionCalls` / `JointCalls` counters, RTF at 4 threads. Risk: low. Depends on: nothing.
+
+### A4. Remaining Stage-2 test invariants and interface notes from upstream   [source M3 D1 / D3; priority M-L; effort S]
+* Still open after Stage 2 (M12 verified what exists): (a) the property "words built from the golden token streams, tags removed, whitespace normalised, equal `Vocabulary.Detokenize`" over the 400+ golden tokens (upstream asserts concatenated words == transcript, `docs/nemotron_speech_timestamps.md`, PR #2591 `MetadataCoreStateTests`); (b) the same token id twice on different frames keeps position-specific times (`RepeatedTokenIdsKeepPositionSpecificIntervals`); (c) Unicode marks (U+3002, U+2026, NBSP, em dash) and a mark after a bare `▁` in `TimedWordBuilder` (WordTiming.cs:71 uses `char.IsLetterOrDigit`); (d) a second `Flush` returns null and the stream can continue; (e) the A1 pair and hesitation regression tests; (f) a per-call "newly completed" word list next to the cumulative `FinalWords` (appenders: history store, typing injector) if a consumer needs it; (g) write the "Flush padding stays on the chunk grid; the clock subtracts it" rule onto `ITimedUtteranceRecognizer` (it is in the class remarks, NemotronUtteranceRecognizer.cs:32).
+* Do NOT mirror: 2-decimal rounding (`RoundTimestamp`), tag pseudo-words, mark-extended word ends, text-vs-metadata mode guards.
+
+### A5. Accept an encoder without the `length` input (compatibility switch)   [source M1 N3; priority L; effort S]
+* Upstream #2036 (2026-03-18) made `length` optional "because this can help constant folding a lot of operators at the beginning" (`nemotron_speech.cpp:258-275`, `has_length_input_`) and removed decoder `target_length` inputs, so models exported against upstream's loader may lack them. Our `NemotronRnntEngine.RequireNames` throws (NemotronRnntEngine.cs:130-131). [MEASURED, M1]: baking `length` as a constant removes 56 of 1802 nodes after ORT optimisation and changes no heavy op (< 1 % speed), so it is NOT a reason to re-export; add the switch only when a model without `length` shows up (none of our four shipped folders).
+
+### A6. Silence policy v2: reset + stop encoding after K silent chunks, with a ring of the last P chunks as pre-roll   [source M1 S1+S2; priority M-L; effort M]
+* Package of A1 and a real pre-roll. Today up to 3.36 s of every pause is still encoded because the native rule drops only from the 6th silent chunk (NemotronSilenceGate.cs:48-57; upstream `streaming_processor.cpp:47-64`, effective threshold = `max(prefix_padding_chunks, silence_duration_chunks)`, so the configured 560 ms pre-roll has NO effect). With A1 the state after K silent chunks is disposable, so silent chunks from K on need not be encoded (CPU saving for meetings) as long as the last P = 1-2 silent chunks are re-fed in front of the first speech chunk; re-fed chunks keep their original grid index.
+* Evidence for the need: M1 measured no systematic onset loss with the native rule (+0.3 / +0.55 points, 2 of 40 RU clips changed their first word), so the pre-roll alone is not worth it; the CPU saving only matters for pause-heavy audio. Moonshine's processor skips the encoder for silent chunks before any speech and closes segments on silence (`moonshine_streaming.cpp:543-616`).
+* Validation: the S0/I1 VAD scenarios become a NEW golden set (they are GenAI-parity today); WER on the onset / vadtest probes within noise. Depends on: A1.
+
+## 5. Group B - quick wins for the other recognizers (Parakeet, Qwen3-ASR, VibeVoice, diarization, converters)
+
+### B1. Qwen3 decoder_step: persistent KV buffers and pre-bound outputs   [source M2 K1; priority H; effort S-M]
+* What: keep two persistent `float[]` KV buffers (capacity for prompt + MaxTokens) and run `decoder_step` with `session.Run(RunOptions, names, inputs, outputNames, outputs)`, `OrtValue`s created per step over the prefix of the current buffer (input) and of the other buffer (output, length L+1), logits bound to one persistent 151936-float buffer; `decoder_init` output (the one place ORT still allocates) is copied once into buffer 0. Alternative with the same effect: ORT-allocated present tensors handed over as the next past (exactly upstream's pattern).
+* Upstream evidence: `src/models/io/dynamic_kv_cache.cpp:11-46` (`DynamicKeyValueCache::Update`: creates the `present_*` OrtValues itself before each run, `pasts_[i] = std::move(presents_[i])` after it, zero copy; note it still allocates one fresh present per step); shared-buffer variant `shared_kv_cache.cpp` / `static_kv_cache.cpp`; logits bound to a persistent buffer (`io/logits.cpp`).
+* Our state [code-read]: `Qwen3AsrRecognizer.RunDecoderStep` / `ExtractOutputs` (Qwen3AsrRecognizer.cs:518-557) build DenseTensors and NamedOnnxValues per call and copy BOTH KV tensors out with `.ToArray()` every token (2 x 57 MB at L=250 on the LOH); `EmbedToken` allocates a row per token; VibeVoice does the same per graph (VibeVoiceAsrRecognizer.cs:220-283, `ReadDecoderResult` ToArray of 56 tensors).
+* Benefit [MEASURED, M2, C# ORT 1.30.0, real decoder_step.int4.onnx, 10 threads, 2 runs each]: step time at L=100/250/500: 54 -> 45-50 ms / 83-72 -> 63-53 / 111-102 -> 78-76 ms (-8..30 %); Gen2 GCs per 40 steps 40 -> 1; peak working set at L=500 1901 -> 1688 MB; the ORT-allocated variant is equal within noise. Python cannot show it (zero-copy views).
+* Caveat found by M12: the buffers hold the stacked layout `[28,1,8,L,128]`, so truncating the cache to a shorter L (needed by C1) is a re-stride copy of ~57 MB (~10 ms), not free as M2's K1 addendum says.
+* Validation: WerEval qwen3-streaming `--max 50` EN/RU must give bit-identical token ids (same graph) + RTF; unit test comparing ids old vs new path on a fixed mel. Depends on: nothing. Risk: low.
+
+### B2. Qwen3 / VibeVoice: output only the last position's logits from the prefill graphs   [source M2 K2 = M3 Q2; priority H; effort S]
+* What: patch `decoder_init` (and VibeVoice `decoder_prefill` / `decoder_audio`) so the final `SimplifiedLayerNormalization` output is sliced to the last position (`Slice(starts=-1, ends=INT_MAX, axes=[1])`) before the lm_head `MatMulNBits`; the runtime detects the pruned output by its shape `[1,1,V]` (upstream: `Model::IsPruned`) so old packages keep working (row offset 0).
+* Upstream evidence: `src/models/model.cpp:893-899` (`IsPruned`: `logits_shape[1] == 1`); builder option `prune_lm_head` (`src/python/py/models/builder.py:983`, `builders/base.py:617-643, 5994`, README.md:357). Note: it is OFF by default upstream, so upstream's own packages are not pruned either; this is a builder option we choose to use.
+* Our state [code-read + graph census by M12]: `decoder_init.int4.onnx` outputs `logits [batch, seq_len, 151936]`; the code reads one row (Qwen3AsrRecognizer.cs:540-552, comment says "copying it whole moved tens of MB per decode for nothing"); VibeVoice copies the whole `[*, seq, 151936]` tensor with `ToArray` per audio chunk (VibeVoiceAsrRecognizer.cs:269-282, 17-25 MB).
+* Benefit [MEASURED, M2, python ORT 1.24.4, 20 threads, seq 223, graph surgery with the same external data]: prefill 1457 -> 1262 ms median (-10..13 %), peak WS 1785 -> 1507 MB (-280 MB), last-row logits max abs diff 8.6e-6, same argmax. ORT profile: the lm_head node was 196 ms of 1454 ms (13.5 %).
+* Effort S: ~30-line onnx patch in `tools/converters/Qwen3Asr/quantize_int4.py` (or a packaging script) + `rowOffset` detection. Validation: token-id equality on 50 CV17 files, RTF in WerEval. Depends on: nothing; pairs with B1. Risk: low.
+
+### B3. VibeVoice: ONE decoder session instead of three (prefill / audio / step)   [source M2 R1; priority H; effort S]
+* What: run prompt, audio chunks and token steps through the `decoder_step` graph (it already has dynamic `input_sequence` / `query_sequence` / `key_sequence`), feeding 56 zero-length past tensors for the prompt; drop `decoder_prefill.*` and `decoder_audio.*` (and their data files) from the package.
+* Upstream evidence: design, not a flag: GenAI runs prompt, chunked prefill and steps through one decoder session (`src/models/decoder_only.cpp:61-124`: `Run` / `RunWithChunking` use the one `model_.session_decoder_`; `AppendTokens` / `RewindTo` change only the inputs, `generators.cpp:732-790`).
+* Our state [code-read + M12 file check]: three sessions, each with its own 840 MB int4 external-data file (VibeVoiceAsrRecognizer.cs:44-50, 371-384); the three `.int4.onnx.data` files are 880 896 512 bytes each with identical first MiB (M12 md5 check; M2 compared first/middle/last MiB); all three graphs have 7520 nodes and 732 external initializers.
+* Benefit [MEASURED, M2, python ORT 1.24.4]: bit-exact (logits max abs diff 0.0, present KV diff 0.0, both for the chunk case with a prefill-made past and for a zero-length past at seq 40 vs `decoder_prefill`); RSS after loading 1 / 2 / 3 sessions 1116 / 2168 / 3220 MB => -2.1 GB RSS, package -1.76 GB, session creation -4 s (each open ~2 s).
+* Risks / validation: zero-length dimensions must be accepted on ORT 1.30 C# and on any non-CPU EP (historical weak spot of Concat on non-CPU EPs: keep a 1-token dummy past + mask as fallback); compare token ids with the 3-session path on `work/vibevoice-quality-*.json` audio; check RSS in the WinUI / Uno app. Depends on: nothing (the v5 package format is ours). Combine with B2.
+
+### B4. Memory-map the embedding tables (Qwen3 594 MB, VibeVoice 933 MB)   [source M2 R5; priority H for mobile; effort S]
+* What: replace `File.ReadExactly` into a managed array by a `MemoryMappedFile` view with unsafe row reads (`Half*` widen / `float*`), eager fallback if mapping fails, never hold the view past `Dispose`.
+* Upstream evidence: tangential only (`docs/cpu-embedding-engine.md`: the lookup is a separate read-mostly session; `model.embedding.prefault`, `src/models/cpu_embedding.cpp:47-78`). The idea stands on the measurement.
+* Our state [code-read]: Qwen3AsrRecognizer.cs:630-647 (`Half[]` 151936 x 2048), VibeVoiceAsrRecognizer.cs:404-415 (`float[]` 151936 x 1536).
+* Benefit [MEASURED, M2, real embed_tokens.bin]: managed load +595 MB private / 19.1 us per row; mmap +6 MB private, 9.7 us per row warm, 644 us for the first touch of a cold page; a decode touches <= ~100 distinct rows (<= ~60 ms once, typically far less). RSS -590 MB (Qwen3), -930 MB (VibeVoice), pages become reclaimable (Android low-memory killer), startup no longer reads 0.6-0.9 GB.
+* Validation: bit-identical embeddings vs the array path (unit test), RSS before/after on desktop and on the Huawei P30 Pro. Risk: low. Depends on: nothing.
+
+### B5. Bound the generated tokens by audio duration and break repetition loops   [source M2 K5 + M3 M4; priority M; effort S]
+* What: `maxNew = min(256, ceil(windowSeconds * 8) + 8)` and an early stop when the last 4 tokens equal the 4 before them for 3 repeats; same for VibeVoice (`MaxTokensPerChunk` 128).
+* Evidence: upstream bounds generation by `max_length` / EOS (`src/search.cpp:265-295`, 407-418) and offers repetition tools that are wrong for ASR (hard n-gram bans); the pure-C Qwen3-ASR port (github.com/antirez/qwen-asr) caps each streaming chunk at `--stream-max-new-tokens` 32; Moonshine ships a `max_tokens_per_second` cap (13 for non-Latin scripts) because repeated tails are its dominant failure (M3 M4).
+* Our state [code-read]: `MaxTokens = 256` independent of the audio length (Qwen3AsrRecognizer.cs:37, loop :340); a runaway decode costs 256 x 55-100 ms = 14-25 s of dead air per block [estimate].
+* Validation: WerEval unchanged on CV17; a synthetic noise / music clip must finish in < 3 s. Risk: low (truncates only pathological output).
+
+### B6. `accuracy_level` is shape-dependent: choose it per graph (Qwen3 `decoder_init` -> 0), do NOT blanket-set 4   [source: M2's unfinished accuracy_level study, finished and measured by M12; priority M; effort S]
+* What: `MatMulNBits.accuracy_level` selects the compute type: 0 = fp32 activations (dequantise the weight block, fp32 GEMM), 4 = int8 activations (A quantised to int8, int8 dot products). Upstream's builder default is 4 for the CPU EP ("Default is 4 for the CPU EP and 0 for non-CPU EPs", `src/python/py/models/builder.py:903-908`) because its targets are token-by-token decoders (M = 1 rows). On this x64 CPU (Core Ultra 7 255HX, AVX2 / AVX-VNNI) the better level depends on the number of rows M of the matmul, so one global default is wrong for an ASR stack that mixes M = 1 decode steps with M = 70-220 prefill / encoder windows.
+* Measured by M12 (attribute-only patches, same weights, spinning off; python ORT 1.24.4 unless noted):
+
+| graph (rows M) | threads | level 0 (fp32 act.) | level 4 (int8 act.) | winner |
+|---|---|---|---|---|
+| Qwen3 `decoder_step` (M = 1) | 10 | 125-136 ms | 71-72 ms | 4 by 1.75-1.9x |
+| VibeVoice decoder, q = 1 / 8 / 28 / 100 query tokens | 10 | 74 / 160 / 241 / 568 ms | 38 / 104 / 208 / 697 ms | 4 up to q ~ 30, 0 from q ~ 60-100 (-18 % at 100) |
+| Qwen3 `decoder_init`, pruned, 223 prompt tokens | 20 | 998-1118 ms | 1225-1412 ms | 0 by 21-25 % |
+| Nemotron c056 encoder (7 frames per chunk) | 4 | 139-145 ms | 117-128 ms | 4 by 12-16 % (the shipped choice is right) |
+| Parakeet INT4 encoder, 630 mel frames (79 enc. frames), symmetric, no zero points | 4 / 20 | 392-442 / 225-227 ms (ORT 1.30.0 C#), 397 / 180-210 ms (python) | 563-577 / 315-324 ms (C#), 545-564 / 308 ms (python) | 0: level 4 is 30-70 % SLOWER |
+| same, 200 mel frames | 4 / 20 | 181 / 111 ms (C#) | 186 / 147 ms (C#) | 0 at 20 threads, tie at 4 |
+| Parakeet `decoder_joint` (3 nodes, M = 1) | 4 / 20 | 1539 / 930 us per call (python) | 1113 / 854 us | 4 by 28 % / 8 % (absolute 0.1-0.4 ms) |
+
+* Our state [MEASURED census by M12, graph protos]: Nemotron encoder (219 nodes), VibeVoice v5 decoders (197 each), Qwen3 init and step (197 each) all carry `accuracy_level` 4; the Parakeet INT4 encoder (217) and `decoder_joint` (3) carry no attribute (= 0) because `tools/converters/ParakeetTdt/export_onnx.py:137-142` calls `MatMul4BitsQuantizer(encoder_path, block_size=32, is_symmetric=True, nodes_to_exclude=[])` without it. M3's "accuracy_level 4 everywhere" was wrong for Parakeet - and, as the table shows, leaving Parakeet's encoder at 0 is the right accident.
+* Actions: (a) Qwen3 `decoder_init.int4.onnx` -> `accuracy_level` 0 (edit the attribute in the small graph file, e.g. in `tools/converters/Qwen3Asr/quantize_int4.py`; the weights are shared with `decoder_step`, no requantisation; prefill -21..25 % = ~0.25-0.3 s per decode of a 16 s window, on top of B2's -10..13 %); fp32 activations are the more accurate mode, so quality should not degrade, but token ids will differ slightly: validate with WerEval; (b) do NOT set level 4 on the Parakeet encoder (quality-neutral on 80 clips, but slower); (c) Parakeet `decoder_joint` -> 4 is optional (tiny); (d) with B3 (one VibeVoice session) keep 4: audio chunks have q = 28; (e) re-measure on ORT 1.30 in C# and, above all, on ARM64 (dot-product kernels can move the crossover; test on the Huawei P30 Pro before touching Android packages).
+* Quality check done: Parakeet with level 4 on all 220 nodes vs the shipped package, 40 EN + 40 RU CV17 clips (`M12/score_pk.py`): WER EN 13.05 -> 12.79 %, RU 4.53 -> 4.83 %, 2 of 40 clips differ in each language (noise level). Whole-recognizer wall clock of the same runs (`ParakeetTdtRecognizer`, streaming, loaded box): EN 117.6 s (base) vs 136.7 s (level 4) for 236.5 s of audio, RU 102.4 s vs 124.4 s for 219.9 s: +16 % / +22 %, in line with the encoder micro-benchmark. The encoder output for one real window differed by max 0.0082 (4.2 % of the maximum), same argmax.
+* Validation: WerEval qwen3-streaming `--max 50` EN/RU for (a), token-id comparison against the level-4 init graph, RTF. Risk: low. Depends on: nothing.
+
+### B7. Cooperative abort of in-flight runs (`RunOptions.Terminate`)   [source M2 R7; priority M; effort S-M]
+* What: one long-lived `RunOptions` per recognizer, `Abort()` sets Terminate, the interrupted `Run` throws, the recognizer resets its streaming state and clears the flag at the next call.
+* Upstream evidence: `State::SetRunOption("terminate_session")` -> `run_options_->SetTerminate()` (`src/models/model.cpp:189-201`), `ThrowErrorIfSessionTerminated` (`generators.cpp:735`), docs/RuntimeOptions.md "Set Terminate".
+* Our state [code-read]: no recognizer has an abort path (no `Terminate` / cancellation in `SpeechLib.Providers`); Nemotron stage 1 and diarization already keep one RunOptions (OnnxEngine.cs:25-26 documents the finalizer hazard of an inline `new RunOptions()`).
+* Benefit [MEASURED, M2, Qwen3 decoder_init, 1.4-2.1 s run]: flag set 300 ms in -> `OnnxRuntimeException` 1-9 ms later, the session ran normally afterwards. Matters for Qwen3 / VibeVoice (3-5 s decodes), offline re-recognition jobs and Dispose under a running worker; NOT for Nemotron (a chunk takes ~0.1 s). Validation: unit test with a slow fake + the real decoder_init abort test. Risk: low.
+
+### B8. One shared CPU arena for all sessions of a recognizer   [source M2 R6; priority M; effort S]
+* What: `OrtEnv.CreateAndRegisterAllocator(arena memory info, OrtArenaCfg)` once per process before any session + session config `session.use_env_allocators=1` in `OrtCpuTuning`.
+* Evidence: upstream does not do it (it only sets `allow_spinning=0` for VitisAI, `src/ep/vitisai/session_options.cpp:16-17`; we already do for all CPU sessions); documented ORT recipe. [MEASURED, M2, Qwen3 encoder + init + step]: private memory after the step phase 4391 -> 4060 MB (-331 MB, -7.5 %), same load size.
+* Caveats: process-global, first registration wins, shared with Silero and diarization sessions, concurrent users serialise on the arena mutex; do it behind a setting and verify RTF. Little to gain for Nemotron (~1 GB working set already). Risk: low-medium.
+
+### B9. Qwen3 package: drop the fp32 token-embedding table from `decoder_init`   [source M3 Q3; priority M; effort S-M]
+* What: turn the output of the `node_embedding` Gather into a graph input `inputs_embeds` (the host already holds the table: `embed_tokens.bin`) and rewrite the shared `decoder_weights.int4.data` without the 1244.7 MB tensor (fix the offsets); ONNX surgery, no exporter needed. Package 4.1 -> ~2.9 GB.
+* Our state [MEASURED census by M12]: `decoder_init.int4.onnx` initializer `lm_head.weight` FLOAT [151936, 2048] = 1244.7 MB, only consumer `node_embedding` (Gather); `decoder_step` carries the INT4 head instead. ORT memory-maps external data, so RAM is barely affected: the gain is disk / download / page cache.
+* Validation: bit-exact logits for the same prompt (the host feeds the same rows); needs the C# prompt builder to produce prompt embeddings (230 rows x 2048, trivial). Depends on: B4 (the table is then mmap'd). Subsumed by C1 if the new decoder graph is exported.
+
+### B10. Diarization sessions do not disable ORT thread spinning   [source M2 R8; priority L-M; effort S]
+* `OnnxEngine.CreateOptions` (libraries/SpeechLib/src/SpeechLib.Diarization/OnnxEngine.cs:35-44) sets threads and graph level only and `DiarizationModel.Load` builds both sessions from it (DiarizationModel.cs:42-46); every other CPU session calls `OrtCpuTuning.DisableThreadSpinning` (OrtCpuTuning.cs:13-31 measured 50 % slowdowns of other sessions while one spins). `SpeechLib.Diarization` already references `SpeechLib`. With `threads <= 0` the options also leave ORT's all-cores default. Fix: two lines; unmeasured for the diarization job itself. Risk: none.
+
+### B11. Parakeet detokenizer: drop the lossy space regex   [source M12 / prior-phase B7 E1; priority L-M; effort S]
+* `ParakeetTdtRecognizer.cs:53` `DecodeSpacePattern = \A\s|\s\B|(\s)\b` (a port of onnx-asr) is applied in `Detokenize` (:1107-1114) and deletes every space in front of a non-word character: `Hola, ¿cómo estás? ¿Y tú?` -> `Hola,¿cómo estás?¿Y tú?`, `It costs $5 and 50 % of it.` -> `It costs$5 and 50% of it.`. GenAI decodes Parakeet through the SentencePiece-faithful tokenizer (marker -> space only). [MEASURED, M12, python replica of `DecodeFrames` on 46 real clips en/ru/es]: zero bare `▁` tokens and zero differences between regex and faithful decode, i.e. the regex is harmless on ordinary sentences; it only bites on the pieces `▁¿ ▁¡ ▁- ▁'` and `$ % € £ /` after a marker (Parakeet vocabulary: 22 punctuation/symbol pieces in 8193 ids). Fix: faithful decode + unit test; validate on >= 50 Spanish clips with `¿` (the 6 es clips at hand have none).
+
+### B12. Smaller items
+* B12a `SPEECHLIB_ORT_PROFILE=1` diagnostic hook in `OrtCpuTuning` (`SessionOptions.EnableProfiling` + prefix); the managed `RunOptions` has no profiling member in 1.30.0 (M2). Effort S.
+* B12b Arena shrinkage on the last run of a stream (`memory.enable_memory_arena_shrinkage=cpu:0`, `RunOptions.AddRunConfigEntry`) [MEASURED, M2: commit 1737 -> 1407 MB after a Qwen3 init, +3-5 % on the next run]; mostly redundant once B2 removes the init transient; Android / idle only. Priority L.
+* B12c NaN / out-of-range guard on `speaker_probs` in `StreamingDiarizer` (upstream throws; our INT8 step graph diverges from fp32 by up to 0.2-0.7 in p, NemotronDiarization README parity table). Priority L, effort S.
+* B12d `WebGpuRequest`: add a `validation=disabled|basic|wgpuonly|full` key -> `validationMode` (upstream writes `validationMode` = "disabled" together with graph capture, `src/python/py/models/builders/base.py:151-154`; WebGpuExecutionProvider.cs:276-360 has no such key) and reject `capture=1` for graphs with host-resident caches (Nemotron). Priority L unless the WebGPU path is promoted (M2: WebGPU is 3x slower than CPU for int4 decoders).
+* B12e Qwen3 `Decode` filter: drop only the `added_tokens_decoder` ids (62) instead of every `<...>`-shaped piece (7 ordinary vocab pieces such as `<>` / `<s>` / `</s>` are silently dropped today; `Qwen3BpeTokenizer.Decode`). Cosmetic; do it when the file is next touched.
+* B12f CJK / Thai word grouping: the model emits U+2581 only at an utterance start, so `TimedWordBuilder` yields one word per utterance for ja / zh (MEASURED, M1; B7 confirms zh and ja); close a word at every token of a Han / Kana / Thai run. Priority L (user base ru/en), effort S, needs a ja/zh TTS fixture.
+* B12g Nemotron `Slice` constant fold (M3 Q7): `enc.pos_enc.pe` (1, 9999, 1024) FP32 = 41.0 MB, sole consumer `node_slice_2` with constant starts / ends 4937 / 5062 [MEASURED census by M12]; folding saves 41 MB of ~790 MB on disk and download, nothing in RAM. Priority L, effort S.
+
+## 6. Group C - strategic items
+
+### C1. Incremental Qwen3 decoding: one `decoder_append` graph (+ forced-prefix continuation)   [source M2 K4a + K3 + K3b/c; priority M-H as a design target; effort M-L]
+* What: export ONE decoder graph that accepts any number of new positions (`inputs_embeds` [b,q,2048]) on top of any past KV and returns only the last position's logits (B2). Per 2 s block in the growing phase: truncate the cache to `prefixLen + audioTokensSoFar`, append `[new block audio embeddings + trailer ids (+ forced text prefix)]`, continue greedy. Today every block re-prefills the whole window and regenerates its whole transcript.
+* Why it is exact in the growing phase [M12 reasoning]: the decoder is causal, so the KV of `[prefix][audio blocks 1..k]` does not depend on later audio or on the trailer / text that follows it; truncating and re-appending equals full recomputation up to numerics. Only the saturated phase (oldest block dropped from the middle of the cache) is approximate: GenAI's sliding-window KV (`decoder_only.cpp:160-183` clamps position ids and KV length, `src/models/io/windowed_kv_cache.*`) is the only precedent and is for text and non-rewindable; the safe fallback is a periodic full re-prefill (1.2 s) every N blocks.
+* Upstream evidence: AppendTokens on a live KV (`generators.cpp:732-790`), `RewindToLength` (`generators.cpp:968-1000`) - but upstream REFUSES rewind for transducer / streaming enc-dec ASR, whisper, lfm2_audio, phi3v (generators.cpp:970-977): mechanics only, no policy for an audio-conditioned decoder. Dynamic-cache rewind copies the kept prefix (`dynamic_kv_cache.cpp:74-130`), the shared static cache moves one integer (`shared_kv_cache.cpp:14-16`).
+* Our state [code-read]: `decoder_init` accepts no past KV and `decoder_step` adds one token (docs/qwen3-asr-onnx-streaming.md "Why the current design cannot be incremental"); the exporter that produced our graphs (`work/qwen3-asr-onnx/src/decoder_wrapper.py`, step wrapper hard-codes a single-token query, `mask = None` at :264-265) is NOT in the repo (`tools/converters/Qwen3Asr` only quantises an existing FP32 export), so this item first needs the exporter brought into `tools/converters`.
+* Benefit: [MEASURED parts, M2] 5.7 ms per prefilled token vs 45-60 ms per generated token; forced prefix halves the generated tokens in the growing phase; [estimate] ~0.6 s per 2 s block, constant, vs ~4.2 s at saturation today (~7x on the decoder part).
+* The cheap stepping stone, forced-prefix continuation on the CURRENT graphs (prompt + previous hypothesis minus its last u tokens): EN 12 clips WER 8.53 -> 8.06 %, generated tokens -50 % (M2 K3b); RU 8 clips WER 4.23 -> 7.04 %, tokens -63 % (M2 raw output, written up by M12 as K3c): NOT safe as a general win. Needs no prefix before ~4 s of audio, a cap on new tokens after a prefix (32-40) with fallback to full regeneration, the loop guard of B5, and a 250-clip A/B per language (try u = 8..12 for Russian).
+* Risks: export fidelity (MRoPE position ids), window-saturation policy, WER A/B per language. Depends on: B1, B2, B5; the exporter. Do not start before B1-B5 are banked (they recover part of the benefit for S effort).
+
+### C2. Rebuild the Qwen3 / VibeVoice decoders with the GenAI builder recipe (GroupQueryAttention, packed QKV, fused RoPE, last-token logits)   [source M2 K4 + M3 Q4; priority L-M; effort L]
+* Evidence: for CPU float the builder emits GroupQueryAttention (`base.py:703-714`), sets `past_present_share_buffer` for it (`base.py:816`), packs Q/K/V in one MatMulNBits, fuses RoPE, supports `inputs_embeds` input and `prune_lm_head` (`base.py:730-805`; M3 Q4); the runtime keeps ONE max-length KV buffer bound as input and output so RewindTo is O(1) (`shared_kv_cache.cpp:8-16`, `static_kv_cache.cpp:134-145`).
+* Our state [MEASURED profile, M2, python ORT 1.24.4, 10 threads, step graph]: at L=250 MatMulNBits 49 %, Concat 17 %, Expand 7.6 %, Split 7.5 %, attention math 4 %; at L=600 MatMulNBits 40 %, Concat 19 %, Expand 15 %, Split 10 %: KV plumbing = 32 % / 44 % of the step; the graph has 1586 nodes, 7 matmuls per layer, decomposed RoPE (56 Neg), unfused attention. A fused GQA graph with a shared buffer removes the three plumbing ops: [estimate, NOT measured] -30..40 % step time.
+* Validation: build `Qwen3ForCausalLM` 1.7B with the GenAI builder on a machine that has the HF weights, count nodes, micro-benchmark one step against `decoder_step.int4.onnx` in plain ORT (M3's "first S-size step") before committing. Risk: medium-high (MRoPE, GQA CPU numerics, INT4 RTN/GPTQ quality 4.2 % vs 3.8 % fp32). Depends on: B1-B2 first; supersedes C1's export if done together.
+
+### C3. Repack the FastConformer encoders (Nemotron, Parakeet): pointwise Conv -> MatMul -> INT4, fold the position table, A/B the INT4 recipe   [source M3 Q1 + Q7 + Q5; priority M; effort M]
+* What: (1) 48 pointwise `Conv` (k=1, no bias, `pointwise_conv1` 2048x1024 and `pointwise_conv2` 1024x1024) + 2 subsampling 1x1 convs hold 302.0 MB FP32 of the 690 MB `encoder.onnx.data` (44 %) because Olive's KQuant / `MatMulNBitsQuantizer` quantise only `MatMul`. The graph is `LayerNormalization -> Transpose -> Conv(k=1) -> Split -> Sigmoid/Mul (GLU) -> ...` and `... -> Conv(k=1) -> Transpose`, so each conv becomes a `MatMul` by moving the neighbouring Transpose (graph surgery on the FP32 encoder, no re-export), then the existing quantiser. (2) fold the constant rel-pos Slice and drop the 41 MB `pos_enc.pe` table (B12g). (3) re-run the recipe comparison: shipped k-quant (with zero points) vs symmetric default vs `k_quant_mixed` of upstream's prototype (keeps attention Q/K/V/Out, first/last layers, pre_encode FP32; `origin/sunghcho/nemotron:tools/nemotron_export/optimize_encoder.py`), block 32 vs 64.
+* Evidence: census re-run by M12 [MEASURED]: Nemotron c056 INT4 encoder Conv weights 303.4 MB total / 302.0 MB pointwise / 0.9 MB depthwise, the Parakeet INT4 encoder prints the identical census; upstream's builder has the same coverage rule (`op_types_to_quantize=MatMul/Gather`, `builder.py:926`) and keeps Whisper's conv layers in the I/O dtype (`whisper.py:73-117`), so upstream gives no recipe: the idea comes from the census. Upstream's own prototype README: conformer graph fusion fired only for 96 SkipLayerNormalization nodes (attention fusion did not match), so M3's Q6 fusion idea is closed.
+* Benefit: encoder data 690 -> ~436 MB (-37 %), package ~790 -> ~540 MB (more with the table fold), the same RAM drop; speed [estimate from M3's ORT profile: Conv 0.85 ns/param vs MatMulNBits 0.475] ~ -5 % encoder time on this box, more on a bandwidth-bound phone.
+* Risks: INT4 quality of the conv-module weights is unmeasured (reject if WER worsens by > ~0.3 absolute); `quantize_int4.py` (NemotronAsr/src:28) does not reproduce the shipped k-quant model (3 vs 4 inputs per MatMulNBits), so the baseline must be rebuilt first. Validation: WerEval 250 clips ru/en x {fp32, shipped INT4, INT4 + pointwise} and A2's parity / latency harness. Priority M for phone RAM; not a Stage 2/3 item.
+
+### C4. Moonshine streaming as an English-only "light" phone recognizer   [source M1/M3 M; priority L; effort spike S, port L]
+* Decision (M3, confirmed by M12): NO-GO as a replacement and as the Russian answer: no Russian / Ukrainian streaming model; Nemotron INT4 already runs on the P30 Pro (0.55-0.6x real time); a second AED-style recognizer with its own segmentation and no token times conflicts with the one-timed-recognizer goal of Stages 2-3.
+* Facts: MIT licence, Tiny 33.6 M params (45 MB packaged), Small 123 M (142 MB), English + 7 other languages (Tiny), word times only via cross-attention DTW (decoder_kv_with_attention), CPU only, `.ort` files. GenAI drives it with 5 sessions (frontend, encoder, adapter, cross_kv, decoder_kv) and commits text by longest-common-prefix of consecutive re-decodes (`moonshine_streaming.cpp:543-616, 800-880`).
+* Revisit when: Moonshine ships a Russian streaming model, or Nemotron CPU/battery on phones becomes a measured complaint, or a sub-100 MB model is needed. Cheap spike (~2 days, no C# port): Moonshine's reference runtime on the desktop with Tiny and Small over `Test-Audio/cv17/en` and the TTS `groups` sets; go criteria fixed beforehand: English WER within ~3 points of Nemotron INT4 on cv17 en AND on-phone RTF <= 0.25 on <= 3 big cores AND model <= 150 MB. Port estimate 7-10 working days (+2 for word times).
+
+### C5. A shared pre-bound step runner for the remaining recognizers   [source M2 K1/R2 pattern; priority L; effort M]
+* The Nemotron stage-1 pattern (persistent managed buffers wrapped by `OrtValue.CreateTensorValueFromMemory`, one long-lived `RunOptions`, `Run(RunOptions, names, inputs, outputNames, outputs)` with pre-allocated outputs, ping-pong state) cut managed allocation from 63 KB to 6 KB per audio second and CPU seconds per audio second by 8-15 % against GenAI's wrapper (I1 section 7). Qwen3 / VibeVoice are B1, diarization already has one RunOptions, Parakeet `RunDecoderJoint` still allocates DenseTensors, a NamedOnnxValue list and three `ToArray()` copies per call (ParakeetTdtRecognizer.cs:1047-1073) at ~31 calls per audio second (trace of 8 clips: 1327 decoder steps in 42.5 s of audio, M12 count) and ~0.9-1.5 ms per call [MEASURED, M12, python ORT 1.24.4, shared box]. That is ~30-45 ms per audio second, while the encoder re-encodes a 6-10 s window (5 s left context + open region + 1 s right context) every 0.32 s at 110-230 ms per pass at 20 threads [MEASURED, M12, ORT 1.30.0 C#, 200-630 mel frames] = ~350-700 ms per audio second: the decoder_joint call path is ~6 % of Parakeet's streaming cost, so pre-binding it is worth at most a few percent and is NOT recommended on its own. (Side finding: Parakeet streaming is encoder-bound at roughly 0.4-0.7x real time of CPU on 20 cores here; a whole-recognizer run over 40 CV17 EN clips took 117.6 s wall for 236.5 s of audio (RTF ~0.5) on a loaded box.)
+* Do: factor the Nemotron helpers into a reusable `OrtStepRunner` only when a second recognizer needs it (B1 for Qwen3 / VibeVoice is the real customer); Parakeet alone does not justify it.
+
+### C6. ORT-format (`.ort`) model files   [source M3 M4; priority L; effort S measurement]
+* Moonshine Voice ships only memory-mappable `.ort` flatbuffers ("they load fast"; `python -m onnxruntime.tools.convert_onnx_models_to_ort`). Worth a 0.5-day measurement of load time and peak RSS for the 690 MB Nemotron encoder on the P30 Pro (the external-data `.onnx` is read and pre-packed at load). ORT format has a 2 GB flatbuffer limit: the Nemotron encoder fits, Qwen3 decoder weights do not. Unverified benefit.
+
+### C7. Device-resident Nemotron for a GPU EP   [source M1 N5 + M2 R4; priority L; effort L]
+* Only if a GPU Nemotron path ever becomes a goal: caches on the device allocator (`OrtValue.CreateAllocatedTensorValue` with the EP allocator; upstream `nemotron_speech.cpp:130-168`, `gs/wgpu-nemotron`), decoder state and joint inputs on CPU, encoder and decoder/joint with different session options (`nemotron_speech.cpp:186-201`), graph capture only for fully static shapes AND device-resident buffers, `ReleaseCapturedGraph` before buffers are freed (`model.cpp:277-291`). With our CPU-resident OrtValues `capture=1` cannot work and should be rejected with a warning (see B12d). Today GPU builds are removed and WebGPU is 3x slower than CPU for int4 decoders.
+
+
+## 7. Already done or rejected (with the reason, so nobody repeats the work)
+
+Already done in our code (checked 2026-10-13, worktree `feat/nemotron-pure-ort`):
+
+| idea | where it is done | note |
+|---|---|---|
+| Pre-bound outputs, ping-pong caches, long-lived `RunOptions` for the Nemotron sessions | Nemotron/NemotronOnnxStepModel.cs:90-113, NemotronRnntEngine.cs:93-107, 259-278 | -8 % / -15 % CPU seconds per audio second vs GenAI (I1 section 7); do not propose again for Nemotron |
+| Prediction-network output reuse | RnntGreedyDecoder.cs | 524 prediction runs vs 1960 joint runs per 112 s |
+| Port of the native silence-drop rule incl. Silero early exit | NemotronSilenceGate.cs | matches GenAI's dropped sets exactly (59 VAD runs); upstream `silero_vad.cpp:152-176` |
+| Language tags / bare marker / punctuation never start or extend a word | WordTiming.cs:44-107, NemotronVocabulary.PieceOf | upstream's grouping does it worse (tag pseudo-word, mark-extended word ends: PR #2591, ort-extensions #1123) |
+| Clamp word / token times to the fed audio (M3 D4) | NemotronWordTimer.cs:78, 126-150; NemotronUtteranceRecognizer.cs:276, 290-309, 369 | tested (`WordTimes_ShouldBeClampedToTheAudioFed`) |
+| Utterance end = terminal tag or frame gap >= 13 frames measured from the last LETTER token (M3 D2) | NemotronUtteranceOptions.cs (1.04 s) | I2 section 3 measured leak rates |
+| Word times on the stream clock including dropped chunks | NemotronUtteranceRecognizer, NemotronRnntRecognizer timeline | same clock as upstream's absolute origin; flush padding stays on the grid (documented) |
+| `blank_penalty` | RnntGreedyDecoder.BlankPenalty | M1 item 11 (EN 28.08 / 27.88 / 27.88 / 29.04 / 35.58 % for 0 / 0.5 / 1 / 2 / 3): best gain 0.2 points, keep 0 |
+| `session.intra_op.allow_spinning=0` for every CPU session (except diarization, B10) | OrtCpuTuning.cs | upstream only does it for VitisAI (`src/ep/vitisai/session_options.cpp:16-17`) |
+| Correct language-id table | LanguageMapper.cs:15-19 | upstream `docs/RuntimeOptions.md:50-68` lists ja = 14, ko = 15, it = 10, contradicting its own example `examples/python/model-asr.py:34-112` and the model's `prompt_dictionary`; do not copy the doc |
+| ASR time base for the speaker assigner | I2 / I2b: calibrated lag + energy snap (TTS + perfect diarizer 99.9 % words / 99.6 % turn edges; real speech + the app's real diarizer: CV17 en 99.1-99.2 %, ru 97.1-97.2 %, AMI 96.5-96.7 %, within 0.4 points of the raw slot and flat up to +200 ms) | M3 D5 (feed raw emission times) is superseded (I2b section 4); it is right only for a diarizer that is uniformly late at onsets AND offsets, which the real one is not; its simulation that upstream's one-frame left shift gains nothing remains valid |
+
+Rejected (measured or read, with evidence):
+
+| idea | verdict and reason |
+|---|---|
+| `enable_cpu_mem_arena=false` (upstream exposes it, `model.cpp:643-648`) | REJECTED, M2 measured Qwen3 decoder_step 84-86 ms vs 55-62 ms with the arena (+40 %), working set only -125 MB |
+| `enable_mem_pattern=false` (`model.cpp:650-655`) | no effect on the dynamic-shape step (56.4 vs 55.1 ms) |
+| `session.use_device_allocator_for_initializers` | no effect on the CPU int4 decoder |
+| `PrePackedWeightsContainer` to share pre-packed weights between two sessions | no effect (private memory 1067 -> 2106 MB with or without it); only `AddInitializer`-style sharing dedups (upstream does it for target + MTP drafter, `model.cpp:528-582`): not tried, L-size, ~1 GB for Qwen3 init + step; B3 removes the need for VibeVoice |
+| Global ORT thread pool (`DisablePerSessionThreads`) | upstream wraps the API but never uses it (`onnxruntime_api.h:563-610`); our sessions deliberately use different thread counts and spinning is off: nothing measurable |
+| Run-level ORT profiling (`model.cpp:202-218`) | the managed `RunOptions` in 1.30.0 has no profiling member; use session-level profiling (B12a) |
+| GenAI `runtime_profiles` (v0.17 memory-class overlays, `runtime_profiles.cpp:10-52`) | CUDA-only (throws unless the primary device is CUDA); the concept (thread counts / window sizes by RAM class) could live in `SettingsDefaults` |
+| `no_repeat_ngram` / `repetition_penalty` (`search.cpp:407-471`) | hard bans are wrong for ASR (legit repeats); only a loop breaker is useful (B5) |
+| Per-component session options / thread counts for decoder and joint | M2: 4 and 10 threads are equal for these small graphs |
+| Baking `length` into the Nemotron encoder (#2036) | -3 % nodes, < 1 % speed (M1 item 8): only the compatibility switch A5 |
+| float16 graph I/O (#2279) | no CPU / Android FP16 recipe upstream (`builder.py:1213`), motivated by NvTensorRtRtx |
+| `rtn` as the base INT4 method; QDQ / static INT8 for QNN; 2-bit; KV-cache quantisation; paged attention; speculative drafters; MoE | LLM-serving features or measured worse upstream (`src/python/py/models/quantization/QUANTIZATION.md:120`: `default` 0.7980 vs `rtn` 0.7762 MMLU on GPT-OSS-20B); the repo's QNN path is not referenced by any C# code |
+| ORT transformers `conformer` attention fusion on the Nemotron encoder (M3 Q6) | ANSWERED: upstream's own prototype README (`origin/sunghcho/nemotron:tools/nemotron_export/README.md`) reports only 96 SkipLayerNormalization fusions, the attention fusion did not match; 96 fused Adds in an encoder that is 87 % MatMulNBits / Conv |
+| Whisper timestamp primitives (#2663 / #2659 / #2676 / #2668) | no Whisper recogniser in our stack; the one token-time idea (report incomplete boundaries instead of guessing) is already our rule for the trailing word |
+| Upstream coupling details of the diarization PRs (#2711 / #2719): one stateful diarizer graph with the AOSC inside ONNX (fixed 264 / 264), holding the ASR chunk for the diarizer look-ahead (+320 ms ASR latency), mel sharing, skipping diarizer steps in gated silence | our host-AOSC design with presets is cheaper on the phone (4-5x vs `eco_2s`), keeps ASR latency, and mel sharing saves < 0.3 % RTF (M3 D6) |
+| Upstream's 2-decimal rounding of times, tag pseudo-words, mark-extended word ends, per-stream metadata-state objects | traps or irrelevant (M3 D3) |
+| Moonshine as a replacement / the Russian answer | NO-GO (no Russian streaming model); see C4 |
+| Leading room tone to cure the first-word loss of a fresh stream | noise: WER 20.17 / 17.41 / 21.02 / 19.11 % for none / 0.2 s / 0.5 s / 1.0 s (M1 `lead` probe); only the stale-state case is real (A1) |
+| Blanket `accuracy_level` 4 on the Parakeet INT4 encoder (to match upstream's CPU default) | REJECTED, M12 measured it 30-45 % SLOWER (ORT 1.30.0 C#, 630 mel frames) with neutral WER; level 4 only pays for M = 1 rows (B6) |
+| Decoder-only reset after a pause | inconsistent (helps in 3 English settings, hurts in 3); the encoder cache is the main cause (A1) |
+| Qwen3 `.ToArray()`-free "free RewindTo" with persistent buffers (M2 K1 addendum) | wrong for the stacked `[28,1,8,L,128]` layout: truncation is a ~57 MB re-stride copy, not free (B1 caveat) |
+
+## 8. Open questions
+
+1. A1: is the dual-branch selector as good as the offline numbers when it decides after N = 3-4 chunks, on natural dictation (real hesitations, the real `. <en-US>` closing token before a pause, other speakers than CV17), and in Russian? What K and N? Does the policy move I2's lag table and snap parameters?
+2. A1 / A6: is a plain reset acceptable for English only, or does the continuation cost (2-8 points) make the dual-branch mandatory? Which languages show the stale-state damage (only en and ru were measured; Thai returns no tokens at all, it is not a transcription-ready locale)?
+3. A3: bit-identity of batched vs single-frame joint on ORT 1.30.0 in C# and on ARM64 (Android); until then the GenAI-equality tests are the gate.
+4. B3: do zero-length past tensors work on ORT 1.30 C# and on every EP we ship (WebGPU / DirectML)? The VibeVoice `-v5-winui` package must be checked for the same graph layout.
+5. B6: the accuracy_level crossover (level 4 wins for M = 1 rows, level 0 for wide matmuls) was measured on one x64 CPU (AVX2 / AVX-VNNI), the Qwen3 and VibeVoice rows only in python ORT 1.24.4: repeat on ORT 1.30 in C# and on ARM64 (dot-product kernels, the Huawei P30 Pro) before changing any shipped package; validate Qwen3 `decoder_init` at level 0 with a 50-clip WER run.
+6. C1: where does the Qwen3 exporter live? `work/qwen3-asr-onnx` is untracked; `tools/converters/Qwen3Asr` only quantises. Without it neither C1 nor the exact variant of B9 is possible at export time.
+7. K3 / C1: why is the forced prefix worse in Russian (8-clip sample)? Needs a larger sample and u = 8..12 before any decision.
+8. C3: INT4 quality of the conv-module weights; how to make the repo converter reproduce the shipped k-quant artefact (zero points, `accuracy_level` 4).
+9. B11: Spanish clips with `¿` / `¡` (the only way to see the Parakeet regex damage on real output); download with `tools/eval/download_cv_test.py --lang es`.
+10. Upstream watch: PR #2591 (word timestamps) and #2719 (diarization) are open with unresolved API review (move interval assembly into `TransducerState`, a pinned ort-extensions revision, C++17 problems); re-check `git branch -r` and the PR pages quarterly. If upstream ever merges timestamps, compare its tests with A4.
+11. Which GenAI file should remain the model-folder manifest after GenAI is removed? Today `genai_config.json` (read by `NemotronModelConfig`) is also the detector (`IsNemotronModel`) and the folder marker of `Unit_ModelFolderScannerTests`; M3 recommends keeping it until a replacement is defined.
+
+
+## Appendix A. Skeptic pass: verdict for every item rated high or medium by M1 / M2 / M3
+
+Method: each upstream citation was re-opened with `git show <ref>:<path>` (line numbers re-read, not copied), each "our state" claim re-checked in the worktree and on the shipped model folders (graph protos only), numbers re-used only when a raw output existed. Verdicts: CONFIRMED / ALREADY DONE / SUPERSEDED / OVERSTATED / UNCLEAR. Where a verdict changed a rating, the backlog item carries the corrected value.
+
+| source id | miner's rating | verdict | corrections made by M12 | backlog item |
+|---|---|---|---|---|
+| M1 "pause reset" (raw `pausereset` outputs, never written up) | - | CONFIRMED and RE-SCOPED | re-run on a new clip set (+ digital silence, louder noise, 1/2/6 s gaps, Russian) confirms the EN effect; a new probe shows the opposite cost for a reset inside a sentence (EN +2..8, RU +7 points), so the plain reset is unsafe; dual-branch selector tested | A1 |
+| M1 N2 closing chunk | M | CONFIRMED (small) | gain 8 / 475 EN and 4 / 500 RU words; irrelevant when trailing audio keeps streaming; word times are already clamped in Stage 2 | A2 |
+| M1 N3 / N4 / N5 / S1 / S2 | L | CONFIRMED as low | `length`-less encoder = compatibility only (< 1 % speed); fp16 / device-resident = no CPU benefit; pre-roll alone = noise | A5, A6, C7 |
+| M1 T-area (never written) | - | WRITTEN | language-id doc bug (done), CJK word grouping, Parakeet regex, Qwen3 decode filter | B11, B12e, B12f |
+| M2 K1 persistent KV | H | CONFIRMED | "RewindTo free" in the addendum is wrong for the stacked layout; numbers are from a noisy box (trust ordering) | B1 |
+| M2 R1 VibeVoice one session | H | CONFIRMED | data-file identity re-checked (880 896 512 B each, first MiB equal); zero-length dims unverified on ORT 1.30 C# / other EPs | B3 |
+| M2 K2 = M3 Q2 last-position logits | MH / P1 | CONFIRMED, MERGED | upstream default is OFF (`prune_lm_head`), so GenAI's own packages are not pruned either | B2 |
+| M2 K3 forced-prefix continuation | M | OVERSTATED | Russian half (never written up) is WORSE: 4.23 -> 7.04 % WER on 8 clips; EN gain is 1 word on 211; keep only behind C1 | C1 |
+| M2 K4 GenAI-builder decoders | M | UNCLEAR | the -30..40 % is an estimate; only the profile (KV plumbing 32-44 % of the step) is measured | C2 |
+| M2 K4a `decoder_append` graph | H as design target | CONFIRMED as a design, UNPROVEN as a result | decoder causality makes KV reuse exact in the growing phase (M12 reasoning); the exporter is outside the repo; saturation policy open | C1 |
+| M2 K5 token cap / loop breaker | M | CONFIRMED | merged with M3 M4 (Moonshine `max_tokens_per_second`) | B5 |
+| M2 R2 batched joint | M | CONFIRMED, UPGRADED | I1's "not parity-safe" was an untested assumption; M12 measured 280 / 280 bit-identical rows; share recomputed 5-8 % RTF (M2 said 6-10 %) | A3 |
+| M2 R3 arena shrinkage | L-M | CONFIRMED (low) | mostly redundant once B2 removes the init transient | B12b |
+| M2 R4 WebGPU options | L | CONFIRMED (unrun) | no GPU build here; first claim (`validationMode`) re-read in base.py:151-154 | B12d, C7 |
+| M2 R5 mmap embeddings | H (mobile) | CONFIRMED | upstream evidence only tangential (embedding session); the measurement carries it | B4 |
+| M2 R6 shared env arena | M | CONFIRMED | process-global, behind a setting | B8 |
+| M2 R7 Terminate | M | CONFIRMED | not needed for Nemotron (chunk ~0.1 s) | B7 |
+| M2 R8 diarization spin | L-M | CONFIRMED (code) | unmeasured on the diarization job | B10 |
+| M2 (left open) accuracy_level on Parakeet | - | FINISHED by M12 | see B6; M3's "accuracy_level 4 everywhere" was wrong for Parakeet | B6 |
+| M3 D4 clamp to fed audio | P2 / P1 | ALREADY DONE | NemotronWordTimer.Clamp + tests (Stage 2) | section 7 |
+| M3 D5 raw times for the assigner | P1 | SUPERSEDED | I2 / I2b: one calibrated + snapped time base is within 0.4 points of the raw slot with the real diarizer on 56 CV17 conversations and 2 AMI meetings; the snap fixes the early tail (ru first-of-turn words 85.6 -> 95.9 %) | section 7 |
+| M3 D2 gap rule | P1 | ALREADY DONE | 1.04 s from the last letter token | section 7 |
+| M3 D1 / D3 invariants and API notes | P2 | PARTLY DONE | remaining sub-items listed | A4 |
+| M3 Q1 pointwise conv INT4 | P1 | CONFIRMED, effort / priority overstated | census re-run; feasible by graph surgery without re-export; INT4 quality unmeasured; speed ~5 %; baseline recipe not reproducible from the repo | C3 |
+| M3 Q3 drop fp32 embedding from decoder_init | P2 | CONFIRMED (packaging only) | ORT memory-maps external data, so RAM is unaffected | B9 |
+| M3 Q4 GQA rebuild | P2 | UNCLEAR | = M2 K4 | C2 |
+| M3 Q5 INT4 recipe A/B | P3 | CONFIRMED | upstream's prototype offers `rtn`, `k_quant_mixed`, `hqq` | C3 |
+| M3 Q6 conformer fusion | P3 | ANSWERED (negative) | upstream README: only 96 SkipLayerNorm fusions | section 7 |
+| M3 Q7 fold position table | P2 | CONFIRMED, priority overstated | -41 MB on disk only | B12g |
+| M3 M1 Moonshine | P3 | CONFIRMED | no change | C4 |
+| M3 "no Nemotron export recipe in the clone" | - | CORRECTED | exists on `origin/sunghcho/nemotron` (never merged) | section 2 |
+
+## Appendix B. Measurement ledger (what was measured, by whom, with what)
+
+| claim | who / how | durable artefact |
+|---|---|---|
+| Pause-state effect, false-reset cost, dual-branch selection (A1) | M1 (probe `pausereset`, `lead`, `pausectx`) and M12 (6 settings EN, 1 RU, `hesitate`, `selecttest`), INT4 c056, CPU, CV17 clips 100-179 | `work/nemotron-migration/M12/probe_src/Program.cs`, `run_pr*.sh`, `run_hes.sh`, `run_sel.sh`, `out_pr_*.txt`, `out_hes_*.txt`, `out_sel_*.txt` |
+| Closing chunk, tail tokens beyond the audio, blank penalty, deletion positions (A2) | M1, same probe | `work/nemotron-migration/reports/M1-nemotron-streaming-tokenizers.md` section 1.5-1.7 |
+| KV copy cost, pruned logits, arena, mmap, env arena, terminate, joint op cost (B1, B2, B4, B7, B8, A3) | M2, C# harnesses (ORT 1.30.0) and python (ORT 1.24.4) | numbers in `work/nemotron-migration/reports/M2-ort-runtime-kvcache.md`; harness sources were in the miner's session scratch and may be gone (the experiments are re-creatable from the descriptions) |
+| Joint batched vs single-frame bit-identity (A3) | M12, python ORT 1.24.4, 280 rows x {1, 4, 12} threads | `work/nemotron-migration/M12/joint_parity.py` |
+| accuracy_level census, per-shape timings, Parakeet token / WER test (B6) | M12: graph census over all shipped folders; python timings with M2's patch scripts; C# ORT 1.30.0 encoder timing; whole-recognizer run with a patched Parakeet package | `M12/census_acc.py`, `M12/acc_variants.py`, `M12/acc_vv.py`, `M12/pk_enc.py`, `M12/pk_dj_acc.py`, `M12/PkEncBench/`, `M12/run_pk.sh`, `M12/score_pk.py`, `M12/pk_times.txt`, `M12/pk_enc_results.txt` |
+| Conv / position-table census (C3, B12g) | M3 and M12 (graph protos only) | `M12/conv_census.py` |
+| Parakeet regex vs faithful detokenisation (B11) | M12, python replica of `DecodeFrames`, 46 clips | `M12/pk_detok.py` |
+| Parakeet decoder_joint call cost (C5) | M12, python ORT 1.24.4, shared box | `M12/pk_dj.py` |
+
+Reproduction notes: the probe is built with `dotnet build work/nemotron-migration/M12/probe_src/probe.csproj -c Release -o work/nemotron-migration/M12/probe_bin4` (it references `SpeechLib.dll` / `SpeechLib.Providers.dll` copied into `M12/probe_libs` from a build of the pure-ort worktree; the `run_*.sh` scripts call `probe_bin4/probe.exe`); `PkEncBench` is a plain `dotnet build -c Release` console on ORT 1.30.0; the patched Parakeet encoder (`M12/parakeet_acc4/encoder-model.onnx`, 679 MB) was deleted after the runs and is re-created by `pk_enc.py acc4` (the patched `decoder_joint-model.onnx` is kept). Model folders and `Test-Audio/cv17` are the ones of the main checkout.
+
+Machine: Intel Core Ultra 7 255HX, 20 logical cores, Windows 11, shared with other agents' jobs during every run (absolute milliseconds inflated up to ~2x; orderings within one run are reliable).
+

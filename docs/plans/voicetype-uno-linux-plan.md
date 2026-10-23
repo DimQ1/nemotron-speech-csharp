@@ -13,7 +13,7 @@ Scope: complete the Linux-first port of VoiceType on Uno Platform (Skia Desktop 
 | Recognition pipeline (lifecycle → capture → partial/final) | Done | apps/VoiceType.Uno/src/VoiceType.Uno/Services/RecognitionService.cs |
 | Microphone capture (ALSA default, 16 kHz mono) | Done | apps/VoiceType.Uno/src/VoiceType.Uno/Services/Audio/AlsaAudioSourceFactory.cs |
 | PulseAudio capture: Mic / Loopback (@DEFAULT_MONITOR@) / Mix | Done | apps/VoiceType.Uno/src/VoiceType.Uno/Services/Audio/PulseAudioSourceFactory.cs |
-| ONNX Runtime GenAI inference (CPU EP) | Done | via SpeechLib.Nemotron (`-p:GpuArch=CPU`) |
+| ONNX Runtime GenAI inference (CPU EP) | Done (since replaced: plain ONNX Runtime, no GenAI, no `GpuArch`) | via SpeechLib.Providers (`NemotronRnntRecognizer`) |
 | Global hotkeys (XDG GlobalShortcuts portal, Wayland + X11) | Done | libraries/VoiceType.Hotkeys |
 
 ## Phase 2 — Text injection (DONE, 2026-08-21)

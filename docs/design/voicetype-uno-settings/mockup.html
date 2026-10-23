@@ -469,7 +469,7 @@
         ${opt('ep-cpu', true, 'Processor (CPU)<span class="tag">Recommended</span>', 'Works everywhere · model loaded in 1.8 s')}
         ${opt('ep-gpu-hp', false, 'Graphics card — performance', 'WebGPU on the discrete GPU')}
         ${opt('ep-gpu-lp', false, 'Graphics card — power saving', 'WebGPU on the integrated GPU')}
-        ${opt('ep-model', false, 'As set by the model', 'Uses the provider in the model’s genai_config.json')}
+        ${opt('ep-model', false, 'As set by the model', 'The model files do not choose a provider, so this runs on the processor')}
       </div>
       <p class="note">Changing the model or compute reloads the model. During a recording the change waits until you stop.</p>
       <div class="sec">Advanced</div>

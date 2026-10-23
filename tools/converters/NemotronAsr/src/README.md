@@ -2,7 +2,8 @@
 
 This recipe exports **nvidia/NVIDIA-Nemotron-3.5-ASR-Streaming-Multilingual-0.6b**
 (100+ languages) to ONNX, optimizes the encoder, and produces deployment-ready
-artifacts for `onnxruntime-genai`.
+artifacts in the `onnxruntime-genai` model-folder format (the product itself no longer uses GenAI: its plain-ONNX-Runtime
+recognizer reads these folders, `genai_config.json` being the manifest).
 
 All model components are handled through Olive's declarative pass system:
 - **Encoder**: OnnxConversion → OnnxKQuantQuantization (INT4 default, or INT8 dynamic)
@@ -92,7 +93,8 @@ input and output of `encoder.onnx`, `decoder.onnx`, and `joint.onnx` is `FLOAT16
 
 ## Inference
 
-Use the multilingual-aware example from `onnxruntime-genai`, passing a `--language` code:
+The upstream `onnxruntime-genai` Python example (a reference only; the product runs the folder on plain ONNX Runtime) is
+multilingual-aware, passing a `--language` code:
 
 ```bash
 python onnxruntime-genai/examples/python/nemotron_speech.py \

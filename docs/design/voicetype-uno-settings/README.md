@@ -50,7 +50,7 @@
 | Раздел | Содержимое | Ключи `AppSettings` |
 |---|---|---|
 | **Storage** | Сводка занятого места; Model storage; Recordings; App data | `ModelsRootPath`, `PendingModelsRoot`, `ModelStorageNote`, `SessionsPath`, новый указатель корня данных (§4.4) |
-| **Speech recognition** | Модель в работе → страница Models; язык; Skip silence (VAD); Compute (радио с понятными названиями); Advanced: repetition penalty | `SelectedModel`, `Language`, `UseVad`, `ExecutionProvider`, `RepetitionPenalty` |
+| **Speech recognition** | Модель в работе → страница Models; язык; Skip silence (VAD); Compute (радио с понятными названиями); Advanced: repetition penalty (с 2026-10-22 без эффекта: ни одна модель его не читает, переключатель сохранён ради старых настроек, подпись в UI это говорит) | `SelectedModel`, `Language`, `UseVad`, `ExecutionProvider`, `RepetitionPenalty` |
 | **Audio input** | Microphone / System audio / Microphone + system audio с пояснениями; на Android только микрофон, System audio недоступен с объяснением | `AudioSource` |
 | **Translation and Gemma** | Translate while recording; язык; движок On this device / Local server; модель Gemma → Models; CPU/GPU; адрес сервера (только для Local server); доп. инструкции | `TranslationEnabled`, `TranslationTargetLanguage`, `TranslationBackend`, `TranslationComputeBackend`, `TranslationServerUrl`, `TranslationSystemPrompt` |
 | **Typing into apps*** | Type into other apps; Stop when focus moves; Paste shortcut (радио) | `IsTextInjectionEnabled`, `DisableInjectionOnFocusChange` (ключ есть, но Uno его не читает: переключатель показывать только вместе с реализацией), `PasteChord` |

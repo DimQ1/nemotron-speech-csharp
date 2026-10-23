@@ -18,8 +18,8 @@
 
 ### 1. ONNX Runtime GenAI не поддерживает TDT-декодер
 
-Текущий C#-стек использует `Microsoft.ML.OnnxRuntimeGenAI` (0.16.0). Его
-поддержка ASR (`nemotron_speech.py`, `StreamingProcessor` + `Generator` +
+C#-стек использовал `Microsoft.ML.OnnxRuntimeGenAI` (0.16.0; пакет удалён 2026-10-22, Nemotron теперь тоже
+работает на обычном ONNX Runtime). Его поддержка ASR (`nemotron_speech.py`, `StreamingProcessor` + `Generator` +
 `Tokenizer`) реализована **только для Nemotron 3.5 ASR с RNN-T декодером**
 (компоненты `encoder` + `decoder`/predictor + `joint` в `genai_config.json`).
 

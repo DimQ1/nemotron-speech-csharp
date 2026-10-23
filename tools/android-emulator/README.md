@@ -42,8 +42,8 @@ adb -s emulator-5554 emu power status charging|discharging
 Always pass `-s emulator-5554`; in Git Bash set `MSYS_NO_PATHCONV=1` for device paths.
 
 ## ABI findings
-The Release APK ships both `arm64-v8a` and `x86_64` (203 files each), including
-`libLiteRtLm.so`, `libonnxruntime.so`, `libonnxruntime-genai*.so`, `libSkiaSharp.so`.
+The Release APK ships both `arm64-v8a` and `x86_64` (203 files each when measured, before ONNX Runtime GenAI
+was removed), including `libLiteRtLm.so`, `libonnxruntime.so`, `libSkiaSharp.so`.
 So the hardware-accelerated `x86_64` image runs the app natively; no ARM translation needed.
 
 ## Known limits

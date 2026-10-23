@@ -55,7 +55,8 @@ greedy ≈ 1.3 с, с контекстом ≈ 2.0 с, сэмплер модел
   CPU-декода на Linux с самосборным engine_cpu) остаётся открытым, но официальные
   prebuilt-библиотеки 0.16, которые использует 1.2.0, на Windows работают.
 - Прочие обновления (не применены): `Microsoft.ML.OnnxRuntimeGenAI` 0.16.0 → 0.17.0
-  (влияет на Nemotron, нужна отдельная проверка), `NAudio` 3.0.1 → 3.1.0,
+  (влияет на Nemotron, нужна отдельная проверка; пакет позже удалён из решения, Nemotron работает на обычном
+  ONNX Runtime), `NAudio` 3.0.1 → 3.1.0,
   `Microsoft.Windows.AI.MachineLearning` 2.1.74 → 2.4.89, тестовые пакеты xunit 2.9.3 /
   runner 4.0.0 / Test.Sdk 18.10.1, `System.CommandLine` 2.0.12, `BenchmarkDotNet` 0.15.8.
 - **Модель**: `litert-community/gemma-4-E2B-it-litert-lm` (обновлена 2026-08-31) —

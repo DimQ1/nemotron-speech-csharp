@@ -3,7 +3,7 @@
 Olive >= 0.7 writes converted models to:
     <output_dir>/<component>.onnx/output_model/model/model.onnx  (+ <component>.onnx.data)
 
-The application (onnxruntime-genai / ModelSession) expects a flat directory:
+The application (the Nemotron recognizer on plain ONNX Runtime, `NemotronRnntRecognizer`) expects a flat directory:
     <output_dir>/encoder.onnx, decoder.onnx, joint.onnx (+ matching .data files)
 
 This script moves the generated files into place and removes the nested dirs.

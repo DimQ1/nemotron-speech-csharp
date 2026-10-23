@@ -1,13 +1,13 @@
 ---
 name: nemotron-backend
-description: "Use when: working on NemotronSpeech backend — ONNX Runtime GenAI inference, audio capture pipeline, multi-GPU builds, CLI parsing, or streaming ASR processing in C#/.NET."
+description: "Use when: working on NemotronSpeech backend — the Nemotron recognizer on plain ONNX Runtime, audio capture pipeline, execution providers, CLI parsing, or streaming ASR processing in C#/.NET."
 ---
 
 # NemotronSpeech Backend Patterns
 
 ## Project Overview
 
-.NET 10 console app for real-time multilingual speech recognition via NVIDIA Nemotron 3.5 ASR (0.6B params) using ONNX Runtime GenAI. Follows **KISS + SOLID** principles with a lock-free audio pipeline.
+.NET 10 console app for real-time multilingual speech recognition via NVIDIA Nemotron 3.5 ASR (0.6B params) on plain ONNX Runtime (ONNX Runtime GenAI was removed). Follows **KISS + SOLID** principles with a lock-free audio pipeline.
 
 ## Architecture Layers
 
@@ -15,7 +15,7 @@ description: "Use when: working on NemotronSpeech backend — ONNX Runtime GenAI
 CLI (Program.cs)
   └─► AppOptions (parsed record)
         └─► LanguageMapper (BCP-47 → numeric lang_id)
-        └─► ModelSession (ONNX GenAI lifecycle wrapper)
+        └─► RecognizerFactory → NemotronUtteranceRecognizer (plain ONNX Runtime)
               └─► Transcriber (orchestrator)
                     ├── RunFile()  — batch file transcription
                     └── RunLive()  — streaming capture + inference
@@ -28,32 +28,32 @@ CLI (Program.cs)
 
 ---
 
-## Pattern 1: ONNX GenAI Model Lifecycle
+## Pattern 1: Nemotron Recognizer on Plain ONNX Runtime
 
-### File: `ModelSession.cs`
+### Files: `SpeechLib.Providers/Nemotron/` (`NemotronRnntRecognizer.cs`, `NemotronRnntEngine.cs`, `RnntGreedyDecoder.cs`, `NemotronStreamingMel.cs`, `NemotronVocabulary.cs`, `NemotronUtteranceRecognizer.cs`)
 
-**Wrapper pattern** — single `sealed class : IDisposable` that owns the full ONNX GenAI lifecycle:
+ONNX Runtime GenAI was removed; the recognizer owns the whole decode path. `sealed class : IDisposable`:
 
-| Step | Type | Purpose |
-|------|------|---------|
-| 1 | `Config` | Load `genai_config.json`, set execution provider |
-| 2 | `Model` | Instantiate model from config |
-| 3 | `StreamingProcessor` | Accumulate audio chunks, emit encoded tensors when ready |
-| 4 | `Tokenizer` + `TokenizerStream` | Decode output tokens → text |
-| 5 | `GeneratorParams` + `Generator` | Autoregressive token generation from encoded inputs |
-
-**Disposal order** (reverse construction):
-```csharp
-_generator → _genParams → _tokenizerStream → _tokenizer → _processor → _model → _config
-```
+| Layer | Type | Purpose |
+|-------|------|---------|
+| 1 | `NemotronModelConfig` | Parse `genai_config.json` (sizes, graph file names, `vad` block) as plain JSON |
+| 2 | `NemotronStreamingMel` | Streaming log-mel front end (float32 KISS FFT, bit-identical to the former GenAI mel on Windows x64; other platforms use their own libm: same tokens on the clips tested on Linux x64, mel within 7e-5, the rest unmeasured) |
+| 3 | `NemotronRnntEngine` | Encoder / decoder / joiner `InferenceSession`s, cache buffers, per-chunk run |
+| 4 | `RnntGreedyDecoder` | Greedy RNN-T search, one `NemotronToken` (chunk, frame, symbol) per emitted token |
+| 5 | `NemotronVocabulary` | `vocab.txt` → text, language tags, word starts |
+| 6 | `NemotronUtteranceRecognizer` | Utterances, calibrated word times, input gain control (`RecognizerFactory` builds this one) |
 
 **Key rules:**
-- `StreamingProcessor.Process(float[] chunk)` returns `NamedTensors?` — null means "not enough audio yet"
-- `StreamingProcessor.Flush()` drains remaining buffered audio
-- Single-language models: no `lang_id` input in encoder — detect via `genai_config.json` introspection
-- VAD (`Silero VAD`) set via `processor.SetOption("use_vad", "true")` — graceful fallback if unsupported
+- `ProcessAudio(float[] chunk)` takes audio of any size and returns the new text — `null` means "no chunk was encoded by this call" (not enough audio, or the silence gate dropped it), `""` an encoded chunk without tokens
+- `Flush()` pads the remainder to a whole chunk and encodes it; `ResetStreamingState()` starts a fresh stream (warm-up code must reset AFTER its silent chunk — `RecognizerWarmup.Run`)
+- Single-language models: no `lang_id` input in the encoder — detected from the graph / `genai_config.json`
+- VAD: `TrySetVad(true)` switches on the native silence drop (Silero chunk gate, `silero_vad.onnx` of the model folder) — returns false and keeps it off when the model is missing
+- Parity: the token streams are pinned by golden files recorded from GenAI 0.16.0 on Windows x64 (`SpeechLib.Nemotron.Tests`: `Data/golden` always, the complete oracle `Data/golden-full` with `NEMOTRON_FULL_GOLDEN=1`; harness and audio recipes in `tools/nemotron-golden`); any change of the front end or the loop must keep them identical. The strict mel test is `[WindowsX64Theory]`, other platforms get a tolerance test
+- Failures and bad input: an exception inside `ProcessAudio`/`Flush` faults the recognizer (`IsFaulted`; `ResetStreamingState()` recovers); NaN/Inf samples become 0 (`NonFiniteSamples`); beam count and repetition penalty are accepted and ignored
 
 ### genai_config.json Structure
+
+The file name is inherited from the ONNX Runtime GenAI export format the models are published in; it still marks a Nemotron model folder (`ModelFolderScanner`, `NemotronModelConfig.IsNemotronModel`).
 
 ```json
 {
@@ -96,7 +96,7 @@ public sealed class ConcurrentQueueWrapper
 
 **Producer-consumer with signal:**
 - Producer thread captures audio → batches `float[]` → `Enqueue()` → `ManualResetEventSlim.Set()`
-- Consumer loop: `TryDequeue()` each batch → `ProcessAudio()` → optional `DecodeTokens()`
+- Consumer loop: `TryDequeue()` each batch → `ProcessAudio()` (returns the decoded text delta)
 - The queue is bounded (64 batches); when the consumer falls behind the oldest batches are dropped and counted in `DroppedBatches`
 - Warmup: feed silent chunk to prime the processor/JIT
 
@@ -112,15 +112,16 @@ public interface IAudioSource : IDisposable
 
 ---
 
-## Pattern 3: CPU-only ONNX Runtime GenAI
+## Pattern 3: CPU-only plain ONNX Runtime
 
 The repository previously selected CUDA / DirectML / Blackwell GenAI packages through
 a `GpuArch` MSBuild property. That switch was removed — every build configuration
-(CI, scripts, the desktop apps and their settings UI) already ran CPU-only:
+(CI, scripts, the desktop apps and their settings UI) already ran CPU-only. ONNX Runtime GenAI
+itself was removed later (`tools/scripts/check-no-genai.ps1` keeps it out); every recognizer uses:
 
 ```xml
 <ItemGroup>
-    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.16.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" />
 </ItemGroup>
 ```
 
@@ -135,26 +136,15 @@ a `GpuArch` MSBuild property. That switch was removed — every build configurat
 
 ## Pattern 4: Execution Provider Strategy
 
-### File: `Common/Common.cs`
+### File: `SpeechLib.Providers/ExecutionProviderSelector.cs`
 
-**Provider selection rules:**
-- `"follow_config"` — use what `genai_config.json` specifies (default)
-- `"cpu"` — clear all providers, no GPU
-- `"cuda"` — clear providers, append CUDA
-- `"dml"` — **keep CPU fallback**, append DML (different from others!)
+**Provider selection rules** (`ExecutionProviderSelector.Apply(options, requestedName)`, used by Parakeet TDT, VibeVoice, Qwen3 and the diarizer; **Nemotron has its own policy**, see the last bullet):
+- `"cpu"`, `"follow_config"` (the CLI default) and any unknown or stale name — CPU
+- `"cuda"` / `"dml"` — only when `OrtEnv.GetAvailableProviders()` lists the provider (GPU builds are gone, so in practice CPU)
+- `"webgpu[:hp|:lp|:<index>][,key=value...]"` — the optional WebGPU plugin execution provider (`WebGpuExecutionProvider`); CPU with a warning when the plugin or its adapter is missing
+- **Nemotron** (`Nemotron/NemotronProviderPolicy.cs` + `NemotronSessions.cs`, not the selector): only the encoder may use WebGPU, and only on a discrete adapter; the prediction network and the joint are always CPU; `webgpu:lp`, integrated-only machines, a stale crash marker (`%LOCALAPPDATA%\SpeechLib\webgpu`, re-enable with `SPEECHLIB_WEBGPU_RETRY=1`), a second WebGPU recognizer in the process and any session/first-run failure all mean CPU, with the reason in `recognizer.ExecutionProvider.Reason`. An adapter index and raw options are parsed but ignored. Never touch the real WebGPU EP in a test process (use `WebGpuRig` fakes or a child process); details in `AGENTS.md` and `docs/research/nemotron-webgpu.md`
 
-```csharp
-if (ep == "dml")
-{
-    config.AppendProvider(ep);        // keep defaults
-}
-else
-{
-    config.ClearProviders();
-    if (ep != "cpu")
-        config.AppendProvider(ep);
-}
-```
+A persisted provider name must never fail session creation: always go through the selector.
 
 ---
 
@@ -185,7 +175,7 @@ Key rules:
 - `--mic`, `--loopback`, `--mix` set `CaptureMode`
 - `--language` / `-l` with next arg
 - `--use_vad true` with next arg
-- Known EP names (`cpu`, `cuda`, `dml`, `follow_config`) treated as execution provider
+- Known EP names (`cpu`, `cuda`, `dml`, `follow_config`) treated as execution provider (they all run on the CPU)
 - Non-flag, non-EP args treated as audio file path (first match)
 
 ---
@@ -231,7 +221,7 @@ Key rules:
 - Don't lock on hot paths — use `ConcurrentQueue` + batch enqueue
 - Don't hardcode model paths — resolve relative to `AppContext.BaseDirectory`
 - Don't throw on optional features (VAD, lang_id) — catch + warn
-- Don't expose mutable state on `ModelSession` — only init-time properties
+- Don't expose mutable state on the recognizers beyond the documented runtime setters (`TrySetVad`, `TrySetLanguage`) — everything else is init-time
 
 ### Error Handling
 - Graceful degradation: VAD failure → continue without VAD
@@ -245,8 +235,8 @@ Key rules:
 
 1. Build: `dotnet build NemotronSpeech.slnx -c Release` — CPU-only
 2. Native ONNX Runtime DLLs are copied to the output automatically
-3. Export/download ONNX model to `modules/asr/<variant>/`
-4. Run: `dotnet run --project NemotronSpeech -c Release --no-build -- "<model_path>" <mode> [ep] [--language <code>]`
+3. Export/download ONNX model to `models/asr/<variant>/` (an absolute path is safest for the CLI)
+4. Run: `dotnet run --project apps/NemotronSpeech/src/NemotronSpeech -c Release --no-build -- "<model_path>" <mode> [ep] [--language <code>]`
 
 ---
 

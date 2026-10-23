@@ -11,7 +11,7 @@ Primary target platform: **Linux (Ubuntu, X11)**. Windows/macOS desktop work thr
 | Settings persistence (settings.json, atomic writes) | ✅ Ported |
 | Recognition pipeline (model lifecycle → capture loop → partial/final results) | ✅ Ported |
 | Microphone capture on Linux (PulseAudio-compatible server: ALSA `default` and Pulse sources, 16 kHz mono) | ✅ Implemented |
-| ONNX Runtime GenAI model inference (CPU EP) | ✅ Via SpeechLib.Nemotron (`-p:GpuArch=CPU`) |
+| Speech model inference on plain ONNX Runtime (CPU EP) | ✅ Via `SpeechLib.Providers` (Nemotron, Parakeet TDT, Qwen3-ASR, VibeVoice) |
 | Global hotkeys on Linux (Wayland + X11) | ✅ `VoiceType.Hotkeys` library — XDG GlobalShortcuts portal (xdg-desktop-portal ≥ 1.18, GNOME 44+/KDE Plasma 5.27+); Null fallback on older compositors |
 | Text injection on Linux | ✅ `LinuxTextInjector` — types straight into the focused window, clipboard untouched: XTest on X11 (any layout, Unicode via scratch keycodes), ydotool on Wayland (ASCII only), xdotool fallback. Only text the backend cannot type (non-ASCII on ydotool) goes through clipboard (wl-copy / xclip / xsel) + paste chord |
 | Text injection on Windows (WinUI 3 head) | ✅ `WindowsTextInjector` — SendInput Unicode key events typed into the focused window, clipboard untouched (parity with VoiceType.WinUI's SendInput strategy); user32 clipboard only for the Copy action |
@@ -36,7 +36,7 @@ The port deliberately fixes the main tech-debt findings of the WinUI app:
   instead of null checks / `OperatingSystem.IsWindows()` scattered through ViewModels.
 
 ```
-SpeechLib (contracts) ─┬─ SpeechLib.Nemotron (ONNX GenAI model session, CPU EP on Linux)
+SpeechLib (contracts) ─┬─ SpeechLib.Providers (recognizers on plain ONNX Runtime, CPU EP on Linux)
                        ├─ VoiceType.Hotkeys      (IGlobalHotkeyService; XDG GlobalShortcuts
                        │                          portal backend on Linux, Null fallback)
                        └─ VoiceType.Uno

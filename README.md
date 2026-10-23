@@ -1,13 +1,13 @@
 # Nemotron ASR .NET 🎙️
 
-Real-time multilingual speech recognition using [NVIDIA Nemotron 3.5 ASR](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-multilingual-0.6B) (0.6B params) via ONNX Runtime GenAI in C#.
+Real-time multilingual speech recognition using [NVIDIA Nemotron 3.5 ASR](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-multilingual-0.6B) (0.6B params) in C# on plain ONNX Runtime (own streaming RNN-T decoder; ONNX Runtime GenAI is no longer used).
 
 | Feature | Details |
 |---------|---------|
 | **Languages** | 100+ (auto-detect or BCP-47 code) |
 | **Modes** | File, microphone, system loopback, mic+loopback mix |
 | **VAD** | Optional Silero input processing; capture and model lifecycle remain independent |
-| **Providers** | CUDA, CPU, DirectML — switchable at runtime |
+| **Providers** | CPU (default); optional WebGPU plugin execution provider: for Nemotron it runs the encoder on a discrete GPU only, see [docs/research/nemotron-webgpu.md](docs/research/nemotron-webgpu.md) |
 | **Architecture** | KISS + SOLID, lock-free audio pipeline |
 
 ---
@@ -18,11 +18,11 @@ Real-time multilingual speech recognition using [NVIDIA Nemotron 3.5 ASR](https:
 nemotron-speech-csharp/
 ├── NemotronSpeech.slnx           # .NET 10 solution file
 ├── apps/                         # Executable products, each with local source and tests
-│   ├── NemotronSpeech/src/       # 🎙️ Nemotron ONNX GenAI recognizer CLI
-│   ├── VoiceType/                # 🖥️ WPF app and its tests
+│   ├── NemotronSpeech/src/       # 🎙️ Nemotron recognizer CLI
 │   ├── VoiceType.WinUI/src/      # 🪟 WinUI 3 packaged desktop app
-│   └── LVA/                      # LVA application, components, and tests
-├── libraries/SpeechLib/src/      # 📚 Speech contracts, audio, and Nemotron providers
+│   └── VoiceType.Uno/            # 🐧 Uno Platform app (Skia desktop: Windows and Linux, plus Android) and its tests
+├── libraries/SpeechLib/          # 📚 Speech contracts, audio, recognizers (src/) and their tests (tests/)
+├── .github/                      # ⚙️ CI/CD workflows and composite action (see docs/ci.md)
 ├── tools/                        # 📊 Benchmarks, inspection utilities, and converters
 │   └── converters/               # 🐍 Independently extractable model converters
 │       ├── NemotronAsr/          #    NeMo → ONNX ASR conversion (Python)
@@ -40,11 +40,11 @@ nemotron-speech-csharp/
 | Project | Type | Description |
 |---------|------|-------------|
 | [**SpeechLib**](libraries/SpeechLib/src/SpeechLib/README.md) | .NET 10 Library | Provider-neutral interfaces, bounded audio queues, capture lifecycle, and `LiveTranscriber` |
-| **SpeechLib.Nemotron** | .NET 10 Library | NVIDIA Nemotron ONNX Runtime GenAI recognizer provider |
+| **SpeechLib.Providers** | .NET 10 Library | Recognizers on plain ONNX Runtime (NVIDIA Nemotron, Parakeet TDT, Qwen3-ASR, VibeVoice) and the `RecognizerFactory` that selects them |
 | **SpeechLib.Audio.NAudio3** | .NET 10 Library | NAudio 3.0.1 WASAPI capture provider used by the CLI, VoiceType.WinUI and VoiceType.Uno (Windows) |
-| [**NemotronSpeech**](apps/NemotronSpeech/src/NemotronSpeech/README.md) | .NET 10 Console App | ONNX Runtime GenAI implementation of `IStreamingSpeechRecognizer` for NVIDIA Nemotron 3.5 ASR. Supports CUDA / CPU / DirectML. |
-| [**VoiceType**](apps/VoiceType/src/VoiceType/README.md) | .NET 10 WPF App | Desktop speech-to-text with global hotkeys, text injection into any app, session recording, post-processing pipeline, MP3 audio saving |
+| [**NemotronSpeech**](apps/NemotronSpeech/src/NemotronSpeech/README.md) | .NET 10 Console App | Command-line front end over `RecognizerFactory` for NVIDIA Nemotron 3.5 ASR and Parakeet TDT (plain ONNX Runtime, CPU). |
 | [**VoiceType.WinUI**](apps/VoiceType.WinUI/src/VoiceType.WinUI/README.md) | .NET 10 WinUI 3 MSIX App | Packaged dictation app using NAudio 3, model setup, text injection, session persistence, and local MSIX installation |
+| [**VoiceType.Uno**](apps/VoiceType.Uno/README.md) | .NET 10 Uno Platform App | Cross-platform port of the dictation app (Skia desktop on Windows and Linux, Android): global hotkeys, text typed into the focused window, recordings History, live translation |
 | **BenchmarkSuite1** | .NET 10 Console App | BenchmarkDotNet suite for CPU threads, VAD, execution mode, RTF, and process CPU measurements |
 
 ## Quick Start
@@ -56,20 +56,33 @@ nemotron-speech-csharp/
 
 ### CPU (any machine)
 ```powershell
+# once after cloning: the LiteRtLmSharp packages that nuget.config maps to the local folder feed (needed before any restore)
+pwsh tools/scripts/fetch-litertlmsharp-feed.ps1
 dotnet build NemotronSpeech.slnx -c Release
-dotnet run --project apps/VoiceType/src/VoiceType -c Release
+dotnet run --project apps/NemotronSpeech/src/NemotronSpeech -c Release -- --help
 ```
 
-> The project is CPU-only: `SpeechLib.Providers` references the CPU
-> `Microsoft.ML.OnnxRuntimeGenAI` package. The former
+The apps are started from their own folders: the packaged WinUI app with the scripts described in
+[its README](apps/VoiceType.WinUI/src/VoiceType.WinUI/README.md) (`build-dev.ps1`, `install-dev.ps1`), the Uno app as in
+[its README](apps/VoiceType.Uno/README.md). The Uno projects are not in `NemotronSpeech.slnx`.
+
+### Continuous integration
+
+`.github/workflows/ci.yml` builds the solution and runs the model-free unit tests (about 2,000 in 9 projects) on Windows and
+Linux and runs the no-GenAI guard; the Uno packages and releases have their own workflows. What runs when, how to run the same
+checks locally, how to cut a release and what is not covered: [docs/ci.md](docs/ci.md).
+
+> The project is CPU-only: `SpeechLib.Providers` references the plain
+> `Microsoft.ML.OnnxRuntime` package. ONNX Runtime GenAI was removed (the
+> `tools/scripts/check-no-genai.ps1` check keeps it out). The former
 > `-p:GpuArch=CPU|Standard|DML|Blackwell` switch and its CUDA / DirectML packages
 > were removed.
 
 ## Build Configurations
 
-| Command | Execution provider | ORT GenAI |
-|---------|--------------------|-----------|
-| `dotnet build -c Release` | CPU | 0.16.0 CPU |
+| Command | Execution provider | ONNX Runtime |
+|---------|--------------------|--------------|
+| `dotnet build -c Release` | CPU | 1.30.0 |
 
 ## Dependencies Graph
 
@@ -77,18 +90,18 @@ dotnet run --project apps/VoiceType/src/VoiceType -c Release
 graph TD
   SL[SpeechLib core] --> |contracts| APP[Applications]
   NA3[SpeechLib.Audio.NAudio3] --> |NAudio 3.0.1| SL
-  NM[SpeechLib.Nemotron] --> |ONNX GenAI| ORT[Microsoft.ML.OnnxRuntimeGenAI]
-  NM --> SL
-  CLI[NemotronSpeech] --> NM
+  PR[SpeechLib.Providers] --> |plain ONNX Runtime| ORT[Microsoft.ML.OnnxRuntime]
+  PR --> SL
+  CLI[NemotronSpeech] --> PR
   CLI --> NA3
-  VT[VoiceType WPF] --> NM
-  VT --> NA3
-  VU[VoiceType WinUI] --> NM
+  VU[VoiceType WinUI] --> PR
   VU --> NA3
-    VT --> |MP3| LAME[NAudio.Lame]
+  UNO[VoiceType.Uno] --> PR
+  UNO --> NA3
+  NA3 --> |MP3| LAME[NAudio.Lame]
 ```
 
-The core assembly does not reference NAudio or ONNX Runtime. Audio providers are Windows-specific; the core contracts can be used on other platforms with an application-supplied `IAudioSource`.
+The core assembly does not reference NAudio; its only inference dependency is plain ONNX Runtime for the shared Silero VAD filter. Audio providers are Windows-specific; the core contracts can be used on other platforms with an application-supplied `IAudioSource`.
 
 ### Audio capture
 
@@ -137,10 +150,10 @@ File-mode only. Outputs each word with its `[start → end]` time in seconds:
 
 | Aspect | Detail |
 |--------|--------|
-| **Granularity** | ~560ms per chunk, refined by token-count weighting |
+| **Granularity** | Nemotron: the 80 ms frame of every token, calibrated for the emission lag and snapped to the speech onsets; recognizers without frame times: ~560ms per chunk, refined by token-count weighting |
 | **Punctuation** | Merged into preceding word (no standalone `.` or `,` entries) |
 | **Language tags** | `<en-US>`, `<de-DE>` etc. filtered from timing output |
-| **Time distribution** | Weighted by estimated token count per word (Phase 2) |
+| **Time distribution** | Nemotron: from the token frames (`NemotronWordTimer`); fallback: weighted by estimated token count per word |
 | **Model** | `SpeechLib/Models/WordTiming.cs` — `Word`, `StartSeconds`, `EndSeconds` |
 | **CLI flag** | `--word-timestamps` (ignored in live/mic mode) |
 
@@ -157,10 +170,11 @@ See [tools/converters/NemotronAsr/README.md](tools/converters/NemotronAsr/README
 ---
 
 ### 📖 Detailed Documentation
-- [SpeechLib README](SpeechLib/README.md) — library architecture & extensibility
-- [NemotronSpeech README](NemotronSpeech/README.md) — model setup, GPU configs, CLI args
-- [VoiceType README](VoiceType/README.md) — desktop app features & settings
-- [VoiceType.WinUI README](VoiceType.WinUI/README.md) — WinUI build, MSIX packaging, and local installation
+- [SpeechLib README](libraries/SpeechLib/src/SpeechLib/README.md) — library architecture & extensibility
+- [NemotronSpeech README](apps/NemotronSpeech/src/NemotronSpeech/README.md) — model setup, CLI args
+- [VoiceType.WinUI README](apps/VoiceType.WinUI/src/VoiceType.WinUI/README.md) — WinUI build, MSIX packaging, and local installation
+- [VoiceType.Uno README](apps/VoiceType.Uno/README.md) — Uno app status, platforms, packaging
+- [CI/CD](docs/ci.md) — workflows, tests in CI, releases, Android signing, open decisions
 
 ### Language Codes (common)
 `en` `ru` `zh` `de` `fr` `es` `ja` `ko` `hi` `ar` `pt` `it` `nl` `pl` `tr` `uk` `sv` `da` `fi` `no` `cs` `hu` `ro` `el` `th` `vi` `he` `auto`
@@ -171,21 +185,21 @@ See [tools/converters/NemotronAsr/README.md](tools/converters/NemotronAsr/README
 
 ### CPU INT4/INT8 benchmark
 
-`BenchmarkSuite1` compares the shipped `models/asr/nemotron-3.5/onnx/cpu-fp32`,
-`cpu-int8`, and `cpu-int4` artifacts on `Test-Audio/sample-0.mp3`.
+`BenchmarkSuite1` (`NemotronRnntCpuBenchmark`, `NemotronRnntCpuThreadBenchmark`) compares the INT4 / FP32 and
+c056 / c112 Nemotron models (`models/asr/nemotron-3.5-asr-streaming-0.6b-onnx-<variant>-cpu`) on `Test-Audio/sample-0.mp3`.
 The benchmark reports steady-state real-time factor (RTF) and memory
 diagnostics; transcripts are written to the ignored `build/benchmark-results/`
 directory for manual WER comparison against a trusted reference.
 
 ```powershell
-dotnet run --project BenchmarkSuite1 -c Release --no-restore -- --filter "*TranscribeSampleRtf*"
+dotnet run --project tools/BenchmarkSuite1 -c Release --no-restore -- --filter "*TranscribeSampleRtf*"
 ```
 
 Model construction is intentionally outside the timed method, so these results
 measure inference throughput rather than startup time. The benchmark also reports
 process CPU time and can compare `ORT_SEQUENTIAL` with `ORT_PARALLEL`.
 
-One local CPU INT4 run over 10.1 seconds of audio produced these illustrative values:
+One local CPU INT4 run over 10.1 seconds of audio produced these illustrative values (measured with the former ONNX Runtime GenAI engine; the plain-ONNX-Runtime recognizer that replaced it is slightly cheaper, RTF 0.168 against 0.182 at 4 threads in a back-to-back run):
 
 | Threads | VAD | Execution | RTF | Process CPU |
 |---------|-----|-----------|-----|-------------|
@@ -206,15 +220,15 @@ skipped.
 Mic/Loopback ──→ selected NAudio provider ──→ bounded ConcurrentQueue<float[]> (batched)
                                           │
                                           ▼
-                                   StreamingProcessor
-                                     │          │
-                                Silero VAD     Encoder (INT4/INT8)
-                                     │          │
-                                     ▼          ▼
-                                  Generator ← Joint (RNNT)
+                              NemotronRnntRecognizer (plain ONNX Runtime)
+                                │               │
+                         Silero chunk gate   log-mel → Encoder (INT4/FP32, cache-aware)
+                                │               │
+                                ▼               ▼
+                         greedy RNN-T loop ← Decoder + Joiner
                                      │
                                      ▼
-                                TokenizerStream → Console
+                       NemotronVocabulary (detokenize) → Console
 ```
 
 **Files (SOLID):**
@@ -224,7 +238,7 @@ Mic/Loopback ──→ selected NAudio provider ──→ bounded ConcurrentQueu
 | `Program.cs` | Entry point, DI wiring |
 | `AppOptions.cs` | CLI parsing |
 | `LanguageMapper.cs` | BCP-47 → lang_id |
-| `ModelSession.cs` | ORT model lifecycle |
+| `NemotronRnntRecognizer.cs` | Nemotron streaming recognizer on plain ONNX Runtime (`SpeechLib.Providers/Nemotron`) |
 | `WordTiming.cs` | Word + start/end time record |
 | `IAudioSourceFactory` | Provider-neutral source construction contract |
 | `LiveTranscriber.cs` | Provider-neutral live capture orchestration |

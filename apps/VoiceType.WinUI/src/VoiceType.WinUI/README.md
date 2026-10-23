@@ -7,7 +7,7 @@ session persistence, and microphone, loopback, or mixed audio capture.
 ## Architecture
 
 - `SpeechLib` contains provider-neutral recognition and capture contracts.
-- `SpeechLib.Nemotron` owns ONNX Runtime GenAI model sessions.
+- `SpeechLib.Providers` owns the recognizers (Nemotron, Parakeet TDT, Qwen3-ASR, VibeVoice) on plain ONNX Runtime.
 - `SpeechLib.Audio.NAudio3` owns the NAudio 3 preview capture implementation.
 - `VoiceType.WinUI` owns WinUI views, MVVM state, settings, text injection, and MSIX packaging.
 

@@ -13,29 +13,16 @@ The project is a **console application** with no GUI framework. UI patterns are 
 
 ## Pattern 1: Streaming Console Output
 
-### File: `ModelSession.cs` — `DecodeTokens()`
+### Files: `SpeechLib.Providers/Nemotron/NemotronRnntRecognizer.cs` (`ProcessAudio`), `Transcriber.cs` (`RunLive`)
 
-**Character-by-character real-time output:**
+**Delta-by-delta real-time output:**
 
 ```csharp
-public string DecodeTokens()
-{
-    var text = "";
-    while (!_generator.IsDone())
-    {
-        _generator.GenerateNextToken();
-        var tokens = _generator.GetNextTokens();
-        if (tokens.Length > 0)
-        {
-            var t = _tokenizerStream.Decode(tokens[0]);
-            if (!string.IsNullOrEmpty(t)) { Console.Write(t); text += t; }
-        }
-    }
-    return text;
-}
+var delta = recognizer.ProcessAudio(chunk);   // text of the tokens this call produced; null = no chunk was encoded yet
+if (!string.IsNullOrEmpty(delta)) { Console.Write(delta); text.Append(delta); }
 ```
 
-**Pattern:** Write each decoded token fragment immediately to `Console` — gives real-time streaming feel. Accumulate in `text` for final display/logging.
+**Pattern:** Write each decoded delta immediately to `Console` — gives real-time streaming feel (a chunk is ~0.56 s of audio and yields a few tokens). Accumulate in `text` for final display/logging.
 
 ---
 
@@ -190,7 +177,7 @@ Audio: 12.5s (200000 samples)
 When adding a GUI/web frontend:
 
 ### Abstraction points
-- Replace `Console.Write()` in `DecodeTokens()` with an `IObservable<string>` or event
+- Replace the `Console.Write()` of each delta in the live loop (`Transcriber.RunLive`) with an `IObservable<string>` or event
 - `Transcriber.RunLive()` → extract consumer loop into async enumerable (`IAsyncEnumerable<string>`)
 - Status messages → structured logging (`ILogger<T>`) instead of `Console.WriteLine()`
 

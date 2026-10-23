@@ -17,7 +17,9 @@ complete.
 
 ### TensorRT RTX FP16
 
-GenAI 0.15 supports homogeneous FP16 I/O for Nemotron. Generate a separate
+GenAI 0.15 supports homogeneous FP16 I/O for Nemotron. (The product's own recognizer on plain
+ONNX Runtime, `SpeechLib.Providers/Nemotron`, rejects float16 graphs with `NotSupportedException`, so this artifact
+is only for running the model with the upstream GenAI example.) Generate a separate
 CUDA artifact with:
 
 ```powershell
@@ -32,7 +34,12 @@ See the README inside each subfolder for setup and run instructions.
 
 ## Inference
 
-Streaming inference is supported via [`onnxruntime-genai`](https://github.com/microsoft/onnxruntime-genai),
+The product (the C# apps and CLI of this repository) no longer uses ONNX Runtime GenAI: its Nemotron recognizer
+(`libraries/SpeechLib/src/SpeechLib.Providers/Nemotron`) runs the exported folders on plain ONNX Runtime and reads
+`genai_config.json` as a plain JSON manifest (the file name is inherited from the GenAI export format).
+
+Standalone streaming inference of the exported model is also possible with the upstream
+[`onnxruntime-genai`](https://github.com/microsoft/onnxruntime-genai) Python example, kept here as a reference only,
 with a per-utterance `--language` flag (or `auto`) that selects the encoder
 prompt token. Example:
 

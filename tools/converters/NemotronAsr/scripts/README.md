@@ -33,7 +33,7 @@ through Olive's declarative pass system. See `src/README.md` for details.
 | `encoder.onnx` (+`.data`) | Multilingual streaming Conformer encoder (INT4 k-quant by default) |
 | `decoder.onnx` (+`.data`) | RNNT prediction network (stateful LSTM h/c I/O, FP32) |
 | `joint.onnx` (+`.data`) | Joint network (encoder + decoder → logits, FP32) |
-| `genai_config.json` | Model configuration for onnxruntime-genai (includes per-language prompt IDs) |
+| `genai_config.json` | Model configuration in the onnxruntime-genai format, read as plain JSON by the product's recognizer (includes per-language prompt IDs) |
 | `audio_processor_config.json` | Mel spectrogram parameters (16 kHz, 128 mels, 512 FFT) |
 | `model_config.json` | Architecture metadata used by genai |
 | `tokenizer.json` | HuggingFace Unigram tokenizer (multilingual vocab) |
