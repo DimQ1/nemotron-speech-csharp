@@ -284,8 +284,15 @@ jobs:
       - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
         uses: ./.github/actions/setup-build
 
-      - name: Install iOS workload
-        run: dotnet workload install ios
+      - name: Install iOS workload (pinned)
+        # Pinned: the newest ios manifest (27.x today) needs an Xcode that the runner image does not have, and every
+        # workload version needs exactly one Xcode (26.5.x -> Xcode 26.5). Move this value together with the image.
+        shell: bash
+        env:
+          IOS_WORKLOAD: 26.5.10318/10.0.100
+        run: |
+          printf '{ "microsoft.net.sdk.ios": "%s" }\n' "$IOS_WORKLOAD" > "$RUNNER_TEMP/ios-rollback.json"
+          dotnet workload install ios --from-rollback-file "$RUNNER_TEMP/ios-rollback.json"
 
       - name: Select the Xcode the workload requires
         # Each .NET for iOS workload requires exactly one Xcode (26.5 for workload 26.5.x); a mismatch is a build
@@ -299,7 +306,7 @@ jobs:
           echo "iOS workload $version needs Xcode $xcode"
           app="/Applications/Xcode_${xcode}.app"
           if [[ ! -d "$app" ]]; then
-            echo "::error::Xcode $xcode is not on the runner image. Installed: $(ls -d /Applications/Xcode_*.app | tr '\n' ' ')"
+            echo "::error::Xcode $xcode is not on the runner image. Installed: $(find /Applications -maxdepth 1 -name 'Xcode_*.app' | tr '\n' ' ')"
             exit 1
           fi
           sudo xcode-select -s "$app"
