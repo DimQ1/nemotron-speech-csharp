@@ -1,0 +1,19 @@
+tools/WerEval/Program.cs
+  s_ac6e0785fbdb7d::t_68c4d93880be9e 16,45,76,98-99,126,128,130-131,346-347,361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "ee798ce4def81ae5d0beee05ad4f6c71a453c8e7",
+  "prompts": {},
+  "sessions": {
+    "s_ac6e0785fbdb7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a252daefe3eccd856",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
