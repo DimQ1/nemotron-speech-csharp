@@ -1,0 +1,43 @@
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronOnnxStepModel.cs
+  s_750dcaa06ccbff::t_81e1026f9eb5f2 125-144
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronRnntEngine.cs
+  s_750dcaa06ccbff::t_d82c7e0f517c27 33-36,39-54,90,94-98,118-122,179-182,200-204,207,216,277-279,283-309,332-334,347-356,366-367
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronStreamState.cs
+  s_750dcaa06ccbff::t_620e81c05851db 1-119
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronStreamingMel.cs
+  s_ac6e0785fbdb7d::t_a50f9d6cf54f11 140-160
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/RnntGreedyDecoder.cs
+  s_e365ef0b0f7316::t_494c0129c75929 81-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "6e143caceacf7ef01f2df8cd1bdb193cf734a514",
+  "prompts": {},
+  "sessions": {
+    "s_750dcaa06ccbff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a577cfbf40763ff28",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_ac6e0785fbdb7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a252daefe3eccd856",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_e365ef0b0f7316": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6babba9bead5f63",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
