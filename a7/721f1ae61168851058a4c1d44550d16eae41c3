@@ -1,0 +1,29 @@
+tools/converters/EncoderRepack/repack_encoder.py
+  s_20e41f7f2d2ce6::t_1eb2aacf414036 22-23,148-150,194,197,273,277
+tools/converters/EncoderRepack/quant_recipes.py
+  s_750dcaa06ccbff::t_430b61b420d410 1,4-7,12-13,24,45,49-50,57-59,61-62,66,68,70,74-75,79,82-88,91-92,98-99,105,125-126,128,135,138,142,144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "a7721f1ae61168851058a4c1d44550d16eae41c3",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_750dcaa06ccbff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a577cfbf40763ff28",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
