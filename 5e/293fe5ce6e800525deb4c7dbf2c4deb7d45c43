@@ -1,0 +1,23 @@
+docs/research/nemotron-pure-ort-followups.md
+  s_20e41f7f2d2ce6::t_60485b8042b384 73,100
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/truth/README.md
+  s_20e41f7f2d2ce6::t_130d75ab4cf080 1,3,5-10
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/E2E_NemotronUtteranceTests.cs
+  s_20e41f7f2d2ce6::t_e5e62d26f95283 13,253,300,303,306,309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "5e293fe5ce6e800525deb4c7dbf2c4deb7d45c43",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
