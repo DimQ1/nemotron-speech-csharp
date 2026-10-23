@@ -1,0 +1,19 @@
+docs/research/onnxruntime-genai-ideas.md
+  s_ac6e0785fbdb7d::t_87c5b1409d9e8f 127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "b4d684620ceaa43489376e22305fb7384f39582f",
+  "prompts": {},
+  "sessions": {
+    "s_ac6e0785fbdb7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a252daefe3eccd856",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
