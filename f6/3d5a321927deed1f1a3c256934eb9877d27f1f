@@ -1,0 +1,43 @@
+.github/workflows/build-voicetype-uno.yml
+  s_20e41f7f2d2ce6::t_803d3ca94434e4 6-7,16-19,64
+.github/workflows/uno-publish.yml
+  s_20e41f7f2d2ce6::t_a446d8e85b1837 6-7,33-36,261-343
+apps/VoiceType.Uno/src/VoiceType.Uno/Packaging/macOS/voicetype-audio.swift
+  s_20e41f7f2d2ce6::t_4dd34ffc47c741 1-340
+apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+  s_20e41f7f2d2ce6::t_98229a5c8620c8 8-9,12,108-115
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/HelperAudioSourceTests.cs
+  s_20e41f7f2d2ce6::t_d4ec03b5e163d8 1-244
+.github/workflows/release-voicetype-uno.yml
+  s_20e41f7f2d2ce6::t_b95837d0af722f 5-6,48,84-94,115,130-133
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Audio/HelperAudioSource.cs
+  s_20e41f7f2d2ce6::t_6addcf76439ddf 1-397
+apps/VoiceType.Uno/src/VoiceType.Uno/App.xaml.cs
+  s_20e41f7f2d2ce6::t_4a860674208a54 169,172-174
+apps/VoiceType.Uno/src/VoiceType.Uno/Packaging/macOS/Info.plist
+  s_20e41f7f2d2ce6::t_628895350f87ba 1-36
+apps/VoiceType.Uno/src/VoiceType.Uno/Packaging/macOS/README.md
+  s_20e41f7f2d2ce6::t_d82c5fcaef1d05 1-49
+apps/VoiceType.Uno/src/VoiceType.Uno/build-macos-app.sh
+  s_20e41f7f2d2ce6::t_df812cbc7171b3 1-95
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/Fakes/FakePcmHelper.cs
+  s_20e41f7f2d2ce6::t_e0d0423be50129 1-114
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/UnixFactAttribute.cs
+  s_20e41f7f2d2ce6::t_059277cfe16db4 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "f63d5a321927deed1f1a3c256934eb9877d27f1f",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
