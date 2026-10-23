@@ -1,0 +1,57 @@
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronRnntRecognizer.cs
+  s_20e41f7f2d2ce6::t_ae45847a15b96a 39-56,76-78,108-126,144,154-155,157,173-190,264-278,419-420,442,448,450-457,465,480-486,499-524,557-559,561-577,580-611,626-838,921-923
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronUtteranceRecognizer.cs
+  s_20e41f7f2d2ce6::t_76815706ebe77c 165-171,359-360,364-367,369
+libraries/SpeechLib/src/SpeechLib.Providers/RecognizerFactory.cs
+  s_20e41f7f2d2ce6::t_782c194512ce6e 86-91,151-163
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Fakes.cs
+  s_20e41f7f2d2ce6::t_4da8d021c47822 50-124
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronRecognizerTests.cs
+  s_20e41f7f2d2ce6::t_4c59a73104cd73 28,40-41,310-387
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronPauseStateOptions.cs
+  s_750dcaa06ccbff::t_c8c6996c7288fd 1-93
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronPauseStateTests.cs
+  s_ac6e0785fbdb7d::t_ef38a12ac96fcb 1-430
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronUtteranceTests.cs
+  s_e365ef0b0f7316::t_8bb26d088965af 548-569
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "46681f986a902ebb9877e82f0745c8e304787b95",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_750dcaa06ccbff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a577cfbf40763ff28",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_ac6e0785fbdb7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a252daefe3eccd856",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_e365ef0b0f7316": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6babba9bead5f63",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
