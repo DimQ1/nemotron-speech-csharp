@@ -53,12 +53,14 @@ internal interface INemotronChunkEngine : IDisposable
 /// <param name="SequentialExecution">ORT_SEQUENTIAL (true, default), ORT_PARALLEL (false) or the ORT default (null).</param>
 /// <param name="CleanLastFrame">Give the last mel frame of a chunk its real 40 samples of look-ahead (see <see cref="NemotronStreamingMel"/>).</param>
 /// <param name="Services">The plugin, crash marker, gate and session factory; null uses the real ones (tests pass fakes).</param>
+/// <param name="BatchedJoint">One joint run for the remaining frames of a chunk per prediction output (see <see cref="RnntGreedyDecoder.BatchedJoint"/>).</param>
 internal sealed record NemotronEngineOptions(
     string ExecutionProvider = "cpu",
     int? CpuThreads = null,
     bool? SequentialExecution = true,
     bool CleanLastFrame = false,
-    NemotronProviderServices? Services = null);
+    NemotronProviderServices? Services = null,
+    bool BatchedJoint = true);
 
 /// <summary>
 /// The Nemotron cache-aware streaming transducer on plain ONNX Runtime: mel front-end, encoder with its three
@@ -201,7 +203,11 @@ internal sealed class NemotronRnntEngine : INemotronChunkEngine
             _outputs = [_encoderOutputValue, _encodedLengthValue, _channelCacheValue[1], _timeCacheValue[1], _cacheLengthValue[1]];
 
             _stepModel = new NemotronOnnxStepModel(_sessions.Decoder, _sessions.Joint, config, _encoderOutput);
-            _decoder = new RnntGreedyDecoder(_stepModel, config.BlankId, config.MaxSymbolsPerStep) { BlankPenalty = config.BlankPenalty };
+            _decoder = new RnntGreedyDecoder(_stepModel, config.BlankId, config.MaxSymbolsPerStep)
+            {
+                BlankPenalty = config.BlankPenalty,
+                BatchedJoint = options.BatchedJoint,
+            };
             if (_sessions.Provider.EncoderOnWebGpu)
                 WarmUpWebGpuEncoder();
             Reset();
@@ -248,8 +254,30 @@ internal sealed class NemotronRnntEngine : INemotronChunkEngine
     /// <summary>Joint runs so far (diagnostics).</summary>
     public long JointCalls => _decoder.JointCalls;
 
+    /// <summary>Encoder frames scored by the joint so far (diagnostics; more than the frames decoded when batched).</summary>
+    public long JointFrames => _decoder.JointFrames;
+
+    /// <summary>Wall-clock time in the joint and in the prediction network so far (diagnostics).</summary>
+    public TimeSpan JointTime => _decoder.JointTime;
+
+    /// <inheritdoc cref="JointTime"/>
+    public TimeSpan PredictionTime => _decoder.PredictionTime;
+
     /// <summary>Frames whose joint output was all NaN so far; each was treated as a blank (diagnostics).</summary>
     public long NonFiniteJoints => _decoder.NonFiniteJoints;
+
+    /// <summary>One joint run per prediction output for the rest of the chunk (true) or one per frame (false); same tokens.</summary>
+    internal bool BatchedJoint
+    {
+        get => _decoder.BatchedJoint;
+        set => _decoder.BatchedJoint = value;
+    }
+
+    /// <summary>The prediction and joint networks (tests compare batched joint rows with one-frame runs on real frames).</summary>
+    internal IRnntStepModel StepModel => _stepModel;
+
+    /// <summary>The token the prediction network is conditioned on.</summary>
+    internal int LastToken => _decoder.LastToken;
 
     public void Reset()
     {

@@ -10,6 +10,9 @@ namespace SpeechLib.Nemotron;
 /// Every tensor lives in a buffer allocated once: the sessions write straight into pre-allocated output
 /// values, the LSTM state ping-pongs between two buffers (a commit only flips an index) and the prediction
 /// output [1, 640, 1] is fed to the joint as [1, 1, 640] over the same memory (a transpose of a length-one axis).
+/// The joint takes any number of frames: frames [first, first + n) are copied to the head of one buffer and run as
+/// [1, n, hidden] into [1, n, 1, vocab]; there is an input and an output value for every n up to the frames of a chunk,
+/// all over the same two buffers.
 /// </remarks>
 internal sealed class NemotronOnnxStepModel : IRnntStepModel, IDisposable
 {
@@ -18,6 +21,7 @@ internal sealed class NemotronOnnxStepModel : IRnntStepModel, IDisposable
     private readonly RunOptions _runOptions = new();
     private readonly float[] _encoderOutput;     // shared with the engine: [frames, hidden]
     private readonly int _encoderHidden;
+    private readonly int _vocabSize;
 
     // prediction network
     private readonly string[] _decoderInputNames;
@@ -35,13 +39,13 @@ internal sealed class NemotronOnnxStepModel : IRnntStepModel, IDisposable
     private readonly OrtValue[] _decoderOutputs = new OrtValue[3];
     private int _committed;                               // which of the two state buffers is committed
 
-    // joint network
+    // joint network; element n - 1 of the value arrays is the view for n frames
     private readonly string[] _jointInputNames;
     private readonly string[] _jointOutputNames;
-    private readonly float[] _frame;
-    private readonly OrtValue _frameValue;
-    private readonly float[] _logProbs;
-    private readonly OrtValue _logProbsValue;
+    private readonly float[] _frames;                     // [frames per chunk, hidden]
+    private readonly OrtValue[] _framesValue;             // [1, n, hidden]
+    private readonly float[] _logProbs;                   // [frames per chunk, vocab]
+    private readonly OrtValue[] _logProbsValue;           // [1, n, 1, vocab]
     private readonly OrtValue[] _jointInputs = new OrtValue[2];
     private readonly OrtValue[] _jointOutputs = new OrtValue[1];
 
@@ -81,10 +85,19 @@ internal sealed class NemotronOnnxStepModel : IRnntStepModel, IDisposable
         _predictionOutputValue = OrtValue.CreateTensorValueFromMemory(_predictionOutput, [1, predictionSize, 1]);
         _predictionJointValue = OrtValue.CreateTensorValueFromMemory(_predictionOutput, [1, 1, predictionSize]);
 
-        _frame = new float[_encoderHidden];
-        _frameValue = OrtValue.CreateTensorValueFromMemory(_frame, [1, 1, _encoderHidden]);
-        _logProbs = new float[config.VocabSize];
-        _logProbsValue = OrtValue.CreateTensorValueFromMemory(_logProbs, [1, 1, 1, config.VocabSize]);
+        _vocabSize = config.VocabSize;
+        var framesPerChunk = encoderOutput.Length / _encoderHidden;
+        _frames = new float[framesPerChunk * _encoderHidden];
+        _logProbs = new float[framesPerChunk * _vocabSize];
+        _framesValue = new OrtValue[framesPerChunk];
+        _logProbsValue = new OrtValue[framesPerChunk];
+        for (var n = 1; n <= framesPerChunk; n++)
+        {
+            _framesValue[n - 1] = OrtValue.CreateTensorValueFromMemory(
+                OrtMemoryInfo.DefaultInstance, _frames.AsMemory(0, n * _encoderHidden), [1, n, _encoderHidden]);
+            _logProbsValue[n - 1] = OrtValue.CreateTensorValueFromMemory(
+                OrtMemoryInfo.DefaultInstance, _logProbs.AsMemory(0, n * _vocabSize), [1, n, 1, _vocabSize]);
+        }
     }
 
     public void Predict(int token)
@@ -102,14 +115,16 @@ internal sealed class NemotronOnnxStepModel : IRnntStepModel, IDisposable
 
     public void CommitPrediction() => _committed = 1 - _committed;
 
-    public ReadOnlySpan<float> Join(int frame)
+    public ReadOnlySpan<float> JoinFrames(int first, int count)
     {
-        Array.Copy(_encoderOutput, frame * _encoderHidden, _frame, 0, _encoderHidden);
-        _jointInputs[0] = _frameValue;
+        ArgumentOutOfRangeException.ThrowIfLessThan(count, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(count, _framesValue.Length);
+        Array.Copy(_encoderOutput, first * _encoderHidden, _frames, 0, count * _encoderHidden);
+        _jointInputs[0] = _framesValue[count - 1];
         _jointInputs[1] = _predictionJointValue;
-        _jointOutputs[0] = _logProbsValue;
+        _jointOutputs[0] = _logProbsValue[count - 1];
         _joint.Run(_runOptions, _jointInputNames, _jointInputs, _jointOutputNames, _jointOutputs);
-        return _logProbs;
+        return _logProbs.AsSpan(0, count * _vocabSize);
     }
 
     public void ResetState()
@@ -131,8 +146,10 @@ internal sealed class NemotronOnnxStepModel : IRnntStepModel, IDisposable
             value.Dispose();
         _predictionOutputValue.Dispose();
         _predictionJointValue.Dispose();
-        _frameValue.Dispose();
-        _logProbsValue.Dispose();
+        foreach (var value in _framesValue)
+            value.Dispose();
+        foreach (var value in _logProbsValue)
+            value.Dispose();
         _runOptions.Dispose();
     }
 
