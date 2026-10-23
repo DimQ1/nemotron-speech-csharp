@@ -1,0 +1,27 @@
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/Jobs/OfflineRecognitionJob.cs
+  s_20e41f7f2d2ce6::t_6ab8b23ff35207 39-40,189-190,216-223
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/NemotronStreamPolicy.cs
+  s_20e41f7f2d2ce6::t_faa2f0a32fb40b 1-22
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/RecognitionService.cs
+  s_20e41f7f2d2ce6::t_2111ee35649921 118-119,150-154
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronRnntRecognizer.cs
+  s_20e41f7f2d2ce6::t_e0d9b517ef1c43 367-370
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronUtteranceRecognizer.cs
+  s_20e41f7f2d2ce6::t_9e6248a0bb66d4 165-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "25da2388bbeee48d3d52dcc2cd25e4e9a77ddbb0",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
