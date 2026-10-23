@@ -1,0 +1,39 @@
+tools/WerEval/Program.cs
+  s_20e41f7f2d2ce6::t_0be44ab6ef2bd6 161,163-164
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronPauseStateOptions.cs
+  s_e365ef0b0f7316::t_a0860a9b5f8687 92-93,95
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronRnntRecognizer.cs
+  s_750dcaa06ccbff::t_dab8c84ef59370 719-720,722-724
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "631a6d2b6de163459f386457d5eb97ac6e8ad400",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_750dcaa06ccbff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a577cfbf40763ff28",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_e365ef0b0f7316": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6babba9bead5f63",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
