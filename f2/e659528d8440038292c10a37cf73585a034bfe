@@ -1,0 +1,581 @@
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/README.md
+  s_20e41f7f2d2ce6::t_e0e4304c9da8e8 1-82
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/checks/consistency-and-A2-overlap.txt
+  s_20e41f7f2d2ce6::t_d3a70595cd5d70 1-21
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/checks/modelsession-fidelity-int4-c056.txt
+  s_20e41f7f2d2ce6::t_5412b22eb00ad4 1-17
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/checks/quirks.int4-c056.json
+  s_20e41f7f2d2ce6::t_3298d9d29b5c71 1-170
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/checks/quirks.int4-c112.json
+  s_20e41f7f2d2ce6::t_65365056ac65ee 1-215
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/checks/threads-sensitivity.json
+  s_20e41f7f2d2ce6::t_640fe26eff08bf 1-12
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/clips.json
+  s_20e41f7f2d2ce6::t_4dcac8814e5e8c 1-2232
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/cv17-en-0001.json
+  s_20e41f7f2d2ce6::t_c2d22cba08ecb2 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/cv17-en-0002.json
+  s_20e41f7f2d2ce6::t_ec606eaac8f06d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/cv17-en-0003.json
+  s_20e41f7f2d2ce6::t_51bc7bfb8f2b55 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/cv17-en-0024.json
+  s_20e41f7f2d2ce6::t_3a882f9a73aec2 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/cv17-ru-0001.json
+  s_20e41f7f2d2ce6::t_6865d5cf6142a7 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/cv17-ru-0002.json
+  s_20e41f7f2d2ce6::t_72bc79be71faec 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/cv17-ru-0003.json
+  s_20e41f7f2d2ce6::t_0741040052f1b4 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/gen-concat-mix-auto.json
+  s_20e41f7f2d2ce6::t_5845711b9db8a1 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/gen-exact-53761-en.json
+  s_20e41f7f2d2ce6::t_bb2c688f7a080d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/gen-short-0p3s-en.json
+  s_20e41f7f2d2ce6::t_8e761de4ac3be6 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/gen-silence-room-5s.json
+  s_20e41f7f2d2ce6::t_aae02d334b781c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/tts-long-en-0001.json
+  s_20e41f7f2d2ce6::t_20db129d882e96 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c056/tts-ru-ru-0002.json
+  s_20e41f7f2d2ce6::t_f1dd84d547b6b9 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/cv17-en-0001.json
+  s_20e41f7f2d2ce6::t_097f6cb99de413 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/cv17-en-0002.json
+  s_20e41f7f2d2ce6::t_9eb4571ea970f6 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/cv17-en-0003.json
+  s_20e41f7f2d2ce6::t_dbe311dcb4c58f 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/cv17-en-0024.json
+  s_20e41f7f2d2ce6::t_c8653012ef8b13 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/cv17-ru-0001.json
+  s_20e41f7f2d2ce6::t_4ab1de3eeec331 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/cv17-ru-0002.json
+  s_20e41f7f2d2ce6::t_f4df959bf7a2de 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/cv17-ru-0003.json
+  s_20e41f7f2d2ce6::t_3466d7ee56c48c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/gen-concat-mix-auto.json
+  s_20e41f7f2d2ce6::t_0712aff8814edd 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/gen-exact-53761-en.json
+  s_20e41f7f2d2ce6::t_5ecf4776545a68 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/gen-short-0p3s-en.json
+  s_20e41f7f2d2ce6::t_1d79b2be912f84 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/gen-silence-room-5s.json
+  s_20e41f7f2d2ce6::t_851fe6f1ab131a 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/tts-long-en-0001.json
+  s_20e41f7f2d2ce6::t_7d3fbab0dc3e73 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/fp32-c112/tts-ru-ru-0002.json
+  s_20e41f7f2d2ce6::t_73acd6c1cee02e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/index.json
+  s_20e41f7f2d2ce6::t_d086aba97319db 1-1900
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0001.json
+  s_20e41f7f2d2ce6::t_59672c72646755 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0002.json
+  s_20e41f7f2d2ce6::t_826462ed6c4a9c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0003.json
+  s_20e41f7f2d2ce6::t_17a0f7c375c283 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0004.json
+  s_20e41f7f2d2ce6::t_edfe31b4a3cb99 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0005.json
+  s_20e41f7f2d2ce6::t_80138376f73996 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0006.json
+  s_20e41f7f2d2ce6::t_fa85308c2e46c1 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0007.json
+  s_20e41f7f2d2ce6::t_bd3ccfad7085fc 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0008.json
+  s_20e41f7f2d2ce6::t_f8c8c82c655915 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0009.json
+  s_20e41f7f2d2ce6::t_2504dad8e10a65 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0010.json
+  s_20e41f7f2d2ce6::t_592902b1396822 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0011.json
+  s_20e41f7f2d2ce6::t_9ab9a794360e28 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0012.json
+  s_20e41f7f2d2ce6::t_2bb81bf7f96947 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0013.json
+  s_20e41f7f2d2ce6::t_c2b4e3c913044e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0014.json
+  s_20e41f7f2d2ce6::t_ee73b6a295b287 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0015.json
+  s_20e41f7f2d2ce6::t_7160d05327e0c4 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0016.json
+  s_20e41f7f2d2ce6::t_3fc4364ef95b28 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0017.json
+  s_20e41f7f2d2ce6::t_dce97b47c37fc5 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0018.json
+  s_20e41f7f2d2ce6::t_9d1b2913eb24bd 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0019.json
+  s_20e41f7f2d2ce6::t_1e3308ee1dc54a 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0020.json
+  s_20e41f7f2d2ce6::t_9de92af1f4ec34 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0021.json
+  s_20e41f7f2d2ce6::t_59f0bb1071b1dd 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0022.json
+  s_20e41f7f2d2ce6::t_bd743b0e47feec 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0023.json
+  s_20e41f7f2d2ce6::t_6f8a9bbb93c241 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0024.json
+  s_20e41f7f2d2ce6::t_19d4a4c1e0cd86 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0025.json
+  s_20e41f7f2d2ce6::t_777199725a112e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0026.json
+  s_20e41f7f2d2ce6::t_14cc80cc71f073 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0027.json
+  s_20e41f7f2d2ce6::t_4fde1a952a0d4e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0028.json
+  s_20e41f7f2d2ce6::t_7f015a3adedc55 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0029.json
+  s_20e41f7f2d2ce6::t_639c2fc96b1d77 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0030.json
+  s_20e41f7f2d2ce6::t_d4d36308ed26dd 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0031.json
+  s_20e41f7f2d2ce6::t_1d34e69f6b7507 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0032.json
+  s_20e41f7f2d2ce6::t_28948e8864f1eb 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0033.json
+  s_20e41f7f2d2ce6::t_e7d1217ccd46a0 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0034.json
+  s_20e41f7f2d2ce6::t_5c906554e7043e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0035.json
+  s_20e41f7f2d2ce6::t_c07fa828f466b7 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0036.json
+  s_20e41f7f2d2ce6::t_a5d3d5372cad9e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0037.json
+  s_20e41f7f2d2ce6::t_c8692792cdfd9a 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0038.json
+  s_20e41f7f2d2ce6::t_1c8aaecf1a5e48 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0039.json
+  s_20e41f7f2d2ce6::t_3635ed6f2ecf9c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0040.json
+  s_20e41f7f2d2ce6::t_1d73f0694f01ae 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-en-0086.json
+  s_20e41f7f2d2ce6::t_6271f4f93c7510 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0001.json
+  s_20e41f7f2d2ce6::t_d1ee84ceb0e65a 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0002.json
+  s_20e41f7f2d2ce6::t_9a494c13f4447b 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0003.json
+  s_20e41f7f2d2ce6::t_0c867ae0955a32 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0004.json
+  s_20e41f7f2d2ce6::t_23d9e4dfb181e4 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0005.json
+  s_20e41f7f2d2ce6::t_fd9317eb7419b9 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0006.json
+  s_20e41f7f2d2ce6::t_b99a2a2494a204 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0007.json
+  s_20e41f7f2d2ce6::t_cd42bfea06d9bd 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0008.json
+  s_20e41f7f2d2ce6::t_42f3d2f8b14c29 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0009.json
+  s_20e41f7f2d2ce6::t_009bee8dc39755 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0010.json
+  s_20e41f7f2d2ce6::t_38962aae376d08 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0011.json
+  s_20e41f7f2d2ce6::t_a07cc5e74238da 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0012.json
+  s_20e41f7f2d2ce6::t_ae3b14252f589c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0013.json
+  s_20e41f7f2d2ce6::t_c2b5431720022a 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0014.json
+  s_20e41f7f2d2ce6::t_87fb723f0f03ce 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0015.json
+  s_20e41f7f2d2ce6::t_251b78ffd94373 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0016.json
+  s_20e41f7f2d2ce6::t_c1f4e4ec64d885 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0017.json
+  s_20e41f7f2d2ce6::t_b93f02365e73ab 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0018.json
+  s_20e41f7f2d2ce6::t_6b3228172834fd 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0019.json
+  s_20e41f7f2d2ce6::t_326974541d49d0 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0020.json
+  s_20e41f7f2d2ce6::t_34dbcfa5ac7b34 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0021.json
+  s_20e41f7f2d2ce6::t_a142eefe0b5436 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0022.json
+  s_20e41f7f2d2ce6::t_5caf7ab1d78dd8 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0023.json
+  s_20e41f7f2d2ce6::t_138f043b12202c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0024.json
+  s_20e41f7f2d2ce6::t_7a7ef2469a05c9 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0025.json
+  s_20e41f7f2d2ce6::t_e8d2b262983c66 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0026.json
+  s_20e41f7f2d2ce6::t_0e24e180bb396c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0027.json
+  s_20e41f7f2d2ce6::t_f900a8cd76ce84 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0028.json
+  s_20e41f7f2d2ce6::t_af28e3cb4f99f9 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0029.json
+  s_20e41f7f2d2ce6::t_f2496977e81092 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0030.json
+  s_20e41f7f2d2ce6::t_fb99f14e899de7 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0031.json
+  s_20e41f7f2d2ce6::t_c2043b3c5181c3 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0032.json
+  s_20e41f7f2d2ce6::t_172a2e45cd49dc 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0033.json
+  s_20e41f7f2d2ce6::t_0c5e6ffd878c3c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0034.json
+  s_20e41f7f2d2ce6::t_3552906cec62f5 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0035.json
+  s_20e41f7f2d2ce6::t_b4f333aa0a6a86 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0036.json
+  s_20e41f7f2d2ce6::t_fad36a825d20e0 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0037.json
+  s_20e41f7f2d2ce6::t_cad15f7073282c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0038.json
+  s_20e41f7f2d2ce6::t_020f8ea9362072 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0039.json
+  s_20e41f7f2d2ce6::t_198b25844f80f3 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0040.json
+  s_20e41f7f2d2ce6::t_10defc7b78e44f 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17-ru-0069.json
+  s_20e41f7f2d2ce6::t_fe1bf27e5dee26 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17hard-en-0051.json
+  s_20e41f7f2d2ce6::t_82a46b54cf0afc 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17long-en-0001.json
+  s_20e41f7f2d2ce6::t_209910f987f3cd 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17longnorm-en-0001.json
+  s_20e41f7f2d2ce6::t_93c1a65c35b82d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/cv17short-en-0001.json
+  s_20e41f7f2d2ce6::t_1274e358ea090d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-concat-en-gaps.json
+  s_20e41f7f2d2ce6::t_6873a2eed125e9 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-concat-mix-auto.json
+  s_20e41f7f2d2ce6::t_a5c8eff41901b7 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-concat-ru-gaps.json
+  s_20e41f7f2d2ce6::t_63f37b437d9ffc 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-exact-17920-en.json
+  s_20e41f7f2d2ce6::t_80402dbb95f410 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-exact-53759-en.json
+  s_20e41f7f2d2ce6::t_6a2ba29296a45b 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-exact-53760-en.json
+  s_20e41f7f2d2ce6::t_61e82fd0c27df5 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-exact-53760-ru.json
+  s_20e41f7f2d2ce6::t_bd04d37cb8eeca 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-exact-53761-en.json
+  s_20e41f7f2d2ce6::t_1cff8a9428a65a 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-exact-8960-en.json
+  s_20e41f7f2d2ce6::t_2e8e13591128c6 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-quiet-30dB-en0001.json
+  s_20e41f7f2d2ce6::t_36211a27519b23 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-quiet-30dB-ru0001.json
+  s_20e41f7f2d2ce6::t_c8ffe98cfd34e0 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-short-0p3s-en.json
+  s_20e41f7f2d2ce6::t_b3de8d0e058d0d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-silence-room-5s.json
+  s_20e41f7f2d2ce6::t_1afd9f021b5dcc 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-silence-zeros-2s.json
+  s_20e41f7f2d2ce6::t_f1cb014bd98e99 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-vad-a4-10s.json
+  s_20e41f7f2d2ce6::t_e593f1023352cf 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-vad-a4-exact.json
+  s_20e41f7f2d2ce6::t_66a1eef89f65ec 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-vad-gap-4chunks.json
+  s_20e41f7f2d2ce6::t_1ef3a7c003fcff 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-vad-gap-5chunks.json
+  s_20e41f7f2d2ce6::t_2b58b0b86df1b5 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-vad-gap-6chunks.json
+  s_20e41f7f2d2ce6::t_d1a2011d12e234 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-vad-gap-7chunks.json
+  s_20e41f7f2d2ce6::t_1736c33f2e5b01 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/gen-vad-pause-2s.json
+  s_20e41f7f2d2ce6::t_fd581738a4d8bf 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/sample-0-mp3.json
+  s_20e41f7f2d2ce6::t_5f4607786b5098 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-en-0001.json
+  s_20e41f7f2d2ce6::t_ef81a1246aec31 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-en-0002.json
+  s_20e41f7f2d2ce6::t_1e4b43b1e255e5 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-en-0003.json
+  s_20e41f7f2d2ce6::t_9db42dbbea01c9 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-en-0004.json
+  s_20e41f7f2d2ce6::t_82232e2b9e670c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-en-0005.json
+  s_20e41f7f2d2ce6::t_6ca623d0261ad4 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-en-0006.json
+  s_20e41f7f2d2ce6::t_b1ec698981319c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-en-0007.json
+  s_20e41f7f2d2ce6::t_d6e9d4d8849fd5 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-en-0008.json
+  s_20e41f7f2d2ce6::t_6ff6a752091c9c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-en-0009.json
+  s_20e41f7f2d2ce6::t_f2077ed52348af 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-en-0010.json
+  s_20e41f7f2d2ce6::t_4c5371c1719c1d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-ru-0001.json
+  s_20e41f7f2d2ce6::t_dccf739336eec0 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-ru-0002.json
+  s_20e41f7f2d2ce6::t_936cf30c294160 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-ru-0003.json
+  s_20e41f7f2d2ce6::t_8b309205f7e0c7 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-ru-0004.json
+  s_20e41f7f2d2ce6::t_49a6ac8e7d4f37 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-ru-0005.json
+  s_20e41f7f2d2ce6::t_fe73a521be2337 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-ru-0006.json
+  s_20e41f7f2d2ce6::t_ddfa751d16b53a 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-ru-0007.json
+  s_20e41f7f2d2ce6::t_52b422a941446c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-ru-0008.json
+  s_20e41f7f2d2ce6::t_3a204cc8a69c40 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-ru-0009.json
+  s_20e41f7f2d2ce6::t_fc127b2fe859da 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/truth-ru-0010.json
+  s_20e41f7f2d2ce6::t_c5ff409f758ba7 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/tts-long-en-0001.json
+  s_20e41f7f2d2ce6::t_a81ef7fffe1e99 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/tts-ru-ru-0001.json
+  s_20e41f7f2d2ce6::t_9c3e6eb7d3eb8b 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c056/tts-ru-ru-0002.json
+  s_20e41f7f2d2ce6::t_e6ce6f6a451d51 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0001.json
+  s_20e41f7f2d2ce6::t_5ba035fa361deb 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0002.json
+  s_20e41f7f2d2ce6::t_cdfd53e9db8fe5 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0003.json
+  s_20e41f7f2d2ce6::t_660e80170b0e03 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0004.json
+  s_20e41f7f2d2ce6::t_0c4355521db9a1 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0005.json
+  s_20e41f7f2d2ce6::t_30581190928b8b 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0006.json
+  s_20e41f7f2d2ce6::t_9785e595696b36 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0007.json
+  s_20e41f7f2d2ce6::t_4c8e4c81c32597 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0008.json
+  s_20e41f7f2d2ce6::t_d32c4fc76400f4 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0009.json
+  s_20e41f7f2d2ce6::t_9fc5f0a48cb9c7 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0010.json
+  s_20e41f7f2d2ce6::t_c17ca6b2ccde75 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0014.json
+  s_20e41f7f2d2ce6::t_deb902e2c234c0 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0024.json
+  s_20e41f7f2d2ce6::t_92eaeedb1bf46e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-en-0034.json
+  s_20e41f7f2d2ce6::t_81ecbcb689ece3 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-ru-0001.json
+  s_20e41f7f2d2ce6::t_d83b70f0c7a8e8 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-ru-0002.json
+  s_20e41f7f2d2ce6::t_d9fc61188182df 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-ru-0003.json
+  s_20e41f7f2d2ce6::t_4e49bd30aeaa03 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-ru-0004.json
+  s_20e41f7f2d2ce6::t_e922f24b50f438 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-ru-0005.json
+  s_20e41f7f2d2ce6::t_6826ed7258c8d6 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-ru-0006.json
+  s_20e41f7f2d2ce6::t_ec6c8714b24271 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-ru-0007.json
+  s_20e41f7f2d2ce6::t_494bd8ba0a2d2e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-ru-0008.json
+  s_20e41f7f2d2ce6::t_06d1909df8b51f 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-ru-0009.json
+  s_20e41f7f2d2ce6::t_d115b3c62af43d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17-ru-0010.json
+  s_20e41f7f2d2ce6::t_ff22bd8d6df0bc 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17hard-en-0051.json
+  s_20e41f7f2d2ce6::t_cfca3bcaafbcc6 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17long-en-0001.json
+  s_20e41f7f2d2ce6::t_7540c6e26e3b0e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/cv17short-en-0001.json
+  s_20e41f7f2d2ce6::t_a7a5f8f96f17e1 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-concat-en-gaps.json
+  s_20e41f7f2d2ce6::t_ed20b88f999bb0 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-concat-mix-auto.json
+  s_20e41f7f2d2ce6::t_c3e7a6800e9138 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-concat-ru-gaps.json
+  s_20e41f7f2d2ce6::t_4bc56473c4925e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-exact-17920-en.json
+  s_20e41f7f2d2ce6::t_3dbd5f16fb85d3 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-exact-53759-en.json
+  s_20e41f7f2d2ce6::t_1a7975ea553404 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-exact-53760-en.json
+  s_20e41f7f2d2ce6::t_f6bd8af05f5e9d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-exact-53760-ru.json
+  s_20e41f7f2d2ce6::t_9c89b4abfe8ac6 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-exact-53761-en.json
+  s_20e41f7f2d2ce6::t_fff3cc2f0ae59a 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-exact-8960-en.json
+  s_20e41f7f2d2ce6::t_afb6620ffe73c0 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-quiet-30dB-en0001.json
+  s_20e41f7f2d2ce6::t_999d48254730bc 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-quiet-30dB-ru0001.json
+  s_20e41f7f2d2ce6::t_609cca976673f1 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-short-0p3s-en.json
+  s_20e41f7f2d2ce6::t_45d5287e6b1645 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-silence-room-5s.json
+  s_20e41f7f2d2ce6::t_ac1f82a9f801ac 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-silence-zeros-2s.json
+  s_20e41f7f2d2ce6::t_a380fa2c8637db 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-vad-a4-10s.json
+  s_20e41f7f2d2ce6::t_3c6e3c38d2ce93 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-vad-a4-exact.json
+  s_20e41f7f2d2ce6::t_ae80f9cdcc1ff0 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/gen-vad-pause-2s.json
+  s_20e41f7f2d2ce6::t_9833b127d657bb 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/sample-0-mp3.json
+  s_20e41f7f2d2ce6::t_812df77d848021 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/truth-en-0001.json
+  s_20e41f7f2d2ce6::t_aae0c0c9ba7132 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/truth-en-0002.json
+  s_20e41f7f2d2ce6::t_d06fe973c98293 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/truth-en-0003.json
+  s_20e41f7f2d2ce6::t_e82976c705f77f 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/truth-ru-0001.json
+  s_20e41f7f2d2ce6::t_91dbcb3f57bc3d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/truth-ru-0002.json
+  s_20e41f7f2d2ce6::t_e48c34b479b453 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/truth-ru-0003.json
+  s_20e41f7f2d2ce6::t_d9c4e0b34af0f7 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/tts-long-en-0001.json
+  s_20e41f7f2d2ce6::t_0ea92f63951d07 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/tts-ru-ru-0001.json
+  s_20e41f7f2d2ce6::t_80f7da386c37e8 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/int4-c112/tts-ru-ru-0002.json
+  s_20e41f7f2d2ce6::t_5a7df6882430ce 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/cv17-en-0001.feed0.json
+  s_20e41f7f2d2ce6::t_11933223eda85d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/cv17-en-0003.feed0.json
+  s_20e41f7f2d2ce6::t_28ef02bfe5a510 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/cv17-ru-0001.feed0.json
+  s_20e41f7f2d2ce6::t_3fa79b926a813e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-concat-en-gaps.feed0.json
+  s_20e41f7f2d2ce6::t_5f0285a8d6b4d9 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-concat-en-gaps.feed800.json
+  s_20e41f7f2d2ce6::t_ffe2fe777577d3 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-silence-room-5s.feed0.json
+  s_20e41f7f2d2ce6::t_8a1f3363749c39 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-silence-room-5s.feed800.json
+  s_20e41f7f2d2ce6::t_b3d38b87f1b025 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-silence-zeros-2s.feed0.json
+  s_20e41f7f2d2ce6::t_fddf4b55380b2b 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-a4-10s.feed0.json
+  s_20e41f7f2d2ce6::t_fe4492af860e19 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-a4-10s.feed3200.json
+  s_20e41f7f2d2ce6::t_8e6ecfa94c279e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-a4-10s.feed800.json
+  s_20e41f7f2d2ce6::t_c3ee4e10c474be 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-a4-exact.feed0.json
+  s_20e41f7f2d2ce6::t_c8ce84219a427b 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-a4-exact.feed800.json
+  s_20e41f7f2d2ce6::t_c919cb7a6e5c8e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-gap-4chunks.feed0.json
+  s_20e41f7f2d2ce6::t_a854869e7b7170 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-gap-4chunks.feed800.json
+  s_20e41f7f2d2ce6::t_d39b9b73efb252 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-gap-5chunks.feed0.json
+  s_20e41f7f2d2ce6::t_8e352e395bf708 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-gap-5chunks.feed800.json
+  s_20e41f7f2d2ce6::t_2c1de23179533a 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-gap-6chunks.feed0.json
+  s_20e41f7f2d2ce6::t_65d3fc39d4840e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-gap-6chunks.feed800.json
+  s_20e41f7f2d2ce6::t_dc653842ee8e1d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-gap-7chunks.feed0.json
+  s_20e41f7f2d2ce6::t_6f63902760d2df 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-gap-7chunks.feed800.json
+  s_20e41f7f2d2ce6::t_408895716a52bb 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-pause-2s.feed0.json
+  s_20e41f7f2d2ce6::t_60c177cac776cc 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/gen-vad-pause-2s.feed800.json
+  s_20e41f7f2d2ce6::t_65341b5d2e400c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c056/tts-ru-ru-0001.feed0.json
+  s_20e41f7f2d2ce6::t_18de1f9bfc9e03 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/cv17-en-0001.feed0.json
+  s_20e41f7f2d2ce6::t_e919a828cdf72e 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/cv17-en-0003.feed0.json
+  s_20e41f7f2d2ce6::t_d1d9a07d9f1453 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/cv17-ru-0001.feed0.json
+  s_20e41f7f2d2ce6::t_a8ac660e6a8d1f 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-concat-en-gaps.feed0.json
+  s_20e41f7f2d2ce6::t_f24371fbeca91c 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-concat-en-gaps.feed800.json
+  s_20e41f7f2d2ce6::t_c4c7d5afaf0fb5 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-silence-room-5s.feed0.json
+  s_20e41f7f2d2ce6::t_abfdc77f94ab86 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-silence-room-5s.feed800.json
+  s_20e41f7f2d2ce6::t_b6eb671beb81be 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-silence-zeros-2s.feed0.json
+  s_20e41f7f2d2ce6::t_4295a6fbc7f698 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-a4-10s.feed0.json
+  s_20e41f7f2d2ce6::t_41d4a625efb330 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-a4-10s.feed3200.json
+  s_20e41f7f2d2ce6::t_5c9edf1b73cbb7 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-a4-10s.feed800.json
+  s_20e41f7f2d2ce6::t_89436944a07826 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-a4-exact.feed0.json
+  s_20e41f7f2d2ce6::t_6d3749a2d99c9a 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-a4-exact.feed800.json
+  s_20e41f7f2d2ce6::t_e61f73737c17f1 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-gap-4chunks.feed0.json
+  s_20e41f7f2d2ce6::t_de4116ace8581d 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-gap-4chunks.feed800.json
+  s_20e41f7f2d2ce6::t_fb5e136bd9f6fc 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-gap-5chunks.feed0.json
+  s_20e41f7f2d2ce6::t_c2ad1754d59764 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-gap-5chunks.feed800.json
+  s_20e41f7f2d2ce6::t_1194f7ba3870d3 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-gap-6chunks.feed0.json
+  s_20e41f7f2d2ce6::t_a459fde67e102f 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-gap-6chunks.feed800.json
+  s_20e41f7f2d2ce6::t_7db9d5b7a2fe1a 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-gap-7chunks.feed0.json
+  s_20e41f7f2d2ce6::t_0bd6b18a34ab89 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-gap-7chunks.feed800.json
+  s_20e41f7f2d2ce6::t_e58b33a080df89 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-pause-2s.feed0.json
+  s_20e41f7f2d2ce6::t_c33885dadd3b29 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/gen-vad-pause-2s.feed800.json
+  s_20e41f7f2d2ce6::t_ec24ced27692f2 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad/int4-c112/tts-ru-ru-0001.feed0.json
+  s_20e41f7f2d2ce6::t_5e7f18e1a0da01 1
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full/vad_scenarios.json
+  s_20e41f7f2d2ce6::t_d7deed8697b8ff 1-164
+tools/nemotron-golden/ModelSessionCheck/ModelSessionCheck.csproj
+  s_20e41f7f2d2ce6::t_c2cbfe0f974761 1-13
+tools/nemotron-golden/ModelSessionCheck/Program.cs
+  s_20e41f7f2d2ce6::t_9ee19c156cf441 1-83
+tools/nemotron-golden/Mp3Decode/Mp3Decode.csproj
+  s_20e41f7f2d2ce6::t_cbbc9a3e669c90 1-12
+tools/nemotron-golden/Mp3Decode/Program.cs
+  s_20e41f7f2d2ce6::t_dc6d9d89585591 1-13
+tools/nemotron-golden/README.md
+  s_20e41f7f2d2ce6::t_2aa46b3ce347cb 1-106
+tools/nemotron-golden/check_goldens.py
+  s_20e41f7f2d2ce6::t_e6ae7de59d6017 1-77
+tools/nemotron-golden/compare_threads.py
+  s_20e41f7f2d2ce6::t_5b1fed3647912f 1-16
+tools/nemotron-golden/gen_a4_exact.cs
+  s_20e41f7f2d2ce6::t_75023fdf810f6f 1-40
+tools/nemotron-golden/gen_audio.cs
+  s_20e41f7f2d2ce6::t_cc98e28feb7c22 1-189
+tools/nemotron-golden/genai_oracle.cs
+  s_20e41f7f2d2ce6::t_501bf95f417416 1-474
+tools/nemotron-golden/generated_audio.json
+  s_20e41f7f2d2ce6::t_62b2951a101da0 1-166
+tools/nemotron-golden/make_clips_manifest.py
+  s_20e41f7f2d2ce6::t_d706c0f4eae946 1-165
+tools/nemotron-golden/perf/genai-perf-baseline.json
+  s_20e41f7f2d2ce6::t_a75e276f558569 1-470
+tools/nemotron-golden/perf/genai-perf-baseline.md
+  s_20e41f7f2d2ce6::t_215147631d6469 1-25
+tools/nemotron-golden/run_perf.sh
+  s_20e41f7f2d2ce6::t_edeeab185d08c7 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "f2e659528d8440038292c10a37cf73585a034bfe",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
