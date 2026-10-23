@@ -66,6 +66,11 @@
     <EnableCodeSigning Condition="'$(EnableCodeSigning)' == ''">false</EnableCodeSigning>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-ios'">
+    <!-- WASAPI playback is built on the NAudio package that iOS does not link (see the NAudio3 reference below). -->
+    <Compile Remove="Services\Playback\WasapiPcmOutput.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- The Uno SDK emits no version attributes; the display version is read back at
          runtime for the History version metadata (app.version). -->
@@ -93,7 +98,9 @@
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.LiteRT.Native\SpeechLib.LiteRT.Native.csproj" />
     <!-- Windows audio capture (WASAPI) via NAudio 3.0.1 — portable TFM (net10.0), so
          it links into both heads; PulseAudio is selected at runtime on Linux. -->
-    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Audio.NAudio3\SpeechLib.Audio.NAudio3.csproj" />
+    <!-- Not on iOS: it is Windows audio (WASAPI) plus NAudio.Lame, and the device AOT compiler fails on NAudio.Lame.dll. -->
+    <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Audio.NAudio3\SpeechLib.Audio.NAudio3.csproj"
+                      Condition="'$(TargetFramework)' != 'net10.0-ios'" />
     <!-- Recordings history audio: Ogg Opus / WAV writers, offline reader, streaming playback reader -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.AudioStorage\SpeechLib.AudioStorage.csproj" />
   </ItemGroup>

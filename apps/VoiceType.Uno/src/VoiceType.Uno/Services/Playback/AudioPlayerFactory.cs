@@ -5,7 +5,7 @@ namespace VoiceType.Uno.Services.Playback;
 /// <summary>
 /// Picks the platform player at runtime, like the capture factory selection in App.xaml.cs:
 /// Android → AudioTrack; Windows (WinUI head, Skia desktop on Windows) → WASAPI via NAudio 3;
-/// Linux → PulseAudio; anything else → <see cref="NullAudioPlayer"/>.
+/// Linux → PulseAudio; iOS and anything else → <see cref="NullAudioPlayer"/>.
 /// </summary>
 public sealed class AudioPlayerFactory : IAudioPlayerFactory
 {
@@ -13,6 +13,9 @@ public sealed class AudioPlayerFactory : IAudioPlayerFactory
     {
 #if __ANDROID__
         return new PcmAudioPlayer(() => new AudioTrackPcmOutput());
+#elif __IOS__
+        // No output on iOS yet (docs/ci.md, iOS): recordings can be listed, not played.
+        return new NullAudioPlayer();
 #else
         if (OperatingSystem.IsWindows())
             return new PcmAudioPlayer(() => new WasapiPcmOutput());
