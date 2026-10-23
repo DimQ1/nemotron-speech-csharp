@@ -1,0 +1,150 @@
+name: CI
+
+run-name: CI · ${{ github.ref_name }} · #${{ github.run_number }}
+
+# Build + unit tests of every project, on Windows (whole solution incl. the WinUI head) and Linux (everything that
+# is not Windows-only). Needs no models and no secrets, so it also runs for pull requests from forks.
+# The model-backed tests (E2E_* / Real_* classes) are left to the maintainer's machine: they skip themselves
+# without models, and the filter below keeps CI independent of whatever a runner happens to contain.
+# See docs/ci.md for what runs where, how to run the same commands locally and what CI does not cover.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # No model-backed test may run on CI; E2E_* (Nemotron, Parakeet, Qwen3, Diarization, Uno) and Real_* (Gemma).
+  TEST_FILTER: FullyQualifiedName!~.E2E_&FullyQualifiedName!~.Real_
+
+jobs:
+  test:
+    name: Build + unit tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
+        uses: ./.github/actions/setup-build
+
+      - name: Check .NET SDK info
+        run: dotnet --info
+
+      # The Nemotron unit tests read the golden / mel / truth / config fixtures from Data/. A fixture folder that was
+      # never committed would otherwise show up as hundreds of failing tests instead of one clear message.
+      - name: Check the tracked Nemotron fixtures
+        shell: bash
+        run: |
+          data=libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data
+          for item in vocab.txt config golden golden-full mel truth; do
+            if [[ ! -e "$data/$item" ]]; then
+              echo "::error::$data/$item is missing: the Nemotron test fixtures must be committed"
+              exit 1
+            fi
+          done
+
+      # ---- Windows: the whole solution (CLI, WinUI head, libraries, tools, tests) ----
+      - name: Restore + build NemotronSpeech.slnx (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          dotnet restore NemotronSpeech.slnx
+          dotnet build NemotronSpeech.slnx -c Release --no-restore
+
+      # ---- Linux: the same minus the Windows-only WinUI head (net10.0-windows10.0.26100.0) ----
+      # The test projects pull in almost every library; the rest is built explicitly. An .slnf would do the same
+      # with one line, but needs a repo change (see docs/ci.md, backlog).
+      - name: Build cross-platform projects (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          dotnet build apps/NemotronSpeech/src/NemotronSpeech/NemotronSpeech.csproj -c Release
+          dotnet build libraries/VoiceType.Hotkeys/VoiceType.Hotkeys.csproj -c Release
+          dotnet build tools/WerEval/WerEval.csproj -c Release
+          dotnet build tools/DiarizationEval/DiarizationEval.csproj -c Release
+
+      # ---- Unit tests of all 9 test projects (VoiceType.Uno.Tests is NOT in the slnx) ----
+      - name: Unit tests
+        shell: pwsh
+        run: |
+          $projects = @(
+            'libraries/SpeechLib/tests/SpeechLib.Tests/SpeechLib.Tests.csproj',
+            'libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/SpeechLib.Nemotron.Tests.csproj',
+            'libraries/SpeechLib/tests/SpeechLib.ParakeetTdt.Tests/SpeechLib.ParakeetTdt.Tests.csproj',
+            'libraries/SpeechLib/tests/SpeechLib.Diarization.Tests/SpeechLib.Diarization.Tests.csproj',
+            'libraries/SpeechLib/tests/SpeechLib.ModelDownload.Tests/SpeechLib.ModelDownload.Tests.csproj',
+            'libraries/SpeechLib/tests/SpeechLib.AudioStorage.Tests/SpeechLib.AudioStorage.Tests.csproj',
+            'libraries/SpeechLib/tests/SpeechLib.Agents.Tests/SpeechLib.Agents.Tests.csproj',
+            'libraries/SpeechLib/tests/SpeechLib.LiteRT.Native.Tests/SpeechLib.LiteRT.Native.Tests.csproj',
+            'apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/VoiceType.Uno.Tests.csproj'
+          )
+          $failed = @()
+          foreach ($project in $projects) {
+            Write-Host "::group::$project"
+            $name = [IO.Path]::GetFileNameWithoutExtension($project)
+            dotnet test $project -c Release --filter $env:TEST_FILTER `
+              --blame-hang --blame-hang-timeout 10m `
+              --logger "trx;LogFileName=$name.trx" --results-directory TestResults
+            if ($LASTEXITCODE -ne 0) { $failed += $name }
+            Write-Host '::endgroup::'
+          }
+          if ($failed.Count -gt 0) { Write-Host "::error::failed test projects: $($failed -join ', ')"; exit 1 }
+
+      # ---- Windows: ONNX Runtime GenAI must not come back (restore state, dotnet list package, build output) ----
+      # check-no-genai.ps1 builds and restores nothing: it needs the restore state and the Release output of the CLI,
+      # the WinUI head (both from the slnx build above) and the Uno desktop head (built here; -r win-x64 keeps the
+      # android TFM, which needs a workload, out of the restore).
+      - name: Build the Uno desktop head (win-x64) for the GenAI check
+        if: runner.os == 'Windows'
+        run: >-
+          dotnet build apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+          -c Release -f net10.0-desktop -r win-x64
+
+      - name: No ONNX Runtime GenAI in the product
+        if: runner.os == 'Windows'
+        shell: pwsh
+        # Never run on a hosted runner before this workflow. If the first dry run fails for an environmental reason
+        # (not because GenAI is back), fix the script; do not leave the guard soft (docs/ci.md, open decisions D9).
+        run: ./tools/scripts/check-no-genai.ps1 -Configuration Release
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+          retention-days: 7
+
+  lint-workflows:
+    name: Lint workflows (actionlint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: actionlint
+        run: docker run --rm -v "${{ github.workspace }}:/repo" --workdir /repo rhysd/actionlint:1.7.12 -color

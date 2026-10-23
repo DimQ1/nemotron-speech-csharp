@@ -1,0 +1,32 @@
+name: Setup build
+description: >-
+  .NET 10 SDK (with the NuGet package cache) and the LiteRtLmSharp folder feed that nuget.config maps
+  LiteRtLmSharp* to. Replaces the three copy-pasted "Setup .NET 10 SDK" + "Fetch the LiteRtLmSharp feed"
+  step pairs of every workflow. Call it after actions/checkout (a local action needs the sources).
+
+inputs:
+  dotnet-version:
+    description: SDK band for actions/setup-dotnet
+    default: '10.0.x'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+        # ~/.nuget/packages keyed on everything that can change a restore (no packages.lock.json in this repo).
+        # Workload packs (android/ios) are installed next to the SDK, not in this cache.
+        cache: true
+        cache-dependency-path: |
+          **/*.csproj
+          **/Directory.Packages.props
+          nuget.config
+
+    - name: Fetch the LiteRtLmSharp feed (release assets, no token)
+      # LiteRtLmSharp 1.4.0 comes from the fork (upstream's own 1.3.0 lacks these improvements):
+      # this pulls its packages from the public v1.4.0 release into the folder feed nuget.config maps to.
+      # Must run before the first restore of any project that reaches SpeechLib.LiteRT.Native.
+      shell: pwsh
+      run: ./tools/scripts/fetch-litertlmsharp-feed.ps1

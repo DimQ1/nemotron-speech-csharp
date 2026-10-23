@@ -2,155 +2,56 @@ name: VoiceType.Uno Tagged Release
 
 run-name: VoiceType.Uno Release · ${{ github.ref_name }}
 
+# Tag uno-vX.Y.Z -> Windows zip, Linux tar.gz + .deb, Android AAB + APK as GitHub release assets.
+# Same assets and names as before; the jobs moved into uno-publish.yml and now also set the app version.
+
 on:
   push:
     tags:
       - 'uno-v*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  windows:
-    name: Publish Windows (win-x64, Skia)
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Fetch the LiteRtLmSharp feed (release assets, no token)
-        # LiteRtLmSharp 1.4.0 comes from the fork (upstream's own 1.3.0 lacks these improvements):
-        # this pulls its packages from the public v1.4.0 release into the folder feed nuget.config maps to.
-        shell: pwsh
-        run: pwsh tools/scripts/fetch-litertlmsharp-feed.ps1
-
-      - name: Publish VoiceType.Uno (win-x64, self-contained)
-        run: >-
-          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
-          -c Release -f net10.0-desktop -r win-x64 -p:GpuArch=CPU
-          --self-contained true -o build/voicetype-uno-win
-
-      - name: Create archive
-        shell: pwsh
-        run: Compress-Archive -Path build/voicetype-uno-win/* -DestinationPath build/VoiceType.Uno-win-x64.zip -Force
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: VoiceType.Uno-win-x64
-          path: build/VoiceType.Uno-win-x64.zip
-          if-no-files-found: error
-
-  linux:
-    name: Publish Linux (linux-x64, Skia)
+  meta:
+    name: Version from the tag
     runs-on: ubuntu-latest
-
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      code: ${{ steps.v.outputs.code }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Fetch the LiteRtLmSharp feed (release assets, no token)
-        # LiteRtLmSharp 1.4.0 comes from the fork (upstream's own 1.3.0 lacks these improvements):
-        # this pulls its packages from the public v1.4.0 release into the folder feed nuget.config maps to.
-        shell: pwsh
-        run: pwsh tools/scripts/fetch-litertlmsharp-feed.ps1
-
-      - name: Publish VoiceType.Uno (linux-x64, self-contained)
-        run: >-
-          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
-          -c Release -f net10.0-desktop -r linux-x64 -p:GpuArch=CPU
-          --self-contained true -o build/voicetype-uno-linux
-
-      - name: Create archive
-        run: tar -czf build/VoiceType.Uno-linux-x64.tar.gz -C build/voicetype-uno-linux .
-
-      - name: Build Debian installer
+      - id: v
         env:
-          PACKAGE_VERSION: ${{ github.ref_name }}
-          PUBLISH_DIR: ${{ github.workspace }}/build/voicetype-uno-linux
+          TAG: ${{ github.ref_name }}
         run: |
-          PACKAGE_VERSION="${PACKAGE_VERSION#uno-v}"
-          bash apps/VoiceType.Uno/src/VoiceType.Uno/build-deb.sh "$PACKAGE_VERSION"
+          version="${TAG#uno-v}"
+          [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || { echo "::error::tag '$TAG' is not uno-vMAJOR.MINOR.PATCH"; exit 1; }
+          # versionCode must grow with every release: 1.8.1 -> 10801
+          code=$(( 10#${BASH_REMATCH[1]} * 10000 + 10#${BASH_REMATCH[2]} * 100 + 10#${BASH_REMATCH[3]} ))
+          {
+            echo "version=$version"
+            echo "code=$code"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: VoiceType.Uno-linux-x64
-          path: build/VoiceType.Uno-linux-x64.tar.gz
-          if-no-files-found: error
-
-      - name: Upload Debian installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: VoiceType.Uno-linux-deb-amd64
-          path: build/linux-packages
-          if-no-files-found: error
-
-  android:
-    name: Publish Android (AAB + APK)
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Fetch the LiteRtLmSharp feed (release assets, no token)
-        # LiteRtLmSharp 1.4.0 comes from the fork (upstream's own 1.3.0 lacks these improvements):
-        # this pulls its packages from the public v1.4.0 release into the folder feed nuget.config maps to.
-        shell: pwsh
-        run: pwsh tools/scripts/fetch-litertlmsharp-feed.ps1
-
-      - name: Install Android workload
-        run: dotnet workload install android
-
-      - name: Publish VoiceType.Uno (net10.0-android, AAB)
-        run: >-
-          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
-          -c Release -f net10.0-android -p:GpuArch=CPU
-          -p:AndroidPackageFormat=aab
-
-      - name: Publish VoiceType.Uno (net10.0-android, APK for sideload)
-        run: >-
-          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
-          -c Release -f net10.0-android -p:GpuArch=CPU
-          -p:AndroidPackageFormat=apk
-
-      - name: Collect package artifacts
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force build/voicetype-uno-android | Out-Null
-          $publish = "apps/VoiceType.Uno/src/VoiceType.Uno/bin/Release/net10.0-android/publish"
-          Copy-Item "$publish/*-Signed.aab" build/voicetype-uno-android/
-          Copy-Item "$publish/*-Signed.apk" build/voicetype-uno-android/
-          Get-ChildItem build/voicetype-uno-android | Format-Table Name, Length
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: VoiceType.Uno-android
-          path: build/voicetype-uno-android
-          if-no-files-found: error
+  publish:
+    name: Platform packages
+    needs: meta
+    uses: ./.github/workflows/uno-publish.yml
+    with:
+      version: ${{ needs.meta.outputs.version }}
+      version-code: ${{ fromJSON(needs.meta.outputs.code) }}
+      # Flip to true once the release keystore secrets exist (docs/ci.md, Android signing; open decision D2).
+      require-android-signing: false
+      retention-days: 3
+    secrets: inherit
 
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [windows, linux, android]
+    needs: [meta, publish]
+    permissions:
+      contents: write
 
     steps:
       - name: Download Windows artifact
@@ -183,6 +84,7 @@ jobs:
           # Releases published by this workflow had empty bodies; generate the notes
           # from the commits between the previous tag and this one instead.
           generate_release_notes: true
+          fail_on_unmatched_files: true
           files: |
             release-assets/VoiceType.Uno-win-x64.zip
             release-assets/VoiceType.Uno-linux-x64.tar.gz

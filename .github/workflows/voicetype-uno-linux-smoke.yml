@@ -2,45 +2,53 @@ name: VoiceType.Uno Linux Smoke
 
 run-name: VoiceType.Uno Linux · ${{ github.ref_name }} · #${{ github.run_number }}
 
+# Publishes the Linux head (self-contained, linux-x64) and starts it under Xvfb with a PulseAudio null source,
+# without any model. It must stay alive for 10 s; the output is scanned for a native library that failed to load
+# (what a stray or missing onnxruntime would look like). The native libraries installed here are the ones of the
+# .deb Depends line (libx11-6, libxtst6, libvulkan1, ...). The smoke artifact (the whole publish folder) is kept 3 days.
+
 on:
   workflow_dispatch:
   push:
     branches:
       - master
-      - feature/uno-platform-linux
     paths:
       - '.github/workflows/voicetype-uno-linux-smoke.yml'
+      - '.github/actions/**'
       - 'apps/VoiceType.Uno/**'
       - 'libraries/SpeechLib/**'
       - 'libraries/VoiceType.Hotkeys/**'
       - 'nuget.config'
+      - 'global.json'
   pull_request:
     paths:
       - '.github/workflows/voicetype-uno-linux-smoke.yml'
+      - '.github/actions/**'
       - 'apps/VoiceType.Uno/**'
       - 'libraries/SpeechLib/**'
       - 'libraries/VoiceType.Hotkeys/**'
       - 'nuget.config'
+      - 'global.json'
+
+concurrency:
+  group: uno-linux-smoke-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   linux-smoke:
     name: Linux build + startup smoke
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Fetch the LiteRtLmSharp feed (release assets, no token)
-        # LiteRtLmSharp 1.4.0 comes from the fork (upstream's own 1.3.0 lacks these improvements):
-        # this pulls its packages from the public v1.4.0 release into the folder feed nuget.config maps to.
-        shell: pwsh
-        run: pwsh tools/scripts/fetch-litertlmsharp-feed.ps1
+      - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
+        uses: ./.github/actions/setup-build
 
       - name: Check .NET SDK info
         run: dotnet --info
@@ -49,13 +57,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libasound2t64 libfontconfig1 libpulse0 \
+            libasound2t64 libfontconfig1 libpulse0 libx11-6 libxtst6 libvulkan1 \
             xvfb pulseaudio pulseaudio-utils
 
       - name: Publish VoiceType.Uno (linux-x64, self-contained)
         run: >
           dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
-          -c Release -r linux-x64 -f net10.0-desktop -p:GpuArch=CPU
+          -c Release -r linux-x64 -f net10.0-desktop
           --self-contained true -o build/voicetype-uno-linux-smoke
 
       - name: Start ALSA null capture (fake mic) + virtual X display
@@ -77,18 +85,24 @@ jobs:
           # No model is present in CI, so the app is expected to attempt a
           # background model download. We only validate that the process
           # starts, opens the window, and stays alive for 10 seconds.
-          timeout -s TERM 15 ./build/voicetype-uno-linux-smoke/VoiceType.Uno &
+          timeout -s TERM 15 ./build/voicetype-uno-linux-smoke/VoiceType.Uno > build/smoke-output.log 2>&1 &
           APP_PID=$!
           sleep 10
-          if kill -0 $APP_PID 2>/dev/null; then
+          if kill -0 "$APP_PID" 2>/dev/null; then
             echo "OK: app is still running after 10s"
-            kill $APP_PID 2>/dev/null || true
-            wait $APP_PID 2>/dev/null || true
-            exit 0
+            kill "$APP_PID" 2>/dev/null || true
+            wait "$APP_PID" 2>/dev/null || true
           else
-            wait $APP_PID
+            wait "$APP_PID"
             echo "FAIL: app exited early with code $?"
+            cat build/smoke-output.log
             exit 1
+          fi
+          # A native library that fails to load does not always kill the process within 10 s, so the output is
+          # scanned too. Soft on purpose (annotation, not failure): the baseline of a healthy start is not known
+          # until the first runs; promote it to a failure once the log of a green run has been read (docs/ci.md).
+          if grep -E -i 'DllNotFoundException|Unable to load shared library|cannot open shared object file|BadImageFormatException' build/smoke-output.log; then
+            echo "::warning::a native library could not be loaded at start-up (matching lines above, full log in the smoke artifact)"
           fi
 
       - name: Upload smoke artifact
@@ -96,5 +110,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: voicetype-uno-linux-smoke-${{ github.run_number }}
-          path: build/voicetype-uno-linux-smoke
+          path: |
+            build/smoke-output.log
+            build/voicetype-uno-linux-smoke
           if-no-files-found: warn
+          retention-days: 3

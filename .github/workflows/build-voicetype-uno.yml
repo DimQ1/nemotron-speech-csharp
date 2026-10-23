@@ -2,109 +2,66 @@ name: VoiceType.Uno CI
 
 run-name: VoiceType.Uno CI · ${{ github.ref_name }} · #${{ github.run_number }}
 
+# Platform packages of every master push and of pull requests that touch the app (the build + unit tests are in ci.yml).
+# The jobs themselves live in uno-publish.yml. Pull requests build Windows + Linux only; Android (~15 min) runs on
+# master pushes and on demand, iOS only on demand and only once an iOS head exists.
+
 on:
   workflow_dispatch:
+    inputs:
+      android:
+        description: Build the Android AAB + APK
+        type: boolean
+        default: true
+      ios:
+        description: Build the iOS simulator app (PLACEHOLDER - needs the net10.0-ios head)
+        type: boolean
+        default: false
   push:
     branches:
       - master
-      - feature/uno-platform-linux
     paths:
       - '.github/workflows/build-voicetype-uno.yml'
-      - '.github/workflows/release-voicetype-uno.yml'
+      - '.github/workflows/uno-publish.yml'
+      - '.github/actions/**'
       - 'apps/VoiceType.Uno/**'
       - 'libraries/SpeechLib/**'
       - 'libraries/VoiceType.Hotkeys/**'
+      - 'tools/scripts/fetch-litertlmsharp-feed.ps1'
+      - 'tools/scripts/x11-window-fixer.py'
       - 'nuget.config'
+      - 'global.json'
   pull_request:
     paths:
       - '.github/workflows/build-voicetype-uno.yml'
-      - '.github/workflows/release-voicetype-uno.yml'
+      - '.github/workflows/uno-publish.yml'
+      - '.github/actions/**'
       - 'apps/VoiceType.Uno/**'
       - 'libraries/SpeechLib/**'
       - 'libraries/VoiceType.Hotkeys/**'
+      - 'tools/scripts/fetch-litertlmsharp-feed.ps1'
+      - 'tools/scripts/x11-window-fixer.py'
       - 'nuget.config'
+      - 'global.json'
+
+concurrency:
+  group: uno-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
-  windows:
-    name: Publish Windows (win-x64, Skia)
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Fetch the LiteRtLmSharp feed (release assets, no token)
-        # LiteRtLmSharp 1.4.0 comes from the fork (upstream's own 1.3.0 lacks these improvements):
-        # this pulls its packages from the public v1.4.0 release into the folder feed nuget.config maps to.
-        shell: pwsh
-        run: pwsh tools/scripts/fetch-litertlmsharp-feed.ps1
-
-      - name: Publish VoiceType.Uno (win-x64, self-contained)
-        run: >-
-          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
-          -c Release -f net10.0-desktop -r win-x64 -p:GpuArch=CPU
-          --self-contained true -o build/voicetype-uno-win
-
-      - name: Create archive
-        shell: pwsh
-        run: Compress-Archive -Path build/voicetype-uno-win/* -DestinationPath build/VoiceType.Uno-win-x64.zip -Force
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: VoiceType.Uno-win-x64
-          path: build/VoiceType.Uno-win-x64.zip
-          if-no-files-found: error
-
-  linux:
-    name: Publish Linux (linux-x64, Skia)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Fetch the LiteRtLmSharp feed (release assets, no token)
-        # LiteRtLmSharp 1.4.0 comes from the fork (upstream's own 1.3.0 lacks these improvements):
-        # this pulls its packages from the public v1.4.0 release into the folder feed nuget.config maps to.
-        shell: pwsh
-        run: pwsh tools/scripts/fetch-litertlmsharp-feed.ps1
-
-      - name: Publish VoiceType.Uno (linux-x64, self-contained)
-        run: >-
-          dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
-          -c Release -f net10.0-desktop -r linux-x64 -p:GpuArch=CPU
-          --self-contained true -o build/voicetype-uno-linux
-
-      - name: Create archive
-        run: tar -czf build/VoiceType.Uno-linux-x64.tar.gz -C build/voicetype-uno-linux .
-
-      - name: Build Debian installer
-        env:
-          PACKAGE_VERSION: 1.0.${{ github.run_number }}
-          PUBLISH_DIR: ${{ github.workspace }}/build/voicetype-uno-linux
-        run: bash apps/VoiceType.Uno/src/VoiceType.Uno/build-deb.sh "$PACKAGE_VERSION"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: VoiceType.Uno-linux-x64
-          path: build/VoiceType.Uno-linux-x64.tar.gz
-          if-no-files-found: error
-
-      - name: Upload Debian installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: VoiceType.Uno-linux-deb-amd64
-          path: build/linux-packages
-          if-no-files-found: error
+  publish:
+    name: Platform packages
+    uses: ./.github/workflows/uno-publish.yml
+    with:
+      version: 1.0.${{ github.run_number }}
+      version-code: ${{ fromJSON(github.run_number) }}
+      # Not `inputs.android != false`: on a push `inputs.android` is null and `null != false` is false in a workflow
+      # expression, which would silently switch the master Android build off.
+      android: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.android) }}
+      ios: ${{ github.event_name == 'workflow_dispatch' && inputs.ios }}
+      retention-days: 7
+    # No secrets are needed for a CI package: without the keystore the APK is debug-signed (and says so).
+    secrets: inherit

@@ -1,0 +1,59 @@
+name: VoiceType.WinUI MSIX
+
+run-name: VoiceType.WinUI MSIX · ${{ github.ref_name }} · #${{ github.run_number }}
+
+# EXPERIMENTAL - never run on GitHub. The WinUI app is only built locally today (build-store-release.ps1 for the
+# Microsoft Store). This is the same publish, unsigned, so that a Store/WACK candidate can be produced without the
+# maintainer's machine. Manual only until the first dry run is green. Things to watch in that run:
+#  - <_Net10RuntimeDir> in VoiceType.WinUI.csproj is hard-coded to ...\shared\Microsoft.NETCore.App\10.0.9: on a
+#    runner with another patch it only warns ("netstandard.dll not found"); check the MSIX contains netstandard.dll.
+#  - the package version comes from Package.appxmanifest (1.3.4.0), not from a tag.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  msix:
+    name: Publish MSIX (x64, unsigned)
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
+        uses: ./.github/actions/setup-build
+
+      - name: Publish VoiceType.WinUI (MSIX, self-contained)
+        run: >-
+          dotnet publish apps/VoiceType.WinUI/src/VoiceType.WinUI/VoiceType.WinUI.csproj
+          -c Release -p:Platform=x64
+          -p:SelfContained=true -p:PublishAppxPackage=true -p:AppxBundle=Never
+          -p:AppxPackageSigningEnabled=false
+
+      # Signed package (Store upload or sideload): needs the certificate as a secret, never as a tracked file.
+      # WINUI_SIGNING_PFX_BASE64 + WINUI_SIGNING_PFX_PASSWORD -> import into the runner's CurrentUser\My, then add
+      #   -p:AppxPackageSigningEnabled=true -p:PackageCertificateThumbprint=<thumbprint>
+      # (Microsoft Store submissions are re-signed by the Store; a Store upload only needs the unsigned .msixupload.)
+
+      - name: Collect the package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build/winui | Out-Null
+          $packages = Get-ChildItem apps/VoiceType.WinUI/src/VoiceType.WinUI -Recurse -Include *.msix, *.msixupload |
+            Where-Object { $_.FullName -match '\\AppPackages\\|\\bin\\Release\\' }
+          if (-not $packages) { throw 'no .msix produced' }
+          $packages | Copy-Item -Destination build/winui
+          Get-ChildItem build/winui | Format-Table Name, Length
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceType.WinUI-msix-x64
+          path: build/winui
+          if-no-files-found: error
+          retention-days: 7
