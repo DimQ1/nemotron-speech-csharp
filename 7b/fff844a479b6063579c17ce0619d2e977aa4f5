@@ -1,0 +1,19 @@
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronStreamingMelTests.cs
+  s_20e41f7f2d2ce6::t_c9acbd5b22e996 150-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "7bfff844a479b6063579c17ce0619d2e977aa4f5",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
