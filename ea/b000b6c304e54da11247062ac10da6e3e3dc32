@@ -1,0 +1,19 @@
+.github/workflows/uno-publish.yml
+  s_20e41f7f2d2ce6::t_778c26ac0450dd 287-295,309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "eab000b6c304e54da11247062ac10da6e3e3dc32",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
