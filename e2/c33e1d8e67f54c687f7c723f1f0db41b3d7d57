@@ -1,0 +1,59 @@
+AGENTS.md
+  s_20e41f7f2d2ce6::t_fda2870963716c 166
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/Jobs/OfflineRecognitionJob.cs
+  s_20e41f7f2d2ce6::t_ce197a010d799c 39-40,189-190,216-223
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/NemotronStreamPolicy.cs
+  s_20e41f7f2d2ce6::t_fa122ccc1b13ff 1-22
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/RecognitionService.cs
+  s_20e41f7f2d2ce6::t_e33a38f5584441 118-119,150-154
+docs/research/nemotron-pure-ort-followups.md
+  s_20e41f7f2d2ce6::t_508805541cfd17 83-84,88-92,104
+docs/research/onnxruntime-genai-ideas.md
+  s_20e41f7f2d2ce6::t_8ce67c777062d7 117-118,124,321
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronOnnxStepModel.cs
+  s_20e41f7f2d2ce6::t_3ce49ab6bded6c 140-159
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronPauseStateOptions.cs
+  s_20e41f7f2d2ce6::t_85b745bf7bf971 1-106
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronRnntEngine.cs
+  s_20e41f7f2d2ce6::t_af23be89d1f062 33-36,39-54,92,96-100,120-124,181-184,202-203,205-210,213,222,305-307,311-337,360-362,375-384,394-395
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronRnntRecognizer.cs
+  s_20e41f7f2d2ce6::t_27102ecc29c621 47-64,84-86,116-135,153,163-164,166,182-202,276-290,379-382,434-435,457,463-469,471-472,480,495-501,514-539,572-574,576-592,595-626,641-857,940-942
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronStreamState.cs
+  s_20e41f7f2d2ce6::t_16151a836a150f 1-119
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronStreamingMel.cs
+  s_20e41f7f2d2ce6::t_1355114501ef3c 140-160
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronUtteranceRecognizer.cs
+  s_20e41f7f2d2ce6::t_92f3df7c8dd39d 165-177,365-366,370-373,375
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/RnntGreedyDecoder.cs
+  s_20e41f7f2d2ce6::t_3666d6e899eb1f 113-123
+libraries/SpeechLib/src/SpeechLib.Providers/RecognizerFactory.cs
+  s_20e41f7f2d2ce6::t_ff495a847e1d20 86-91,151-163
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/E2E_NemotronPauseStateTests.cs
+  s_20e41f7f2d2ce6::t_83b01cc8f834e4 1-260
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Fakes.cs
+  s_20e41f7f2d2ce6::t_64dea78feaa92d 50-124
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronPauseStateTests.cs
+  s_20e41f7f2d2ce6::t_a19db4beccd36c 1-449
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronRecognizerTests.cs
+  s_20e41f7f2d2ce6::t_2844b970672ce6 28,40-41,310-387
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronUtteranceTests.cs
+  s_20e41f7f2d2ce6::t_ab5d1824101625 548-569
+tools/WerEval/Program.cs
+  s_20e41f7f2d2ce6::t_2de4bada1c3361 1,23-28,82-84,106-127,154-156,160-169,171,210,215,257-259,392,406-407,644-653
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "e2c33e1d8e67f54c687f7c723f1f0db41b3d7d57",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
