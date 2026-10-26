@@ -34,20 +34,23 @@ public sealed class E2E_NemotronRecognitionTests(ITestOutputHelper output)
     });
 
     /// <summary>
-    /// The recognizer without the gain control, for the tests of the resume points: a recognizer that starts afresh also starts with a
-    /// fresh gain, whose first loud frame sets the level (a quiet click in front of a sentence boosts the sentence 20 times and the model
-    /// loses it, which has nothing to do with where the run resumes); and the transcript of a resumed run is then exactly the continuous one.
+    /// The recognizer without the gain control, for the fixture whose sentences follow each other after 0.5 s: resumed at 6.54 s with a
+    /// fresh gain the model still loses two sentences (G2, open: measured after G1, a click or breath in front of the resumed sentence
+    /// passes as its first syllable), which has nothing to do with where the run resumes.
     /// </summary>
     private static IStreamingSpeechRecognizer NewRecognizerWithoutGain() => new SpeechLib.Nemotron.NemotronUtteranceRecognizer(
         NemotronAssets.ModelFolder ?? "", "cpu", "en");
 
     private static string Normalize(string text) => Regex.Replace(Tag.Replace(text, " "), @"\s+", " ").Trim();
 
-    /// <summary>Four sentences with pauses of 3, 1.5 and 2.5 s (room tone) in between: ends of utterances by silence and by language tag.</summary>
-    private static float[] Conversation() => NemotronAssets.Concat(
-        NemotronAssets.LoadClip("cv17/en/0001.wav"), NemotronAssets.RoomTone(3, 1),
-        NemotronAssets.LoadClip("cv17/en/0002.wav"), NemotronAssets.RoomTone(1.5, 2),
-        NemotronAssets.LoadClip("cv17/en/0006.wav"), NemotronAssets.RoomTone(2.5, 3),
+    /// <summary>
+    /// Four sentences with pauses of 3, 1.5 and 2.5 s (room tone) in between: ends of utterances by silence and by language tag. The
+    /// quiet room is about -69 dBFS, the noisy one (66 LSB) about -54 dBFS.
+    /// </summary>
+    private static float[] Conversation(float roomSigmaLsb = 12f) => NemotronAssets.Concat(
+        NemotronAssets.LoadClip("cv17/en/0001.wav"), NemotronAssets.RoomTone(3, 1, roomSigmaLsb),
+        NemotronAssets.LoadClip("cv17/en/0002.wav"), NemotronAssets.RoomTone(1.5, 2, roomSigmaLsb),
+        NemotronAssets.LoadClip("cv17/en/0006.wav"), NemotronAssets.RoomTone(2.5, 3, roomSigmaLsb),
         NemotronAssets.LoadClip("cv17/en/0010.wav"));
 
     /// <summary>The text of the plain recognizer interface over the same audio, on a recognizer of its own.</summary>
@@ -117,6 +120,13 @@ public sealed class E2E_NemotronRecognitionTests(ITestOutputHelper output)
     [NemotronE2EFact]
     public void OfflineTranscriber_ShouldResumeFromEveryCheckpointWithoutLosingAnything() => AssertResumesFromEveryCheckpoint(Conversation(), "football", "so rude");
 
+    /// <summary>
+    /// The same in a noisy room (-54 dBFS between the sentences): a resumed run starts with a fresh gain control in the room tone, which
+    /// the gain control before G1 took for speech and raised by 26 dB.
+    /// </summary>
+    [NemotronE2EFact]
+    public void OfflineTranscriber_ShouldResumeFromEveryCheckpointInANoisyRoom() => AssertResumesFromEveryCheckpoint(Conversation(66f), "football", "so rude");
+
     /// <summary>Sentences half a second apart: the model ends them with a language tag when the next one begins, so the Final is reported with the next speech.</summary>
     [NemotronE2EFact]
     public void OfflineTranscriber_ShouldResumeFromEveryCheckpointOfSentencesThatFollowEachOtherClosely() =>
@@ -124,7 +134,7 @@ public sealed class E2E_NemotronRecognitionTests(ITestOutputHelper output)
             NemotronAssets.LoadClip("cv17/en/0001.wav"), NemotronAssets.RoomTone(0.5, 4),
             NemotronAssets.LoadClip("cv17/en/0002.wav"), NemotronAssets.RoomTone(0.5, 5),
             NemotronAssets.LoadClip("cv17/en/0006.wav"), NemotronAssets.RoomTone(0.5, 6),
-            NemotronAssets.LoadClip("cv17/en/0010.wav")), "football", "so rude");
+            NemotronAssets.LoadClip("cv17/en/0010.wav")), "football", "so rude", gain: false);
 
     /// <summary>
     /// A dense conversation: the clips are cut to their speech (the recordings carry a few tenths of a second of their own silence) and
@@ -161,10 +171,12 @@ public sealed class E2E_NemotronRecognitionTests(ITestOutputHelper output)
         return Math.Sqrt(audio.Skip(from).Take(to - from).Sum(x => (double)x * x) / Math.Max(1, to - from));
     }
 
-    private void AssertResumesFromEveryCheckpoint(float[] audio, string wordOfASentenceInTheMiddle, string textEnd, int minCheckpoints = 2)
+    private void AssertResumesFromEveryCheckpoint(float[] audio, string wordOfASentenceInTheMiddle, string textEnd, int minCheckpoints = 2, bool gain = true)
     {
+        // the recognizer of the apps, gain control included: a resumed run starts with a fresh one, which waits for speech before it
+        // boosts (the rule before G1 let a quiet click in front of a sentence boost the sentence 20 times and the model lost it)
         var checkpoints = new List<OfflineCheckpoint>();
-        using var first = NewRecognizerWithoutGain();
+        using var first = gain ? NewRecognizer() : NewRecognizerWithoutGain();
         var continuous = OfflineTranscriber.Run(first, audio, new OfflineTranscriptionOptions { Checkpoint = checkpoints.Add });
         output.WriteLine("continuous: " + string.Join(" | ", continuous.Document.Segments.Select(s => $"[{s.Start:F2}-{s.End:F2}] {s.Text}")));
         output.WriteLine("checkpoints: " + string.Join(", ", checkpoints.Select(c => $"{c.Sample / (double)Rate:F2} s ({c.Segments.Count} segments)")));
@@ -172,11 +184,11 @@ public sealed class E2E_NemotronRecognitionTests(ITestOutputHelper output)
         Assert.True(checkpoints.Count >= minCheckpoints, $"every segment committed by a Final but the first should offer a checkpoint in front of it, got {checkpoints.Count}");
         foreach (var checkpoint in checkpoints)
         {
-            // the resume point is in silence: nothing of a sentence is cut in two (the room tone is about -69 dBFS, speech far above -50)
+            // the resume point is in silence: nothing of a sentence is cut in two (the room tone is -69 or -54 dBFS, speech far above -50)
             Assert.True(RmsAround(audio, checkpoint.Sample, 0.04) < 0.003, $"the checkpoint at {checkpoint.Sample / (double)Rate:F2} s is not in silence");
 
             // a recognizer that starts afresh at the checkpoint, the committed segments of the checkpoint: what the job runner does
-            using var recognizer = NewRecognizerWithoutGain();
+            using var recognizer = gain ? NewRecognizer() : NewRecognizerWithoutGain();
             var resumed = OfflineTranscriber.Run(recognizer, audio, new OfflineTranscriptionOptions
             {
                 StartSample = checkpoint.Sample,

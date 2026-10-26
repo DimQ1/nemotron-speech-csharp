@@ -42,7 +42,9 @@ public sealed record NemotronUtteranceOptions
     /// Apply <see cref="SpeechLib.Audio.AutomaticGainControl"/> to the input before the model and the word timer see it.
     /// The model has no input normalization and returns nothing for a quiet microphone (silent at a -40 dBFS peak);
     /// the gain only raises quiet speech, so normally leveled audio passes unchanged, and it keeps the number of samples,
-    /// so the stream clock is not affected. The level the gain has learned survives
+    /// so the stream clock is not affected. It waits for speech (syllables above the measured noise floor) before the first
+    /// boost and never lifts the room tone above about -50 dBFS, so a stream that starts in a noisy room is not pumped up.
+    /// The level the gain has learned survives
     /// <see cref="NemotronUtteranceRecognizer.ResetStreamingState"/>: it describes the microphone, not the stream, and
     /// the decorator chain this replaces behaved the same. Off by default (raw input, the parity tests);
     /// <c>RecognizerFactory</c> turns it on.
