@@ -132,18 +132,24 @@ public sealed class E2E_NemotronParityTests(NemotronModelCache models, ITestOutp
         recognizer.ResetStreamingState();
         var predictionsBefore = engine.PredictionCalls;
         var jointsBefore = engine.JointCalls;
+        var jointFramesBefore = engine.JointFrames;
 
         var replay = Replay.Run(recognizer, clip, recognizer.ChunkSamples);
 
         var predictions = engine.PredictionCalls - predictionsBefore;
         var joints = engine.JointCalls - jointsBefore;
-        var frames = replay.Chunks.Count * (long)recognizer.FramesPerChunk;
+        var jointFrames = engine.JointFrames - jointFramesBefore;
+        var chunks = replay.Chunks.Count;
+        var tokens = replay.Tokens.Count;
+        var frames = chunks * (long)recognizer.FramesPerChunk;
+        var genAiRuns = frames + tokens;                                  // GenAI: prediction + joint per frame and per token
         Assert.NotEmpty(replay.Tokens);
-        Assert.InRange(predictions, 1, replay.Tokens.Count + 1);          // once at the start, once after each token
-        Assert.InRange(joints, frames, frames + replay.Tokens.Count);     // one per frame, one more per token
-        // GenAI runs the prediction network once per joint call: this loop needs well under half as many runs
-        Assert.True(predictions * 2 < joints, $"{predictions} prediction runs for {joints} joint runs");
-        output.WriteLine($"prediction runs {predictions}, joint runs {joints} (GenAI: {joints} each), {replay.Tokens.Count} tokens, {frames} frames");
+        Assert.InRange(predictions, 1, tokens + 1);                       // once at the start, once after each token
+        Assert.InRange(joints, chunks, chunks + tokens);                  // batched: one per chunk, one more per token
+        Assert.InRange(jointFrames, frames, frames + tokens * (long)recognizer.FramesPerChunk);
+        Assert.True(predictions * 2 < genAiRuns, $"{predictions} prediction runs, GenAI {genAiRuns}");
+        Assert.True(joints * 2 < genAiRuns, $"{joints} joint runs, GenAI {genAiRuns}");
+        output.WriteLine($"prediction runs {predictions}, joint runs {joints} scoring {jointFrames} frames (GenAI: {genAiRuns} each), {tokens} tokens, {frames} frames");
     }
 
     [NemotronModelFact]

@@ -39,7 +39,7 @@ ONNX Runtime GenAI was removed; the recognizer owns the whole decode path. `seal
 | 1 | `NemotronModelConfig` | Parse `genai_config.json` (sizes, graph file names, `vad` block) as plain JSON |
 | 2 | `NemotronStreamingMel` | Streaming log-mel front end (float32 KISS FFT, bit-identical to the former GenAI mel on Windows x64; other platforms use their own libm: same tokens on the clips tested on Linux x64, mel within 7e-5, the rest unmeasured) |
 | 3 | `NemotronRnntEngine` | Encoder / decoder / joiner `InferenceSession`s, cache buffers, per-chunk run |
-| 4 | `RnntGreedyDecoder` | Greedy RNN-T search, one `NemotronToken` (chunk, frame, symbol) per emitted token |
+| 4 | `RnntGreedyDecoder` | Greedy RNN-T search, one `NemotronToken` (chunk, frame, symbol) per emitted token; the prediction network runs only after an emitted token and the joint once per prediction output for the rest of the chunk (`BatchedJoint`, rows bit-identical to one-frame runs) |
 | 5 | `NemotronVocabulary` | `vocab.txt` → text, language tags, word starts |
 | 6 | `NemotronUtteranceRecognizer` | Utterances, calibrated word times, input gain control (`RecognizerFactory` builds this one) |
 

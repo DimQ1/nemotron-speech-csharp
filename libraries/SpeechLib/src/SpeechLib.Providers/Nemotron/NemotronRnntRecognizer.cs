@@ -29,6 +29,14 @@ public sealed record NemotronRecognizerOptions
     public bool CleanLastFrame { get; init; }
 
     /// <summary>
+    /// Run the joint network once for all remaining encoder frames of a chunk per prediction output (true, default)
+    /// instead of once per frame and symbol like GenAI (false). The rows are bit-identical to one-frame runs, so the
+    /// tokens and their scores are the same (verified against the GenAI oracle on Windows x64); false is the reference
+    /// path for comparisons.
+    /// </summary>
+    public bool BatchedJoint { get; init; } = true;
+
+    /// <summary>
     /// Replaces the native silence gate (Silero on the model folder's <c>silero_vad.onnx</c>, scored per chunk
     /// exactly like GenAI) with an external voice-activity filter. The recognizer does not dispose it.
     /// </summary>
@@ -556,7 +564,8 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
         var config = NemotronModelConfig.Load(directory);
         var vocabulary = NemotronVocabulary.Load(Path.Combine(directory, "vocab.txt"), config.BlankId, config.VocabSize);
         var engine = NemotronRnntEngine.Create(directory, config,
-            new NemotronEngineOptions(executionProvider, options.CpuThreads, options.SequentialExecution, options.CleanLastFrame));
+            new NemotronEngineOptions(executionProvider, options.CpuThreads, options.SequentialExecution, options.CleanLastFrame,
+                BatchedJoint: options.BatchedJoint));
         return new LoadedParts(directory, config, vocabulary, engine);
     }
 
