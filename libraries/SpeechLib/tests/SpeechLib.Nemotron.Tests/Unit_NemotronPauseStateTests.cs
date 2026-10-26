@@ -209,6 +209,25 @@ public sealed class Unit_NemotronPauseStateTests
         Assert.False(Assert.Single(rig.Decisions).FreshWon);
     }
 
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(2, false)]
+    public void DualBranch_FreshLead_ShouldBeTheLetterMarginTheFreshBranchNeeds(int lead, bool freshWins)
+    {
+        using var rig = Make(Dual() with { FreshLead = lead }, NewSentence);
+        rig.Engine.Script = (lineage, chunk, _) => (lineage, chunk) switch
+        {
+            (0, 0) => [(Id("▁the"), 2)],
+            (0, 6) => [(Id("▁are"), 2)],
+            (> 0, 6) => [(Id("▁you"), 2), (Id("▁are"), 4)],   // one letter token more
+            _ => [],
+        };
+
+        rig.FeedChunks(0, 10);
+
+        Assert.Equal(freshWins, Assert.Single(rig.Decisions).FreshWon);
+    }
+
     [Fact]
     public void DualBranch_ACloserEmittedAfterTheFreshBranchsFirstWord_ShouldMoveOntoThatWordsFrame()
     {

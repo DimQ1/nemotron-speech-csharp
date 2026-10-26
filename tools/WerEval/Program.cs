@@ -1,4 +1,4 @@
-﻿// WER evaluation harness for SpeechLib recognizers.
+// WER evaluation harness for SpeechLib recognizers.
 //
 // Scans an audio root recursively for {name}.wav + {name}.txt pairs (16 kHz
 // mono PCM16, reference text in the sibling .txt). New audio can be added by
@@ -118,6 +118,7 @@ for (int i = 3; i < args.Length; i++)
         case "--pause-sec" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { PauseSeconds = double.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
         case "--decision-sec" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { DecisionSeconds = double.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
         case "--preroll-sec" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { PrerollSeconds = double.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
+        case "--fresh-lead" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { FreshLead = int.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
         case "--closing" when i + 1 < args.Length: nemotron.ClosingChunks = int.Parse(args[++i], CultureInfo.InvariantCulture); break;
         case "--hyp-out" when i + 1 < args.Length: hypOut = args[++i]; break;
         case "--pause-log" when i + 1 < args.Length: pauseLog = args[++i]; break;
@@ -154,7 +155,7 @@ if (recognizer is NemotronUtteranceRecognizer nemotronInfo)
 {
     Console.WriteLine($"Nemotron execution provider: {nemotronInfo.ExecutionProvider.Effective} ({nemotronInfo.ExecutionProvider.Summary})");
     Console.WriteLine($"Nemotron stream: vad={nemotron.UseVad} threads={nemotron.Threads?.ToString(CultureInfo.InvariantCulture) ?? "auto"} pause={nemotron.Pause.Policy} " +
-        $"(pause {nemotron.Pause.PauseSeconds}s, decision {nemotron.Pause.DecisionSeconds}s, preroll {nemotron.Pause.PrerollSeconds}s) closing={nemotron.ClosingChunks}");
+        $"(pause {nemotron.Pause.PauseSeconds}s, decision {nemotron.Pause.DecisionSeconds}s, preroll {nemotron.Pause.PrerollSeconds}s, lead {nemotron.Pause.FreshLead}) closing={nemotron.ClosingChunks}");
     if (pauseLog is not null)
     {
         pauseWriter = new StreamWriter(pauseLog, append: false, new UTF8Encoding(false));

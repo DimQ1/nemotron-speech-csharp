@@ -75,6 +75,13 @@ public sealed record NemotronPauseStateOptions
     /// </summary>
     public double PrerollSeconds { get; init; } = 1.1;
 
+    /// <summary>
+    /// Letter tokens the fresh branch must write more than the kept state to win (1 = strictly more; a tie always keeps the
+    /// state). A fresh state that starts mid-sentence tends to split words into more pieces, so a lead of one piece is weak
+    /// evidence.
+    /// </summary>
+    public int FreshLead { get; init; } = 1;
+
     /// <summary>Converts a duration of this record to whole chunks of <paramref name="chunkSeconds"/>, at least one.</summary>
     internal static int ToChunks(double seconds, double chunkSeconds) =>
         Math.Max(1, (int)Math.Round(seconds / chunkSeconds, MidpointRounding.AwayFromZero));

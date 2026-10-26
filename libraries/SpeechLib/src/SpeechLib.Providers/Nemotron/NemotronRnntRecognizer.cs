@@ -114,6 +114,7 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
     private readonly int _pauseChunks;        // silent chunks that make a pause
     private readonly int _decisionChunks;     // chunks both branches decode before the decision
     private readonly int _prerollChunks;      // silent chunks fed to a fresh state in front of the speech
+    private readonly int _freshLead;          // letter tokens the fresh branch must write more than the kept one
     private readonly PrerollRing? _ring;
     private bool[]? _lexical;
     private SilenceDropRule? _pauseCounter;   // the policy's own speech gate while the silence drop is off
@@ -184,6 +185,9 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
                 var chunkSeconds = (double)engine.ChunkSamples / config.SampleRate;
                 _pauseChunks = NemotronPauseStateOptions.ToChunks(pause.PauseSeconds, chunkSeconds);
                 _decisionChunks = NemotronPauseStateOptions.ToChunks(pause.DecisionSeconds, chunkSeconds);
+                if (pause.FreshLead < 1)
+                    throw new ArgumentOutOfRangeException(nameof(options), pause.FreshLead, "FreshLead must be at least 1.");
+                _freshLead = pause.FreshLead;
                 _prerollChunks = pause.PrerollSeconds > 0 ? NemotronPauseStateOptions.ToChunks(pause.PrerollSeconds, chunkSeconds) : 0;
                 _ring = new PrerollRing(_prerollChunks, engine.ChunkSamples, _lookahead);
             }
@@ -700,7 +704,7 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
         var lexical = LexicalTokens();
         var keepLetters = window.Keep.Count(t => lexical[t.Id]);
         var freshLetters = window.Fresh.Count(t => lexical[t.Id]);
-        var freshWins = _pausePolicy == NemotronPauseState.Fresh || freshLetters > keepLetters;
+        var freshWins = _pausePolicy == NemotronPauseState.Fresh || freshLetters >= keepLetters + _freshLead;
         _engine.SelectBranch(freshWins ? window.FreshBranch : window.KeepBranch);
         if (freshWins)
             FreshBranchWins++;
