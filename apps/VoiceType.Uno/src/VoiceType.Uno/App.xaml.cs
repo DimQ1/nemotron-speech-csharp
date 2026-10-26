@@ -25,6 +25,22 @@ public partial class App : Application
     public App()
     {
         this.InitializeComponent();
+        // A XAML failure on the WinUI head ends as a fail-fast 0xC000027B with no managed trace; keep its message.
+        UnhandledException += (_, e) => LogError($"Unhandled: {e.Message}{Environment.NewLine}{e.Exception}");
+    }
+
+    /// <summary>Appends a line to errors.log in the data root.</summary>
+    private static void LogError(string message)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.DataRoot);
+            File.AppendAllText(AppPaths.ErrorLogFile, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Best-effort file logging.
+        }
     }
 
     protected Window? MainWindow { get; private set; }

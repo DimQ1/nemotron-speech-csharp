@@ -410,9 +410,12 @@ public sealed partial class RecordingPage : Page
     {
         // A low window (landscape phone) has no room for the bar above the list: it scrolls with the transcript.
         var host = ActualHeight > 0 && ActualHeight < 480 ? SpeakerBarScrollHost : SpeakerBarHost;
-        if (!ReferenceEquals(SpeakerBar.Parent, host))
+        // Detach from both known hosts by collection, not through SpeakerBar.Parent: on the WinUI head the
+        // Parent check did not detach it, and adding an element that still has a parent fails with 0x800F1000.
+        if (!host.Children.Contains(SpeakerBar))
         {
-            (SpeakerBar.Parent as Panel)?.Children.Remove(SpeakerBar);
+            SpeakerBarHost.Children.Remove(SpeakerBar);
+            SpeakerBarScrollHost.Children.Remove(SpeakerBar);
             host.Children.Add(SpeakerBar);
         }
         SpeakerBar.Update(ViewModel, ActualWidth, ActualHeight);
@@ -784,6 +787,10 @@ public sealed partial class RecordingPage : Page
 
     private void RenderDiffList()
     {
+        // IsOn="True" on ChangesOnlySwitch can raise Toggled inside InitializeComponent, before DiffList exists
+        // (same guard as ReprocessSheet.ApplySteps).
+        if (DiffList is null)
+            return;
         DiffList.Children.Clear();
         if (_diff is null)
             return;
