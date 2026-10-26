@@ -1,0 +1,21 @@
+AGENTS.md
+  s_974258c65088b5::t_6d028e4d30c4b6 166
+docs/research/nemotron-pure-ort-followups.md
+  s_974258c65088b5::t_df533a5dedd52d 18-20,24-25,27,97-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "382b2280861e51e3b807d206c48430e85c84efd0",
+  "prompts": {},
+  "sessions": {
+    "s_974258c65088b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3fc81e050ed2b18f",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
