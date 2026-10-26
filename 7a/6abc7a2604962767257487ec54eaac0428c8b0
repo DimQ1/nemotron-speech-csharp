@@ -1,0 +1,23 @@
+README.md
+  s_20e41f7f2d2ce6::t_4f430012d26596 29-33
+docs/research/asr/parakeet-tdt-0.6b-v3-evaluation.md
+  s_20e41f7f2d2ce6::t_d5e518568e35a1 120
+libraries/SpeechLib/tests/SpeechLib.Tests/E2E_Qwen3AsrStreamingTests.cs
+  s_20e41f7f2d2ce6::t_33450062021528 14,50,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "7a6abc7a2604962767257487ec54eaac0428c8b0",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
