@@ -23,9 +23,9 @@ public sealed class Unit_NemotronPauseStateTests
         return id >= 0 ? id : throw new InvalidOperationException($"'{piece}' is not in the vocabulary");
     }
 
-    // 1.1 s = 2 silent chunks make a pause, 1.68 s = 3 chunks are decided on, 1.1 s = 2 chunks of preroll
-    private static NemotronPauseStateOptions Dual(double decisionSeconds = 1.68) =>
-        new() { Policy = NemotronPauseState.DualBranch, PauseSeconds = 1.1, DecisionSeconds = decisionSeconds, PrerollSeconds = 1.1 };
+    // 1.1 s = 2 silent chunks make a pause, 3 chunks are decided on, 1.1 s = 2 chunks of preroll, a lead of one letter token wins
+    private static NemotronPauseStateOptions Dual(int decisionChunks = 3) =>
+        new() { Policy = NemotronPauseState.DualBranch, PauseSeconds = 1.1, DecisionChunks = decisionChunks, PrerollSeconds = 1.1, FreshLead = 1 };
 
     private sealed class Rig : IDisposable
     {
@@ -323,7 +323,7 @@ public sealed class Unit_NemotronPauseStateTests
     public void DualBranch_ALongPauseInsideTheWindow_ShouldEndTheWindowBeforeTheFirstDroppedChunk()
     {
         // speech at chunk 6 only, then silence: the 6th silent chunk (12) is dropped by the GenAI rule
-        using var rig = Make(Dual(decisionSeconds: 5), chunk => chunk is < 3 or 6, useVad: true);
+        using var rig = Make(Dual(decisionChunks: 9), chunk => chunk is < 3 or 6, useVad: true);
         rig.Engine.Script = KeepLosesWords();
 
         rig.FeedChunks(0, 12);

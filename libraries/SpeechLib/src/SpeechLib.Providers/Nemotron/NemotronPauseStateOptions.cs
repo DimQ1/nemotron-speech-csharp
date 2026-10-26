@@ -19,9 +19,9 @@ public enum NemotronPauseState
     Fresh,
 
     /// <summary>
-    /// At the first speech chunk after a pause the next <see cref="NemotronPauseStateOptions.DecisionSeconds"/> of audio are
-    /// decoded twice, by the kept state and by a fresh one; the branch that wrote more letter tokens continues (a tie keeps the
-    /// state), the other one is dropped. The text of those chunks is held back until the decision.
+    /// At the first speech chunk after a pause the next <see cref="NemotronPauseStateOptions.DecisionChunks"/> chunks are
+    /// decoded twice, by the kept state and by a fresh one; the fresh branch continues when it wrote at least
+    /// <see cref="NemotronPauseStateOptions.FreshLead"/> letter tokens more than the kept state, else the state is kept; the other branch is dropped. The text of those chunks is held back until the decision.
     /// </summary>
     DualBranch,
 }
@@ -45,7 +45,7 @@ public enum NemotronPauseState
 /// <see cref="NemotronRnntRecognizer.ChunksConsumed"/> continue. The text of a branch decision window is reported in the call that
 /// ends the window (<see cref="NemotronRnntRecognizer.LastChunks"/> then lists all its chunks); it never depends on how the caller
 /// batched the audio.</para>
-/// <para><b>Cost</b> per pause: <see cref="PrerollSeconds"/> plus <see cref="DecisionSeconds"/> of extra encoder work (about 0.3 s of
+/// <para><b>Cost</b> per pause: <see cref="PrerollSeconds"/> plus <see cref="DecisionChunks"/> chunks of extra encoder work (about 0.3 s of
 /// CPU on the 560 ms model at four threads) and, for the first use, a second set of encoder caches (about 13 MB).</para>
 /// </remarks>
 public sealed record NemotronPauseStateOptions
@@ -63,11 +63,14 @@ public sealed record NemotronPauseStateOptions
     public double PauseSeconds { get; init; } = 1.1;
 
     /// <summary>
-    /// Audio decoded by both branches before <see cref="NemotronPauseState.DualBranch"/> decides, counted from the first speech
-    /// chunk and rounded to whole chunks (at least one); the text of those chunks is held back until then. The flush of a stream
-    /// ends a window early and takes part in it.
+    /// Chunks decoded by both branches before <see cref="NemotronPauseState.DualBranch"/> decides, counted from the first speech
+    /// chunk; the text of those chunks is held back until then (the first words after a pause appear DecisionChunks - 1 chunks
+    /// later: 1.12 s on the 560 ms model, 2.24 s on the 1120 ms model). Counted in chunks, not seconds: the evidence the rule
+    /// needs is the model's output, which comes chunk by chunk (1 or 2 chunks kept 9 % / 39 % of the gain on the 560 ms model,
+    /// 2 chunks of the 1120 ms model about half of what 3 gave). A dropped chunk, a flush or <c>ResetModelState</c> end a window
+    /// early (the flush chunks take part).
     /// </summary>
-    public double DecisionSeconds { get; init; } = 1.68;
+    public int DecisionChunks { get; init; } = 3;
 
     /// <summary>
     /// The end of the pause fed to a fresh state in front of the speech, rounded to whole chunks (at most the pause's silent
@@ -78,9 +81,10 @@ public sealed record NemotronPauseStateOptions
     /// <summary>
     /// Letter tokens the fresh branch must write more than the kept state to win (1 = strictly more; a tie always keeps the
     /// state). A fresh state that starts mid-sentence tends to split words into more pieces, so a lead of one piece is weak
-    /// evidence.
+    /// evidence: with 1, long English recordings got worse (25.9 -> 27.1 % WER, most fresh wins by one piece), with 2 they did
+    /// not, at about 80 % of the gain on new sentences after a pause.
     /// </summary>
-    public int FreshLead { get; init; } = 1;
+    public int FreshLead { get; init; } = 2;
 
     /// <summary>Converts a duration of this record to whole chunks of <paramref name="chunkSeconds"/>, at least one.</summary>
     internal static int ToChunks(double seconds, double chunkSeconds) =>

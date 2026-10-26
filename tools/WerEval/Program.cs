@@ -20,7 +20,7 @@
 // --codec-only measures speed/size without loading a model (pass any modelDir).
 //
 // Nemotron stream options (NemotronRecognizerOptions): --vad (the native silence drop, as the apps run it),
-// --threads N (CPU threads), --pause keep|fresh|dual with --pause-sec / --decision-sec / --preroll-sec
+// --threads N (CPU threads), --pause keep|fresh|dual with --pause-sec / --decision-chunks / --preroll-sec / --fresh-lead
 // (the pause-state policy), --closing N (zero chunks after the padded flush remainder).
 // --hyp-out file.tsv writes "relative path<TAB>hypothesis" per file; --pause-log file.tsv writes
 // one line per pause-policy decision (nemotron).
@@ -116,7 +116,7 @@ for (int i = 3; i < args.Length; i++)
             };
             break;
         case "--pause-sec" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { PauseSeconds = double.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
-        case "--decision-sec" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { DecisionSeconds = double.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
+        case "--decision-chunks" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { DecisionChunks = int.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
         case "--preroll-sec" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { PrerollSeconds = double.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
         case "--fresh-lead" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { FreshLead = int.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
         case "--closing" when i + 1 < args.Length: nemotron.ClosingChunks = int.Parse(args[++i], CultureInfo.InvariantCulture); break;
@@ -155,7 +155,7 @@ if (recognizer is NemotronUtteranceRecognizer nemotronInfo)
 {
     Console.WriteLine($"Nemotron execution provider: {nemotronInfo.ExecutionProvider.Effective} ({nemotronInfo.ExecutionProvider.Summary})");
     Console.WriteLine($"Nemotron stream: vad={nemotron.UseVad} threads={nemotron.Threads?.ToString(CultureInfo.InvariantCulture) ?? "auto"} pause={nemotron.Pause.Policy} " +
-        $"(pause {nemotron.Pause.PauseSeconds}s, decision {nemotron.Pause.DecisionSeconds}s, preroll {nemotron.Pause.PrerollSeconds}s, lead {nemotron.Pause.FreshLead}) closing={nemotron.ClosingChunks}");
+        $"(pause {nemotron.Pause.PauseSeconds}s, decision {nemotron.Pause.DecisionChunks} chunks, preroll {nemotron.Pause.PrerollSeconds}s, lead {nemotron.Pause.FreshLead}) closing={nemotron.ClosingChunks}");
     if (pauseLog is not null)
     {
         pauseWriter = new StreamWriter(pauseLog, append: false, new UTF8Encoding(false));

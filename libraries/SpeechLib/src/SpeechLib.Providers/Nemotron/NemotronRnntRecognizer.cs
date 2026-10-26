@@ -180,11 +180,11 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
             {
                 if (engine.BranchCount < 2)
                     throw new ArgumentException($"The pause-state policy {_pausePolicy} needs an engine that holds two branches of the stream.", nameof(engine));
-                if (!(pause.PauseSeconds > 0 && pause.DecisionSeconds > 0 && pause.PrerollSeconds >= 0))
-                    throw new ArgumentOutOfRangeException(nameof(options), "The pause, decision and preroll durations must be positive.");
+                if (!(pause.PauseSeconds > 0 && pause.DecisionChunks > 0 && pause.PrerollSeconds >= 0))
+                    throw new ArgumentOutOfRangeException(nameof(options), "The pause duration and the decision chunks must be positive, the preroll not negative.");
                 var chunkSeconds = (double)engine.ChunkSamples / config.SampleRate;
                 _pauseChunks = NemotronPauseStateOptions.ToChunks(pause.PauseSeconds, chunkSeconds);
-                _decisionChunks = NemotronPauseStateOptions.ToChunks(pause.DecisionSeconds, chunkSeconds);
+                _decisionChunks = pause.DecisionChunks;
                 if (pause.FreshLead < 1)
                     throw new ArgumentOutOfRangeException(nameof(options), pause.FreshLead, "FreshLead must be at least 1.");
                 _freshLead = pause.FreshLead;
