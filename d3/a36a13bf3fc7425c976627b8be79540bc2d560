@@ -1,0 +1,29 @@
+AGENTS.md
+  s_20e41f7f2d2ce6::t_cb6bcf95c23954 166
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/NemotronStreamPolicy.cs
+  s_20e41f7f2d2ce6::t_fe1f7f9c720e09 11-13,17-27,29-33
+docs/research/nemotron-pure-ort-followups.md
+  s_20e41f7f2d2ce6::t_899561d82a5c2d 84-85
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronPauseStateOptions.cs
+  s_20e41f7f2d2ce6::t_b19b3b85622d28 89-97
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronRnntRecognizer.cs
+  s_20e41f7f2d2ce6::t_6e7c48f91a8498 122,201-207,603-604
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronPauseStateTests.cs
+  s_20e41f7f2d2ce6::t_2635365cb76ae5 124-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "d3a36a13bf3fc7425c976627b8be79540bc2d560",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
