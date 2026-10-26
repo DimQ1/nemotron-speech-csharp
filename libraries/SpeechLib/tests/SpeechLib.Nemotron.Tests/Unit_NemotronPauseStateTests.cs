@@ -122,6 +122,34 @@ public sealed class Unit_NemotronPauseStateTests
     }
 
     [Fact]
+    public void DualBranch_InAKeepLanguage_ShouldKeepTheStateThroughThePause()
+    {
+        using var rig = Make(Dual() with { KeepLanguages = ["ru"] }, NewSentence);
+        rig.Engine.Script = KeepLosesWords();
+        Assert.True(rig.Recognizer.TrySetLanguage("ru"));
+
+        var texts = rig.FeedChunks(0, 10);
+
+        Assert.Equal(" the. <en-US> are", AllText(texts));
+        Assert.Empty(rig.Decisions);
+        Assert.Equal(0, rig.Recognizer.PauseForks);
+    }
+
+    [Fact]
+    public void DualBranch_LanguageSwitchedOutOfAKeepLanguageDuringThePause_ShouldForkAtThatPause()
+    {
+        using var rig = Make(Dual() with { KeepLanguages = ["ru"] }, NewSentence);
+        rig.Engine.Script = KeepLosesWords();
+        Assert.True(rig.Recognizer.TrySetLanguage("ru"));
+
+        rig.FeedChunks(0, 6);
+        Assert.True(rig.Recognizer.TrySetLanguage("auto"));
+        rig.FeedChunks(6, 4);
+
+        Assert.True(Assert.Single(rig.Decisions).FreshWon);
+    }
+
+    [Fact]
     public void DualBranch_TheFreshBranch_ShouldBeResetAndHearTheLastChunksOfThePauseFirst()
     {
         using var rig = Make(Dual(), NewSentence);

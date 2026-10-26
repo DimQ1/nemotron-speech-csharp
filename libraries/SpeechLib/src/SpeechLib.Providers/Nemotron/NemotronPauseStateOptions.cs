@@ -86,6 +86,15 @@ public sealed record NemotronPauseStateOptions
     /// </summary>
     public int FreshLead { get; init; } = 2;
 
+    /// <summary>
+    /// Languages (codes as <see cref="LanguageMapper"/> takes them, e.g. <c>ru</c>) in which the stream keeps its state through every
+    /// pause as with <see cref="NemotronPauseState.Keep"/>; checked at each pause against the language the stream runs in at that
+    /// moment, so a language switched mid-stream applies to the next pause. Russian dictation moved within +-0.6 WER points either
+    /// way with <see cref="NemotronPauseState.DualBranch"/>, so an app can leave it out until there is data from natural speech.
+    /// Empty by default; automatic language detection (101) is not a language here.
+    /// </summary>
+    public IReadOnlyList<string> KeepLanguages { get; init; } = [];
+
     /// <summary>Converts a duration of this record to whole chunks of <paramref name="chunkSeconds"/>, at least one.</summary>
     internal static int ToChunks(double seconds, double chunkSeconds) =>
         Math.Max(1, (int)Math.Round(seconds / chunkSeconds, MidpointRounding.AwayFromZero));

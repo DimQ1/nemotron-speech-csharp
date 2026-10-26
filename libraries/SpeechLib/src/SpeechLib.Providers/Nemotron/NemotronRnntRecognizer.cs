@@ -119,6 +119,7 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
 
     // pause-state policy
     private readonly NemotronPauseState _pausePolicy;
+    private readonly HashSet<int> _keepLanguageIds = new();
     private readonly int _pauseChunks;        // silent chunks that make a pause
     private readonly int _decisionChunks;     // chunks both branches decode before the decision
     private readonly int _prerollChunks;      // silent chunks fed to a fresh state in front of the speech
@@ -197,6 +198,13 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
                     throw new ArgumentOutOfRangeException(nameof(options), pause.FreshLead, "FreshLead must be at least 1.");
                 _freshLead = pause.FreshLead;
                 _prerollChunks = pause.PrerollSeconds > 0 ? NemotronPauseStateOptions.ToChunks(pause.PrerollSeconds, chunkSeconds) : 0;
+                foreach (var language in pause.KeepLanguages)
+                {
+                    if (LanguageMapper.Resolve(language) is { } resolved && int.TryParse(resolved, out var id))
+                        _keepLanguageIds.Add(id);
+                    else
+                        throw new ArgumentException($"Unknown language '{language}' in KeepLanguages.", nameof(options));
+                }
                 _ring = new PrerollRing(_prerollChunks, engine.ChunkSamples, _lookahead);
             }
 
@@ -592,7 +600,8 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
             }
         }
 
-        if (_window is null && speech == true && _heardSpeech && silentBefore >= _pauseChunks && _pausePolicy != NemotronPauseState.Keep)
+        if (_window is null && speech == true && _heardSpeech && silentBefore >= _pauseChunks && _pausePolicy != NemotronPauseState.Keep
+            && !_keepLanguageIds.Contains(_engine.LanguageId))
             OpenBranchWindow(index, silentBefore);
 
         if (_window is { } window)
