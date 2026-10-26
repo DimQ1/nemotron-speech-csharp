@@ -45,7 +45,6 @@ public static class ModelPathResolver
             AddModelDirectories(candidates, seen, layout.Root);
         }
 
-        AddDevelopmentCandidates(candidates, seen);
         return candidates.FirstOrDefault(IsModelDirectory);
     }
 
@@ -130,17 +129,6 @@ public static class ModelPathResolver
         catch (UnauthorizedAccessException)
         {
         }
-    }
-
-    private static void AddDevelopmentCandidates(List<string> candidates, HashSet<string> seen)
-    {
-        var basePath = AppContext.BaseDirectory;
-        AddCandidate(candidates, seen, Path.Combine(
-            basePath, "..", "..", "..", "..", "..", "..",
-            "models", "asr", "nemotron-3.5", "onnx", "cpu-int4"));
-        AddCandidate(candidates, seen, Path.Combine(
-            basePath, "..", "..", "..", "..", "..", "..",
-            "modules", "asr", "cpu"));
     }
 
     private static void AddCandidate(List<string> candidates, HashSet<string> seen, string? path)

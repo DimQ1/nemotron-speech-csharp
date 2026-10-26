@@ -29,7 +29,6 @@ root so existing Store and website links keep working.
 - ONNX Runtime GenAI idea backlog (standing source of recipes for the plain-ORT recognizers): `research/onnxruntime-genai-ideas.md`
 - Nemotron on plain ONNX Runtime: limitations and next candidates: `research/nemotron-pure-ort-followups.md`; the GenAI parity oracle and its harness: `../tools/nemotron-golden/README.md`
 - ONNX opset conversion notes: `research/onnx/opset24-conversion.md`
-- WinUI migration plan: `plans/voicetype-winui3-migration-plan.md`
 - VoiceType.Uno mobile redesign (design, mockup, overlap check): `design/voicetype-uno-mobile/README.md`
 - VoiceType.Uno recordings history (design only: playback, Gemma chat, translation, versioned re-recognition): `design/voicetype-uno-history/README.md`
 - Gemma engine (LiteRT-LM / LiteRtLmSharp): measurements, how to improve it and what was shipped in the

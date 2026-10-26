@@ -35,8 +35,6 @@ public static class ModelPathResolver
             AddModelDirectories(candidates, seen, defaultRoot);
         }
 
-        AddDevelopmentModelCandidate(candidates, seen, settings.ExecutionProvider);
-
         return candidates.FirstOrDefault(IsModelDirectory);
     }
 
@@ -106,32 +104,6 @@ public static class ModelPathResolver
         return legacyRoot is not null
             && !string.Equals(legacyRoot, defaultRoot, StringComparison.OrdinalIgnoreCase)
             && string.Equals(configuredRoot, legacyRoot, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static void AddDevelopmentModelCandidate(
-        List<string> candidates,
-        HashSet<string> seen,
-        string executionProvider)
-    {
-        if (AppPaths.IsPackaged)
-            return;
-
-        var subfolder = executionProvider.ToLowerInvariant() switch
-        {
-            "cuda" => "gpu-cuda",
-            "dml" => "gpu-cuda",
-            _ => "cpu"
-        };
-
-        AddCandidate(candidates, seen, Path.Combine(
-            AppContext.BaseDirectory,
-            "..",
-            "..",
-            "..",
-            "..",
-            "modules",
-            "asr",
-            subfolder));
     }
 
     private static void AddCandidate(List<string> candidates, HashSet<string> seen, string? path)

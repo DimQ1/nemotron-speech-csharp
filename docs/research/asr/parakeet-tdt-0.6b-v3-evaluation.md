@@ -117,7 +117,7 @@ python speech_to_text_streaming_infer_rnnt.py \
 
 1. **Скачать модель и прогон на бенчмарке**
    - Набор: `Test-Audio/librispeech/` (уже в репозитории) + при необходимости новые сэмплы с русской/украинской речью.
-   - Измерить WER по эталону через существующие скрипты `compare_wer.py` / `bench_quant.py`.
+   - Измерить WER по эталону через `tools/WerEval`.
 2. **Проверить стриминг-совместимость с C#-стеком**
    - Путь A (предпочтительный): конвертация NeMo TDT → ONNX через `tools/converters/NemotronAsr`, проверка загрузки в `Microsoft.ML.OnnxRuntimeGenAI`. Риск: ORT GenAI может не поддерживать TDT-декодер.
    - Путь B: обёртка над NeMo-Speech.cpp (GGUF `parakeet-tdt-0.6b-v3.q8_0.gguf`) через P/Invoke. Риск: NeMo-Speech.cpp ориентирован на offline/batch, стриминг под вопросом.

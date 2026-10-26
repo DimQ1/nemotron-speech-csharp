@@ -35,5 +35,3 @@ Quick navigation for the most important project documents.
 - Nemotron golden oracle (recorded from GenAI 0.16.0): harness and regeneration in [tools/nemotron-golden/README.md](tools/nemotron-golden/README.md), data in `libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data/golden-full`
 - ONNX opset analysis: [docs/research/onnx/opset24-analysis.md](docs/research/onnx/opset24-analysis.md)
 - ONNX conversion notes: [docs/research/onnx/opset24-conversion.md](docs/research/onnx/opset24-conversion.md)
-- WinUI migration plan: [docs/plans/voicetype-winui3-migration-plan.md](docs/plans/voicetype-winui3-migration-plan.md)
-- Model preload plan: [docs/plans/voicetype-model-preload-plan.md](docs/plans/voicetype-model-preload-plan.md)
