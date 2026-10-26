@@ -1,0 +1,21 @@
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/RecordingPage.xaml.cs
+  s_20e41f7f2d2ce6::t_85f2a231b8b689 413-415,417-418,790-793
+apps/VoiceType.Uno/src/VoiceType.Uno/App.xaml.cs
+  s_20e41f7f2d2ce6::t_0ca90dcb7f54e2 28-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "27b937c9abc0fbbc2c47de830fa8f1ba785a34d7",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
