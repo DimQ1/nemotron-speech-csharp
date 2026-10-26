@@ -1,0 +1,37 @@
+AGENTS.md
+  s_20e41f7f2d2ce6::t_b79db1dba7f1ff 166
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/History/E2E_NemotronRecognitionTests.cs
+  s_20e41f7f2d2ce6::t_e87fdc5bd13a9b 37-39,46-53,123-129,137,174,176-177,179,187,191
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/NemotronAssets.cs
+  s_20e41f7f2d2ce6::t_aa56889f301713 26-27,29,43
+docs/research/nemotron-pure-ort-followups.md
+  s_20e41f7f2d2ce6::t_c65b1b433fb18c 18-20,24-25,27,102-104
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronUtteranceOptions.cs
+  s_20e41f7f2d2ce6::t_d27246bb2cb632 45-47
+libraries/SpeechLib/src/SpeechLib/Audio/AutomaticGainControl.cs
+  s_20e41f7f2d2ce6::t_9e0f5663ebac02 3-22,24-25,28-48,52-57,59,62-66,72-87,89,91-92,97-121,123-128,130,132,138-146,176-177,183-189,191-241,243-247,251,253-254,256-278,280,282-352
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/E2E_NemotronFactoryTests.cs
+  s_20e41f7f2d2ce6::t_64c86100b84425 80-81,169
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Fakes.cs
+  s_20e41f7f2d2ce6::t_dc3c7f09b2466e 158-180
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronUtteranceTests.cs
+  s_20e41f7f2d2ce6::t_1a717797d22f64 902-903,930-931,1012,1019,1027-1028,1036,1048,1064,1084,1089-1090
+libraries/SpeechLib/tests/SpeechLib.Tests/Unit_AutomaticGainControlTests.cs
+  s_20e41f7f2d2ce6::t_9bb94ecbd5c267 8-51,61-66,68,71,73-74,81,84,93,95,98-246,251,255,260,262-263,265-297,309-310,315,322,329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "4cb5fb4b70dbadcf96c61001f94c45dc20e44947",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
