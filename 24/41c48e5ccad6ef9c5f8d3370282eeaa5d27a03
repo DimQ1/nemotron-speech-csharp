@@ -1,0 +1,19 @@
+libraries/SpeechLib/src/SpeechLib.ModelDownload/ModelCatalog.cs
+  s_20e41f7f2d2ce6::t_fef11e656eeb3f 7-9,28,31-42,53,65,79-90,101,112-123,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "2441c48e5ccad6ef9c5f8d3370282eeaa5d27a03",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
