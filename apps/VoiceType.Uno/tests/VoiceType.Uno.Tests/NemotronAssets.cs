@@ -23,10 +23,10 @@ internal static class NemotronAssets
         RecordingAudioReader.ReadMono(FindClip(relativePath) ?? throw new FileNotFoundException(relativePath), 16000);
 
     /// <summary>
-    /// Deterministic room tone (an xorshift32 stream, about -69 dBFS: a quiet room, below the noise gate of the gain control; a
-    /// louder tone would be taken for speech and raised by up to 26 dB when a stream starts in it).
+    /// Deterministic room tone (an xorshift32 stream): sigma 12 LSB, about -69 dBFS, is a quiet room; 66 LSB, about -54 dBFS, the
+    /// noisy room of the S0 fixtures that the gain control before G1 took for speech and raised by up to 26 dB.
     /// </summary>
-    public static float[] RoomTone(double seconds, uint seed)
+    public static float[] RoomTone(double seconds, uint seed, float sigmaLsb = 12f)
     {
         var tone = new float[(int)(seconds * 16000)];
         var state = seed * 2654435761u + 0x9E3779B9u;
@@ -40,7 +40,7 @@ internal static class NemotronAssets
                 state ^= state << 5;
                 sum += (state >> 8) / 16777216f;
             }
-            tone[i] = (sum - 6f) * (12f / 32768f);
+            tone[i] = (sum - 6f) * (sigmaLsb / 32768f);
         }
         return tone;
     }
