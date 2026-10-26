@@ -26,11 +26,11 @@ nemotron-speech-csharp/
 ├── tools/                        # 📊 Benchmarks, inspection utilities, and converters
 │   └── converters/               # 🐍 Independently extractable model converters
 │       ├── NemotronAsr/          #    NeMo → ONNX ASR conversion (Python)
-│       └── SortformerStreaming/  #    Streaming diarization state conversion (C#)
-├── modules/                      # 🧠 Ready models by module (git-ignored)
-│   ├── asr/                      #    ASR models (cpu, cpu-ru-en, qnn, ...)
-│   ├── diarization/              #    Sortformer diarization models
-│   └── denoise/                  #    DeepFilterNet3 denoise model
+│       └── NemotronDiarization/  #    Nemotron-3-Diarization → ONNX (Python)
+├── models/                       # 🧠 Local models (git-ignored)
+│   ├── asr/                      #    ASR model folders (Nemotron, Parakeet, Qwen3, VibeVoice)
+│   ├── diarization/              #    Nemotron-3-Diarization ONNX
+│   └── llm/                      #    Gemma (LiteRT-LM) for translation and chat
 ├── work/                         # 🛠️ Temp/intermediate conversion artifacts (git-ignored)
 └── Test-Audio/                   # 🎵 Test audio files
 ```

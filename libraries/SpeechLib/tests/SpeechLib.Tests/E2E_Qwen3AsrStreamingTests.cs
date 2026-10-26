@@ -11,7 +11,7 @@ public sealed class E2E_Qwen3AsrStreamingTests
     public void StreamingProvider_EmitsChunkDeltasAndFlushesTail()
     {
         var root = FindRepositoryRoot();
-        var modelPath = Path.Combine(root, "models", "qwen3-asr-1.7b-onnx-block-streaming");
+        var modelPath = Path.Combine(root, "models", "asr", "qwen3-asr-1.7b-onnx-block-streaming");
         var audioPath = Path.Combine(root, "Test-Audio", "cv17", "en", "0002.wav");
 
         using var recognizer = RecognizerFactory.Create(new RecognizerFactoryOptions
@@ -47,7 +47,7 @@ public sealed class E2E_Qwen3AsrStreamingTests
     public void StreamingProvider_PreservesContextAcrossMultipleModelChunks()
     {
         var root = FindRepositoryRoot();
-        var modelPath = Path.Combine(root, "models", "qwen3-asr-1.7b-onnx-block-streaming");
+        var modelPath = Path.Combine(root, "models", "asr", "qwen3-asr-1.7b-onnx-block-streaming");
         var audioPath = Path.Combine(root, "Test-Audio", "cv17", "en", "0003.wav");
 
         using var recognizer = RecognizerFactory.Create(new RecognizerFactoryOptions
@@ -78,7 +78,7 @@ public sealed class E2E_Qwen3AsrStreamingTests
     public void StreamingProvider_PromptTranslationUsesTargetLanguage()
     {
         var root = FindRepositoryRoot();
-        var modelPath = Path.Combine(root, "models", "qwen3-asr-1.7b-onnx-block-streaming");
+        var modelPath = Path.Combine(root, "models", "asr", "qwen3-asr-1.7b-onnx-block-streaming");
         var audioPath = Path.Combine(root, "Test-Audio", "cv17", "en", "0002.wav");
 
         using var recognizer = RecognizerFactory.Create(new RecognizerFactoryOptions
