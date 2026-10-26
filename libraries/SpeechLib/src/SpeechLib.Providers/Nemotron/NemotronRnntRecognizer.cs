@@ -44,6 +44,24 @@ public sealed record NemotronRecognizerOptions
 
     /// <summary>Path of a Silero VAD model; defaults to the file named by the model folder's <c>vad</c> block.</summary>
     public string? VadModelPath { get; init; }
+
+    /// <summary>
+    /// What the model state does when speech resumes after a pause; <see cref="NemotronPauseState.Keep"/> (GenAI parity) by default.
+    /// The policy needs the silence gate: the one of the silence drop rule when it is on, else a gate of its own from the same
+    /// <see cref="VadFilter"/> / <see cref="VadModelPath"/> / model folder (without one the policy stays off, with a warning).
+    /// </summary>
+    public NemotronPauseStateOptions PauseState { get; init; } = NemotronPauseStateOptions.Parity;
+
+    /// <summary>
+    /// Chunks of zeros <see cref="NemotronRnntRecognizer.Flush"/> encodes after the zero-padded remainder (0, the default, is GenAI's
+    /// single padded chunk). The model writes the last tokens of a word up to a chunk after the audio that holds it, so a stream that
+    /// ends right after the last word (Stop pressed while speaking, a file cut at the last word) loses them with one padded chunk;
+    /// one more chunk gives them back (measured -1.7 WER points in English, -0.8 in Russian on clips cut 100 ms after the speech;
+    /// a second chunk changes nothing). They are encoded only when the stream has audio the model has not seen silence after
+    /// (a non-empty remainder, or a last chunk that was not dropped), cost one encoder pass each, and stay on the stream grid like
+    /// the padding.
+    /// </summary>
+    public int FlushClosingChunks { get; init; }
 }
 
 /// <summary>
@@ -63,6 +81,9 @@ public sealed record NemotronRecognizerOptions
 /// is returned. Language tags (<c>&lt;en-US&gt;</c>) are part of the text like in GenAI.</para>
 /// <para><b>Silence drop</b> (<see cref="TrySetVad"/>): the native GenAI rule, see <see cref="SilenceDropRule"/>.
 /// A dropped chunk touches no model state but keeps its place on the timeline.</para>
+/// <para><b>Pauses</b> (<see cref="NemotronRecognizerOptions.PauseState"/>): GenAI keeps the model state through every pause; the
+/// policy can give the speech after a pause a fresh state, or decode it both ways and keep the better branch. With a branch
+/// decision pending, the text of the chunks under decision is reported by the call that ends the decision.</para>
 /// <para><b>Timeline</b>: see <see cref="NemotronToken"/>. <see cref="LastTokens"/> and <see cref="LastChunks"/> describe
 /// what the most recent call produced, for a layer that builds word timings and utterances on top.</para>
 /// <para>Not thread-safe, like <c>ModelSession</c>.</para>
@@ -92,6 +113,26 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
     private bool _encodedAny;
     private Exception? _fault;
 
+    // closing chunks at Flush: the model decoded audio since the last flush that no silence followed
+    private readonly int _flushClosingChunks;
+    private bool _openTail;
+
+    // pause-state policy
+    private readonly NemotronPauseState _pausePolicy;
+    private readonly int _pauseChunks;        // silent chunks that make a pause
+    private readonly int _decisionChunks;     // chunks both branches decode before the decision
+    private readonly int _prerollChunks;      // silent chunks fed to a fresh state in front of the speech
+    private readonly int _freshLead;          // letter tokens the fresh branch must write more than the kept one
+    private readonly PrerollRing? _ring;
+    private bool[]? _lexical;
+    private SilenceDropRule? _pauseCounter;   // the policy's own speech gate while the silence drop is off
+    private IChunkSpeechGate? _pauseGate;
+    private bool _pauseGateFailed;
+    private bool _heardSpeech;                // the active model state has decoded speech since the last reset or decision
+    private BranchWindow? _window;            // the pending decision
+    private readonly BranchWindow _windowStore = new();
+    private readonly List<NemotronToken> _scratch = new();
+
     /// <summary>Loads a Nemotron model folder (see <see cref="NemotronModelConfig.IsNemotronModel"/>).</summary>
     /// <param name="modelPath">Model folder with <c>genai_config.json</c>, the three graphs and <c>vocab.txt</c>.</param>
     /// <param name="executionProvider">
@@ -109,7 +150,7 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
     }
 
     private NemotronRnntRecognizer(LoadedParts parts, string? langId, bool useVad, NemotronRecognizerOptions options)
-        : this(parts.Engine, parts.Config, parts.Vocabulary, () => CreateGate(parts.Directory, parts.Config, options), useVad, langId)
+        : this(parts.Engine, parts.Config, parts.Vocabulary, () => CreateGate(parts.Directory, parts.Config, options), useVad, langId, options)
     {
         if (options.BlankPenalty is { } penalty)
             BlankPenalty = penalty;
@@ -119,8 +160,10 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
     /// Test seam: a recognizer over any chunk engine. The recognizer owns the engine from the moment it is passed in:
     /// when the constructor throws it has disposed it (the public constructor has no other handle to it).
     /// </summary>
+    /// <param name="options">Only the stream policies are read here (<see cref="NemotronRecognizerOptions.PauseState"/>,
+    /// <see cref="NemotronRecognizerOptions.FlushClosingChunks"/>); the engine is built already.</param>
     internal NemotronRnntRecognizer(INemotronChunkEngine engine, NemotronModelConfig config, NemotronVocabulary vocabulary,
-        Func<IChunkSpeechGate> createGate, bool useVad = false, string? langId = null)
+        Func<IChunkSpeechGate> createGate, bool useVad = false, string? langId = null, NemotronRecognizerOptions? options = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         try
@@ -135,6 +178,27 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
             _lookahead = engine.LookaheadSamples;
             _buffer = new float[engine.ChunkSamples + _lookahead];
             _paddedChunk = new float[engine.ChunkSamples];
+
+            options ??= new NemotronRecognizerOptions();
+            ArgumentOutOfRangeException.ThrowIfNegative(options.FlushClosingChunks, nameof(options));
+            _flushClosingChunks = options.FlushClosingChunks;
+            var pause = options.PauseState ?? NemotronPauseStateOptions.Parity;
+            _pausePolicy = pause.Policy;
+            if (_pausePolicy != NemotronPauseState.Keep)
+            {
+                if (engine.BranchCount < 2)
+                    throw new ArgumentException($"The pause-state policy {_pausePolicy} needs an engine that holds two branches of the stream.", nameof(engine));
+                if (!(pause.PauseSeconds > 0 && pause.DecisionChunks > 0 && pause.PrerollSeconds >= 0))
+                    throw new ArgumentOutOfRangeException(nameof(options), "The pause duration and the decision chunks must be positive, the preroll not negative.");
+                var chunkSeconds = (double)engine.ChunkSamples / config.SampleRate;
+                _pauseChunks = NemotronPauseStateOptions.ToChunks(pause.PauseSeconds, chunkSeconds);
+                _decisionChunks = pause.DecisionChunks;
+                if (pause.FreshLead < 1)
+                    throw new ArgumentOutOfRangeException(nameof(options), pause.FreshLead, "FreshLead must be at least 1.");
+                _freshLead = pause.FreshLead;
+                _prerollChunks = pause.PrerollSeconds > 0 ? NemotronPauseStateOptions.ToChunks(pause.PrerollSeconds, chunkSeconds) : 0;
+                _ring = new PrerollRing(_prerollChunks, engine.ChunkSamples, _lookahead);
+            }
 
             if (!IsSingleLanguage && langId is not null)
                 TrySetLanguage(langId);
@@ -208,6 +272,21 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
 
     /// <summary>Consecutive silent chunks after which silent chunks are dropped, or 0 when the rule is off.</summary>
     public int SilenceDropThreshold => _dropRule?.DropThreshold ?? 0;
+
+    /// <summary>The pause-state policy in effect (<see cref="NemotronRecognizerOptions.PauseState"/>).</summary>
+    public NemotronPauseState PauseState => _pausePolicy;
+
+    /// <summary>Chunks of zeros <see cref="Flush"/> adds after the padded remainder (<see cref="NemotronRecognizerOptions.FlushClosingChunks"/>).</summary>
+    public int FlushClosingChunks => _flushClosingChunks;
+
+    /// <summary>Pauses after which the policy decoded a fresh branch, since the reset.</summary>
+    public int PauseForks { get; private set; }
+
+    /// <summary>Pauses after which the fresh branch continued the stream, since the reset.</summary>
+    public int FreshBranchWins { get; private set; }
+
+    /// <summary>Raised with every decision of the pause-state policy (diagnostics and evaluation; the texts are decoded only for a subscriber).</summary>
+    public event Action<NemotronPauseDecision>? PauseDecided;
 
     /// <inheritdoc />
     public bool TrySetLanguage(string language)
@@ -297,7 +376,10 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
     /// </summary>
     public IReadOnlyList<NemotronToken> LastTokens => _tokens;
 
-    /// <summary>The chunks of the most recent call (encoded and dropped); valid until the next call.</summary>
+    /// <summary>
+    /// The chunks of the most recent call (encoded and dropped); valid until the next call. While a pause-branch decision is pending
+    /// its chunks are not listed; the call that decides lists them all, in stream order, with the winning branch's tokens.
+    /// </summary>
     public IReadOnlyList<NemotronChunkInfo> LastChunks => _chunks;
 
     // ── streaming ───────────────────────────────────────────────────────
@@ -349,7 +431,8 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
 
     /// <summary>
     /// Ends the stream: encodes the remainder, zero-padded to a full chunk in the raw-audio domain (the silence rule
-    /// does not apply). Returns null when nothing was left. The padded chunk keeps its place on the timeline.
+    /// does not apply), then <see cref="FlushClosingChunks"/> chunks of zeros, and ends a pending pause-branch decision.
+    /// Returns null when nothing was left. The padded and closing chunks keep their place on the timeline.
     /// </summary>
     /// <exception cref="InvalidOperationException">The recognizer is faulted, see <see cref="IsFaulted"/>.</exception>
     public string? Flush()
@@ -371,12 +454,22 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
             }
 
             var remainder = _buffered - position;
+            var closing = remainder > 0 || _openTail ? _flushClosingChunks : 0;
             if (remainder > 0)
             {
                 _buffer.AsSpan(position, remainder).CopyTo(_paddedChunk);
                 _paddedChunk.AsSpan(remainder).Clear();
                 ConsumeChunk(_paddedChunk, default, applySilenceRule: false);
+                position += remainder;
             }
+            for (var k = 0; k < closing; k++)
+            {
+                // the last tokens of a word come up to a chunk after its audio: give the model that chunk of silence
+                _paddedChunk.AsSpan().Clear();
+                ConsumeChunk(_paddedChunk, default, applySilenceRule: false);
+            }
+            if (_window is not null)
+                DecideBranch();
         }
         catch (Exception e)
         {
@@ -384,6 +477,7 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
             throw;
         }
         _buffered = 0;
+        _openTail = false;
         TrimBuffer();
 
         return EndCall();
@@ -398,6 +492,13 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
         ThrowIfDisposed();
         _engine.Reset();
         _dropRule?.Reset();
+        _pauseCounter?.Reset();
+        _window = null;
+        _ring?.Clear();
+        _heardSpeech = false;
+        _openTail = false;
+        PauseForks = 0;
+        FreshBranchWins = 0;
         _buffered = 0;
         ChunksConsumed = 0;
         ChunksDropped = 0;
@@ -408,6 +509,32 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
         _encodedAny = false;
         TrimBuffer();
         _fault = null;   // last: a reset that itself fails leaves the recognizer faulted
+    }
+
+    /// <summary>
+    /// Gives the stream a fresh model state (encoder caches, front-end overlap, decoder) and keeps everything else: the stream
+    /// clock (<see cref="ChunksConsumed"/>, the chunk indices and so the word times of what follows), buffered audio, the silence
+    /// count and the counters. What the pause-state policy does to one branch; a caller that knows a new, unrelated stream starts
+    /// on the same clock (a new speaker, a new file appended) can do the same.
+    /// </summary>
+    /// <returns>
+    /// Like a <see cref="ProcessAudio(ReadOnlySpan{float})"/> call without audio: the text of a pending pause-branch decision that the
+    /// reset settles first (<see cref="LastTokens"/> and <see cref="LastChunks"/> describe it), else null.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">The recognizer is faulted, see <see cref="IsFaulted"/>.</exception>
+    public string? ResetModelState()
+    {
+        ThrowIfDisposed();
+        ThrowIfFaulted();
+        BeginCall();
+        if (_window is not null)
+        {
+            DecideBranch();
+            _encodedAny = true;
+        }
+        _engine.Reset();
+        _heardSpeech = false;
+        return EndCall();
     }
 
     /// <summary>
@@ -442,14 +569,61 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
     {
         // ChunksConsumed moves only when the chunk is done, so a throw leaves it at the number of chunks that went through.
         var index = ChunksConsumed;
-        if (applySilenceRule && _dropRule is { } rule && rule.ShouldDrop(chunk))
+        var silentBefore = 0;
+        bool? speech = null;   // unknown without a gate, and for the padded flush chunks
+        if (applySilenceRule)
         {
-            ChunksDropped++;
-            _chunks.Add(new NemotronChunkInfo(index, Dropped: true, _tokens.Count, 0));
-            ChunksConsumed = index + 1;
-            return;
+            if (_dropRule is { } rule)
+            {
+                silentBefore = rule.ConsecutiveSilentChunks;
+                var drop = rule.ShouldDrop(chunk);
+                speech = rule.ConsecutiveSilentChunks == 0;
+                if (drop)
+                {
+                    DropChunk(chunk, lookahead, index);
+                    return;
+                }
+            }
+            else if (PauseCounter() is { } counter)
+            {
+                silentBefore = counter.ConsecutiveSilentChunks;
+                counter.ShouldDrop(chunk);   // scores the chunk; its threshold is never reached
+                speech = counter.ConsecutiveSilentChunks == 0;
+            }
         }
 
+        if (_window is null && speech == true && _heardSpeech && silentBefore >= _pauseChunks && _pausePolicy != NemotronPauseState.Keep)
+            OpenBranchWindow(index, silentBefore);
+
+        if (_window is { } window)
+            DecodeBothBranches(window, chunk, lookahead, index);
+        else
+            DecodeActiveBranch(chunk, lookahead, index);
+
+        _heardSpeech |= speech == true;
+        _ring?.Add(chunk, lookahead, index);
+        if (applySilenceRule)
+            _openTail = true;
+        _encodedAny = true;
+        ChunksConsumed = index + 1;
+
+        if (_window is { } open && applySilenceRule && open.Chunks.Count >= _decisionChunks)
+            DecideBranch();
+    }
+
+    private void DropChunk(ReadOnlySpan<float> chunk, ReadOnlySpan<float> lookahead, int index)
+    {
+        if (_window is not null)
+            DecideBranch();   // a long pause began inside the window: decide on what both branches heard
+        ChunksDropped++;
+        _chunks.Add(new NemotronChunkInfo(index, Dropped: true, _tokens.Count, 0));
+        _ring?.Add(chunk, lookahead, index);
+        _openTail = false;
+        ChunksConsumed = index + 1;
+    }
+
+    private void DecodeActiveBranch(ReadOnlySpan<float> chunk, ReadOnlySpan<float> lookahead, int index)
+    {
         var first = _tokens.Count;
         int count;
         try
@@ -464,8 +638,223 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
         for (var i = first; i < first + count; i++)
             Vocabulary.AppendDecoded(_text, _tokens[i].Id);
         _chunks.Add(new NemotronChunkInfo(index, Dropped: false, first, count));
-        _encodedAny = true;
-        ChunksConsumed = index + 1;
+    }
+
+    // ── pause-state policy ──────────────────────────────────────────────
+
+    // The speech gate of the policy while the silence drop rule (which scores every chunk anyway) is off: a drop rule that never
+    // drops. Created on first use; a missing VAD model turns the policy off for the recognizer's lifetime, with one warning.
+    private SilenceDropRule? PauseCounter()
+    {
+        if (_pausePolicy == NemotronPauseState.Keep || _pauseGateFailed)
+            return null;
+        if (_pauseCounter is null)
+        {
+            IChunkSpeechGate? gate = null;
+            try
+            {
+                gate = _createGate();
+                _pauseCounter = new SilenceDropRule(gate, int.MaxValue, int.MaxValue);
+                _pauseGate = gate;
+            }
+            catch (Exception e)
+            {
+                gate?.Dispose();
+                _pauseGateFailed = true;
+                Console.WriteLine($"  Warning: the pause-state policy {_pausePolicy} needs a speech gate and stays off ({e.Message})");
+                return null;
+            }
+        }
+        return _pauseCounter;
+    }
+
+    // Speech resumes after a pause: the active state becomes the "keep" branch, the other branch is reset and hears the end of the
+    // pause (the preroll) so that it starts the way a stream starts, in room tone. Its preroll tokens are not text: those chunks
+    // went out with the keep branch already.
+    private void OpenBranchWindow(int index, int silentBefore)
+    {
+        var window = _windowStore;
+        window.Clear(index, silentBefore, keepBranch: _engine.ActiveBranch);
+        _engine.SelectBranch(window.FreshBranch);
+        _engine.Reset();
+        var ring = _ring!;
+        var preroll = Math.Min(_prerollChunks, Math.Min(silentBefore, ring.Count));
+        for (var k = ring.Count - preroll; k < ring.Count; k++)
+        {
+            _scratch.Clear();
+            var (samples, lookahead, chunkIndex) = ring[k];
+            _engine.DecodeChunk(samples, lookahead.Span, chunkIndex, _scratch);
+        }
+        _scratch.Clear();
+        _window = window;
+        PauseForks++;
+    }
+
+    // One chunk in both branches; the active one first, so a chunk costs one switch of the branch.
+    private void DecodeBothBranches(BranchWindow window, ReadOnlySpan<float> chunk, ReadOnlySpan<float> lookahead, int index)
+    {
+        var first = _engine.ActiveBranch;
+        _engine.DecodeChunk(chunk, lookahead, index, window.TokensOf(first));
+        var second = first == window.KeepBranch ? window.FreshBranch : window.KeepBranch;
+        _engine.SelectBranch(second);
+        _engine.DecodeChunk(chunk, lookahead, index, window.TokensOf(second));
+        window.Chunks.Add(index);
+    }
+
+    // Ends the window: the branch with more letter tokens continues (a tie keeps the state), the other one is dropped, and the
+    // window's chunks are reported with the winner's tokens. A fresh winner gets the closing mark and tag of the previous
+    // sentence from the kept state, which writes them when the next speech begins; consumers read the language from the tag and
+    // join the texts with it (UtteranceText.Join).
+    private void DecideBranch()
+    {
+        var window = _window!;
+        _window = null;
+        var lexical = LexicalTokens();
+        var keepLetters = window.Keep.Count(t => lexical[t.Id]);
+        var freshLetters = window.Fresh.Count(t => lexical[t.Id]);
+        var freshWins = _pausePolicy == NemotronPauseState.Fresh || freshLetters >= keepLetters + _freshLead;
+        _engine.SelectBranch(freshWins ? window.FreshBranch : window.KeepBranch);
+        if (freshWins)
+            FreshBranchWins++;
+
+        var output = freshWins ? MergeClosers(window, lexical) : window.Keep;
+        var t = 0;
+        foreach (var held in window.Chunks)
+        {
+            var first = _tokens.Count;
+            for (; t < output.Count && output[t].Chunk <= held; t++)
+            {
+                _tokens.Add(output[t]);
+                Vocabulary.AppendDecoded(_text, output[t].Id);
+            }
+            _chunks.Add(new NemotronChunkInfo(held, Dropped: false, first, _tokens.Count - first));
+        }
+
+        if (PauseDecided is { } decided)
+        {
+            int[] PerChunk(List<NemotronToken> tokens) => window.Chunks.Select(c => tokens.Count(k => k.Chunk == c && lexical[k.Id])).ToArray();
+            decided(new NemotronPauseDecision(window.FirstChunk, window.Chunks.Count, window.SilentChunks, keepLetters, freshLetters, freshWins,
+                Vocabulary.Detokenize(window.Keep.Select(k => k.Id).ToArray()), Vocabulary.Detokenize(window.Fresh.Select(k => k.Id).ToArray()),
+                PerChunk(window.Keep), PerChunk(window.Fresh)));
+        }
+    }
+
+    // The keep branch's tokens in front of its first letter token, up to its last mark or tag (a bare word marker after it
+    // belongs to the next word), then the fresh branch's tokens. A closer emitted later than the fresh branch's first token is
+    // moved onto that token's frame: it belongs to the sentence before, which ends earlier.
+    private List<NemotronToken> MergeClosers(BranchWindow window, bool[] lexical)
+    {
+        var merged = window.Merged;
+        merged.Clear();
+        var keep = window.Keep;
+        var end = 0;
+        for (var k = 0; k < keep.Count && !lexical[keep[k].Id]; k++)
+        {
+            var id = keep[k].Id;
+            if (Vocabulary.IsTag(id) || Vocabulary.PieceOf(id).Trim().Length > 0)
+                end = k + 1;
+        }
+
+        var limit = window.Fresh.Count > 0 ? window.Fresh[0].GlobalFrame : long.MaxValue;
+        var framesPerChunk = _engine.FramesPerChunk;
+        for (var k = 0; k < end; k++)
+        {
+            var token = keep[k];
+            if (token.GlobalFrame > limit)
+                token = token with { Chunk = (int)(limit / framesPerChunk), Frame = (int)(limit % framesPerChunk), GlobalFrame = limit };
+            merged.Add(token);
+        }
+        merged.AddRange(window.Fresh);
+
+        // tokens on one frame are numbered in emission order
+        for (var k = 1; k < merged.Count; k++)
+        {
+            var symbol = merged[k].GlobalFrame == merged[k - 1].GlobalFrame ? merged[k - 1].Symbol + 1 : 0;
+            if (merged[k].Symbol != symbol)
+                merged[k] = merged[k] with { Symbol = symbol };
+        }
+        if (merged.Count > 0 && merged[0].Symbol != 0)
+            merged[0] = merged[0] with { Symbol = 0 };
+        return merged;
+    }
+
+    private bool[] LexicalTokens()
+    {
+        if (_lexical is null)
+        {
+            var lexical = new bool[Vocabulary.Count];
+            for (var id = 0; id < lexical.Length; id++)
+                lexical[id] = Vocabulary.PieceOf(id).Any(char.IsLetterOrDigit);
+            _lexical = lexical;
+        }
+        return _lexical;
+    }
+
+    /// <summary>The chunks both branches decode while a decision is pending, and their tokens.</summary>
+    private sealed class BranchWindow
+    {
+        public int FirstChunk { get; private set; }
+        public int SilentChunks { get; private set; }
+        public int KeepBranch { get; private set; }
+        public int FreshBranch => 1 - KeepBranch;
+        public List<int> Chunks { get; } = new();
+        public List<NemotronToken> Keep { get; } = new();
+        public List<NemotronToken> Fresh { get; } = new();
+        public List<NemotronToken> Merged { get; } = new();
+
+        public List<NemotronToken> TokensOf(int branch) => branch == KeepBranch ? Keep : Fresh;
+
+        public void Clear(int firstChunk, int silentChunks, int keepBranch)
+        {
+            FirstChunk = firstChunk;
+            SilentChunks = silentChunks;
+            KeepBranch = keepBranch;
+            Chunks.Clear();
+            Keep.Clear();
+            Fresh.Clear();
+            Merged.Clear();
+        }
+    }
+
+    /// <summary>The last chunks of the stream (samples and look-ahead), the preroll of a fresh branch.</summary>
+    private sealed class PrerollRing(int capacity, int chunkSamples, int lookaheadSamples)
+    {
+        private readonly float[][] _samples = Enumerable.Range(0, capacity).Select(_ => new float[chunkSamples]).ToArray();
+        private readonly float[][] _lookahead = Enumerable.Range(0, capacity).Select(_ => new float[lookaheadSamples]).ToArray();
+        private readonly int[] _lookaheadLength = new int[capacity];
+        private readonly int[] _index = new int[capacity];
+        private int _next;
+
+        public int Count { get; private set; }
+
+        /// <summary>The k-th oldest chunk held.</summary>
+        public (float[] Samples, ReadOnlyMemory<float> Lookahead, int Index) this[int k]
+        {
+            get
+            {
+                var slot = (_next - Count + k + capacity) % capacity;
+                return (_samples[slot], _lookahead[slot].AsMemory(0, _lookaheadLength[slot]), _index[slot]);
+            }
+        }
+
+        public void Add(ReadOnlySpan<float> samples, ReadOnlySpan<float> lookahead, int index)
+        {
+            if (capacity == 0)
+                return;
+            samples.CopyTo(_samples[_next]);
+            var look = Math.Min(lookahead.Length, lookaheadSamples);
+            lookahead[..look].CopyTo(_lookahead[_next]);
+            _lookaheadLength[_next] = look;
+            _index[_next] = index;
+            _next = (_next + 1) % capacity;
+            Count = Math.Min(Count + 1, capacity);
+        }
+
+        public void Clear()
+        {
+            Count = 0;
+            _next = 0;
+        }
     }
 
     private void BeginCall()
@@ -548,6 +937,9 @@ public sealed class NemotronRnntRecognizer : IStreamingSpeechRecognizer, ILangua
             return;
         _disposed = true;
         DisableVad();
+        _pauseGate?.Dispose();
+        _pauseGate = null;
+        _pauseCounter = null;
         _engine.Dispose();
     }
 

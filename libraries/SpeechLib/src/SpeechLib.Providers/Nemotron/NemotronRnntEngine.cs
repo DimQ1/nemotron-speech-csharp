@@ -30,8 +30,27 @@ internal interface INemotronChunkEngine : IDisposable
     /// <summary>Where the graphs run and why; a model-free engine runs on the CPU.</summary>
     NemotronProviderInfo Provider => NemotronProviderInfo.Cpu(null);
 
-    /// <summary>Back to the start of a stream: zero caches, front-end state and decoder state.</summary>
+    /// <summary>
+    /// Back to the start of a stream for the active branch: zero caches, front-end state and decoder state. The engine has no
+    /// clock (chunk indices come from the caller), so this is a model-state-only reset.
+    /// </summary>
     void Reset();
+
+    /// <summary>How many branches of the stream the engine can hold at once (1, or 2 for the pause-state policy).</summary>
+    int BranchCount => 1;
+
+    /// <summary>The branch whose state <see cref="DecodeChunk"/> and <see cref="Reset"/> work on (0 at the start).</summary>
+    int ActiveBranch => 0;
+
+    /// <summary>
+    /// Makes <paramref name="branch"/> (0 to <see cref="BranchCount"/> - 1) the active branch; the state of the branch that was
+    /// active is kept as it is. A branch that was never used starts as a reset stream.
+    /// </summary>
+    void SelectBranch(int branch)
+    {
+        if (branch != 0)
+            throw new NotSupportedException("This engine holds one branch of the stream.");
+    }
 
     /// <summary>
     /// Encodes and decodes one chunk of exactly <see cref="ChunkSamples"/> samples and appends its tokens.
@@ -70,11 +89,15 @@ internal sealed record NemotronEngineOptions(
 /// on the clips tested on Linux x64, not proven beyond them.
 /// </summary>
 /// <remarks>
-/// Static shapes come from the graph metadata (mel rows per chunk, frames per chunk, cache sizes), so the 560 ms
+/// <para>Static shapes come from the graph metadata (mel rows per chunk, frames per chunk, cache sizes), so the 560 ms
 /// and 1120 ms exports and any other chunk size need no code change. The encoder input tensor is the persistent
 /// buffer <c>[9 cache rows | chunk rows]</c>: the front-end writes the chunk rows in place and the last 9 rows are
 /// copied to the head after the run. Encoder caches ping-pong between two buffers that are bound as input and
-/// output, so a chunk allocates nothing on the managed heap and copies none of the 6 MB of cache.
+/// output, so a chunk allocates nothing on the managed heap and copies none of the 6 MB of cache.</para>
+/// <para><b>Branches.</b> The caches live in a <see cref="NemotronStreamState"/>. A second state is created on the first
+/// <see cref="SelectBranch"/> of branch 1 (about 13 MB for the 560 ms export: its own ping-pong pair); switching binds that
+/// state's caches and copies the few kilobytes of front-end and decoder state, so two branches of one stream can be decoded
+/// chunk by chunk side by side and either one continued.</para>
 /// </remarks>
 internal sealed class NemotronRnntEngine : INemotronChunkEngine
 {
@@ -94,19 +117,17 @@ internal sealed class NemotronRnntEngine : INemotronChunkEngine
     private readonly float[] _encoderOutput;
     private readonly long[] _encodedLength = new long[1];
 
-    // ping-pong caches: element 0 is bound as input, element 1 as output, swapped after every run
-    private readonly float[][] _channelCache = new float[2][];
-    private readonly float[][] _timeCache = new float[2][];
-    private readonly long[][] _cacheLength = new long[2][];
+    // the stream states of the branches; the active one's caches are bound to the encoder, the others keep their small parts
+    private readonly NemotronStreamState?[] _states = new NemotronStreamState?[2];
+    private readonly long[] _channelShape;
+    private readonly long[] _timeShape;
+    private int _active;
 
     private readonly OrtValue _audioSignalValue;
     private readonly OrtValue _lengthValue;
     private readonly OrtValue? _languageValue;
     private readonly OrtValue _encoderOutputValue;
     private readonly OrtValue _encodedLengthValue;
-    private readonly OrtValue[] _channelCacheValue = new OrtValue[2];
-    private readonly OrtValue[] _timeCacheValue = new OrtValue[2];
-    private readonly OrtValue[] _cacheLengthValue = new OrtValue[2];
 
     private readonly string[] _inputNames;
     private readonly string[] _outputNames;
@@ -157,10 +178,10 @@ internal sealed class NemotronRnntEngine : INemotronChunkEngine
             if (StaticDim(outputs[e.EncodedOutput], 2) is { } hidden && hidden != e.HiddenSize)
                 throw new InvalidDataException($"The encoder output is {hidden} wide, {NemotronModelConfig.ConfigFileName} says hidden_size {e.HiddenSize}.");
 
-            long[] channelShape = [1, e.NumLayers, config.LeftContext, e.HiddenSize];
-            long[] timeShape = [1, e.NumLayers, e.HiddenSize, config.ConvContext];
-            CheckCacheShape(inputs[e.CacheChannelInput], channelShape, e.CacheChannelInput);
-            CheckCacheShape(inputs[e.CacheTimeInput], timeShape, e.CacheTimeInput);
+            _channelShape = [1, e.NumLayers, config.LeftContext, e.HiddenSize];
+            _timeShape = [1, e.NumLayers, e.HiddenSize, config.ConvContext];
+            CheckCacheShape(inputs[e.CacheChannelInput], _channelShape, e.CacheChannelInput);
+            CheckCacheShape(inputs[e.CacheTimeInput], _timeShape, e.CacheTimeInput);
 
             _mel = new NemotronStreamingMel(config);
             if (_mel.FramesFor(config.ChunkSamples) != config.MelFramesPerChunk)
@@ -178,20 +199,18 @@ internal sealed class NemotronRnntEngine : INemotronChunkEngine
             _encoderOutputValue = OrtValue.CreateTensorValueFromMemory(_encoderOutput, [1, FramesPerChunk, e.HiddenSize]);
             _encodedLengthValue = OrtValue.CreateTensorValueFromMemory(_encodedLength, [1]);
 
-            var channelSize = checked((int)(channelShape[1] * channelShape[2] * channelShape[3]));
-            var timeSize = checked((int)(timeShape[1] * timeShape[2] * timeShape[3]));
-            for (var i = 0; i < 2; i++)
+            _stepModel = new NemotronOnnxStepModel(_sessions.Decoder, _sessions.Joint, config, _encoderOutput);
+            _decoder = new RnntGreedyDecoder(_stepModel, config.BlankId, config.MaxSymbolsPerStep)
             {
-                _channelCache[i] = new float[channelSize];
-                _timeCache[i] = new float[timeSize];
-                _cacheLength[i] = new long[1];
-                _channelCacheValue[i] = OrtValue.CreateTensorValueFromMemory(_channelCache[i], channelShape);
-                _timeCacheValue[i] = OrtValue.CreateTensorValueFromMemory(_timeCache[i], timeShape);
-                _cacheLengthValue[i] = OrtValue.CreateTensorValueFromMemory(_cacheLength[i], [1]);
-            }
+                BlankPenalty = config.BlankPenalty,
+                BatchedJoint = options.BatchedJoint,
+            };
+            _states[0] = CreateState();
+            var (channel, time, length) = _states[0]!.InputCaches;
+            var (channelNext, timeNext, lengthNext) = _states[0]!.OutputCaches;
 
             var inputNames = new List<string> { e.AudioInput, e.LengthInput, e.CacheChannelInput, e.CacheTimeInput, e.CacheChannelLengthInput };
-            var inputValues = new List<OrtValue> { _audioSignalValue, _lengthValue, _channelCacheValue[0], _timeCacheValue[0], _cacheLengthValue[0] };
+            var inputValues = new List<OrtValue> { _audioSignalValue, _lengthValue, channel, time, length };
             if (SupportsLanguage)
             {
                 inputNames.Add(e.LanguageInput);
@@ -200,14 +219,7 @@ internal sealed class NemotronRnntEngine : INemotronChunkEngine
             _inputNames = inputNames.ToArray();
             _inputs = inputValues.ToArray();
             _outputNames = [e.EncodedOutput, e.LengthOutput, e.CacheChannelOutput, e.CacheTimeOutput, e.CacheChannelLengthOutput];
-            _outputs = [_encoderOutputValue, _encodedLengthValue, _channelCacheValue[1], _timeCacheValue[1], _cacheLengthValue[1]];
-
-            _stepModel = new NemotronOnnxStepModel(_sessions.Decoder, _sessions.Joint, config, _encoderOutput);
-            _decoder = new RnntGreedyDecoder(_stepModel, config.BlankId, config.MaxSymbolsPerStep)
-            {
-                BlankPenalty = config.BlankPenalty,
-                BatchedJoint = options.BatchedJoint,
-            };
+            _outputs = [_encoderOutputValue, _encodedLengthValue, channelNext, timeNext, lengthNext];
             if (_sessions.Provider.EncoderOnWebGpu)
                 WarmUpWebGpuEncoder();
             Reset();
@@ -290,20 +302,37 @@ internal sealed class NemotronRnntEngine : INemotronChunkEngine
 
         _mel.Reset();
         Array.Clear(_audioSignal, 0, _cacheRows * _numMels); // the first chunk sees 9 all-zero cache rows
-        for (var i = 0; i < 2; i++)
-        {
-            Array.Clear(_channelCache[i]);
-            Array.Clear(_timeCache[i]);
-            _cacheLength[i][0] = 0;
-        }
-        // Whatever the last run left bound as input is the zeroed buffer again: restore the initial binding.
-        _inputs[InChannel] = _channelCacheValue[0];
-        _inputs[InTime] = _timeCacheValue[0];
-        _inputs[InLength] = _cacheLengthValue[0];
-        _outputs[OutChannel] = _channelCacheValue[1];
-        _outputs[OutTime] = _timeCacheValue[1];
-        _outputs[OutLength] = _cacheLengthValue[1];
+        var state = _states[_active]!;
+        state.Clear();
+        BindCaches(state);
         _decoder.Reset();
+    }
+
+    public int BranchCount => _states.Length;
+
+    public int ActiveBranch => _active;
+
+    public void SelectBranch(int branch)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(branch);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(branch, _states.Length);
+        if (branch == _active)
+            return;
+
+        // put the active branch aside: its encoder caches stay in its state object, the small parts are copied out
+        var current = _states[_active]!;
+        Array.Copy(_audioSignal, current.MelCacheRows, current.MelCacheRows.Length);
+        current.MelPrevious = _mel.SaveState(current.MelOverlap);
+        _stepModel.SaveState(current.DecoderH, current.DecoderC);
+        current.LastToken = _decoder.LastToken;
+
+        var next = _states[branch] ??= CreateState();   // a new state is all zeros: a reset stream
+        Array.Copy(next.MelCacheRows, _audioSignal, next.MelCacheRows.Length);
+        _mel.LoadState(next.MelOverlap, next.MelPrevious);
+        _stepModel.LoadState(next.DecoderH, next.DecoderC);
+        _decoder.Resume(next.LastToken);
+        BindCaches(next);
+        _active = branch;
     }
 
     public int DecodeChunk(ReadOnlySpan<float> chunk, ReadOnlySpan<float> lookahead, int chunkIndex, List<NemotronToken> sink)
@@ -328,9 +357,9 @@ internal sealed class NemotronRnntEngine : INemotronChunkEngine
 
         // next chunk's cache = last rows of this input; the encoder's *_next outputs become the next inputs
         Array.Copy(_audioSignal, (_melRows - _cacheRows) * _numMels, _audioSignal, 0, _cacheRows * _numMels);
-        (_inputs[InChannel], _outputs[OutChannel]) = (_outputs[OutChannel], _inputs[InChannel]);
-        (_inputs[InTime], _outputs[OutTime]) = (_outputs[OutTime], _inputs[InTime]);
-        (_inputs[InLength], _outputs[OutLength]) = (_outputs[OutLength], _inputs[InLength]);
+        var state = _states[_active]!;
+        state.SwapCaches();
+        BindCaches(state);
 
         var timeSteps = (int)Math.Min(FramesPerChunk, _encodedLength[0]);
         return _decoder.DecodeChunk(timeSteps, chunkIndex, FramesPerChunk, sink);
@@ -343,6 +372,16 @@ internal sealed class NemotronRnntEngine : INemotronChunkEngine
         _sessions.Dispose();
     }
 
+    private NemotronStreamState CreateState() =>
+        new(_channelShape, _timeShape, _cacheRows * _numMels, _mel.OverlapLength, _stepModel.StateLength, _config.BlankId);
+
+    // The encoder reads the state's input caches and writes its output caches.
+    private void BindCaches(NemotronStreamState state)
+    {
+        (_inputs[InChannel], _inputs[InTime], _inputs[InLength]) = state.InputCaches;
+        (_outputs[OutChannel], _outputs[OutTime], _outputs[OutLength]) = state.OutputCaches;
+    }
+
     // Disposes the step model and the pinned tensors; every member may still be unset when the constructor failed half way.
     private void ReleaseNativeBuffers()
     {
@@ -352,12 +391,8 @@ internal sealed class NemotronRnntEngine : INemotronChunkEngine
         _languageValue?.Dispose();
         _encoderOutputValue?.Dispose();
         _encodedLengthValue?.Dispose();
-        for (var i = 0; i < 2; i++)
-        {
-            _channelCacheValue[i]?.Dispose();
-            _timeCacheValue[i]?.Dispose();
-            _cacheLengthValue[i]?.Dispose();
-        }
+        foreach (var state in _states)
+            state?.Dispose();
     }
 
     // ── session setup ───────────────────────────────────────────────────

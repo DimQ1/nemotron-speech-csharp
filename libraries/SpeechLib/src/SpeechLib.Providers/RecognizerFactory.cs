@@ -83,7 +83,12 @@ public static class RecognizerFactory
             executionProvider,
             langId,
             options.UseVad,
-            options: new NemotronUtteranceOptions { AutoGain = true, KeepLanguageTagInFinal = options.KeepLanguageTagInFinal });
+            new NemotronRecognizerOptions
+            {
+                PauseState = options.NemotronPauseState ?? NemotronPauseStateOptions.Parity,
+                FlushClosingChunks = options.NemotronFlushClosingChunks,
+            },
+            new NemotronUtteranceOptions { AutoGain = true, KeepLanguageTagInFinal = options.KeepLanguageTagInFinal });
     }
 
     private static IStreamingSpeechRecognizer WrapWithVad(
@@ -142,6 +147,19 @@ public sealed record RecognizerFactoryOptions
     /// utterance never has the tag, so only a tag-free final text extends what was typed (see <c>IncrementalTextTyper</c>).
     /// </summary>
     public bool KeepLanguageTagInFinal { get; init; } = true;
+
+    /// <summary>
+    /// Nemotron: what the model state does when speech resumes after a pause (<see cref="NemotronRecognizerOptions.PauseState"/>);
+    /// null keeps it through the pause, as GenAI did.
+    /// </summary>
+    public NemotronPauseStateOptions? NemotronPauseState { get; init; }
+
+    /// <summary>
+    /// Nemotron: chunks of zeros encoded after the padded remainder when the stream is flushed (Stop, the end of a re-recognized
+    /// file), so that the last word of a stream that ends right after it is not lost (<see cref="NemotronRecognizerOptions.FlushClosingChunks"/>);
+    /// 0 is GenAI's single padded chunk.
+    /// </summary>
+    public int NemotronFlushClosingChunks { get; init; }
 
     /// <summary>Path to the shared Silero VAD model, used when the provider has no native VAD.</summary>
     public string? SileroVadPath { get; init; }

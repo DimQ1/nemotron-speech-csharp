@@ -1,0 +1,106 @@
+namespace SpeechLib.Nemotron;
+
+/// <summary>What the model state of a stream does when speech resumes after a pause (see <see cref="NemotronPauseStateOptions"/>).</summary>
+public enum NemotronPauseState
+{
+    /// <summary>
+    /// The encoder caches and the decoder state run on through every pause, as in ONNX Runtime GenAI: the default, required for
+    /// token-for-token parity with the recorded GenAI goldens.
+    /// </summary>
+    Keep,
+
+    /// <summary>
+    /// At the first speech chunk after a pause the stream continues from a fresh model state (primed with the last chunks of the
+    /// pause), a plain reset that keeps the stream clock. The closing mark and language tag of the sentence before, which the
+    /// kept state writes when the next speech begins, are taken over from the kept state. Measured worse than
+    /// <see cref="DualBranch"/> when the speech after the pause continues the sentence; for comparison and for languages where
+    /// the measurement says so.
+    /// </summary>
+    Fresh,
+
+    /// <summary>
+    /// At the first speech chunk after a pause the next <see cref="NemotronPauseStateOptions.DecisionChunks"/> chunks are
+    /// decoded twice, by the kept state and by a fresh one; the fresh branch continues when it wrote at least
+    /// <see cref="NemotronPauseStateOptions.FreshLead"/> letter tokens more than the kept state, else the state is kept; the other branch is dropped. The text of those chunks is held back until the decision.
+    /// </summary>
+    DualBranch,
+}
+
+/// <summary>
+/// The pause-state policy of <see cref="NemotronRnntRecognizer"/>: whether the model keeps the state it had before a pause when
+/// the speech resumes, starts afresh, or decides per pause.
+/// </summary>
+/// <remarks>
+/// <para><b>Why.</b> The model state after a pause is wrong in one of two cases. When a NEW sentence starts after the pause, the
+/// stale state (24 layers of attention cache over the last 4.5 s and the decoder LSTM) makes the model delete a fifth to a third
+/// of the next sentence's words in English (next-utterance WER 41-48 % against 26-29 % with a fresh state, CV17 clips, gaps of
+/// 1 to 6 s); when the speech after a hesitation CONTINUES the sentence, the fresh state is the wrong one (2 to 8 points worse).
+/// The better branch of the two is nearly always the one that decodes more words, which <see cref="NemotronPauseState.DualBranch"/>
+/// uses. Measurements: <c>docs/research/onnxruntime-genai-ideas.md</c> item A1 and <c>docs/research/nemotron-pure-ort-followups.md</c>.</para>
+/// <para><b>When a pause counts.</b> The silence gate scores every chunk (the native Silero chunk gate of the silence drop rule, or a
+/// gate of the policy's own when the silence drop is off). A chunk with speech that follows at least
+/// <see cref="PauseSeconds"/> of chunks without speech, in a stream whose model state has already decoded speech, starts the
+/// policy. Chunks the silence drop rule did not encode count as pause like the others.</para>
+/// <para><b>The stream clock runs on</b>: a fresh branch is a model-state-only reset, chunk indices, word times and
+/// <see cref="NemotronRnntRecognizer.ChunksConsumed"/> continue. The text of a branch decision window is reported in the call that
+/// ends the window (<see cref="NemotronRnntRecognizer.LastChunks"/> then lists all its chunks); it never depends on how the caller
+/// batched the audio.</para>
+/// <para><b>Cost</b> per pause: <see cref="PrerollSeconds"/> plus <see cref="DecisionChunks"/> chunks of extra encoder work (about 0.3 s of
+/// CPU on the 560 ms model at four threads) and, for the first use, a second set of encoder caches (about 13 MB).</para>
+/// </remarks>
+public sealed record NemotronPauseStateOptions
+{
+    /// <summary>The GenAI behaviour: the state is kept through every pause.</summary>
+    public static NemotronPauseStateOptions Parity { get; } = new();
+
+    /// <summary>What happens at speech resumption after a pause; <see cref="NemotronPauseState.Keep"/> (GenAI parity) by default.</summary>
+    public NemotronPauseState Policy { get; init; } = NemotronPauseState.Keep;
+
+    /// <summary>
+    /// Silence before speech that counts as a pause, rounded to whole chunks (at least one): 1.1 s is two chunks of the 560 ms
+    /// model and one of the 1120 ms model.
+    /// </summary>
+    public double PauseSeconds { get; init; } = 1.1;
+
+    /// <summary>
+    /// Chunks decoded by both branches before <see cref="NemotronPauseState.DualBranch"/> decides, counted from the first speech
+    /// chunk; the text of those chunks is held back until then (the first words after a pause appear DecisionChunks - 1 chunks
+    /// later: 1.12 s on the 560 ms model, 2.24 s on the 1120 ms model). Counted in chunks, not seconds: the evidence the rule
+    /// needs is the model's output, which comes chunk by chunk (1 or 2 chunks kept 9 % / 39 % of the gain on the 560 ms model,
+    /// 2 chunks of the 1120 ms model about half of what 3 gave). A dropped chunk, a flush or <c>ResetModelState</c> end a window
+    /// early (the flush chunks take part).
+    /// </summary>
+    public int DecisionChunks { get; init; } = 3;
+
+    /// <summary>
+    /// The end of the pause fed to a fresh state in front of the speech, rounded to whole chunks (at most the pause's silent
+    /// chunks), so the fresh model hears a normal stream start (room tone, then speech) instead of speech out of nothing.
+    /// </summary>
+    public double PrerollSeconds { get; init; } = 1.1;
+
+    /// <summary>
+    /// Letter tokens the fresh branch must write more than the kept state to win (1 = strictly more; a tie always keeps the
+    /// state). A fresh state that starts mid-sentence tends to split words into more pieces, so a lead of one piece is weak
+    /// evidence: with 1, long English recordings got worse (25.9 -> 27.1 % WER, most fresh wins by one piece), with 2 they did
+    /// not, at about 80 % of the gain on new sentences after a pause.
+    /// </summary>
+    public int FreshLead { get; init; } = 2;
+
+    /// <summary>Converts a duration of this record to whole chunks of <paramref name="chunkSeconds"/>, at least one.</summary>
+    internal static int ToChunks(double seconds, double chunkSeconds) =>
+        Math.Max(1, (int)Math.Round(seconds / chunkSeconds, MidpointRounding.AwayFromZero));
+}
+
+/// <summary>One decision of the pause-state policy (diagnostics, see <see cref="NemotronRnntRecognizer.PauseDecided"/>).</summary>
+/// <param name="FirstChunk">The first speech chunk after the pause, on the stream grid.</param>
+/// <param name="Chunks">Chunks both branches decoded (the window, flush chunks included).</param>
+/// <param name="SilentChunks">Chunks without speech in front of it.</param>
+/// <param name="KeepLetters">Letter tokens of the branch that kept the state.</param>
+/// <param name="FreshLetters">Letter tokens of the fresh branch.</param>
+/// <param name="FreshWon">The fresh branch continues the stream.</param>
+/// <param name="KeepText">What the kept state decoded in the window.</param>
+/// <param name="FreshText">What the fresh state decoded in the window.</param>
+/// <param name="KeepLettersPerChunk">Letter tokens of the kept state per chunk of the window.</param>
+/// <param name="FreshLettersPerChunk">Letter tokens of the fresh state per chunk of the window.</param>
+public sealed record NemotronPauseDecision(int FirstChunk, int Chunks, int SilentChunks, int KeepLetters, int FreshLetters, bool FreshWon,
+    string KeepText, string FreshText, IReadOnlyList<int> KeepLettersPerChunk, IReadOnlyList<int> FreshLettersPerChunk);

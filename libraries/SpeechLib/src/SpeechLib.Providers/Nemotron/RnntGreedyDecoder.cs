@@ -111,6 +111,17 @@ internal sealed class RnntGreedyDecoder
     }
 
     /// <summary>
+    /// Continues a stream whose committed LSTM state the step model was just switched to (another branch of the stream):
+    /// <paramref name="lastToken"/> becomes the last token and the prediction is computed again before the next joint. Exact,
+    /// because the prediction output is a function of (last token, committed state) only.
+    /// </summary>
+    public void Resume(int lastToken)
+    {
+        _lastToken = lastToken;
+        _predictionValid = false;
+    }
+
+    /// <summary>
     /// Decodes the <paramref name="timeSteps"/> encoder frames of one chunk and appends the emitted tokens.
     /// </summary>
     /// <param name="timeSteps">Valid frames of the chunk's encoder output.</param>

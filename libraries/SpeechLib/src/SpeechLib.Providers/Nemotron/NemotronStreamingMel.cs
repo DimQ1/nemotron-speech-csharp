@@ -137,6 +137,27 @@ internal sealed class NemotronStreamingMel
         _prev = 0f;
     }
 
+    /// <summary>Floats of the carried state besides the last raw sample: the left overlap of the next chunk.</summary>
+    public int OverlapLength => _overlap.Length;
+
+    /// <summary>
+    /// Copies what the next chunk depends on (the pre-emphasised overlap and the last raw sample) into <paramref name="overlap"/>,
+    /// so a second branch of the stream can be decoded with its own front-end state and this one restored afterwards.
+    /// </summary>
+    /// <returns>The carried raw sample.</returns>
+    public float SaveState(Span<float> overlap)
+    {
+        _overlap.CopyTo(overlap);
+        return _prev;
+    }
+
+    /// <summary>Restores a state taken with <see cref="SaveState"/>.</summary>
+    public void LoadState(ReadOnlySpan<float> overlap, float previous)
+    {
+        overlap[.._overlap.Length].CopyTo(_overlap);
+        _prev = previous;
+    }
+
     /// <summary>
     /// Computes the mel frames of the next chunk of the stream.
     /// </summary>

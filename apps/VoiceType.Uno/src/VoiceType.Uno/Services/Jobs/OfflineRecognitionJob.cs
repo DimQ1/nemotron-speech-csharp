@@ -36,6 +36,8 @@ public sealed class OfflineRecognitionJob : IJobExecutor
         public const string LeftContextSec = "leftContextSec";
         public const string SilenceContextSec = "silenceContextSec";
         public const string StopHistoryEouSec = "stopHistoryEouSec";
+        public const string PauseState = "pauseState";
+        public const string FlushClosingChunks = "flushClosingChunks";
         public const string Pipeline = "pipeline";
         public const string AudioCodec = "audioCodec";
         public const string AudioBitrate = "audioBitrate";
@@ -184,6 +186,8 @@ public sealed class OfflineRecognitionJob : IJobExecutor
         StreamingRightContextSeconds = GetDouble(settings, SettingKeys.RightContextSec),
         StreamingLeftContextSeconds = GetDouble(settings, SettingKeys.LeftContextSec),
         StreamingSilenceContextSeconds = GetDouble(settings, SettingKeys.SilenceContextSec),
+        NemotronPauseState = NemotronStreamPolicy.PauseState,
+        NemotronFlushClosingChunks = NemotronStreamPolicy.FlushClosingChunks,
     };
 
     /// <summary>Everything that affects the result (design §9.2), so WER differences can be explained.</summary>
@@ -209,6 +213,14 @@ public sealed class OfflineRecognitionJob : IJobExecutor
         }
         if (recognizer is IUtteranceStreamingRecognizer utterance)
             settings[SettingKeys.StopHistoryEouSec] = JsonValues.From(utterance.StopHistoryEouSeconds);
+        if (recognizer is SpeechLib.Nemotron.NemotronUtteranceRecognizer nemotron)
+        {
+            // only when they differ from GenAI's behaviour, which every version made before them had
+            if (nemotron.PauseState != SpeechLib.Nemotron.NemotronPauseState.Keep)
+                settings[SettingKeys.PauseState] = JsonValues.From(nemotron.PauseState.ToString());
+            if (nemotron.FlushClosingChunks > 0)
+                settings[SettingKeys.FlushClosingChunks] = JsonValues.From(nemotron.FlushClosingChunks);
+        }
 
         if (manifest.Audio is { } audio)
         {

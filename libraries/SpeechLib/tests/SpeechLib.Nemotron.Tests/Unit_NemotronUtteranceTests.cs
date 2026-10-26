@@ -546,6 +546,28 @@ public sealed class Unit_NemotronUtteranceTests
     }
 
     [Fact]
+    public void WordTimes_AfterAFlushWithClosingChunks_ShouldNotCountThemAsAudio()
+    {
+        // 1.5 chunks fed and flushed with one closing chunk: chunk 1 is padded with 4480 zeros, chunk 2 is all zeros; the late word in the
+        // closing chunk is clamped to the end of the audio, the word of the next stream part starts where its audio starts
+        var engine = new FakeChunkEngine(N, F) { Script = Script(F, (15, "▁go"), (21, "▁there")) };
+        var plain = new NemotronRnntRecognizer(engine, NemotronTestEnvironment.LoadConfig("int4-c056"), VocabularyOf.Value,
+            () => new FakeGate(N, _ => true), options: new NemotronRecognizerOptions { FlushClosingChunks = 1 });
+        using var recognizer = new NemotronUtteranceRecognizer(plain, RawOptions());
+
+        recognizer.ProcessUtterance(new float[N + N / 2]);
+        var flushed = recognizer.FlushUtterance();
+        recognizer.ProcessUtterance(new float[N]);
+        var tail = recognizer.FlushUtterance();
+
+        var fed = (N + N / 2) / 16000.0;
+        Assert.Equal("go", Assert.Single(flushed.FinalWords!).Word);
+        Assert.Equal(fed, flushed.FinalWords![0].StartSeconds, 6);
+        // frame 21 lies at grid sample 26880; 4480 + 8960 padded samples before it: 13440 samples = 0.84 s, where the second part begins
+        Assert.Equal(fed, tail.FinalWords![0].StartSeconds, 6);
+    }
+
+    [Fact]
     public void WordTimes_ShouldBeClampedToTheAudioFed()
     {
         // a token in the last frame of the padded chunk is emitted beyond the 0.84 s that were fed

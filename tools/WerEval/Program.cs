@@ -1,4 +1,4 @@
-﻿// WER evaluation harness for SpeechLib recognizers.
+// WER evaluation harness for SpeechLib recognizers.
 //
 // Scans an audio root recursively for {name}.wav + {name}.txt pairs (16 kHz
 // mono PCM16, reference text in the sibling .txt). New audio can be added by
@@ -19,6 +19,12 @@
 // history writer + reader) before recognition, to measure what storing audio costs in
 // re-recognition accuracy. It also reports encode/decode speed and size per hour.
 // --codec-only measures speed/size without loading a model (pass any modelDir).
+//
+// Nemotron stream options (NemotronRecognizerOptions): --vad (the native silence drop, as the apps run it),
+// --threads N (CPU threads), --pause keep|fresh|dual with --pause-sec / --decision-chunks / --preroll-sec / --fresh-lead
+// (the pause-state policy), --closing N (zero chunks after the padded flush remainder).
+// --hyp-out file.tsv writes "relative path<TAB>hypothesis" per file; --pause-log file.tsv writes
+// one line per pause-policy decision (nemotron).
 //
 // Build (CPU):
 //   dotnet build tools/WerEval/WerEval.csproj -c Release
@@ -73,7 +79,9 @@ string ep = "cpu";
 RecordingAudioFormat? codec = null;
 bool codecOnly = false;
 var streamingOptions = new ParakeetStreamingOptions();
-var nemotronOptions = new NemotronRecognizerOptions();
+var nemotron = new NemotronStreamOptions();
+string? hypOut = null;
+string? pauseLog = null;
 
 for (int i = 3; i < args.Length; i++)
 {
@@ -95,8 +103,28 @@ for (int i = 3; i < args.Length; i++)
         case "--save" when i + 1 < args.Length: savePath = args[++i]; break;
         case "--codec" when i + 1 < args.Length: codec = RecordingAudioFormat.Parse(args[++i]); break;
         case "--codec-only": codecOnly = true; break;
-        case "--threads" when i + 1 < args.Length: nemotronOptions = nemotronOptions with { CpuThreads = int.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
-        case "--joint" when i + 1 < args.Length: nemotronOptions = nemotronOptions with { BatchedJoint = args[++i] != "frame" }; break;
+        case "--vad": nemotron.UseVad = true; break;
+        case "--threads" when i + 1 < args.Length: nemotron.Threads = int.Parse(args[++i], CultureInfo.InvariantCulture); break;
+        case "--joint" when i + 1 < args.Length: nemotron.BatchedJoint = args[++i] != "frame"; break;
+        case "--pause" when i + 1 < args.Length:
+            nemotron.Pause = nemotron.Pause with
+            {
+                Policy = args[++i] switch
+                {
+                    "keep" => NemotronPauseState.Keep,
+                    "fresh" => NemotronPauseState.Fresh,
+                    "dual" => NemotronPauseState.DualBranch,
+                    var other => throw new ArgumentException($"Unknown --pause '{other}'. Use keep, fresh or dual."),
+                },
+            };
+            break;
+        case "--pause-sec" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { PauseSeconds = double.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
+        case "--decision-chunks" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { DecisionChunks = int.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
+        case "--preroll-sec" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { PrerollSeconds = double.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
+        case "--fresh-lead" when i + 1 < args.Length: nemotron.Pause = nemotron.Pause with { FreshLead = int.Parse(args[++i], CultureInfo.InvariantCulture) }; break;
+        case "--closing" when i + 1 < args.Length: nemotron.ClosingChunks = int.Parse(args[++i], CultureInfo.InvariantCulture); break;
+        case "--hyp-out" when i + 1 < args.Length: hypOut = args[++i]; break;
+        case "--pause-log" when i + 1 < args.Length: pauseLog = args[++i]; break;
     }
 }
 
@@ -123,12 +151,24 @@ if (codecOnly)
     return 0;
 }
 
-using var recognizer = CreateRecognizer(provider, modelDir, lang, ep, streamingOptions, nemotronOptions);
+using var recognizer = CreateRecognizer(provider, modelDir, lang, ep, streamingOptions, nemotron);
+var currentFile = "";
+StreamWriter? pauseWriter = null;
 if (recognizer is NemotronUtteranceRecognizer nemotronInfo)
 {
     Console.WriteLine($"Nemotron execution provider: {nemotronInfo.ExecutionProvider.Effective} ({nemotronInfo.ExecutionProvider.Summary})");
-    Console.WriteLine($"Nemotron CPU threads: {nemotronOptions.CpuThreads?.ToString(CultureInfo.InvariantCulture) ?? "default"}, joint: {(nemotronOptions.BatchedJoint ? "batched" : "frame by frame")}");
+    Console.WriteLine($"Nemotron stream: vad={nemotron.UseVad} threads={nemotron.Threads?.ToString(CultureInfo.InvariantCulture) ?? "auto"} joint={(nemotron.BatchedJoint ? "batched" : "frame")} pause={nemotron.Pause.Policy} " +
+        $"(pause {nemotron.Pause.PauseSeconds}s, decision {nemotron.Pause.DecisionChunks} chunks, preroll {nemotron.Pause.PrerollSeconds}s, lead {nemotron.Pause.FreshLead}) closing={nemotron.ClosingChunks}");
+    if (pauseLog is not null)
+    {
+        pauseWriter = new StreamWriter(pauseLog, append: false, new UTF8Encoding(false));
+        pauseWriter.WriteLine("file\tfirstChunk\tchunks\tsilentChunks\tkeepLetters\tfreshLetters\tfreshWon\tkeepPerChunk\tfreshPerChunk\tkeepText\tfreshText");
+        nemotronInfo.PauseDecided += d => pauseWriter.WriteLine(
+            $"{currentFile}\t{d.FirstChunk}\t{d.Chunks}\t{d.SilentChunks}\t{d.KeepLetters}\t{d.FreshLetters}\t{d.FreshWon}\t" +
+            $"{string.Join(',', d.KeepLettersPerChunk)}\t{string.Join(',', d.FreshLettersPerChunk)}\t{d.KeepText.Trim()}\t{d.FreshText.Trim()}");
+    }
 }
+StreamWriter? hypWriter = hypOut is null ? null : new StreamWriter(hypOut, append: false, new UTF8Encoding(false));
 if (recognizer is ParakeetTdtRecognizer parakeetInfo && streaming)
     Console.WriteLine($"Parakeet streaming: chunk={parakeetInfo.ChunkSeconds:F2}s right={parakeetInfo.RightContextSeconds:F2}s left={parakeetInfo.LeftContextSeconds:F2}s silence={parakeetInfo.SilenceContextSeconds:F2}s onset={parakeetInfo.OnsetContextSeconds:F2}s preview={parakeetInfo.PreviewEnabled}");
 
@@ -167,10 +207,12 @@ foreach (var wav in wavs)
             languageConfigurable.TrySetLanguage(LanguageMapper.Resolve(inferred)!);
     }
 
+    currentFile = Path.GetRelativePath(audioRoot, wav).Replace(Path.DirectorySeparatorChar, '/');
     var sw = Stopwatch.StartNew();
     var run = Transcribe(recognizer, samples, streaming, trace, Path.GetFileName(wav));
     sw.Stop();
     var hypothesis = run.Hypothesis;
+    hypWriter?.WriteLine($"{currentFile}\t{hypothesis.Replace('\t', ' ').Replace('\n', ' ').Replace('\r', ' ')}");
 
     var refWords = Tokenize(reference);
     var hypWords = Tokenize(hypothesis);
@@ -211,6 +253,9 @@ foreach (var wav in wavs)
     if (verbose)
         Console.WriteLine($"[{dataset}/{Path.GetFileName(wav)}] WER={Rate(dist, refWords.Length):P1} ({computeSec:F2}s)\n  REF: {reference}\n  HYP: {hypothesis}");
 }
+
+hypWriter?.Dispose();
+pauseWriter?.Dispose();
 
 // ── Report ──────────────────────────────────────────────────────────
 var total = new DatasetAgg("TOTAL");
@@ -344,7 +389,7 @@ static void PrintTop(string header, Dictionary<string, int> counts, int topN)
 static double Rate(int errors, int words) => words == 0 ? 0 : (double)errors / words;
 
 static IStreamingSpeechRecognizer CreateRecognizer(string provider, string modelDir, string? lang, string ep, ParakeetStreamingOptions streamingOptions,
-    NemotronRecognizerOptions nemotronOptions) => provider switch
+    NemotronStreamOptions nemotron) => provider switch
 {
     "parakeet" => new ParakeetTdtRecognizer(
         modelDir,
@@ -358,7 +403,8 @@ static IStreamingSpeechRecognizer CreateRecognizer(string provider, string model
     "qwen3" => new Qwen3AsrRecognizer(modelDir, executionProvider: ep, language: lang),
     "qwen3-streaming" => new Qwen3AsrStreamingRecognizer(modelDir, executionProvider: ep, language: lang),
     // Raw input (no gain control): the accuracy of the model itself.
-    "nemotron" => new NemotronUtteranceRecognizer(modelDir, ep, lang is null ? null : LanguageMapper.Resolve(lang), useVad: false, engineOptions: nemotronOptions),
+    "nemotron" => new NemotronUtteranceRecognizer(modelDir, ep, lang is null ? null : LanguageMapper.Resolve(lang), nemotron.UseVad,
+        new NemotronRecognizerOptions { CpuThreads = nemotron.Threads, BatchedJoint = nemotron.BatchedJoint, PauseState = nemotron.Pause, FlushClosingChunks = nemotron.ClosingChunks }),
     _ => throw new ArgumentException($"Unknown provider '{provider}'. Use 'parakeet', 'nemotron', 'qwen3' or 'qwen3-streaming'."),
 };
 
@@ -593,6 +639,16 @@ sealed class ParakeetStreamingOptions
     public double SilenceContextSeconds = ParakeetTdtRecognizer.DefaultSilenceContextSeconds;
     public double OnsetContextSeconds = ParakeetTdtRecognizer.DefaultOnsetContextSeconds;
     public bool Preview = true;
+}
+
+/// <summary>Nemotron recognizer options (see NemotronRecognizerOptions).</summary>
+sealed class NemotronStreamOptions
+{
+    public bool UseVad;
+    public int? Threads;
+    public NemotronPauseStateOptions Pause = NemotronPauseStateOptions.Parity;
+    public int ClosingChunks;
+    public bool BatchedJoint = true;
 }
 
 /// <param name="Hypothesis">Final transcript.</param>
