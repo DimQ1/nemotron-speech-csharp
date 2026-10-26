@@ -4,8 +4,9 @@ namespace SpeechLib.ModelDownload;
 /// The single source of truth for the downloadable ASR model catalog, shared
 /// between the WinUI and Uno apps. Each entry carries a commercial name, a
 /// plain-language description, and structured measured metrics (WER, speed).
-/// Metrics come from build/wer-reports (Common Voice 17, 250 ru + 250 en files,
-/// CPU, left_context=56 for Nemotron).
+/// Metrics come from build/wer-reports/*-20261026.md (Common Voice 17, 250 ru + 250 en
+/// files, tools/WerEval --streaming on one machine and day: CPU, 4 threads for Nemotron,
+/// library defaults; Parakeet's RTF includes its live preview passes).
 /// </summary>
 public static class ModelCatalog
 {
@@ -24,9 +25,21 @@ public static class ModelCatalog
             ContextWindow: null,
             Latency: ModelLatencyProfile.Streaming,
             UseCase: ModelUseCase.Multilingual,
-            Research: new ModelResearch(new WerMetrics(8.10, 6.04, 9.99), new SpeedMetrics(0.186), Cv17, "build/wer-reports/parakeet-tdt-int4-20260828.md"),
+            Research: new ModelResearch(new WerMetrics(9.05, 6.67, 11.23), new SpeedMetrics(0.498), Cv17, "build/wer-reports/parakeet-tdt-int4-20261026.md"),
             QuantizationFolder: "int4",
             IsRecommended: true),
+        new(
+            CommercialName: "Parakeet TDT 0.6B v3 Compact",
+            RepoId: "DimQ1/parakeet-tdt-0.6b-v3-onnx",
+            Tagline: "Same accuracy, smaller download",
+            Description: "The recommended Parakeet with a repacked encoder: a third smaller download and about 190 MB less memory, with the same accuracy on our test set. Good for phones and machines with little RAM.",
+            SizeBytes: 477_239_719,
+            Precision: ModelPrecision.Int4,
+            ContextWindow: null,
+            Latency: ModelLatencyProfile.Streaming,
+            UseCase: ModelUseCase.Multilingual,
+            Research: new ModelResearch(new WerMetrics(8.98, 6.58, 11.19), new SpeedMetrics(0.519), Cv17, "build/wer-reports/parakeet-tdt-int4-compact-20261026.md"),
+            QuantizationFolder: "int4-compact"),
         new(
             CommercialName: "Parakeet TDT 0.6B v3",
             RepoId: "DimQ1/parakeet-tdt-0.6b-v3-onnx",
@@ -37,7 +50,7 @@ public static class ModelCatalog
             ContextWindow: null,
             Latency: ModelLatencyProfile.Streaming,
             UseCase: ModelUseCase.Multilingual,
-            Research: new ModelResearch(new WerMetrics(7.96, 5.75, 9.99), new SpeedMetrics(0.190), Cv17, "build/wer-reports/parakeet-tdt-fp32-20260828.md"),
+            Research: new ModelResearch(new WerMetrics(8.72, 6.14, 11.10), new SpeedMetrics(0.508), Cv17, "build/wer-reports/parakeet-tdt-fp32-20261026.md"),
             QuantizationFolder: "fp32"),
         new(
             CommercialName: "Parakeet TDT 0.6B v3",
@@ -49,7 +62,7 @@ public static class ModelCatalog
             ContextWindow: null,
             Latency: ModelLatencyProfile.Streaming,
             UseCase: ModelUseCase.Multilingual,
-            Research: new ModelResearch(new WerMetrics(12.15, 9.82, 14.29), new SpeedMetrics(0.141), Cv17, "build/wer-reports/parakeet-tdt-int8-20260828.md"),
+            Research: new ModelResearch(new WerMetrics(12.84, 9.86, 15.58), new SpeedMetrics(0.296), Cv17, "build/wer-reports/parakeet-tdt-int8-20261026.md"),
             QuantizationFolder: "int8"),
 
         // ── Nemotron 3.5 ASR (RNN-T, ONNX Runtime, streaming) ──
@@ -63,7 +76,18 @@ public static class ModelCatalog
             ContextWindow: "1.12s",
             Latency: ModelLatencyProfile.Streaming,
             UseCase: ModelUseCase.HighQuality,
-            Research: new ModelResearch(new WerMetrics(19.21, 15.72, 22.41), new SpeedMetrics(0.142), Cv17, "build/wer-reports/nemotron-cpu-int4-c112-20260828.md")),
+            Research: new ModelResearch(new WerMetrics(17.98, 14.75, 20.95), new SpeedMetrics(0.125), Cv17, "build/wer-reports/nemotron-cpu-int4-c112-20261026.md")),
+        new(
+            CommercialName: "Nemotron 3.5 ASR Compact",
+            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-c112-compact-cpu",
+            Tagline: "Higher quality, smaller and faster",
+            Description: "The 1.12s Nemotron with a repacked encoder: a 37% smaller download, about a quarter faster and 250 MB less memory, with the same accuracy on our test set.",
+            SizeBytes: 496_195_057,
+            Precision: ModelPrecision.Int4,
+            ContextWindow: "1.12s",
+            Latency: ModelLatencyProfile.Streaming,
+            UseCase: ModelUseCase.HighQuality,
+            Research: new ModelResearch(new WerMetrics(17.94, 14.75, 20.86), new SpeedMetrics(0.095), Cv17, "build/wer-reports/nemotron-cpu-int4-c112-compact-20261026.md")),
         new(
             CommercialName: "Nemotron 3.5 ASR",
             RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-c112-cpu",
@@ -74,7 +98,7 @@ public static class ModelCatalog
             ContextWindow: "1.12s",
             Latency: ModelLatencyProfile.Streaming,
             UseCase: ModelUseCase.HighQuality,
-            Research: new ModelResearch(new WerMetrics(16.71, 12.52, 20.55), new SpeedMetrics(0.143), Cv17, "build/wer-reports/nemotron-cpu-fp32-c112-20260828.md")),
+            Research: new ModelResearch(new WerMetrics(16.22, 12.86, 19.31), new SpeedMetrics(0.127), Cv17, "build/wer-reports/nemotron-cpu-fp32-c112-20261026.md")),
         new(
             CommercialName: "Nemotron 3.5 ASR",
             RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-c056-cpu",
@@ -85,7 +109,18 @@ public static class ModelCatalog
             ContextWindow: "0.56s",
             Latency: ModelLatencyProfile.Streaming,
             UseCase: ModelUseCase.FastDictation,
-            Research: new ModelResearch(new WerMetrics(20.25, 16.78, 23.44), new SpeedMetrics(0.199), Cv17, "build/wer-reports/nemotron-cpu-int4-c056-20260828.md")),
+            Research: new ModelResearch(new WerMetrics(18.98, 15.18, 22.46), new SpeedMetrics(0.187), Cv17, "build/wer-reports/nemotron-cpu-int4-c056-20261026.md")),
+        new(
+            CommercialName: "Nemotron 3.5 ASR Compact",
+            RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-int4-c056-compact-cpu",
+            Tagline: "Fast response, smaller and faster",
+            Description: "The 0.56s Nemotron with a repacked encoder: a third smaller download, about 30% faster and 200 MB less memory, with the same accuracy on our test set.",
+            SizeBytes: 533_745_075,
+            Precision: ModelPrecision.Int4,
+            ContextWindow: "0.56s",
+            Latency: ModelLatencyProfile.Streaming,
+            UseCase: ModelUseCase.FastDictation,
+            Research: new ModelResearch(new WerMetrics(18.98, 15.28, 22.37), new SpeedMetrics(0.133), Cv17, "build/wer-reports/nemotron-cpu-int4-c056-compact-20261026.md")),
         new(
             CommercialName: "Nemotron 3.5 ASR",
             RepoId: "DimQ1/nemotron-3.5-asr-streaming-0.6b-onnx-fp32-c056-cpu",
@@ -96,7 +131,7 @@ public static class ModelCatalog
             ContextWindow: "0.56s",
             Latency: ModelLatencyProfile.Streaming,
             UseCase: ModelUseCase.FastDictation,
-            Research: new ModelResearch(new WerMetrics(17.66, 13.83, 21.17), new SpeedMetrics(0.254), Cv17, "build/wer-reports/nemotron-cpu-fp32-c056-20260828.md")),
+            Research: new ModelResearch(new WerMetrics(16.57, 13.97, 18.95), new SpeedMetrics(0.211), Cv17, "build/wer-reports/nemotron-cpu-fp32-c056-20261026.md")),
 
         // ── Qwen3-ASR 1.7B (hybrid INT4 decoder, block streaming) ──
         new(
