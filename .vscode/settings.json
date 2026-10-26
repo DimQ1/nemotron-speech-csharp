@@ -1,3 +1,4 @@
 {
-    "dotnet.defaultSolution": "NemotronSpeech.slnx"
+    "dotnet.defaultSolution": "NemotronSpeech.slnx",
+    "dotrush.roslyn.projectOrSolutionFiles": []
 }
