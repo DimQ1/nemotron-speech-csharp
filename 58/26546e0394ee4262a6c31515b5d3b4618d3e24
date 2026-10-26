@@ -1,0 +1,23 @@
+.vscode/settings.json
+  s_20e41f7f2d2ce6::t_c9fb0f6899197a 2-3
+docs/design/voicetype-uno-mobile/uia-layout-check.json
+  s_20e41f7f2d2ce6::t_99be0e52d94900 4-6
+tools/scripts/get-geolocation.ps1
+  s_20e41f7f2d2ce6::t_a36b96aa1e1236 1-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "5826546e0394ee4262a6c31515b5d3b4618d3e24",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
