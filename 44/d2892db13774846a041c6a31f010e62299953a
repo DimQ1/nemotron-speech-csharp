@@ -1,0 +1,29 @@
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/NemotronAssets.cs
+  s_20e41f7f2d2ce6::t_f9498cadb1c709 26-27,29,43
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/History/E2E_NemotronRecognitionTests.cs
+  s_974258c65088b5::t_8163f0061c23c1 37-39,46-53,123-129,137,174,176-177,179,187,191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "44d2892db13774846a041c6a31f010e62299953a",
+  "prompts": {},
+  "sessions": {
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_974258c65088b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3fc81e050ed2b18f",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
