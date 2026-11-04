@@ -1,0 +1,803 @@
+AGENTS.md
+  s_13d57ddad0c9ec::t_742ab8a3927b37 10-11,43,93-94,101-105,110,120,122-123,125,130,132,159,163,165-166,171,173,175-177,179
+DOCS_INDEX.md
+  s_13d57ddad0c9ec::t_f1418d3f8dbf4e 14-15,22,24-25
+README.md
+  s_13d57ddad0c9ec::t_96b266e1528b2d 22,43,45,63-65,104,172
+apps/VoiceType.Uno/README.md
+  s_13d57ddad0c9ec::t_f7628f7b9d6c53 3-4,18,26,30,73
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Loc.cs
+  s_13d57ddad0c9ec::t_fa9ca102370367 1-193
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Chat.json
+  s_13d57ddad0c9ec::t_cf82b303d391a3 1-187
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Help.json
+  s_13d57ddad0c9ec::t_82b75617437f67 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/History.json
+  s_13d57ddad0c9ec::t_f0dcd646c4d222 1-310
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Language.json
+  s_13d57ddad0c9ec::t_b647a630830b92 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Main.json
+  s_13d57ddad0c9ec::t_5f6d42b512ba0f 1-129
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Models.json
+  s_13d57ddad0c9ec::t_1e41b59ee80e38 1-283
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Queue.json
+  s_13d57ddad0c9ec::t_91d6bd16637eb9 1-105
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Recording.json
+  s_13d57ddad0c9ec::t_16cee446a6eca4 1-268
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Services.json
+  s_13d57ddad0c9ec::t_c69018a9c79e38 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Settings.json
+  s_13d57ddad0c9ec::t_9667b3d8198e5d 1-233
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Speakers.json
+  s_13d57ddad0c9ec::t_a2d253178cad7f 1-117
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Updates.json
+  s_13d57ddad0c9ec::t_dfa8dcb46b21d2 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Language.json
+  s_13d57ddad0c9ec::t_6343858c66f30e 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Models.json
+  s_13d57ddad0c9ec::t_2bebaa61ee29f2 1-247
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Recording.json
+  s_13d57ddad0c9ec::t_119c057d1730b1 1-236
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Settings.json
+  s_13d57ddad0c9ec::t_333331b1890eb7 1-225
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Updates.json
+  s_13d57ddad0c9ec::t_d068fce3ff4ab9 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Chat.json
+  s_13d57ddad0c9ec::t_1dac091ca583cc 1-155
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Help.json
+  s_13d57ddad0c9ec::t_79aa8e956a4a25 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/History.json
+  s_13d57ddad0c9ec::t_af7ea9e307e3af 1-256
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Language.json
+  s_13d57ddad0c9ec::t_af717f42d92822 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Main.json
+  s_13d57ddad0c9ec::t_9fe546bc332471 1-121
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Models.json
+  s_13d57ddad0c9ec::t_70d33cf77b1410 1-247
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Recording.json
+  s_13d57ddad0c9ec::t_cff504ccc6daf7 1-236
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Services.json
+  s_13d57ddad0c9ec::t_7a205eb77e45e3 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Settings.json
+  s_13d57ddad0c9ec::t_8ce8348f5db631 1-225
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Speakers.json
+  s_13d57ddad0c9ec::t_2cc2a3bda7bc0f 1-105
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Updates.json
+  s_13d57ddad0c9ec::t_eae2bd51853b99 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/History.json
+  s_13d57ddad0c9ec::t_e426c40d3def15 1-256
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Language.json
+  s_13d57ddad0c9ec::t_7384c5702ce644 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Settings.json
+  s_13d57ddad0c9ec::t_fea3ea93733847 1-225
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Updates.json
+  s_13d57ddad0c9ec::t_244a3a006f7d30 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/History.json
+  s_13d57ddad0c9ec::t_137ece768694ad 1-256
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Language.json
+  s_13d57ddad0c9ec::t_b9749182d41240 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Models.json
+  s_13d57ddad0c9ec::t_cb118cfa9e7946 1-247
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Recording.json
+  s_13d57ddad0c9ec::t_89cb98f9bd22a5 1-236
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Settings.json
+  s_13d57ddad0c9ec::t_6aa1c68598cd19 1-225
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Updates.json
+  s_13d57ddad0c9ec::t_b64c27e1266b8d 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Chat.json
+  s_13d57ddad0c9ec::t_faec59e4922c5a 1-155
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Help.json
+  s_13d57ddad0c9ec::t_d1c6d361c52227 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/History.json
+  s_13d57ddad0c9ec::t_e4c6863b24bfb8 1-242
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Language.json
+  s_13d57ddad0c9ec::t_57e313042e83bd 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Main.json
+  s_13d57ddad0c9ec::t_ed3a68df588d7f 1-121
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Models.json
+  s_13d57ddad0c9ec::t_ff57b9a1f64212 1-247
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Queue.json
+  s_13d57ddad0c9ec::t_6b3f540f922675 1-93
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Recording.json
+  s_13d57ddad0c9ec::t_a904dc75e1bc1f 1-236
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Services.json
+  s_13d57ddad0c9ec::t_2535a294969935 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Settings.json
+  s_13d57ddad0c9ec::t_f2272b601efe1e 1-225
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Speakers.json
+  s_13d57ddad0c9ec::t_3e951b06250f7a 1-105
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Updates.json
+  s_13d57ddad0c9ec::t_7a42370c649929 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Language.json
+  s_13d57ddad0c9ec::t_b4ea9f7efd6a5a 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Queue.json
+  s_13d57ddad0c9ec::t_9aaa8b4816c97b 1-93
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Settings.json
+  s_13d57ddad0c9ec::t_067c8a7ff0fca7 1-225
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Updates.json
+  s_13d57ddad0c9ec::t_9ec13c12c7440c 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Language.json
+  s_13d57ddad0c9ec::t_c10d24f60017b3 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Settings.json
+  s_13d57ddad0c9ec::t_63cabd950a2f3e 1-223
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Speakers.json
+  s_13d57ddad0c9ec::t_df84ed108fb15b 1-102
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Updates.json
+  s_13d57ddad0c9ec::t_faa7630395286d 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Language.json
+  s_13d57ddad0c9ec::t_41047ecaeb3d2a 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Updates.json
+  s_13d57ddad0c9ec::t_3abd78ed106776 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Chat.json
+  s_13d57ddad0c9ec::t_725e010a19bfb0 1-155
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/History.json
+  s_13d57ddad0c9ec::t_8e75b5559f92c9 1-256
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Language.json
+  s_13d57ddad0c9ec::t_b93e38c00a6a3f 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Models.json
+  s_13d57ddad0c9ec::t_849d329263c6f9 1-247
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Updates.json
+  s_13d57ddad0c9ec::t_51d07c582a434b 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Language.json
+  s_13d57ddad0c9ec::t_4dec177f69d985 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Models.json
+  s_13d57ddad0c9ec::t_3bcfcf68921e63 1-265
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Settings.json
+  s_13d57ddad0c9ec::t_20f8c6ca74b49e 1-229
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Speakers.json
+  s_13d57ddad0c9ec::t_042dc92efa921d 1-111
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Updates.json
+  s_13d57ddad0c9ec::t_c01abd08cfcd64 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Chat.json
+  s_13d57ddad0c9ec::t_945f2ce1db59ca 1-155
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Language.json
+  s_13d57ddad0c9ec::t_081281221cc936 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Recording.json
+  s_13d57ddad0c9ec::t_9e1bca39e23d48 1-236
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Updates.json
+  s_13d57ddad0c9ec::t_8429df8ca3cee5 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Language.json
+  s_13d57ddad0c9ec::t_1f9c485727b66b 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Recording.json
+  s_13d57ddad0c9ec::t_d306c2c48f6c4a 1-252
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Updates.json
+  s_13d57ddad0c9ec::t_5f427a9d8f123a 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Chat.json
+  s_13d57ddad0c9ec::t_97b2652b771360 1-155
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Help.json
+  s_13d57ddad0c9ec::t_0a8f222719873f 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/History.json
+  s_13d57ddad0c9ec::t_0faf74f5b37798 1-242
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Language.json
+  s_13d57ddad0c9ec::t_775bf00cd4dcad 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Main.json
+  s_13d57ddad0c9ec::t_08ded09fba7946 1-121
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Models.json
+  s_13d57ddad0c9ec::t_c9ccaf8a958a70 1-247
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Queue.json
+  s_13d57ddad0c9ec::t_9b8b2e1a674b10 1-93
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Recording.json
+  s_13d57ddad0c9ec::t_6cfe7709ddd8a5 1-236
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Services.json
+  s_13d57ddad0c9ec::t_f9ef9eedaab435 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Settings.json
+  s_13d57ddad0c9ec::t_32eade287afcca 1-225
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Speakers.json
+  s_13d57ddad0c9ec::t_dd256b275e72fc 1-105
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Updates.json
+  s_13d57ddad0c9ec::t_7ed60eda69445b 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Chat.json
+  s_13d57ddad0c9ec::t_a72e7119ec7bf5 1-171
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Help.json
+  s_13d57ddad0c9ec::t_1c35f4ad96c53c 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/History.json
+  s_13d57ddad0c9ec::t_249c4485cd9a99 1-276
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Language.json
+  s_13d57ddad0c9ec::t_4696a853d0d84a 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Main.json
+  s_13d57ddad0c9ec::t_ca808a43a09ce9 1-125
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Models.json
+  s_13d57ddad0c9ec::t_4acd3444c8ceb2 1-265
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Queue.json
+  s_13d57ddad0c9ec::t_e61abe9fb7c0f6 1-99
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Recording.json
+  s_13d57ddad0c9ec::t_7ce5221ed765aa 1-252
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Services.json
+  s_13d57ddad0c9ec::t_77cebd5e1a084c 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Settings.json
+  s_13d57ddad0c9ec::t_ad03e3a7ec7742 1-229
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Speakers.json
+  s_13d57ddad0c9ec::t_f0ec24b284d2b3 1-111
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Updates.json
+  s_13d57ddad0c9ec::t_5f80e8a6000ee7 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Language.json
+  s_13d57ddad0c9ec::t_d35a3d5be77735 1-7
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Models.json
+  s_13d57ddad0c9ec::t_e1d4d28e508316 1-238
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Recording.json
+  s_13d57ddad0c9ec::t_077e34b6d7b802 1-228
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Updates.json
+  s_13d57ddad0c9ec::t_425e71b5846228 1-31
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/AppSettings.cs
+  s_13d57ddad0c9ec::t_c013b78a48c81c 49-61
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Audio/HelperAudioSource.cs
+  s_13d57ddad0c9ec::t_dc1eba5786e004 7,227,378
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/DownloadProgressFormatter.cs
+  s_13d57ddad0c9ec::t_471f9cd2e2e51a 2,27-28,32,43-44,49-52
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Chat/ChatService.cs
+  s_13d57ddad0c9ec::t_55df5d036f87fe 6,60,73,100,179,185,190,197,219,244,272
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Chat/ChatSourceLog.cs
+  s_13d57ddad0c9ec::t_5648aad4f6ca52 4,26,34,39-64
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Chat/ChatUi.cs
+  s_13d57ddad0c9ec::t_3e63a2fde45091 3,69,75,93,98,101-108,110-115,127-128,130,139,161-163,165,175-177,182,222-224,227,273-274,296,313
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/ChatStore.cs
+  s_13d57ddad0c9ec::t_343a61f3681a86 52,153
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/HistoryExport.cs
+  s_13d57ddad0c9ec::t_676e307ca85ccf 3,153-156,167-169,172,178-179,185,191-192,197,205-206,219,229
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/HistoryUiDiffView.cs
+  s_13d57ddad0c9ec::t_657b05a6820d46 1,92,94-96
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/HistoryUiEdit.cs
+  s_13d57ddad0c9ec::t_e799fa6d773b4a 1-2,65,68
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/HistoryUiExport.cs
+  s_13d57ddad0c9ec::t_aa5f53e03d574d 1-2,72-73
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/HistoryUiFilter.cs
+  s_13d57ddad0c9ec::t_9f4008e554c418 1-2,65-70,90-92,139,150
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/HistoryUiFormat.cs
+  s_13d57ddad0c9ec::t_42d5136af62c58 3,10,60,65,82,96-97,107,116,120,129-130,133,151-155,168-169,178,186,188,190-191,194-200,206
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/HistoryUiRows.cs
+  s_13d57ddad0c9ec::t_675d3f39d4873b 1-2,60-62,79,82-83,87,90,93,96-98,118-119,164
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/HistoryUiStorage.cs
+  s_13d57ddad0c9ec::t_85a2b73de7ced4 1,19-20,24,26-31,34,36-38,43-45,50,75-79,87-89,96-98
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/JobDisplay.cs
+  s_13d57ddad0c9ec::t_bc6b301d084d7e 2,23-29,42,45,49,54,59,61,69,71,74-77,84-85,88-91,93-94,96-99,107,109-110,125,127-128,146,150-151,153,170,174-175
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Llm/GemmaJobWorkers.cs
+  s_13d57ddad0c9ec::t_8884f018ad2a57 6,50,71,93,96,98,100,192,194,259,261,263
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Llm/HistoryLlmJobs.cs
+  s_13d57ddad0c9ec::t_a38d6109115c1d 2,17,92,94,160-161,163,191-192
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/ReprocessPlan.cs
+  s_13d57ddad0c9ec::t_44d533db1738ea 1-2,24,28
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Speakers/AnalyzeJobWorker.cs
+  s_13d57ddad0c9ec::t_3202dfb57ba1fb 2,29,31,33,39,51
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Speakers/DiarizeJobWorker.cs
+  s_13d57ddad0c9ec::t_28477adcedd87a 3,190,193,198,202,209,224,255,260,267
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Speakers/RecordingStore.Speakers.cs
+  s_13d57ddad0c9ec::t_cac040dcd8086c 3,171
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Speakers/ReprocessChain.cs
+  s_13d57ddad0c9ec::t_0ef50c2203a059 2,100
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Speakers/SpeakerDetectUi.cs
+  s_13d57ddad0c9ec::t_8b349fe6a2d067 1,36-41,59-60,62,64-65,69,72,74-75,82-83
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Speakers/SpeakerDirectory.cs
+  s_13d57ddad0c9ec::t_10f70b837aa1a0 2,149,154
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Speakers/SpeakerService.cs
+  s_13d57ddad0c9ec::t_bfa8377487ad5f 3,43-44,282-283
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Speakers/SpeakerViews.cs
+  s_13d57ddad0c9ec::t_bd67a5cf132203 2,64
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Speakers/SpeakersModelsUi.cs
+  s_13d57ddad0c9ec::t_51538244e6073e 1,9,11-13,15,17-19,22-23,29,32,37,39,43
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Speakers/SpeakersUi.cs
+  s_13d57ddad0c9ec::t_b8effa84ddc4ba 2,68-73,81,100,103,122,146-147,156,170,175,179,184,187,189,191,256
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/TextNormalizer.cs
+  s_13d57ddad0c9ec::t_fea1c77ebc1a84 3,84-85
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/KnownModels.cs
+  s_13d57ddad0c9ec::t_846dfe73ada835 2,23-24
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Llm/LlmModelService.cs
+  s_13d57ddad0c9ec::t_ec69248dd3c686 3,108,110,157,179
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Llm/LlmUiCards.cs
+  s_13d57ddad0c9ec::t_a199c12109314e 1-2,61,64,66,68,70,72,79-82,87-90
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Llm/LlmUiRamFit.cs
+  s_13d57ddad0c9ec::t_8130a4d649ad11 1-2,66-68
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Llm/LlmUiText.cs
+  s_13d57ddad0c9ec::t_27e21df9fe8c57 1-2,10-14,16,18,20-21,23-24,30,33,36,39,42,45,53-79
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/ModeSummaryFormatter.cs
+  s_13d57ddad0c9ec::t_d3fcf47ccec09a 1-2,25,30,32,40
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/ModelPathResolver.cs
+  s_13d57ddad0c9ec::t_6796efe6e83d9e 28
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/ModelStorageMigrator.cs
+  s_cef34b8e280e4f::t_0595d0a4857c40 175-219
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/ModelStorageText.cs
+  s_13d57ddad0c9ec::t_7dd12819b79e01 1,8,10,12,14,16,18,22-24,32-34,38,43-46,50,58-60,69,73,77-78,80-82,85,100-109
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/ModelsPageFormatter.cs
+  s_13d57ddad0c9ec::t_c2757e2dbb5f32 1-2,15,18-19,24,30,34,36,38,41,60,72,84,87,89
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/RecordingStatusFormatter.cs
+  s_13d57ddad0c9ec::t_65fc62afc4860c 1-2,49-53,59-63,69-73,82
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Settings/HotkeyText.cs
+  s_13d57ddad0c9ec::t_a9d027cb79acab 1-2,11-17,19-23,26,30-32,37,44-46,96,110,123-124,129
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Settings/SettingsText.cs
+  s_13d57ddad0c9ec::t_886f519f0653cf 4,54-60,64,66,76,78-81,96-99,110-111,115-117,136-138,150-152,155,161,163-164,173,175-176,186,188-189,199,201-203,214-217,238,240,247,275,277,279,282-285,287,289-290,301,303,305-306,313-318,324,328-330,333,338,341,343,345,347-348,357-358,360
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Settings/StorageFolderText.cs
+  s_13d57ddad0c9ec::t_c6a5e36f8981af 2,18-23,28-29,35-36,40,44-47,53,55-58,64-65,71-73,82-84,88-89,92,94,102-104,108,110,134-135,142,145,156,167,171-172
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Settings/StorageOverview.cs
+  s_13d57ddad0c9ec::t_34d29805ac7109 2,87,98-101,131-132
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Speakers/DiarizationModelCatalog.cs
+  s_13d57ddad0c9ec::t_03aabecee75ddb 2,43,63-77
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Speakers/DiarizationModelService.cs
+  s_13d57ddad0c9ec::t_72f9dd80d7eae9 3,64-65,104,106-107,147,175,177,195,197,209,246,248,291,293,295,297,301-304,308-311
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/SwitchableCapture.cs
+  s_13d57ddad0c9ec::t_f3fa53cac0c04a 5,206
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/VoiceType.Uno.Core.csproj
+  s_13d57ddad0c9ec::t_d6bc13f6791fce 26-30
+apps/VoiceType.Uno/src/VoiceType.Uno/App.xaml.cs
+  s_13d57ddad0c9ec::t_2609e0ff942967 103-123,154,183,344-346,358-363,382-383,404-405,417-421
+apps/VoiceType.Uno/src/VoiceType.Uno/MainPage.xaml.cs
+  s_13d57ddad0c9ec::t_c4ba8ae74af23b 9,14,32-33,243-274,467-468,584,627-639
+apps/VoiceType.Uno/src/VoiceType.Uno/Platforms/Android/JobsForegroundService.cs
+  s_13d57ddad0c9ec::t_6a18d98034e37c 6,40-41,76,195-196,216,218,220,226
+apps/VoiceType.Uno/src/VoiceType.Uno/Platforms/Android/RecordingService.cs
+  s_13d57ddad0c9ec::t_a94f88596654cd 6,29-30,66,190-191,211,214,216,222
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Chat/ChatDialogs.cs
+  s_13d57ddad0c9ec::t_033258a897f301 4,33,38,44,53,55-56,89,93-94,123-126,128,138,146,157,161,169-170,173,193-194,249-250,266,275,277,288,302,337,341,349,354,368-369,377,389,396-397,417-418,452,479,482,496,504,506-508,533,537
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Chat/ChatPage.xaml
+  s_13d57ddad0c9ec::t_8b6c7c430706de 4,115,145,150,159,175-176,187,204,222,224,239,249,251-252,270,272,296-297,299,315,322,327
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Chat/ChatPage.xaml.cs
+  s_13d57ddad0c9ec::t_1d1102395dba79 6,127,477-478,484-485,511-514,518,576-577,590,600,605-606
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Chat/ChatServices.cs
+  s_13d57ddad0c9ec::t_78b06cd8cb3e9d 72
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Chat/ChatViewModel.cs
+  s_13d57ddad0c9ec::t_f125c947099d6e 3,53,126,141,168-170,177-178,325-328,393,456,472,501,506-507,550,557,613
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Chat/ChatsPage.xaml
+  s_13d57ddad0c9ec::t_ccf14d6f9a2cb3 4,53,87,91,96,102,120,122,124,127,131,143-144
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Chat/ChatsPage.xaml.cs
+  s_13d57ddad0c9ec::t_2610e25187f086 5,173,176-177,188,199-201,203
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Controls/ModelStorageBlock.xaml
+  s_13d57ddad0c9ec::t_6a433f507ff9c5 3-4,29,44,48,58,62-63
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/DownloadsViewModel.cs
+  s_13d57ddad0c9ec::t_eb8aa27c44e0b6 6,15,40,61,169,171-174,176-178,182,190
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/HelpDialog.xaml
+  s_13d57ddad0c9ec::t_0c16d9b922f13f 4-6,13-15,21-23,29-31,37-39,45-47
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/HelpDialog.xaml.cs
+  s_13d57ddad0c9ec::t_5281f9ec6d9ab3 1-2,4-5,14-56
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/ExportDialog.cs
+  s_13d57ddad0c9ec::t_773053aeed9670 3,41-44,56,64,67,77,80,85-87,95,192-193,197
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/HistoryDialogs.cs
+  s_13d57ddad0c9ec::t_29a19dcc086f31 5,65,68,74,83-84,106,111,122,124-125,162-163,168,170-172,174-175,246,250,257
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/HistoryFilterDialog.cs
+  s_13d57ddad0c9ec::t_add4c3709eb83b 3,39-42,48-52,54-55,57-58,60,62,100-101
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/HistoryPage.xaml
+  s_13d57ddad0c9ec::t_6b69e9e4a9cd6b 6,93,144,151,156,172,183,187,192,204-205,208,270-271,284-285
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/HistoryPage.xaml.cs
+  s_13d57ddad0c9ec::t_71b2f5b5440f5d 5,208-210,213,215
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/HistorySettingsPage.xaml
+  s_13d57ddad0c9ec::t_c3b221e08d1e12 6,43,50-51,59,70-71,74,85-86,89,100-101,104,109,120-121,124,139-140,143,162-163,166,174,177,187-188,192,206-207,211,217,232,236,247,251,259,267,275
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/HistorySettingsPage.xaml.cs
+  s_13d57ddad0c9ec::t_b3befc05f44d0f 4,70,73,128,202
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/HistoryViewModel.cs
+  s_13d57ddad0c9ec::t_e8c3fd669b5ff1 3,50,117,162,164-165,217
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/PlayerBar.xaml
+  s_13d57ddad0c9ec::t_1be9b83adafbce 4,37,59-60,73-74,84-85,98-99
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/PlayerBar.xaml.cs
+  s_13d57ddad0c9ec::t_0e7ebcd2515b61 7,73,117,240-241,294
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/RecordingPage.xaml
+  s_13d57ddad0c9ec::t_687cda7bf13320 6,106,121,139,143,147,151,155,164,176,178,181-182,214,225,229,243,247,252,269,271,273,275,295,304,308,313,333,363,366,370,381,395,398,402,405,434,439,443,452,454,479-480
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/RecordingPage.xaml.cs
+  s_13d57ddad0c9ec::t_67be61af3ccab6 9,201,218-219,305-307,314,431-433,514-515,557-558,561-562,565,570,576,654-655,671,694,710,715,718,722,738,760,781,785,787,805
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/RecordingViewModel.Speakers.cs
+  s_13d57ddad0c9ec::t_2d2f44bc41aed9 2,34,44-46
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/RecordingViewModel.cs
+  s_13d57ddad0c9ec::t_1c78c05c6343b1 4,88,95-102,180,196-197,203-204,418-420,424,483,520,523,525-526,530-531
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/ReprocessSheet.xaml
+  s_13d57ddad0c9ec::t_afc6365651d818 4-6,27,36,43-44,47,55-56,59,62-64,72-73,76,81,84,86,88,90,92,99-100,103,111-112,115,120,123-124,129-130,135-136,141-142,152,154,156
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/ReprocessSheet.xaml.cs
+  s_13d57ddad0c9ec::t_af6f559f5293a2 3,61,86,104,106,116-119,123-124,129,145,173-175,179,182,197,199,201-202,225-226,234,239-240,302,318-319,334,339,347
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/SpeakersBar.xaml
+  s_13d57ddad0c9ec::t_b5d17f175066f2 5-6,30,44-45,59,67-68,72,80-81,84-85,99
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/SpeakersBar.xaml.cs
+  s_13d57ddad0c9ec::t_f1df7a4af0f8d2 3,90,97,163,180
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/SpeakersSheet.cs
+  s_13d57ddad0c9ec::t_24d6c6ebefef73 5,24,34-36,46,90,94,102,105-106,145,155,181,194,221-222,231-232,255,284,291,294,301,325
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/TranslateSection.xaml
+  s_13d57ddad0c9ec::t_5632313bb84575 5,57,66,71,82,85-86,92,94,96,110-111,125-126,137-138
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/TranslateSection.xaml.cs
+  s_13d57ddad0c9ec::t_1b81a77afabdd4 4,98,136,140,151-152,162-163
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/TranslateViewModel.cs
+  s_13d57ddad0c9ec::t_31118ca10d009f 6,136-137,160,182,188,245-246,252-253,335,340
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/UndoSnackbar.xaml
+  s_13d57ddad0c9ec::t_2e61ec1101994d 4,20,23,25
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/LlmModelsViewModel.cs
+  s_13d57ddad0c9ec::t_08120af2026635 3,21-22,24,34,47-48,53,58,63,204,255
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Localization/LanguagePrompt.cs
+  s_13d57ddad0c9ec::t_e9319ddb211194 1-133
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Localization/LanguageSwitcher.cs
+  s_13d57ddad0c9ec::t_f11143bfdac3e1 1-171
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Localization/Tr.cs
+  s_13d57ddad0c9ec::t_8dce69e1aaa7bb 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/MainViewModel.Updates.cs
+  s_13d57ddad0c9ec::t_b85f28eac84062 1-47
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/MainViewModel.cs
+  s_13d57ddad0c9ec::t_90ef5dd50e5a20 11,20-21,53-55,57,59-66,166,179,181-184,186,190,216,227,229,238-239,242,244-301,358-359,367,390,421,434,473,493,559,610,621,648,668-669,691-693,738,750,836,911-913,981,984,1029,1050,1069-1072,1077,1114,1129,1147-1148,1159,1167,1196-1198,1202,1216-1219,1223,1227-1232,1247,1263,1319,1345,1370,1455,1475,1486-1487,1497,1520,1523,1532,1546,1596,1645,1651
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/ModelCardViewModel.cs
+  s_13d57ddad0c9ec::t_085c42f1606236 3,50,52,54,56,58,62,64,66,70,72,74,77,140,150-152,204,226,230,270,283-287
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/ModelManagerViewModel.cs
+  s_13d57ddad0c9ec::t_82a275118157dd 5,57-58,67,70-71,79-80,83-87,90-91,94-95,98,193,223,227,241,245,255
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/ModelsPage.xaml
+  s_13d57ddad0c9ec::t_ff199d226dc8b1 7,187,193,197,200,203,206,220,224,228,252,272,282-283,314,317,323,327,331,374,402,407,410,416,420,454,498,501,504,530,537,542,558,560,580,599,607,625,642,650,652,679,695,707,710,724,726,744,768,771,782,804,806,813
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/ModelsPage.xaml.cs
+  s_13d57ddad0c9ec::t_b35c9af98a5af1 7,264,322,325,380,387,390,398,426,489,503,505-506
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Queue/QueuePage.xaml
+  s_13d57ddad0c9ec::t_9ab22daecdea8d 4,85,133,135,137,139,164,171,190,195-196,200,203,206,209,220
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Queue/QueuePage.xaml.cs
+  s_13d57ddad0c9ec::t_a53deb52533c0b 6,74-76,79,81,83,90
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Queue/QueueViewModel.cs
+  s_13d57ddad0c9ec::t_e1ebcaca58a5c3 5,47,242-243,248-249,253,257,259-260,348-349,352,397,411-412,420,439,449,454,468,482-483,485,487,493,497,501
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Settings/FolderCard.cs
+  s_13d57ddad0c9ec::t_573e4eff370129 3,74,80,120-121
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Settings/HotkeysSection.cs
+  s_13d57ddad0c9ec::t_24a4ff05914397 5,28,100
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Settings/SettingsPage.xaml
+  s_13d57ddad0c9ec::t_28eeafa4bc1ed8 5,34,38-39
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Settings/SettingsPage.xaml.cs
+  s_13d57ddad0c9ec::t_b010dbdb32a647 5,103-104,130,139-140,143
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Settings/SimpleSections.cs
+  s_13d57ddad0c9ec::t_603f272be0d61e 3,23,47,49,51,77,101-104,108-109,111-112,116-118,120-121,125-149,153-155
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Settings/SpeechSection.cs
+  s_13d57ddad0c9ec::t_764b4ba57b7314 5,27,30,32-35,39,50,52-55,59,72,84,95-96,121
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Settings/StorageFolderUi.cs
+  s_13d57ddad0c9ec::t_bbaef6000c9a59 6,103,177
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Settings/StorageSection.cs
+  s_13d57ddad0c9ec::t_24d0d803ae9360 6,25-27,29,40-41,53,62,68,89,112,154-156,201-202,224-225
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/Settings/TranslationSection.cs
+  s_13d57ddad0c9ec::t_ea53ca0b52a9dd 4,11,27-29,35,50,58,60,68-69,89,93,105,125,148,157-159,161,165-166
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/SpeakerModelsViewModel.cs
+  s_13d57ddad0c9ec::t_951e2a0ca54c73 5,18-19,28,39-40,45,126,141
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/TranslationModelCardViewModel.cs
+  s_13d57ddad0c9ec::t_cb99df8db0900e 3,70,95-100,110-112,136
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/UpdateDialog.cs
+  s_13d57ddad0c9ec::t_66f30ac4d84d3b 1-140
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/Audio/AlsaAudioSourceFactory.cs
+  s_13d57ddad0c9ec::t_78d0aff3ff4049 5,21,29
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/Audio/AndroidAudioSourceFactory.cs
+  s_13d57ddad0c9ec::t_39e0c261b19d99 11,26,28,62
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/Audio/IosAudioSourceFactory.cs
+  s_13d57ddad0c9ec::t_519904be4dcfaf 11,25,27,63,129
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/History/HistoryMaintenance.cs
+  s_13d57ddad0c9ec::t_2d5fb04b915f52 3,54,68
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/History/LiveRecordingSession.cs
+  s_13d57ddad0c9ec::t_5ba0baf4ea9de2 6,82,245
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/Jobs/GemmaJobExecutors.cs
+  s_13d57ddad0c9ec::t_58b58ba037415f 3,21
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/Jobs/JobRunner.cs
+  s_13d57ddad0c9ec::t_eaf0b7942ac7a6 2,216,372,374,376
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/Jobs/OfflineRecognitionJob.cs
+  s_13d57ddad0c9ec::t_6b707fd3e218ce 10,79,82,84,92,101,105
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/Platform/TrayIndicator.cs
+  s_13d57ddad0c9ec::t_3f166fb004b336 2,63
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/Platform/WindowsTextInjector.cs
+  s_13d57ddad0c9ec::t_a7d0a89ed460a0 9
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/RecognitionService.cs
+  s_13d57ddad0c9ec::t_8af52f8ed68097 7,15,47,308,410
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/TranslationModelInfo.cs
+  s_13d57ddad0c9ec::t_53bf9949fbcdcf 9
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/TranslationService.cs
+  s_13d57ddad0c9ec::t_209eb22ccf32e5 6,12,122-123,185,231,257-258
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/UpdateService.cs
+  s_13d57ddad0c9ec::t_a6f60dca5c54aa 1-284
+apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+  s_13d57ddad0c9ec::t_72f91de76eb1bd 58-71,107
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/Localization/LocTests.cs
+  s_13d57ddad0c9ec::t_ab479846930e22 1-106
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/Localization/LocalizationCatalogTests.cs
+  s_13d57ddad0c9ec::t_d6f56f75df8025 1-208
+docs/ci.md
+  s_13d57ddad0c9ec::t_ab605a32420c19 77-80,99,104,106-107,194-195,295,308,321
+docs/store/imports/make-listing-v2.0.0.py
+  s_eb087e51b96daa::t_8b481c56e4a2bc 1-1039
+docs/store/imports/v2.0.0/listingData-store-import-v2.0.0.0-multilang.csv
+  s_eb087e51b96daa::t_7932964536150e 1-947
+docs/store/uno-store-release.md
+  s_eb087e51b96daa::t_e0760ccbe61575 1-142
+libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/README.md
+  s_13d57ddad0c9ec::t_e961cc951f7fbf 4-5
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/README.md
+  s_13d57ddad0c9ec::t_d87154254caa71 109
+libraries/SpeechLib/src/SpeechLib.ModelDownload/ModelCatalog.cs
+  s_13d57ddad0c9ec::t_c1910a3774e975 4-5
+libraries/SpeechLib/src/SpeechLib.ModelDownload/ModelDescriptor.cs
+  s_13d57ddad0c9ec::t_4402ee4c7561bd 36-37
+libraries/SpeechLib/src/SpeechLib.ModelDownload/ModelFileSelection.cs
+  s_13d57ddad0c9ec::t_7d80baab650825 8
+libraries/SpeechLib/src/SpeechLib.ModelDownload/ModelMetricsFormatter.cs
+  s_13d57ddad0c9ec::t_87afedd8e0485b 5
+libraries/SpeechLib/src/SpeechLib/ModelFormats/ModelFolderScanner.cs
+  s_13d57ddad0c9ec::t_32e80be33dfb41 9
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronUtteranceTests.cs
+  s_13d57ddad0c9ec::t_0cda9f81f8e994 1204
+libraries/SpeechLib/tests/SpeechLib.Tests/Unit_AssemblyLayeringTests.cs
+  s_13d57ddad0c9ec::t_861016d87b9c68 15-16
+libraries/SpeechLib/tests/SpeechLib.Tests/Unit_ModelCatalogPresentationTests.cs
+  s_13d57ddad0c9ec::t_6083f3197cacf7 7
+libraries/VoiceType.Hotkeys/README.md
+  s_13d57ddad0c9ec::t_bba317d18471cc 41
+tools/store-screenshots/shot.ps1
+  s_cef34b8e280e4f::t_778168c41abbb2 1-91
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/PluralRules.cs
+  s_13d57ddad0c9ec::t_399e679040f809 1-81
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Chat.json
+  s_28d9f90ae5111d::t_93232cdf965191 1-155
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Help.json
+  s_13d57ddad0c9ec::t_77b5acb5c4aa96 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/History.json
+  s_28d9f90ae5111d::t_7e04fce780894d 1-256
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Main.json
+  s_13d57ddad0c9ec::t_0019b2925c23be 1-121
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Queue.json
+  s_13d57ddad0c9ec::t_0d454b8060f72d 1-93
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Services.json
+  s_13d57ddad0c9ec::t_7f98b9d6af4c0c 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Speakers.json
+  s_28d9f90ae5111d::t_57d5ca5d4f201d 1-105
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Queue.json
+  s_20375d925f4130::t_a5795802d8c233 1-93
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Chat.json
+  s_28d9f90ae5111d::t_020d7f4c1cf42b 1-155
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Help.json
+  s_fd7437b811b7c9::t_38bfe2b5ab0026 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Main.json
+  s_13d57ddad0c9ec::t_c8d137ec725611 1-121
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Models.json
+  s_fd7437b811b7c9::t_a9ceb42acf2f57 1-247
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Queue.json
+  s_fd7437b811b7c9::t_03892e405505ce 1-93
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Recording.json
+  s_a2671403c94dee::t_5b880313b631a1 1-236
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Services.json
+  s_fd7437b811b7c9::t_9732ccc957a0be 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Speakers.json
+  s_13d57ddad0c9ec::t_ad3772adb2e694 1-105
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Chat.json
+  s_28d9f90ae5111d::t_55c1df7d12263e 1-155
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Help.json
+  s_28d9f90ae5111d::t_ef623f501f5c27 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Main.json
+  s_28d9f90ae5111d::t_583c2bd32103dc 1-121
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Queue.json
+  s_28d9f90ae5111d::t_ba389b52c4e1e9 1-93
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Services.json
+  s_28d9f90ae5111d::t_2196b728b87a9c 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Speakers.json
+  s_28d9f90ae5111d::t_98e482f2492916 1-105
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Chat.json
+  s_fd7437b811b7c9::t_2b12c383875016 1-155
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Help.json
+  s_b34c8e0834bed1::t_32f732f4d52878 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/History.json
+  s_fd7437b811b7c9::t_27c9b3082cf2a5 1-256
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Main.json
+  s_b34c8e0834bed1::t_d7b08fed479851 1-121
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Models.json
+  s_fd7437b811b7c9::t_1e3d93738e8b50 1-247
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Recording.json
+  s_fd7437b811b7c9::t_1b4b5ae8906d53 1-236
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Services.json
+  s_b34c8e0834bed1::t_a5375658c5ac06 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Speakers.json
+  s_a2671403c94dee::t_cbc1ab7842e058 1-105
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Chat.json
+  s_a2671403c94dee::t_fd96eb592eddab 1-147
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Help.json
+  s_a2671403c94dee::t_042810a8af03f0 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/History.json
+  s_b34c8e0834bed1::t_bee7077fac4dba 1-239
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Main.json
+  s_a2671403c94dee::t_a759e6ce818dd1 1-119
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Models.json
+  s_b34c8e0834bed1::t_210751c6f6186a 1-238
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Queue.json
+  s_b34c8e0834bed1::t_37da281097fdbf 1-90
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Recording.json
+  s_b34c8e0834bed1::t_dfefcbe9e4397e 1-228
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Services.json
+  s_b34c8e0834bed1::t_c2ed5a7b21f3c1 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Chat.json
+  s_28d9f90ae5111d::t_7b3c9c437ddda7 1-147
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Help.json
+  s_28d9f90ae5111d::t_744db9d25a667a 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/History.json
+  s_b34c8e0834bed1::t_0387b7ff35b536 1-239
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Main.json
+  s_b34c8e0834bed1::t_efb4dde49ba6f1 1-119
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Models.json
+  s_b34c8e0834bed1::t_3020a720b8a7a3 1-238
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Queue.json
+  s_b34c8e0834bed1::t_1cb94c992685d4 1-90
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Recording.json
+  s_b34c8e0834bed1::t_37a97300e80786 1-228
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Services.json
+  s_b34c8e0834bed1::t_91490edb4aa60d 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Settings.json
+  s_b34c8e0834bed1::t_41fe5dd0b8d55c 1-223
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Speakers.json
+  s_b34c8e0834bed1::t_4f7b325868ed12 1-102
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Help.json
+  s_28d9f90ae5111d::t_d0a6bb3adc7dad 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Main.json
+  s_28d9f90ae5111d::t_92d497326d6451 1-121
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Queue.json
+  s_28d9f90ae5111d::t_32850af4df9a35 1-93
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Recording.json
+  s_28d9f90ae5111d::t_9a0ccd509b5c39 1-236
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Services.json
+  s_28d9f90ae5111d::t_733b0188d658bc 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Settings.json
+  s_28d9f90ae5111d::t_4a0e89ff6dca73 1-225
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Speakers.json
+  s_28d9f90ae5111d::t_56aaa896d97ca9 1-105
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Chat.json
+  s_a2671403c94dee::t_55f66fe46b54bb 1-171
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Help.json
+  s_a2671403c94dee::t_a2c6cf20630c45 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/History.json
+  s_a2671403c94dee::t_19d32c290ca444 1-276
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Main.json
+  s_a2671403c94dee::t_96b733ee38d3de 1-125
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Queue.json
+  s_a2671403c94dee::t_9cb5895043b765 1-99
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Recording.json
+  s_a2671403c94dee::t_ce6aeb59e43595 1-252
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Services.json
+  s_a2671403c94dee::t_3069a1fa0db4c0 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Help.json
+  s_fd7437b811b7c9::t_94ec16be4b123b 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/History.json
+  s_fd7437b811b7c9::t_00297076af4ac5 1-256
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Main.json
+  s_fd7437b811b7c9::t_05ae83a1493cd7 1-121
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Models.json
+  s_fd7437b811b7c9::t_689be6afac2605 1-247
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Queue.json
+  s_a2671403c94dee::t_7d4bc006106a77 1-93
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Services.json
+  s_fd7437b811b7c9::t_47efbd5dfa630a 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Settings.json
+  s_fd7437b811b7c9::t_cbce088ec8df5e 1-225
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Speakers.json
+  s_fd7437b811b7c9::t_34c23c5677b42b 1-105
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Chat.json
+  s_a2671403c94dee::t_b37c2e032814db 1-171
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Help.json
+  s_13d57ddad0c9ec::t_32f7945f491a9e 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/History.json
+  s_a2671403c94dee::t_29a307e137c70f 1-276
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Main.json
+  s_13d57ddad0c9ec::t_8c299a2fd72913 1-125
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Models.json
+  s_a2671403c94dee::t_793a0bf8bc267c 1-265
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Queue.json
+  s_a2671403c94dee::t_64348e67877669 1-99
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Services.json
+  s_a2671403c94dee::t_4ee612b1c98c57 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Settings.json
+  s_a2671403c94dee::t_b6ded02cb9e633 1-229
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Speakers.json
+  s_a2671403c94dee::t_0e3e32f905cbd1 1-111
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Chat.json
+  s_b34c8e0834bed1::t_3905d05a3ff8b3 1-147
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Help.json
+  s_b34c8e0834bed1::t_d23e6be9ec1e17 1-14
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/History.json
+  s_28d9f90ae5111d::t_f47ae1093f1fb5 1-239
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Main.json
+  s_b34c8e0834bed1::t_12fc74356f0547 1-119
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Queue.json
+  s_b34c8e0834bed1::t_bb2808d0c655f9 1-90
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Services.json
+  s_13d57ddad0c9ec::t_4f24199730cd40 1-45
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Settings.json
+  s_b34c8e0834bed1::t_ffa14515c9f64d 1-223
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Speakers.json
+  s_b34c8e0834bed1::t_afd34cde1ded4c 1-102
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/UiLanguage.cs
+  s_13d57ddad0c9ec::t_04aa2365272b74 1-15
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/AppPaths.cs
+  s_eb087e51b96daa::t_3c9aaf70882515 16-19,28-29,34-42
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/HistoryUiDeleteText.cs
+  s_b16b4f5af6f06a::t_ab3942b36308ce 1-2,13-23,32,34-35,37-38,42-43,46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/ModelCatalogText.cs
+  s_b16b4f5af6f06a::t_a3087ac2038429 1-97
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/PackageIdentity.cs
+  s_eb087e51b96daa::t_c6247b30743719 1-47
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Settings/WinUiDataImport.cs
+  s_eb087e51b96daa::t_ef723621a609f3 1-251
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Updates/AppUpdates.cs
+  s_13d57ddad0c9ec::t_c950d122da03c1 1-210
+apps/VoiceType.Uno/src/VoiceType.Uno/MainPage.xaml
+  s_13d57ddad0c9ec::t_7efa376749062a 6,130-131,142,145,153,162,170-171,179,188,204,215-216,220,232,237,249-250,254,258,261-262,268,270-277,279,282,290,299,307,325,332,336,343,373-374,407,443-472,487-488,508-509,559-560,567,574,595,600,606-607,623,642,645,668,672,676-677,705-706,737-738
+apps/VoiceType.Uno/src/VoiceType.Uno/Packaging/Windows/Package.appxmanifest
+  s_eb087e51b96daa::t_c8442d7165cb2a 1-54
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/MainViewModel.UiLanguage.cs
+  s_13d57ddad0c9ec::t_1c52958ab46f8b 1-23
+apps/VoiceType.Uno/src/VoiceType.Uno/build-store-msix.ps1
+  s_eb087e51b96daa::t_c0dce07cce399f 1-136
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/Settings/WinUiDataImportTests.cs
+  s_eb087e51b96daa::t_8a4ad26f38032c 1-274
+apps/VoiceType.Uno/tests/VoiceType.Uno.Tests/Updates/AppUpdatesTests.cs
+  s_13d57ddad0c9ec::t_8f94b8ec128f71 1-114
+docs/localization.md
+  s_13d57ddad0c9ec::t_3ee37661d936bc 1-44
+tools/scripts/check-ui-strings.py
+  s_13d57ddad0c9ec::t_2e3936932aff6c 1-86
+tools/store-screenshots/README.md
+  s_eb087e51b96daa::t_9665b6dbce541b 1-20
+tools/store-screenshots/make-audio.ps1
+  s_eb087e51b96daa::t_42bf09321fd914 1-49
+tools/store-screenshots/seed.cs
+  s_eb087e51b96daa::t_ba37aaa6f70d0d 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "c1b8f5f31747aba489d47c9382e349b691b3b6a9",
+  "prompts": {},
+  "sessions": {
+    "s_13d57ddad0c9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f3c1a7d-4d02-4295-9d0e-8f091fc2075f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_20375d925f4130": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a70cbce6a86ddc3bb",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_28d9f90ae5111d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac38f7faab899a8ae",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_a2671403c94dee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac927e0caebf473b6",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_b16b4f5af6f06a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a93a40fbbf0022f7f",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_b34c8e0834bed1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab14e0a9f9af2cbcf",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_cef34b8e280e4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb5d7507-c3c8-4c17-b986-45794f9db9af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_eb087e51b96daa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2d0af68-b430-48a7-b5d2-b66703a65b9b",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_fd7437b811b7c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5a351cf7a7d9db97",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
