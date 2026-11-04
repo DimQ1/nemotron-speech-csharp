@@ -25,7 +25,7 @@ public static class ModelPathResolver
 
         // A concrete ModelPath is more authoritative than directory scanning, but only
         // after the current root/selection pair has had a chance to resolve (same order
-        // as VoiceType.WinUI).
+        // as the former VoiceType.WinUI, whose settings are imported).
         AddCandidate(candidates, seen, settings.ModelPath);
 
         if (configuredRoot is not null)

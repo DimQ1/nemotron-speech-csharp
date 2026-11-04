@@ -1,4 +1,5 @@
 using System.Globalization;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -60,7 +61,7 @@ public static class SpeakerViews
 
         return new SpeakerLayerView(
             layerInfo.Id, layerInfo.Run, layerInfo.Version,
-            runInfo?.Model?.Title ?? runInfo?.Model?.Folder ?? "Speaker detection",
+            runInfo?.Model?.Title ?? runInfo?.Model?.Folder ?? Loc.T("Speakers.Layer.DefaultModelTitle"),
             runInfo?.Mode?.Preset ?? "offline",
             people, segments, stats);
     }

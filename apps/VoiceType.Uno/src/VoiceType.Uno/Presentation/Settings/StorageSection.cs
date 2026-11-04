@@ -3,6 +3,7 @@ using VoiceType.Uno.History;
 using VoiceType.Uno.Presentation.Controls;
 using VoiceType.Uno.Presentation.History;
 using VoiceType.Uno.Services;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Presentation.SettingsUi;
 
@@ -21,8 +22,11 @@ internal sealed class StorageSection : SettingsSectionView
     private FolderCard? _data;
     private int _version;
 
+    /// <summary>The last measurement, so the hub line is worded at use time (in the current interface language).</summary>
+    private static StorageUsage? s_lastUsage;
+
     /// <summary>The last measured Storage line of the hub (shared with the page so the list shows it too).</summary>
-    public static string? LastHubLine { get; private set; }
+    public static string? LastHubLine => s_lastUsage is { } usage ? StorageOverview.HubLine(usage) : null;
 
     public StorageSection(SettingsContext context) : base(context)
     {
@@ -33,8 +37,8 @@ internal sealed class StorageSection : SettingsSectionView
         var stack = new StackPanel();
 
         // ── Summary ───────────────────────────────────────────────────────
-        stack.Children.Add(SettingsRows.SectionHeader("Used by VoiceType"));
-        _totalText = new TextBlock { Text = "Measuring…", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 15, VerticalAlignment = VerticalAlignment.Center };
+        stack.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Storage.UsedBy")));
+        _totalText = new TextBlock { Text = Loc.T("Settings.Storage.Measuring"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 15, VerticalAlignment = VerticalAlignment.Center };
         _freeText = SettingsRows.Secondary("");
         _freeText.HorizontalAlignment = HorizontalAlignment.Right;
         _freeText.TextAlignment = TextAlignment.Right;
@@ -46,7 +50,7 @@ internal sealed class StorageSection : SettingsSectionView
         top.Children.Add(_freeText);
 
         _bar = new Grid { Height = 8, CornerRadius = new CornerRadius(4), Background = SettingsRows.SystemBrush("ControlStrokeColorDefaultBrush") };
-        AutomationProperties.SetName(_bar, "Disk usage");
+        AutomationProperties.SetName(_bar, Loc.T("Settings.Storage.DiskUsage"));
         _legend = new ChipWrapPanel { Spacing = 12 };
         var summary = new StackPanel { Spacing = 10, Padding = new Thickness(12) };
         summary.Children.Add(top);
@@ -55,13 +59,13 @@ internal sealed class StorageSection : SettingsSectionView
         stack.Children.Add(new Border { Style = SettingsRows.StyleOf("HistoryCardStyle"), Child = summary });
 
         // ── Models: the existing block ────────────────────────────────────
-        stack.Children.Add(SettingsRows.SectionHeader("Models"));
+        stack.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Storage.ModelsHeader")));
         _models = new ModelStorageBlock();
         _models.StorageChanged += () => _ = RefreshAsync();
         stack.Children.Add(_models);
 
         // ── Your data ─────────────────────────────────────────────────────
-        stack.Children.Add(SettingsRows.SectionHeader("Your data"));
+        stack.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Storage.YourData")));
         _recordings = new FolderCard(this, "recordings", OpenRecordings, () => _ = ChangeRecordingsAsync(), RestartNow, () => _ = DontMoveRecordingsAsync())
         {
             Extra = RetentionLink(),
@@ -82,7 +86,7 @@ internal sealed class StorageSection : SettingsSectionView
 
     private UIElement RetentionLink()
     {
-        var link = SettingsRows.LinkRow(SettingsRows.Icon(Symbol.Clock), "Retention and limits",
+        var link = SettingsRows.LinkRow(SettingsRows.Icon(Symbol.Clock), Loc.T("Settings.Storage.Retention"),
             SettingsText.RetentionLinkSubtitle(Ctx.Live.History), () => Ctx.Navigate(typeof(HistorySettingsPage), null));
         var holder = new StackPanel();
         holder.Children.Add(SettingsRows.Divider());
@@ -105,7 +109,7 @@ internal sealed class StorageSection : SettingsSectionView
                 return;
             RenderSummary(usage);
             RenderCards(usage);
-            LastHubLine = StorageOverview.HubLine(usage);
+            s_lastUsage = usage;
             Ctx.RefreshHub();
         }
         catch (Exception ex)
@@ -147,9 +151,9 @@ internal sealed class StorageSection : SettingsSectionView
         _legend.Children.Clear();
         var items = new[]
         {
-            ("Models", usage.ModelsBytes, segments[0].Color),
-            ("Recordings", usage.RecordingsBytes, segments[1].Color),
-            ("App data", usage.DataBytes, segments[2].Color),
+            (Loc.T("Settings.Storage.Legend.Models"), usage.ModelsBytes, segments[0].Color),
+            (StorageFolderText.Title(StorageFolderKind.Recordings), usage.RecordingsBytes, segments[1].Color),
+            (StorageFolderText.Title(StorageFolderKind.Data), usage.DataBytes, segments[2].Color),
         };
         for (var i = 0; i < items.Length; i++)
         {
@@ -194,8 +198,8 @@ internal sealed class StorageSection : SettingsSectionView
                 warn = true;
             }
 
-            var facts = measured is null ? "Measuring…" : StorageFolderText.RecordingsFacts(measured.RecordingsBytes, measured.Recordings);
-            _recordings.Render(new FolderCardModel(Symbol.Microphone, "Recordings", StorageFolderText.What(StorageFolderKind.Recordings), configured,
+            var facts = measured is null ? Loc.T("Settings.Storage.Measuring") : StorageFolderText.RecordingsFacts(measured.RecordingsBytes, measured.Recordings);
+            _recordings.Render(new FolderCardModel(Symbol.Microphone, StorageFolderText.Title(StorageFolderKind.Recordings), StorageFolderText.What(StorageFolderKind.Recordings), configured,
                 StorageFolderText.Badge(configured, AppPaths.SessionsDir), facts, null, note, warn, restart, dontMove));
         }
 
@@ -217,8 +221,8 @@ internal sealed class StorageSection : SettingsSectionView
                 warn = true;
             }
 
-            var facts = measured is null ? "Measuring…" : StorageFolderText.DataFacts(measured.DataBytes);
-            _data.Render(new FolderCardModel(Symbol.Library, "App data", StorageFolderText.What(StorageFolderKind.Data), root,
+            var facts = measured is null ? Loc.T("Settings.Storage.Measuring") : StorageFolderText.DataFacts(measured.DataBytes);
+            _data.Render(new FolderCardModel(Symbol.Library, StorageFolderText.Title(StorageFolderKind.Data), StorageFolderText.What(StorageFolderKind.Data), root,
                 StorageFolderText.Badge(root, AppPaths.DefaultDataRoot), facts, StorageFolderText.DataContents, note, warn, restart, dontMove));
         }
     }

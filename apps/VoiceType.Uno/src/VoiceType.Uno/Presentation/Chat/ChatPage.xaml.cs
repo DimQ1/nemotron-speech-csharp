@@ -3,6 +3,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Presentation.History;
 using Windows.ApplicationModel.DataTransfer;
 using VirtualKey = Windows.System.VirtualKey;
@@ -123,7 +124,7 @@ public sealed partial class ChatPage : Page
     private void ApplyEmptyTexts()
     {
         var many = ViewModel.Sources.Count > 1;
-        EmptyTitle.Text = many ? "Ask Gemma about these recordings" : "Ask Gemma about this recording";
+        EmptyTitle.Text = many ? Loc.T("Chat.Page.EmptyTitleMany") : Loc.T("Chat.Page.EmptyTitleOne");
     }
 
     // Store events arrive on any thread; our own turn saves messages, so only idle chats reload.
@@ -473,15 +474,15 @@ public sealed partial class ChatPage : Page
         {
             SendIcon.Symbol = Symbol.Stop;
             SendButton.IsEnabled = true;
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SendButton, "Stop");
-            ToolTipService.SetToolTip(SendButton, "Stop");
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SendButton, Loc.T("Chat.Composer.Stop"));
+            ToolTipService.SetToolTip(SendButton, Loc.T("Chat.Composer.Stop"));
         }
         else
         {
             SendIcon.Symbol = Symbol.Send;
             SendButton.IsEnabled = ViewModel.CanSend && MessageBox.Text.Trim().Length > 0;
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SendButton, "Send");
-            ToolTipService.SetToolTip(SendButton, "Send");
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SendButton, Loc.T("Chat.Composer.Send"));
+            ToolTipService.SetToolTip(SendButton, Loc.T("Chat.Composer.Send"));
         }
     }
 
@@ -507,14 +508,14 @@ public sealed partial class ChatPage : Page
     private void More_Click(object sender, RoutedEventArgs e)
     {
         var menu = new MenuFlyout();
-        menu.Items.Add(Item("Rename", Symbol.Rename, RenameAsync));
-        menu.Items.Add(Item("Sources…", Symbol.List, ShowSourcesAsync));
-        menu.Items.Add(Item("Add recordings…", Symbol.Add, AddRecordingsAsync));
-        var export = Item("Export as Markdown…", Symbol.Save, () => ChatDialogs.ExportAsync(XamlRoot, ViewModel.ChatId));
+        menu.Items.Add(Item(Loc.T("Chat.Menu.Rename"), Symbol.Rename, RenameAsync));
+        menu.Items.Add(Item(Loc.T("Chat.Menu.Sources"), Symbol.List, ShowSourcesAsync));
+        menu.Items.Add(Item(Loc.T("Chat.Menu.AddRecordings"), Symbol.Add, AddRecordingsAsync));
+        var export = Item(Loc.T("Chat.Menu.Export"), Symbol.Save, () => ChatDialogs.ExportAsync(XamlRoot, ViewModel.ChatId));
         export.IsEnabled = ViewModel.HasMessages;
         menu.Items.Add(export);
         menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(Item("Delete", Symbol.Delete, DeleteAsync));
+        menu.Items.Add(Item(Loc.T("Chat.Menu.Delete"), Symbol.Delete, DeleteAsync));
         menu.ShowAt((FrameworkElement)sender);
     }
 
@@ -572,8 +573,8 @@ public sealed partial class ChatPage : Page
         if (ChatServices.Current is not { } service || ViewModel.Chat is not { } chat)
             return;
         var already = chat.Sources.Select(s => s.RecordingId).ToHashSet(StringComparer.Ordinal);
-        var picked = await ChatDialogs.PickRecordingsAsync(XamlRoot, "Add recordings", "Add {0}", already,
-            "Already in this chat", "The first answer after adding prepares summaries of the new recordings.");
+        var picked = await ChatDialogs.PickRecordingsAsync(XamlRoot, Loc.T("Chat.Picker.AddTitle"), "Chat.Picker.Add", already,
+            Loc.T("Chat.Picker.Already"), Loc.T("Chat.Picker.AddHint"));
         if (picked is null || picked.Count == 0)
             return;
         try
@@ -586,7 +587,7 @@ public sealed partial class ChatPage : Page
         }
         catch (Exception ex)
         {
-            await HistoryDialogs.ShowMessageAsync(XamlRoot, "Could not add the recordings", ex.Message);
+            await HistoryDialogs.ShowMessageAsync(XamlRoot, Loc.T("Chat.Picker.AddFailed"), ex.Message);
         }
         await ReloadAsync();
     }
@@ -596,13 +597,13 @@ public sealed partial class ChatPage : Page
         if ((sender as FrameworkElement)?.DataContext is not SourceChipViewModel chip)
             return;
         var menu = new MenuFlyout();
-        var open = Item("Open recording", Symbol.OpenFile,
+        var open = Item(Loc.T("Chat.Sources.OpenRecordingMenu"), Symbol.OpenFile,
             () => { ChatServices.OpenRecording(XamlRoot, new RecordingTarget(chip.RecordingId)); return Task.CompletedTask; });
         open.IsEnabled = chip.Exists;
         menu.Items.Add(open);
         if (chip.IsOutdated)
-            menu.Items.Add(Item("Use current version " + chip.CurrentVersion, Symbol.Sync, () => UseCurrentAsync(chip.RecordingId)));
-        var remove = Item("Remove from chat", Symbol.Delete, () => RemoveSourceAsync(chip.RecordingId));
+            menu.Items.Add(Item(Loc.F("Chat.Sources.UseCurrent", chip.CurrentVersion), Symbol.Sync, () => UseCurrentAsync(chip.RecordingId)));
+        var remove = Item(Loc.T("Chat.Sources.RemoveFromChat"), Symbol.Delete, () => RemoveSourceAsync(chip.RecordingId));
         remove.IsEnabled = ViewModel.Sources.Count > 1;
         menu.Items.Add(remove);
         menu.ShowAt((FrameworkElement)sender);

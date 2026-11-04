@@ -1,0 +1,7 @@
+{
+  "Language.Prompt.Title": "Choose the interface language",
+  "Language.Prompt.Hint": "You can change it any time in the main menu, section Language.",
+  "Language.Prompt.Continue": "Continue",
+  "Language.Menu.Header": "Interface",
+  "Language.Menu.Name": "Interface language"
+}

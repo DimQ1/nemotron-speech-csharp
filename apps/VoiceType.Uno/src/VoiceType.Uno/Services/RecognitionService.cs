@@ -4,6 +4,7 @@ using SpeechLib.Models;
 using SpeechLib.PostProcessing;
 using SpeechLib.Providers;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -11,8 +12,7 @@ namespace VoiceType.Uno.Services;
 /// Cross-platform recognition pipeline: owns the capture loop and wires an
 /// <see cref="IAudioSource"/> (platform capture) into an
 /// <see cref="IStreamingSpeechRecognizer"/> (SpeechLib model session).
-/// Mirrors VoiceType.WinUI RecognitionService behavior minus Win32 dependencies:
-/// model lifecycle is separated from capture lifecycle; the model stays loaded
+/// Free of Win32 dependencies; the model lifecycle is separated from capture lifecycle; the model stays loaded
 /// across Start/Stop cycles.
 /// </summary>
 public sealed class RecognitionService : IDisposable, IAsyncDisposable
@@ -44,7 +44,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
     /// <summary>
     /// The transcript the recognizer has settled on so far in this session (finished utterances plus the stable part
     /// of the current one, never revised), raised on the decode thread whenever it grows. This is what gets typed into
-    /// other apps while recording, as in the WinUI app.
+    /// other apps while recording.
     /// </summary>
     public event Action<string>? CommittedResult;
 
@@ -305,7 +305,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
             }
             catch (OperationCanceledException)
             {
-                Error?.Invoke(new TimeoutException("Recognition shutdown timed out."));
+                Error?.Invoke(new TimeoutException(Loc.T("Services.Recognition.ShutdownTimedOut")));
             }
             catch (Exception ex)
             {
@@ -407,7 +407,7 @@ public sealed class RecognitionService : IDisposable, IAsyncDisposable
         catch (Exception ex)
         {
             tap = null;
-            Error?.Invoke(new InvalidOperationException($"History capture stopped: {ex.Message}", ex));
+            Error?.Invoke(new InvalidOperationException(Loc.F("Services.Recognition.HistoryCaptureStopped", ex.Message), ex));
         }
     }
 

@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Input;
 using VoiceType.Uno.Services;
 using Windows.System;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Presentation.SettingsUi;
 
@@ -24,7 +25,7 @@ internal sealed class HotkeysSection : SettingsSectionView
         _bannerHost = new StackPanel();
         stack.Children.Add(_bannerHost);
 
-        stack.Children.Add(SettingsRows.SectionHeader("Work in any app"));
+        stack.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Hotkeys.Header")));
         var rows = new List<UIElement>();
         foreach (var (action, icon) in new[]
                  {
@@ -96,7 +97,7 @@ internal sealed class HotkeyField
             BorderThickness = new Thickness(0),
             HorizontalAlignment = HorizontalAlignment.Right,
         };
-        AutomationProperties.SetName(_button, HotkeyText.Title(action) + " shortcut");
+        AutomationProperties.SetName(_button, Loc.F("Settings.Hotkeys.FieldName", HotkeyText.Title(action)));
         _button.Click += (_, _) =>
         {
             // The key that ended a recording (Space, Enter) would click the button again on key-up.

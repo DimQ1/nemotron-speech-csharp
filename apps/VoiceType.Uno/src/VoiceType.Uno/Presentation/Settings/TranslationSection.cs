@@ -1,13 +1,14 @@
 using Microsoft.UI.Xaml.Automation;
 using VoiceType.Uno.History;
 using VoiceType.Uno.Services;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Presentation.SettingsUi;
 
 /// <summary>Translation and Gemma: live translation switch and target, engine, Gemma model and compute or server address, extra instructions.</summary>
 internal sealed class TranslationSection : SettingsSectionView
 {
-    private const string OtherLanguage = "Other…";
+    private static string OtherLanguage => Loc.T("Settings.Translation.Other");
 
     private StackPanel? _engineHost;
     private StackPanel? _targetHost;
@@ -23,15 +24,15 @@ internal sealed class TranslationSection : SettingsSectionView
         var stack = new StackPanel();
 
         // ── Live translation ──────────────────────────────────────────────
-        stack.Children.Add(SettingsRows.SectionHeader("Live translation"));
-        var toggle = SettingsRows.Switch(live.TranslationEnabled, "Translate while recording", on => Ctx.Change(s => s.TranslationEnabled = on));
-        var toggleRow = SettingsRows.Row(SettingsRows.Icon(Symbol.Globe), "Translate while recording", "Also in the menu as a mode", toggle);
+        stack.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Translation.LiveHeader")));
+        var toggle = SettingsRows.Switch(live.TranslationEnabled, Loc.T("Settings.Translation.Toggle.Title"), on => Ctx.Change(s => s.TranslationEnabled = on));
+        var toggleRow = SettingsRows.Row(SettingsRows.Icon(Symbol.Globe), Loc.T("Settings.Translation.Toggle.Title"), Loc.T("Settings.Translation.Toggle.Detail"), toggle);
         _targetHost = new StackPanel();
         stack.Children.Add(SettingsRows.Card(toggleRow, _targetHost));
         BuildTarget();
 
         // ── Engine ────────────────────────────────────────────────────────
-        stack.Children.Add(SettingsRows.SectionHeader("Engine"));
+        stack.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Translation.EngineHeader")));
         var engine = SettingsText.NormalizeEngine(live.TranslationBackend);
         var radios = SettingsText.EngineOptions
             .Select(o => (UIElement)SettingsRows.Radio(this, "engine", o, o.Value == engine, value =>
@@ -46,7 +47,7 @@ internal sealed class TranslationSection : SettingsSectionView
         BuildEngine(engine);
 
         // ── Instructions ──────────────────────────────────────────────────
-        stack.Children.Add(SettingsRows.SectionHeader("Instructions"));
+        stack.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Translation.InstructionsHeader")));
         var prompt = new TextBox
         {
             Text = live.TranslationSystemPrompt ?? "",
@@ -54,9 +55,9 @@ internal sealed class TranslationSection : SettingsSectionView
             TextWrapping = TextWrapping.Wrap,
             MinHeight = 88,
             MaxHeight = 200,
-            PlaceholderText = "For example: keep product names in English.",
+            PlaceholderText = Loc.T("Settings.Translation.Instructions.Placeholder"),
         };
-        AutomationProperties.SetName(prompt, "Extra instructions for Gemma");
+        AutomationProperties.SetName(prompt, Loc.T("Settings.Translation.Instructions.Title"));
         prompt.LostFocus += (_, _) =>
         {
             var text = prompt.Text.Trim();
@@ -64,8 +65,8 @@ internal sealed class TranslationSection : SettingsSectionView
                 Ctx.Change(s => s.TranslationSystemPrompt = text);
         };
         stack.Children.Add(SettingsRows.Card(
-            SettingsRows.StackRow(SettingsRows.Icon(Symbol.Document), "Extra instructions for Gemma",
-                "Added to the built-in prompt: terms, style, casing", prompt, out _)));
+            SettingsRows.StackRow(SettingsRows.Icon(Symbol.Document), Loc.T("Settings.Translation.Instructions.Title"),
+                Loc.T("Settings.Translation.Instructions.Detail"), prompt, out _)));
         return stack;
     }
 
@@ -85,11 +86,11 @@ internal sealed class TranslationSection : SettingsSectionView
             : Math.Max(0, SettingsText.TranslationTargets.ToList().FindIndex(t =>
                 string.Equals(t.Value, stored?.Trim(), StringComparison.OrdinalIgnoreCase) || string.Equals(t.Title, stored?.Trim(), StringComparison.OrdinalIgnoreCase)));
 
-        var customBox = SettingsRows.MonoBox(custom ? stored! : "", "Translate into: language code or name", "ru, de or Belarusian");
+        var customBox = SettingsRows.MonoBox(custom ? stored! : "", Loc.T("Settings.Translation.Target.CustomName"), Loc.T("Settings.Translation.Target.CustomPlaceholder"));
         customBox.Visibility = custom ? Visibility.Visible : Visibility.Collapsed;
         customBox.Margin = new Thickness(12, 0, 12, 8);
 
-        var combo = SettingsRows.Combo(names, index, "Translate into", i =>
+        var combo = SettingsRows.Combo(names, index, Loc.T("Settings.Translation.Target.Title"), i =>
         {
             if (i == names.Count - 1)
             {
@@ -101,7 +102,7 @@ internal sealed class TranslationSection : SettingsSectionView
             var code = SettingsText.TranslationTargets[i].Value;
             Ctx.Change(s => s.TranslationTargetLanguage = code);
         }, minWidth: 140);
-        _targetHost.Children.Add(SettingsRows.Row(SettingsRows.Icon(Symbol.World), "Translate into", "A code (ru, de) or a name (Belarusian)", combo));
+        _targetHost.Children.Add(SettingsRows.Row(SettingsRows.Icon(Symbol.World), Loc.T("Settings.Translation.Target.Title"), Loc.T("Settings.Translation.Target.Detail"), combo));
 
         customBox.LostFocus += (_, _) =>
         {
@@ -121,7 +122,7 @@ internal sealed class TranslationSection : SettingsSectionView
 
         if (engine == SettingsText.EngineHttp)
         {
-            var url = SettingsRows.MonoBox(Ctx.Live.TranslationServerUrl, "Server address", "http://localhost:9379");
+            var url = SettingsRows.MonoBox(Ctx.Live.TranslationServerUrl, Loc.T("Settings.Translation.Server.Title"), "http://localhost:9379");
             _urlError = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 12, Visibility = Visibility.Collapsed, Text = SettingsText.ServerUrlError };
             _urlError.Foreground = SettingsRows.ThemeBrush(this, "HistoryDangerBrush");
             var commit = () =>
@@ -144,7 +145,7 @@ internal sealed class TranslationSection : SettingsSectionView
             };
             var holder = SettingsRows.Column(url, _urlError);
             _engineHost.Children.Add(SettingsRows.Card(
-                SettingsRows.StackRow(SettingsRows.Icon(Symbol.World), "Server address", SettingsText.ServerUrlHint, holder, out _)));
+                SettingsRows.StackRow(SettingsRows.Icon(Symbol.World), Loc.T("Settings.Translation.Server.Title"), SettingsText.ServerUrlHint, holder, out _)));
             return;
         }
 
@@ -153,16 +154,16 @@ internal sealed class TranslationSection : SettingsSectionView
         var state = llm.StateOf(model);
         var installed = state is LlmModelState.Installed or LlmModelState.Active;
         var detail = HistoryUiFormat.Join(
-            installed ? "Installed" : state == LlmModelState.Downloading ? "Downloading" : "Not downloaded",
-            "Shared by translation, chats and titles",
-            $"{ModelStorageLayout.LlmFolderName}/ in Model storage",
+            installed ? Loc.T("Settings.Translation.Model.Installed") : state == LlmModelState.Downloading ? Loc.T("Settings.Translation.Model.Downloading") : Loc.T("Settings.Translation.Model.NotDownloaded"),
+            Loc.T("Settings.Translation.Model.Shared"),
+            Loc.F("Settings.Speech.Model.Folder", ModelStorageLayout.LlmFolderName),
             HistoryUiFormat.Bytes(model.SizeBytes));
-        var link = SettingsRows.LinkRow(SettingsRows.Icon(Symbol.Library), model.Title, detail, () => Ctx.Navigate(typeof(ModelsPage), ModelsTab.Translation), "Gemma model");
+        var link = SettingsRows.LinkRow(SettingsRows.Icon(Symbol.Library), model.Title, detail, () => Ctx.Navigate(typeof(ModelsPage), ModelsTab.Translation), Loc.T("Settings.Translation.Model.Name"));
 
         var compute = SettingsRows.Segmented(this, SettingsText.GemmaComputeOptions, SettingsText.NormalizeGemmaCompute(Ctx.Live.TranslationComputeBackend), "gemma-compute",
             value => _ = SwitchGemmaComputeAsync(llm, value));
-        var computeRow = SettingsRows.StackRow(SettingsRows.Icon(Symbol.Setting), "Run Gemma on",
-            "Graphics card is faster but needs a working graphics driver", compute, out _);
+        var computeRow = SettingsRows.StackRow(SettingsRows.Icon(Symbol.Setting), Loc.T("Settings.Translation.Compute.Title"),
+            Loc.T("Settings.Translation.Compute.Detail"), compute, out _);
         _engineHost.Children.Add(SettingsRows.Card(link, computeRow));
     }
 

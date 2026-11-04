@@ -1,4 +1,5 @@
 using SpeechLib.ModelDownload;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -23,13 +24,12 @@ public static class DownloadProgressFormatter
             return new DownloadQueueProgress(
                 totals.Active > 0,
                 totals.Percent,
-                $"Downloading models: {totals.Percent:F0}% " +
-                $"({FormatBytes(totals.DownloadedBytes)} / {FormatBytes(totals.TotalBytes)}, " +
-                $"{totals.Completed}/{totalJobs} done)");
+                Loc.F("Main.Download.QueueBytes", totals.Percent, FormatBytes(totals.DownloadedBytes),
+                    FormatBytes(totals.TotalBytes), totals.Completed, totalJobs));
         }
 
         return totals.Active > 0
-            ? new DownloadQueueProgress(true, totals.Percent, $"Downloading models... ({totals.Completed}/{totalJobs} done)")
+            ? new DownloadQueueProgress(true, totals.Percent, Loc.F("Main.Download.Queue", totals.Completed, totalJobs))
             : DownloadQueueProgress.Empty;
     }
 
@@ -40,15 +40,15 @@ public static class DownloadProgressFormatter
     public static string? DescribeJob(DownloadJob job) =>
         job.IsActive
             ? job.FilesTotal > 0
-                ? $"Downloading model... {job.Percent:F0}% ({job.FilesDone}/{job.FilesTotal} files)"
-                : "Downloading model..."
+                ? Loc.F("Main.Download.JobFiles", job.Percent, job.FilesDone, job.FilesTotal)
+                : Loc.T("Main.Download.Job")
             : null;
 
     public static string FormatBytes(long bytes) => bytes switch
     {
-        >= 1L << 30 => $"{bytes / (double)(1L << 30):F2} GB",
-        >= 1L << 20 => $"{bytes / (double)(1L << 20):F1} MB",
-        >= 1L << 10 => $"{bytes / (double)(1L << 10):F0} KB",
-        _ => $"{bytes} B"
+        >= 1L << 30 => Loc.F("Main.Bytes.GB", bytes / (double)(1L << 30)),
+        >= 1L << 20 => Loc.F("Main.Bytes.MB", bytes / (double)(1L << 20)),
+        >= 1L << 10 => Loc.F("Main.Bytes.KB", bytes / (double)(1L << 10)),
+        _ => Loc.F("Main.Bytes.B", bytes)
     };
 }

@@ -1,6 +1,7 @@
 # VoiceType.Uno
 
-Cross-platform port of the VoiceType.WinUI dictation app, built on **Uno Platform** (Skia Desktop).
+The VoiceType dictation app, built on **Uno Platform** (Skia Desktop). It started as a cross-platform port of the
+former VoiceType.WinUI app, which it has replaced (also in the Microsoft Store, see `docs/store/uno-store-release.md`).
 Primary target platform: **Linux (Ubuntu, X11)**. Windows/macOS desktop work through the same Skia shell.
 
 ## Status
@@ -14,7 +15,7 @@ Primary target platform: **Linux (Ubuntu, X11)**. Windows/macOS desktop work thr
 | Speech model inference on plain ONNX Runtime (CPU EP) | ✅ Via `SpeechLib.Providers` (Nemotron, Parakeet TDT, Qwen3-ASR, VibeVoice) |
 | Global hotkeys on Linux (Wayland + X11) | ✅ `VoiceType.Hotkeys` library — XDG GlobalShortcuts portal (xdg-desktop-portal ≥ 1.18, GNOME 44+/KDE Plasma 5.27+); Null fallback on older compositors |
 | Text injection on Linux | ✅ `LinuxTextInjector` — types straight into the focused window, clipboard untouched: XTest on X11 (any layout, Unicode via scratch keycodes), ydotool on Wayland (ASCII only), xdotool fallback. Only text the backend cannot type (non-ASCII on ydotool) goes through clipboard (wl-copy / xclip / xsel) + paste chord |
-| Text injection on Windows (WinUI 3 head) | ✅ `WindowsTextInjector` — SendInput Unicode key events typed into the focused window, clipboard untouched (parity with VoiceType.WinUI's SendInput strategy); user32 clipboard only for the Copy action |
+| Text injection on Windows (WinUI 3 head) | ✅ `WindowsTextInjector` — SendInput Unicode key events typed into the focused window, clipboard untouched; user32 clipboard only for the Copy action |
 | Loopback ("WhatYouHear") capture on Linux | ✅ `PulseAudioSourceFactory` — `@DEFAULT_MONITOR@`; Mic / Loopback / Mix modes |
 | Live translation (LiteRT-LM, Gemma 4) | ✅ In-process native backend via SpeechLib.LiteRT.Native (LiteRtLmSharp natives ship for win-x64 **and linux-x64** — no sidecar/server needed); HTTP backend (SpeechLib.LiteRT) as fallback when the model is not downloaded |
 | Model downloader (auto-download on first run + button in Settings) | ✅ Ported |
@@ -22,11 +23,11 @@ Primary target platform: **Linux (Ubuntu, X11)**. Windows/macOS desktop work thr
 | Help dialog (hotkeys, injection tools, audio sources, data paths) | ✅ Added |
 | Taskbar/tray recording indicator | ✅ Linux: StatusNotifierItem (AppIndicator) via `VoiceType.Hotkeys` D-Bus; icon click toggles recording |
 | Linux CI smoke test | ✅ `.github/workflows/voicetype-uno-linux-smoke.yml` (xvfb + PulseAudio null source) |
-| Audio mixer window | ⬜ Not ported (WinUI version is NAudio/WASAPI-based) |
+| Audio mixer window | ⬜ Not ported (the former WinUI app had one, NAudio/WASAPI-based) |
 
 ## Architecture
 
-The port deliberately fixes the main tech-debt findings of the WinUI app:
+The port deliberately fixed the main tech-debt findings of the former WinUI app:
 
 - **Platform code behind abstractions** — `IPlatformHotkeyService`, `IPlatformTextInjector`,
   `IAudioSourceFactory` (SpeechLib contract). No `user32.dll` P/Invoke in services.
@@ -69,7 +70,7 @@ The single project has two target frameworks:
 | TFM | Head | Purpose |
 |---|---|---|
 | `net10.0-desktop` | Skia | **Primary** — Linux (X11); also runs on Windows/macOS for quick UI checks |
-| `net10.0-windows10.0.26100` | WinAppSDK (WinUI 3) | Windows parity testing: native WinUI look, unpackaged (no MSIX identity clash with VoiceType.WinUI) |
+| `net10.0-windows10.0.26100` | WinAppSDK (WinUI 3) | Native WinUI look; unpackaged by default, the Microsoft Store MSIX (identity `DimQ1.VoiceType`) with `-p:VoiceTypeMsix=true` / `build-store-msix.ps1` |
 
 ```powershell
 # Build both heads

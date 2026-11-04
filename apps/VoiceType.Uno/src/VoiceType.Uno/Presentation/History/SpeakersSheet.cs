@@ -2,6 +2,7 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Presentation.Controls;
 
 namespace VoiceType.Uno.Presentation.History;
@@ -20,7 +21,7 @@ internal sealed partial class SpeakersSheet : ContentDialog
     private readonly StackPanel _list = new() { Spacing = 4 };
     private readonly TextBlock _subtitle = new() { FontSize = 12, Opacity = 0.7, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _banner = new() { FontSize = 13, TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
-    private readonly Button _cancelMerge = new() { Content = "Cancel merge", MinHeight = 44, Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Left };
+    private readonly Button _cancelMerge = new() { Content = Loc.T("Speakers.Sheet.CancelMerge"), MinHeight = 44, Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Left };
     private string? _mergeFrom;
     private bool _rebuilding;
 
@@ -30,9 +31,9 @@ internal sealed partial class SpeakersSheet : ContentDialog
         _recordingId = recordingId;
         _versionId = versionId;
 
-        Title = "Speakers";
-        PrimaryButtonText = "Detect again…";
-        CloseButtonText = "Done";
+        Title = Loc.T("Speakers.Sheet.Title");
+        PrimaryButtonText = Loc.T("Speakers.Sheet.DetectAgain");
+        CloseButtonText = Loc.T("Speakers.Sheet.Done");
         DefaultButton = ContentDialogButton.Close;
 
         var panel = new StackPanel { Spacing = 8, MinWidth = 280, MaxWidth = 520, Padding = new Thickness(0, 0, 8, 0) };
@@ -42,7 +43,7 @@ internal sealed partial class SpeakersSheet : ContentDialog
         panel.Children.Add(_list);
         panel.Children.Add(new TextBlock
         {
-            Text = "The detection itself is never changed: renaming, colours and merging only change how people are shown. Split undoes a merge.",
+            Text = Loc.T("Speakers.Sheet.Footer"),
             FontSize = 11,
             Opacity = 0.65,
             TextWrapping = TextWrapping.Wrap,
@@ -86,11 +87,11 @@ internal sealed partial class SpeakersSheet : ContentDialog
         if (SpeakerServices.Current is not { } service || SpeakersUi.PersonOf(service.GetLayer(recordingId, versionId), personId) is not { } person)
             return;
         var box = new TextBox { Text = person.Name, MinHeight = 44, MaxLength = 60 };
-        AutomationProperties.SetName(box, "Speaker name");
+        AutomationProperties.SetName(box, Loc.T("Speakers.Rename.BoxName"));
         var dialog = new ContentDialog
         {
             XamlRoot = xamlRoot,
-            Title = "Rename speaker",
+            Title = Loc.T("Speakers.Rename.Title"),
             Content = new StackPanel
             {
                 Spacing = 8,
@@ -98,11 +99,11 @@ internal sealed partial class SpeakersSheet : ContentDialog
                 Children =
                 {
                     box,
-                    new TextBlock { Text = "The name is used everywhere this recording shows the speaker: transcript, exports and chats.", FontSize = 12, Opacity = 0.7, TextWrapping = TextWrapping.Wrap },
+                    new TextBlock { Text = Loc.T("Speakers.Rename.Hint"), FontSize = 12, Opacity = 0.7, TextWrapping = TextWrapping.Wrap },
                 },
             },
-            PrimaryButtonText = "Save",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Loc.T("Speakers.Rename.Save"),
+            CloseButtonText = Loc.T("Speakers.Rename.Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
         dialog.Opened += (_, _) => { box.Focus(FocusState.Programmatic); box.SelectAll(); };
@@ -141,7 +142,7 @@ internal sealed partial class SpeakersSheet : ContentDialog
         var layer = Layer;
         if (layer is null)
         {
-            _subtitle.Text = "No speakers detected for this version yet.";
+            _subtitle.Text = Loc.T("Speakers.Sheet.NoLayer");
             return;
         }
 
@@ -151,7 +152,7 @@ internal sealed partial class SpeakersSheet : ContentDialog
         if (!merging)
             _mergeFrom = null;
         _banner.Visibility = merging || warning is not null ? Visibility.Visible : Visibility.Collapsed;
-        _banner.Text = merging ? $"Merge {SpeakersUi.NameOf(layer, _mergeFrom)} into… Pick the person to keep." : warning ?? "";
+        _banner.Text = merging ? Loc.F("Speakers.Sheet.MergeBanner", SpeakersUi.NameOf(layer, _mergeFrom)) : warning ?? "";
         _cancelMerge.Visibility = merging ? Visibility.Visible : Visibility.Collapsed;
 
         foreach (var person in SpeakersUi.ByTalkTime(layer))
@@ -177,7 +178,7 @@ internal sealed partial class SpeakersSheet : ContentDialog
             VerticalAlignment = VerticalAlignment.Top,
             IsEnabled = !merging,
         };
-        AutomationProperties.SetName(colorButton, $"Colour of {person.Name}: {SpeakerSwatch.NameOf(person.Color)}. Change");
+        AutomationProperties.SetName(colorButton, Loc.F("Speakers.Sheet.ColorButtonName", person.Name, SpeakerSwatch.NameOf(person.Color)));
         colorButton.Click += (_, _) => ShowPalette(colorButton, person);
         grid.Children.Add(colorButton);
 
@@ -190,7 +191,7 @@ internal sealed partial class SpeakersSheet : ContentDialog
         else
         {
             var box = new TextBox { Text = person.Name, MinHeight = 44, IsEnabled = !merging, MaxLength = 60 };
-            AutomationProperties.SetName(box, "Name of " + person.Name);
+            AutomationProperties.SetName(box, Loc.F("Speakers.Sheet.NameBoxName", person.Name));
             void Commit()
             {
                 if (_rebuilding)
@@ -217,8 +218,8 @@ internal sealed partial class SpeakersSheet : ContentDialog
         if (!merging && SpeakersUi.MergeHint(layer, person) is { } hint)
         {
             text.Children.Add(new TextBlock { Text = hint, FontSize = 12, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)Application.Current.Resources["SystemFillColorCautionBrush"] });
-            var merge = new Button { Content = "Merge…", MinHeight = 44, HorizontalAlignment = HorizontalAlignment.Left };
-            AutomationProperties.SetName(merge, $"Merge {person.Name} into another speaker");
+            var merge = new Button { Content = Loc.T("Speakers.Sheet.Merge"), MinHeight = 44, HorizontalAlignment = HorizontalAlignment.Left };
+            AutomationProperties.SetName(merge, Loc.F("Speakers.Sheet.MergeName", person.Name));
             merge.Click += (_, _) => BeginMerge(person);
             text.Children.Add(merge);
         }
@@ -227,8 +228,8 @@ internal sealed partial class SpeakersSheet : ContentDialog
 
         if (merging && !isSource)
         {
-            var keep = new Button { Content = "Merge here", MinHeight = 44, VerticalAlignment = VerticalAlignment.Top, Style = AccentStyle() };
-            AutomationProperties.SetName(keep, $"Merge into {person.Name}");
+            var keep = new Button { Content = Loc.T("Speakers.Sheet.MergeHere"), MinHeight = 44, VerticalAlignment = VerticalAlignment.Top, Style = AccentStyle() };
+            AutomationProperties.SetName(keep, Loc.F("Speakers.Sheet.MergeHereName", person.Name));
             keep.Click += (_, _) =>
             {
                 var from = _mergeFrom!;
@@ -251,7 +252,7 @@ internal sealed partial class SpeakersSheet : ContentDialog
                 BorderThickness = new Thickness(0),
                 VerticalAlignment = VerticalAlignment.Top,
             };
-            AutomationProperties.SetName(more, $"{person.Name}: more actions");
+            AutomationProperties.SetName(more, Loc.F("Speakers.Sheet.MoreName", person.Name));
             more.Click += (_, _) => ShowMore(more, layer, person);
             Grid.SetColumn(more, 2);
             grid.Children.Add(more);
@@ -280,24 +281,24 @@ internal sealed partial class SpeakersSheet : ContentDialog
     private void ShowMore(FrameworkElement anchor, SpeakerLayerView layer, SpeakerPerson person)
     {
         var menu = new MenuFlyout();
-        var only = new MenuFlyoutItem { Text = "Show only " + person.Name, Icon = new SymbolIcon(Symbol.Filter), MinHeight = 44 };
+        var only = new MenuFlyoutItem { Text = Loc.F("Speakers.Sheet.ShowOnly", person.Name), Icon = new SymbolIcon(Symbol.Filter), MinHeight = 44 };
         only.Click += (_, _) =>
         {
             FilterRequest = person.Id;
             Hide();
         };
         menu.Items.Add(only);
-        var merge = new MenuFlyoutItem { Text = "Merge into…", Icon = new SymbolIcon(Symbol.Sync), MinHeight = 44, IsEnabled = layer.People.Count > 1 };
+        var merge = new MenuFlyoutItem { Text = Loc.T("Speakers.Sheet.MergeInto"), Icon = new SymbolIcon(Symbol.Sync), MinHeight = 44, IsEnabled = layer.People.Count > 1 };
         merge.Click += (_, _) => BeginMerge(person);
         menu.Items.Add(merge);
-        var split = new MenuFlyoutItem { Text = "Split (undo a merge)", Icon = new SymbolIcon(Symbol.Undo), MinHeight = 44 };
+        var split = new MenuFlyoutItem { Text = Loc.T("Speakers.Sheet.Split"), Icon = new SymbolIcon(Symbol.Undo), MinHeight = 44 };
         split.Click += (_, _) =>
         {
             _service.SplitPerson(_recordingId, person.Id);
             Rebuild();
         };
         menu.Items.Add(split);
-        var colour = new MenuFlyoutItem { Text = "Change colour", Icon = new SymbolIcon(Symbol.FontColor), MinHeight = 44 };
+        var colour = new MenuFlyoutItem { Text = Loc.T("Speakers.Sheet.ChangeColour"), Icon = new SymbolIcon(Symbol.FontColor), MinHeight = 44 };
         colour.Click += (_, _) => ShowPalette(anchor, person);
         menu.Items.Add(colour);
         menu.ShowAt(anchor);
@@ -321,7 +322,7 @@ internal sealed partial class SpeakersSheet : ContentDialog
             if (selected)
                 face.Children.Add(new FontIcon { Glyph = "", FontSize = 14, Foreground = new SolidColorBrush(Microsoft.UI.Colors.White), IsHitTestVisible = false });
             var button = new Button { Content = face, Width = 44, Height = 44, Padding = new Thickness(0) };
-            AutomationProperties.SetName(button, SpeakerSwatch.NameOf(index) + (selected ? ", selected" : ""));
+            AutomationProperties.SetName(button, selected ? Loc.F("Speakers.Sheet.ColorSelected", SpeakerSwatch.NameOf(index)) : SpeakerSwatch.NameOf(index));
             button.Click += (_, _) =>
             {
                 flyout.Hide();

@@ -1,4 +1,5 @@
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services.Jobs;
 
@@ -212,7 +213,7 @@ public sealed class JobRunner : IAsyncDisposable
     {
         if (!_executors.TryGetValue(job.Kind, out var executor))
         {
-            _queue.Fail(job.Id, $"This version cannot run '{job.Kind}' jobs.");
+            _queue.Fail(job.Id, Loc.F("Services.Jobs.UnknownKind", job.Kind));
             return;
         }
 
@@ -368,11 +369,11 @@ public sealed class JobRunner : IAsyncDisposable
 
     private static JobNotice Notice(HistoryJob job, JobRunStatus? status)
     {
-        var title = job.Kind == HistoryJobKind.Rerecognize ? "Re-recognizing a recording" : JobDisplay.KindTitle(job.Kind);
+        var title = job.Kind == HistoryJobKind.Rerecognize ? Loc.T("Services.Jobs.Notice.Rerecognizing") : JobDisplay.KindTitle(job.Kind);
         if (status is null)
-            return new JobNotice(title, "Starting…", null);
+            return new JobNotice(title, Loc.T("Services.Jobs.Notice.Starting"), null);
         var percent = (int)Math.Floor(status.Fraction * 100);
-        var text = status.Detail ?? $"{percent}% · {JobDisplay.FormatEta(status.Remaining)}";
+        var text = status.Detail ?? Loc.F("Services.Jobs.Notice.Progress", percent, JobDisplay.FormatEta(status.Remaining));
         return new JobNotice(title, text, percent);
     }
 

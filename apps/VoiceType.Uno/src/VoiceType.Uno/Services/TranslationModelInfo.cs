@@ -6,7 +6,7 @@ using SpeechLib.ModelDownload;
 /// Static metadata for the default LiteRT language model (Gemma 4 E2B IT in
 /// <c>.litertlm</c> format): a thin view over <see cref="LlmModelCatalog.Default"/>, kept for the first-run banner,
 /// the translate page and the E2B card. The other models are managed by <see cref="ILlmModelService"/>.
-/// Mirrors VoiceType.WinUI TranslationModelInfo but resolves the path through
+/// Resolves the path through
 /// the cross-platform <see cref="AppPaths"/> (XDG data dir on Linux).
 /// </summary>
 public static class TranslationModelInfo

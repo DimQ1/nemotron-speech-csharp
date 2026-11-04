@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -149,7 +150,10 @@ public static class TranscriptExport
         transcript.Segments.Where(s => !string.IsNullOrWhiteSpace(s.Text));
 }
 
-/// <summary>Chat → Markdown document (title, sources with version/model, messages, citations).</summary>
+/// <summary>
+/// Chat → Markdown document (title, sources with version/model, messages, citations). The labels a reader sees
+/// (Created, Sources, Conversation, You, ...) follow the interface language; dates, ids and version kinds stay as stored.
+/// </summary>
 public static class ChatExport
 {
     /// <param name="recordings">Manifests of the chat's sources by id; missing ones render as deleted.</param>
@@ -160,38 +164,37 @@ public static class ChatExport
 
         var sb = new StringBuilder();
         sb.Append("# ").Append(chat.Title).Append("\n\n");
-        sb.Append("Created ").Append(FormatDate(chat.CreatedAt));
-        if (chat.UpdatedAt != chat.CreatedAt)
-            sb.Append(" · updated ").Append(FormatDate(chat.UpdatedAt));
+        sb.Append(chat.UpdatedAt != chat.CreatedAt
+            ? Loc.F("History.ChatExport.CreatedUpdated", FormatDate(chat.CreatedAt), FormatDate(chat.UpdatedAt))
+            : Loc.F("History.ChatExport.Created", FormatDate(chat.CreatedAt)));
         sb.Append("\n\n");
 
-        sb.Append("## Sources\n\n");
+        sb.Append("## ").Append(Loc.T("History.ChatExport.Sources")).Append("\n\n");
         foreach (var source in chat.Sources)
         {
             if (recordings.TryGetValue(source.RecordingId, out var manifest))
             {
                 var version = manifest.FindVersion(source.VersionId);
-                sb.Append("- **").Append(manifest.EffectiveTitle).Append("** — recorded ")
-                  .Append(FormatDate(manifest.StartedAt))
-                  .Append(", version ").Append(source.VersionId);
+                sb.Append("- **").Append(manifest.EffectiveTitle).Append("** — ")
+                  .Append(Loc.F("History.ChatExport.SourceRecorded", FormatDate(manifest.StartedAt), source.VersionId));
                 if (version is not null)
                 {
                     sb.Append(" (").Append(version.Kind).Append(')');
                     var model = version.Model?.Title ?? version.Model?.Folder;
                     if (!string.IsNullOrWhiteSpace(model))
-                        sb.Append(", model ").Append(model);
+                        sb.Append(Loc.F("History.ChatExport.SourceModel", model));
                 }
                 sb.Append('\n');
             }
             else
             {
-                sb.Append("- *Recording ").Append(source.RecordingId).Append(" (deleted)* — version ")
-                  .Append(source.VersionId).Append('\n');
+                sb.Append("- *").Append(Loc.F("History.ChatExport.SourceDeleted", source.RecordingId)).Append("* — ")
+                  .Append(Loc.F("History.ChatExport.SourceVersion", source.VersionId)).Append('\n');
             }
         }
         sb.Append('\n');
 
-        sb.Append("## Conversation\n");
+        sb.Append("## ").Append(Loc.T("History.ChatExport.Conversation")).Append('\n');
         foreach (var message in chat.Messages.Where(m => m.Role != ChatRoles.System))
         {
             sb.Append("\n### ").Append(RoleName(message.Role)).Append(" · ")
@@ -199,8 +202,8 @@ public static class ChatExport
             sb.Append(message.Text.Trim()).Append('\n');
             if (message.Citations.Count > 0)
             {
-                sb.Append("\nSources: ")
-                  .Append(string.Join(", ", message.Citations.Select(c => FormatCitation(c, recordings))))
+                sb.Append('\n')
+                  .Append(Loc.F("History.ChatExport.Citations", string.Join(", ", message.Citations.Select(c => FormatCitation(c, recordings)))))
                   .Append('\n');
             }
         }
@@ -213,7 +216,7 @@ public static class ChatExport
         ArgumentNullException.ThrowIfNull(citation);
         var title = recordings.TryGetValue(citation.RecordingId, out var m)
             ? m.EffectiveTitle
-            : "Recording " + citation.RecordingId;
+            : Loc.F("History.ChatExport.CitedRecording", citation.RecordingId);
         var time = TranscriptExport.FormatShort(citation.StartSec);
         // [Weekly sync · Anna 03:20] when the cited line had a speaker.
         return string.IsNullOrWhiteSpace(citation.Speaker)
@@ -223,7 +226,7 @@ public static class ChatExport
 
     private static string RoleName(string role) => role switch
     {
-        ChatRoles.User => "You",
+        ChatRoles.User => Loc.T("History.ChatExport.You"),
         ChatRoles.Assistant => "Gemma",
         _ => role,
     };

@@ -3,12 +3,13 @@ using SpeechLib.LiteRT;
 using SpeechLib.LiteRT.Native;
 using SpeechLib.Llm;
 using SpeechLib.Translation;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
 /// <summary>
 /// Live translation for the UNO heads: a thin adapter over the shared
-/// <see cref="LiveTranslationSession"/> (the same engine VoiceType.WinUI uses) that
+/// <see cref="LiveTranslationSession"/> that
 /// picks the backend — the in-process Gemma 4 model when it is downloaded, otherwise
 /// an OpenAI-compatible LiteRT-LM server — and reconnects when settings change.
 /// </summary>
@@ -118,8 +119,8 @@ public sealed class TranslationService : IDisposable, IAsyncDisposable
         ResetEngine();
         Log($"backend switched -> {backend} (was {previous})");
         StatusChanged?.Invoke(backend == BackendKind.Native
-            ? "Translation engine: native (in-process)"
-            : "Translation engine: HTTP server");
+            ? Loc.T("Services.Translation.EngineNative")
+            : Loc.T("Services.Translation.EngineHttp"));
     }
 
     /// <summary>
@@ -181,7 +182,7 @@ public sealed class TranslationService : IDisposable, IAsyncDisposable
         _serverUrl = trimmed;
         if (_activeEngine == BackendKind.Http)
             ResetEngine();
-        StatusChanged?.Invoke("Translation server changed");
+        StatusChanged?.Invoke(Loc.T("Services.Translation.ServerChanged"));
     }
 
     /// <summary>Releases the engine once the decode in flight finishes; the next translation reconnects.</summary>
@@ -227,7 +228,7 @@ public sealed class TranslationService : IDisposable, IAsyncDisposable
 
     private async Task<ITextTranslator> ConnectNativeAsync(CancellationToken cancellationToken)
     {
-        StatusChanged?.Invoke("Loading translation model (native)...");
+        StatusChanged?.Invoke(Loc.T("Services.Translation.LoadingNative"));
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var backend = _computeBackend;
         Log($"connecting native: modelPath={TranslationModelInfo.LocalModelPath}, backend={backend}");
@@ -253,8 +254,8 @@ public sealed class TranslationService : IDisposable, IAsyncDisposable
     private async Task<ITextTranslator> ConnectHttpAsync(CancellationToken cancellationToken)
     {
         StatusChanged?.Invoke(_backend == BackendKind.Native && !NativeModelInstalled
-            ? "Model not downloaded — falling back to translation server..."
-            : "Connecting to translation server...");
+            ? Loc.T("Services.Translation.FallbackToServer")
+            : Loc.T("Services.Translation.ConnectingServer"));
 
         Log("connecting http: no native model or http backend forced — using server");
         var translator = new LiteRTLmTranslator(new LiteRTLmOptions

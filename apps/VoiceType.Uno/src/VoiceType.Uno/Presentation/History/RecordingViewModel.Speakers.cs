@@ -1,4 +1,5 @@
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Presentation.History;
 
@@ -30,7 +31,7 @@ public sealed partial class SegmentViewModel
     public string CollapsedText => _row?.CollapsedText ?? "";
     public bool HasCollapsed => CollapsedText.Length > 0;
     public string SpeakerPrefix => HasSpeaker ? SpeakerName + ", " : "";
-    public string HeaderAutomationName => $"{SpeakerName}, rename speaker";
+    public string HeaderAutomationName => Loc.F("Speakers.Segment.RenameName", SpeakerName);
 
     public bool HasOverlap => _labels?.HasOverlap == true;
 
@@ -40,9 +41,9 @@ public sealed partial class SegmentViewModel
 
     public bool HasMarkers => HasOverlap || HasApproximateChange;
 
-    public string MarkerText => HasOverlap && HasApproximateChange ? "Overlapping speech · approximate split"
-        : HasOverlap ? "Overlapping speech"
-        : HasApproximateChange ? "Speaker split is approximate"
+    public string MarkerText => HasOverlap && HasApproximateChange ? Loc.T("Speakers.Segment.OverlapApproximate")
+        : HasOverlap ? Loc.T("Speakers.Segment.Overlap")
+        : HasApproximateChange ? Loc.T("Speakers.Segment.Approximate")
         : "";
 
     public IReadOnlyList<SpeakerTextRun> TextRuns => _runs;

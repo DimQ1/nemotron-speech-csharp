@@ -1,5 +1,6 @@
 using Microsoft.UI.Dispatching;
 using SpeechLib.ModelDownload;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 namespace VoiceType.Uno.Presentation;
 
@@ -46,35 +47,34 @@ public sealed partial class ModelCardViewModel : ObservableObject
 
     // ── Naming and description ─────────────────────────────────────────────
 
-    public string Title => Descriptor.Title;
+    public string Title => ModelCatalogText.Title(Descriptor);
 
-    public string PrecisionChip => Descriptor.PrecisionSummary;
+    public string PrecisionChip => ModelCatalogText.Precision(Descriptor);
 
-    public string WindowChip => Descriptor.WindowSummary;
+    public string WindowChip => ModelCatalogText.Window(Descriptor);
 
-    public string Tagline => Descriptor.Tagline;
+    public string Tagline => ModelCatalogText.Tagline(Descriptor);
 
-    public string Description => Descriptor.Description;
+    public string Description => ModelCatalogText.Description(Descriptor);
 
     // ── Measured properties ───────────────────────────────────────────────
 
-    public string AccuracyText => Descriptor.AccuracyText;
+    public string AccuracyText => ModelCatalogText.Accuracy(Descriptor);
 
-    public string AccuracyDetailText => Descriptor.AccuracyDetailText;
+    public string AccuracyDetailText => ModelCatalogText.AccuracyDetail(Descriptor);
 
-    public string SpeedText => Descriptor.SpeedText;
+    public string SpeedText => ModelCatalogText.Speed(Descriptor);
 
     public string SizeText => Descriptor.SizeText;
 
-    public string LatencyText => Descriptor.LatencyText;
+    public string LatencyText => ModelCatalogText.Latency(Descriptor);
 
-    public string UseCaseText => Descriptor.UseCaseText;
+    public string UseCaseText => ModelCatalogText.UseCase(Descriptor);
 
-    public string MetricsTooltip => Descriptor.MetricsLine;
+    public string MetricsTooltip => ModelCatalogText.MetricsLine(Descriptor);
 
     /// <summary>"Accuracy 5/5" style summary shown with the details.</summary>
-    public string RatingSummary =>
-        $"Accuracy {Rating.Accuracy}/5 · Speed {Rating.Speed}/5 · Size {Rating.Size}/5";
+    public string RatingSummary => Loc.F("Models.Card.RatingSummary", Rating.Accuracy, Rating.Speed, Rating.Size);
 
     // ── Badges ────────────────────────────────────────────────────────────
 
@@ -137,7 +137,7 @@ public sealed partial class ModelCardViewModel : ObservableObject
         ? StatusText
         : _outcome.Length > 0
             ? _outcome
-            : IsInstalled ? "Installed" : "";
+            : IsInstalled ? Loc.T("Models.Card.Status.Installed") : "";
 
     // ── Actions: one primary action by state + the "⋯" menu ──────────────
 
@@ -147,7 +147,9 @@ public sealed partial class ModelCardViewModel : ObservableObject
     /// <summary>Otherwise a plain button: Cancel / Use / In use.</summary>
     public bool ShowSecondaryAction => !ShowDownloadAction;
 
-    public string SecondaryActionText => IsDownloading ? "Cancel" : IsInUse ? "In use" : "Use";
+    public string SecondaryActionText => IsDownloading ? Loc.T("Models.Card.Action.Cancel")
+        : IsInUse ? Loc.T("Models.Card.Action.InUse")
+        : Loc.T("Models.Card.Action.Use");
 
     public bool IsSecondaryActionEnabled => IsDownloading || CanUse;
 
@@ -199,7 +201,7 @@ public sealed partial class ModelCardViewModel : ObservableObject
         _outcome = "";
         IsDownloading = true;
         Progress = 0;
-        StatusText = "Queued";
+        StatusText = Loc.T("Models.Card.Status.Queued");
 
         _job = job;
         _jobHandler = updated =>
@@ -221,11 +223,11 @@ public sealed partial class ModelCardViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            _dispatcher.TryEnqueue(() => _outcome = "Cancelled");
+            _dispatcher.TryEnqueue(() => _outcome = Loc.T("Models.Card.Status.Cancelled"));
         }
         catch (Exception ex)
         {
-            _dispatcher.TryEnqueue(() => _outcome = $"Failed: {ex.Message}");
+            _dispatcher.TryEnqueue(() => _outcome = Loc.F("Models.Card.Status.Failed", ex.Message));
         }
         finally
         {
@@ -265,7 +267,7 @@ public sealed partial class ModelCardViewModel : ObservableObject
         if (_job is not null)
             _owner.Downloads.Cancel(_job);
 
-        StatusText = "Cancelling…";
+        StatusText = Loc.T("Models.Card.Status.Cancelling");
     }
 
     private void UpdateFromJob(DownloadJob job)
@@ -278,11 +280,11 @@ public sealed partial class ModelCardViewModel : ObservableObject
             : "";
         StatusText = job.State switch
         {
-            DownloadJobState.Queued => "Queued",
-            DownloadJobState.Downloading => "Downloading…",
-            DownloadJobState.Completed => "Downloaded",
-            DownloadJobState.Failed => $"Failed: {job.Error}",
-            DownloadJobState.Cancelled => "Cancelled",
+            DownloadJobState.Queued => Loc.T("Models.Card.Status.Queued"),
+            DownloadJobState.Downloading => Loc.T("Models.Card.Status.Downloading"),
+            DownloadJobState.Completed => Loc.T("Models.Card.Status.Downloaded"),
+            DownloadJobState.Failed => Loc.F("Models.Card.Status.Failed", job.Error),
+            DownloadJobState.Cancelled => Loc.T("Models.Card.Status.Cancelled"),
             _ => StatusText
         };
     }

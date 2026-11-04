@@ -100,6 +100,27 @@ public partial class App : Application
         }
     }
 
+    /// <summary>
+    /// The Microsoft Store update from VoiceType.WinUI (same package identity, so the same data folder): converts the WinUI
+    /// settings.json once and moves its translation model into llm/, before the model-storage migration sorts the speech models.
+    /// </summary>
+    private static void ImportWinUiData()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+        try
+        {
+            var report = WinUiDataImport.RunAtStartup(AppPaths.DataRoot, AppPaths.VirtualDataRoot, LogModelStorage);
+            if (report.SettingsImported)
+                LogModelStorage($"VoiceType.WinUI settings taken over (original in {WinUiDataImport.BackupFileName})"
+                    + (report.DroppedSettings.Count == 0 ? "" : $"; defaults for {string.Join(", ", report.DroppedSettings)}"));
+        }
+        catch (Exception ex)
+        {
+            LogModelStorage($"VoiceType.WinUI import failed: {ex}");
+        }
+    }
+
     private static void PrepareModelStorage()
     {
         try
@@ -130,6 +151,7 @@ public partial class App : Application
         // After "Restart now" the previous process may still be closing: wait, so no folder to move is locked.
         VoiceType.Uno.Presentation.SettingsUi.AppRestart.WaitForPreviousInstance();
         PrepareDataLocation();
+        ImportWinUiData();
         PrepareModelStorage();
 
         var builder = this.CreateBuilder(args)
@@ -158,7 +180,7 @@ public partial class App : Application
                         DispatcherQueue.GetForCurrentThread()
                             ?? throw new InvalidOperationException("The UI dispatcher is not available on this thread.")));
 
-                    // One download pipeline, shared with the WinUI app: the Hugging Face
+                    // One download pipeline for the whole app: the Hugging Face
                     // manager from SpeechLib.ModelDownload. Inside WSL the distro cannot
                     // reach huggingface.co, so downloads run through the Windows curl
                     // (WindowsCurlHubTransport); everywhere else plain HTTP is used.
@@ -319,6 +341,9 @@ public partial class App : Application
                             sp => new Presentation.History.FakeReprocessChainEnqueuer(sp.GetRequiredService<VoiceType.Uno.History.JobQueue>()));
 #endif
 
+                    // Updates from GitHub Releases (off in the Store package).
+                    services.AddSingleton<UpdateService>();
+
                     // ---- ViewModels ----
                     services.AddSingleton<MainViewModel>();
                 })
@@ -330,6 +355,12 @@ public partial class App : Application
 #endif
 
         Host = builder.Build();
+
+        // Interface language before any page or view model text exists: the stored choice, else the system language
+        // (the first-run question below confirms it).
+        var settingsStore = Host.Services.GetRequiredService<SettingsStore>();
+        VoiceType.Uno.Localization.Loc.SetLanguage(
+            Presentation.Localization.LanguageSwitcher.StartLanguage(settingsStore.Current.UiLanguage).Code);
 #if DEBUG
         // Debug-only: fake recordings and chats in a VOICETYPE_DATA_ROOT sandbox (chat UI checks).
         Presentation.Chat.DebugChatSeed.RunIfRequested(Host.Services);
@@ -348,6 +379,8 @@ public partial class App : Application
                 activity.Report(mainViewModel.IsRecording);
         };
         Host.Services.GetRequiredService<JobRunner>().Start();
+        if (UpdateService.IsSupported)
+            _ = mainViewModel.CheckForUpdatesOnStartAsync(Host.Services.GetRequiredService<UpdateService>());
 
         // Do not repeat app initialization when the Window already has content,
         // just ensure that the window is active
@@ -368,6 +401,8 @@ public partial class App : Application
             };
             global::Uno.Toolkit.UI.SafeArea.SetInsets(shell, global::Uno.Toolkit.UI.SafeArea.InsetMask.VisibleBounds);
             MainWindow.Content = shell;
+            // A language change rebuilds this frame's pages (no restart); Arabic flips the shell right to left.
+            Presentation.Localization.LanguageSwitcher.Attach(shell, rootFrame);
         }
 
         if (rootFrame.Content == null)
@@ -379,6 +414,11 @@ public partial class App : Application
         }
 #if DEBUG
         Presentation.Chat.DebugChatSeed.NavigateIfRequested(rootFrame, Host.Services);
+#endif
+        // First start: which interface language?
+        Presentation.Localization.LanguagePrompt.ShowOnFirstRun(rootFrame, settingsStore);
+#if DEBUG
+        Presentation.Localization.LanguagePrompt.RunDebugSwitches(rootFrame.DispatcherQueue, settingsStore);
 #endif
         // Ensure the current window is active
         MainWindow.Activate();

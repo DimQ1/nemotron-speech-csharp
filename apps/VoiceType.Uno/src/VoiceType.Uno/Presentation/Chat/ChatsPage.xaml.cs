@@ -2,6 +2,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Presentation.History;
 using VirtualKey = Windows.System.VirtualKey;
 
@@ -169,11 +170,11 @@ public sealed partial class ChatsPage : Page
     {
         if (ChatServices.Current is not { } service)
         {
-            await HistoryDialogs.ShowMessageAsync(XamlRoot, "Chat is not available", "This build has no chat service.");
+            await HistoryDialogs.ShowMessageAsync(XamlRoot, Loc.T("Chat.List.NotAvailableTitle"), Loc.T("Chat.List.NotAvailableBody"));
             return;
         }
-        var picked = await ChatDialogs.PickRecordingsAsync(XamlRoot, "New chat", "Start chat ({0})",
-            new HashSet<string>(), "Already in this chat", "Pick the recordings Gemma should read. You can add or remove them later.");
+        var picked = await ChatDialogs.PickRecordingsAsync(XamlRoot, Loc.T("Chat.Picker.NewTitle"), "Chat.Picker.Start",
+            new HashSet<string>(), Loc.T("Chat.Picker.Already"), Loc.T("Chat.Picker.NewHint"));
         if (picked is null || picked.Count == 0)
             return;
         try
@@ -184,7 +185,7 @@ public sealed partial class ChatsPage : Page
         }
         catch (Exception ex)
         {
-            await HistoryDialogs.ShowMessageAsync(XamlRoot, "Could not start the chat", ex.Message);
+            await HistoryDialogs.ShowMessageAsync(XamlRoot, Loc.T("Chat.Error.StartFailed"), ex.Message);
         }
     }
 
@@ -195,11 +196,11 @@ public sealed partial class ChatsPage : Page
         if (RowOf(sender) is not { } row || sender is not FrameworkElement anchor)
             return;
         var menu = new MenuFlyout();
-        menu.Items.Add(Item("Open", Symbol.OpenFile, () => { Open(row.Id); return Task.CompletedTask; }));
-        menu.Items.Add(Item("Rename", Symbol.Rename, () => RenameAsync(row.Chat)));
-        menu.Items.Add(Item("Export as Markdown…", Symbol.Save, () => ChatDialogs.ExportAsync(XamlRoot, row.Id)));
+        menu.Items.Add(Item(Loc.T("Chat.Menu.Open"), Symbol.OpenFile, () => { Open(row.Id); return Task.CompletedTask; }));
+        menu.Items.Add(Item(Loc.T("Chat.Menu.Rename"), Symbol.Rename, () => RenameAsync(row.Chat)));
+        menu.Items.Add(Item(Loc.T("Chat.Menu.Export"), Symbol.Save, () => ChatDialogs.ExportAsync(XamlRoot, row.Id)));
         menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(Item("Delete", Symbol.Delete, () => DeleteAsync(row.Chat)));
+        menu.Items.Add(Item(Loc.T("Chat.Menu.Delete"), Symbol.Delete, () => DeleteAsync(row.Chat)));
         menu.ShowAt(anchor);
     }
 

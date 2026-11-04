@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml.Automation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Presentation.Controls;
 
 namespace VoiceType.Uno.Presentation.History;
@@ -86,14 +87,14 @@ public sealed partial class SpeakersBar : UserControl
             ChipsRow.Children.Remove(chip);
         _chips.Clear();
 
-        var all = Chip("All speakers", null, selected: !vm.IsFilterActive, "Show all speakers");
+        var all = Chip(Loc.T("Speakers.Bar.All"), null, selected: !vm.IsFilterActive, Loc.T("Speakers.Bar.ShowAll"));
         Insert(all);
         foreach (var person in SpeakersUi.ByTalkTime(layer))
         {
             var text = SpeakersUi.ChipText(layer, person);
             var selected = vm.IsFilterActive && vm.FilterPersonId == person.Id;
             var id = person.Id;
-            var chip = Chip(text, person.Color, selected, selected ? $"{person.Name}, showing only this speaker" : $"Show only {person.Name}");
+            var chip = Chip(text, person.Color, selected, selected ? Loc.F("Speakers.Bar.ShowingOnly", person.Name) : Loc.F("Speakers.Bar.ShowOnly", person.Name));
             chip.Click += (_, _) => FilterRequested?.Invoke(selected ? null : id);
             Insert(chip);
         }
@@ -159,7 +160,7 @@ public sealed partial class SpeakersBar : UserControl
         if (DataContext is not RecordingViewModel vm || vm.Layer is not { } layer)
             return;
         var menu = new MenuFlyout();
-        var all = new ToggleMenuFlyoutItem { Text = "All speakers", IsChecked = !vm.IsFilterActive, MinHeight = 44 };
+        var all = new ToggleMenuFlyoutItem { Text = Loc.T("Speakers.Bar.All"), IsChecked = !vm.IsFilterActive, MinHeight = 44 };
         all.Click += (_, _) => FilterRequested?.Invoke(null);
         menu.Items.Add(all);
         foreach (var person in SpeakersUi.ByTalkTime(layer))
@@ -176,7 +177,7 @@ public sealed partial class SpeakersBar : UserControl
             menu.Items.Add(item);
         }
         menu.Items.Add(new MenuFlyoutSeparator());
-        var manage = new MenuFlyoutItem { Text = "Speakers…", MinHeight = 44 };
+        var manage = new MenuFlyoutItem { Text = Loc.T("Speakers.Bar.Manage"), MinHeight = 44 };
         manage.Click += (_, _) => OpenSheetRequested?.Invoke(this, EventArgs.Empty);
         menu.Items.Add(manage);
         menu.ShowAt((FrameworkElement)sender);

@@ -1,4 +1,5 @@
 using SpeechLib.Diarization;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -39,7 +40,7 @@ public static class DiarizationModelCatalog
     public const string License = DiarizationModelLocator.License;
 
     /// <summary>Attribution line of the model card, shown on the Speakers tab.</summary>
-    public const string Attribution = "Derived from NVIDIA Nemotron-3-Diarization · OpenMDW-1.1";
+    public static string Attribution => Loc.T("Models.Speakers.Attribution");
 
     public static IReadOnlyList<DiarizationCatalogModel> All { get; } =
     [
@@ -58,6 +59,21 @@ public static class DiarizationModelCatalog
     ];
 
     public static DiarizationCatalogModel Recommended => All[0];
+
+    /// <summary>The model's tagline in the current language (the catalog keeps the English one).</summary>
+    public static string TaglineOf(DiarizationCatalogModel model) => Lookup("Models.Speakers." + KeyOf(model) + ".Tagline", model.Tagline);
+
+    /// <summary>The model's description in the current language (the catalog keeps the English one).</summary>
+    public static string DescriptionOf(DiarizationCatalogModel model) => Lookup("Models.Speakers." + KeyOf(model) + ".Description", model.Description);
+
+    private static string KeyOf(DiarizationCatalogModel model) =>
+        new(model.Id.Select(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '.' ? c : '_').ToArray());
+
+    private static string Lookup(string key, string fallback)
+    {
+        var text = Loc.T(key);
+        return text == key ? fallback : text;
+    }
 
     public static DiarizationCatalogModel? Find(string? id) =>
         string.IsNullOrWhiteSpace(id) ? null : All.FirstOrDefault(m => string.Equals(m.Id, id.Trim(), StringComparison.OrdinalIgnoreCase));

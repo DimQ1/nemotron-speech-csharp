@@ -12,8 +12,8 @@ namespace SpeechLib.Tests;
 /// </summary>
 /// <remarks>
 /// Scope: these tests see only the assemblies that reach the output of <c>SpeechLib.Tests</c> (the <c>SpeechLib*.dll</c> files:
-/// core, providers, model download, diarization and what they bring). The apps (CLI, WinUI, Uno) have their own packages and
-/// output, which only <c>tools/scripts/check-no-genai.ps1</c> looks at (restore state, <c>dotnet list package</c>, build output of the three heads).
+/// core, providers, model download, diarization and what they bring). The apps (CLI, Uno) have their own packages and
+/// output, which only <c>tools/scripts/check-no-genai.ps1</c> looks at (restore state, <c>dotnet list package</c>, build output of the two heads).
 /// </remarks>
 public sealed class Unit_AssemblyLayeringTests
 {

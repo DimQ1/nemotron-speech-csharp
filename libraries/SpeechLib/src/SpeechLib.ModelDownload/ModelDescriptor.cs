@@ -33,8 +33,8 @@ public enum ModelUseCase
 
 /// <summary>
 /// A single downloadable ASR model variant published on Hugging Face.
-/// Shared by the WinUI and Uno downloaders so both apps present the same
-/// model catalog.
+/// Used by the Uno model manager, so every screen of the app presents the
+/// same model catalog.
 /// </summary>
 public sealed record ModelDescriptor(
     string CommercialName,

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -167,7 +168,7 @@ public sealed partial class RecordingStore
                 ?? throw new KeyNotFoundException($"Recording {id} has no diarization run {runId}.");
             if (m.CurrentSpeakers.Values.Any(layerId => m.FindSpeakerLayer(layerId)?.Run == runId)
                 || m.Versions.Any(v => m.CurrentSpeakerLayer(v.Id)?.Run == runId))
-                throw new InvalidOperationException("The run labels a current version; make another detection current first.");
+                throw new InvalidOperationException(Loc.T("Speakers.Store.RunInUse"));
 
             foreach (var layer in m.SpeakerLayers.Where(l => l.Run == runId).ToList())
             {

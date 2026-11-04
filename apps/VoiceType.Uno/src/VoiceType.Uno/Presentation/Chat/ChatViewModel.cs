@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Presentation.Chat;
 
@@ -49,7 +50,7 @@ public sealed class ChatMessageViewModel : ObservableObject
     public bool IsUser => Kind == ChatThreadKind.User;
     public bool IsAssistant => Kind == ChatThreadKind.Assistant;
     public bool IsEvent => Kind == ChatThreadKind.Event;
-    public string RoleLabel => IsUser ? "You" : "✦ Gemma";
+    public string RoleLabel => IsUser ? Loc.T("Chat.Role.You") : Loc.T("Chat.Role.Gemma");
     public bool ShowRole => ShowRoleLabel && !IsEvent;
     public bool HasTime => ShowTime && TimeText.Length > 0;
 
@@ -122,7 +123,7 @@ public sealed class ChatMessageViewModel : ObservableObject
     /// <summary>Copy button and time row of an answer.</summary>
     public bool ShowFooter => IsAssistant && !_isStreaming;
 
-    public string AutomationName => (IsUser ? "You: " : IsAssistant ? "Gemma: " : "") + _text;
+    public string AutomationName => IsUser ? Loc.F("Chat.Message.UserName", _text) : IsAssistant ? Loc.F("Chat.Message.GemmaName", _text) : _text;
 
     /// <summary>Marks the streamed answer as stopped (the page keeps the partial text).</summary>
     public void MarkIncomplete(string text)
@@ -137,7 +138,7 @@ public sealed class ChatMessageViewModel : ObservableObject
     {
         Text = message.Text.Trim();
         Citations = citations;
-        TimeText = message.CreatedAt == default ? DateTimeOffset.Now.ToString("HH:mm") : message.CreatedAt.ToLocalTime().ToString("HH:mm");
+        TimeText = message.CreatedAt == default ? DateTimeOffset.Now.ToString("HH:mm", Loc.Culture) : message.CreatedAt.ToLocalTime().ToString("HH:mm", Loc.Culture);
         OnPropertyChanged(nameof(TimeText));
         OnPropertyChanged(nameof(HasTime));
         StatusText = "";
@@ -164,15 +165,17 @@ public sealed class SourceChipViewModel
     public bool IsOutdated { get; }
     public string? CurrentVersion { get; }
     public string Label => ChatUiFormat.Shorten(Title, 26) + " " + VersionId;
-    public string AutomationName => $"{Title}, version {VersionId}" + (IsOutdated ? $", outdated, current is {CurrentVersion}" : "") + ". Actions";
+    public string AutomationName => IsOutdated
+        ? Loc.F("Chat.SourceChip.NameOutdated", Title, VersionId, CurrentVersion)
+        : Loc.F("Chat.SourceChip.Name", Title, VersionId);
 }
 
 public sealed class QuickPromptViewModel
 {
     public QuickPromptViewModel(QuickPrompt prompt) => Prompt = prompt;
     public QuickPrompt Prompt { get; }
-    public string Label => Prompt.Label;
-    public string AutomationName => "Ask: " + Prompt.Label;
+    public string Label => ChatUiFormat.QuickPromptLabel(Prompt.Id, Prompt.Label);
+    public string AutomationName => Loc.F("Chat.QuickPrompt.Name", Label);
 }
 
 /// <summary>
@@ -319,10 +322,10 @@ public sealed class ChatViewModel : ObservableObject
 
     public bool CanSend => CanType && !IsStreaming;
 
-    public string ComposerPlaceholder => !HasService ? "Chat is not available in this build"
-        : ModelMissing ? "Download Gemma to ask questions"
-        : !HasSources ? "Add a recording to continue"
-        : "Ask about the recordings";
+    public string ComposerPlaceholder => !HasService ? Loc.T("Chat.Composer.NotAvailable")
+        : ModelMissing ? Loc.T("Chat.Composer.DownloadGemma")
+        : !HasSources ? Loc.T("Chat.Context.AddRecording")
+        : Loc.T("Chat.Composer.Placeholder");
 
     private void RaiseComposerState()
     {
@@ -387,7 +390,7 @@ public sealed class ChatViewModel : ObservableObject
     public bool ShowNotice => HasNotice && !_isShortLayout;
 
     /// <summary>Source names for the compact row; a low window adds the outdated mark the notice would show.</summary>
-    public string SourcesDetail => HasNotice && _isShortLayout ? "⚠ outdated · " + _sourcesNames : _sourcesNames;
+    public string SourcesDetail => HasNotice && _isShortLayout ? Loc.F("Chat.Sources.OutdatedDetail", _sourcesNames) : _sourcesNames;
     public string NoticeAction => _noticeAction;
 
     /// <summary>The source the notice's action updates; null opens the Sources sheet.</summary>
@@ -450,7 +453,7 @@ public sealed class ChatViewModel : ObservableObject
         {
             var title = TitleOf(s.RecordingId);
             var current = CurrentOf(s.RecordingId);
-            return new SourceChipViewModel(s.RecordingId, title ?? "Deleted recording", s.VersionId, title is not null,
+            return new SourceChipViewModel(s.RecordingId, title ?? Loc.T("Chat.Citation.DeletedRecording"), s.VersionId, title is not null,
                 current is not null && current != s.VersionId, current);
         }).ToList();
         var notices = ChatUiThread.OutdatedNotices(chat, CurrentOf, TitleOf);
@@ -466,7 +469,7 @@ public sealed class ChatViewModel : ObservableObject
         if (loaded.Chat is null)
         {
             IsLoaded = true;
-            Title = "Chat not found";
+            Title = Loc.T("Chat.Page.NotFound");
             HeaderSubtitle = "";
             SourcesNames = "";
             ContextLine = "";
@@ -495,13 +498,13 @@ public sealed class ChatViewModel : ObservableObject
         if (notices.Count == 1)
         {
             NoticeText = notices[0].Text;
-            _noticeAction = "Use " + loaded.Sources.First(s => s.RecordingId == notices[0].RecordingId).CurrentVersion;
+            _noticeAction = Loc.F("Chat.Notice.UseVersion", loaded.Sources.First(s => s.RecordingId == notices[0].RecordingId).CurrentVersion);
             _noticeRecordingId = notices[0].RecordingId;
         }
         else if (notices.Count > 1)
         {
-            NoticeText = $"{notices.Count} sources are outdated: answers use older transcript versions";
-            _noticeAction = "Review";
+            NoticeText = Loc.Plural("Chat.Notice.Outdated", notices.Count);
+            _noticeAction = Loc.T("Chat.Notice.Review");
             _noticeRecordingId = null;
         }
         else
@@ -544,14 +547,14 @@ public sealed class ChatViewModel : ObservableObject
         Error = "";
         var wasEmpty = Messages.Count == 0;
         Messages.Add(new ChatMessageViewModel(Layout, new ChatThreadItem(
-            "u" + Guid.NewGuid().ToString("N"), ChatThreadKind.User, text, DateTimeOffset.Now.ToString("HH:mm"),
+            "u" + Guid.NewGuid().ToString("N"), ChatThreadKind.User, text, DateTimeOffset.Now.ToString("HH:mm", Loc.Culture),
             ShowRoleLabel: wasEmpty || Messages[^1].Kind != ChatThreadKind.User, ShowTime: true, IsIncomplete: false, Citations: [])));
         var answer = new ChatMessageViewModel(Layout, new ChatThreadItem(
             "a" + Guid.NewGuid().ToString("N"), ChatThreadKind.Assistant, "", "", ShowRoleLabel: true, ShowTime: true,
             IsIncomplete: false, Citations: []))
         {
             IsStreaming = true,
-            StatusText = "Thinking…",
+            StatusText = Loc.T("Chat.Status.Thinking"),
         };
         Messages.Add(answer);
         RaiseThreadState();
@@ -607,7 +610,7 @@ public sealed class ChatViewModel : ObservableObject
             }
             else if (!completed && (stopped || failed))
             {
-                answer.MarkIncomplete(failed ? "Answer incomplete · an error occurred" : "Stopped · answer incomplete");
+                answer.MarkIncomplete(failed ? Loc.T("Chat.Incomplete.Error") : Loc.T("Chat.Incomplete.Stopped"));
             }
             IsStreaming = false;
         }

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Microsoft.UI.Dispatching;
 using SpeechLib.ModelDownload;
 using SpeechLib.ModelFormats;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.Presentation;
@@ -53,7 +54,8 @@ public sealed partial class ModelManagerViewModel : ObservableObject
 
     private ModelStorageLayout Layout => new(ModelsRootPath);
 
-    public string StorageText => ModelStorageText.StoredIn(ModelKind.Speech, Layout) + ". " + ModelStorageText.PlaceFilesText(ModelKind.Speech, Layout);
+    public string StorageText => Loc.F("Models.Storage.StoredAndPlace",
+        ModelStorageText.StoredIn(ModelKind.Speech, Layout), ModelStorageText.PlaceFilesText(ModelKind.Speech, Layout));
 
     /// <summary>Friendly name of the model the app currently uses.</summary>
     public string ActiveModelText
@@ -62,11 +64,11 @@ public sealed partial class ModelManagerViewModel : ObservableObject
         {
             var folder = ActiveFolder;
             if (string.IsNullOrWhiteSpace(folder))
-                return "No model selected yet";
+                return Loc.T("Models.Speech.NoModelSelected");
 
             return ModelCatalog.FindBySubfolder(folder) is { } known
-                ? $"In use: {known.Title} ({folder})"
-                : $"In use: {folder} — a local model that is not one of the downloads below";
+                ? Loc.F("Models.Speech.InUseKnown", ModelCatalogText.Title(known), folder)
+                : Loc.F("Models.Speech.InUseLocal", folder);
         }
     }
 
@@ -74,24 +76,26 @@ public sealed partial class ModelManagerViewModel : ObservableObject
     public string ActiveModelTitle => DefaultAsrModel.Describe(ActiveFolder);
 
     public string InstalledText => InstalledCount == 0
-        ? "No catalog model downloaded yet — the recommended one is a safe default."
-        : $"{InstalledCount} of {Cards.Count} catalog models downloaded";
+        ? Loc.T("Models.Speech.NoneDownloaded")
+        : Loc.Plural("Models.Speech.Downloaded", InstalledCount, Cards.Count);
 
     /// <summary>Answers "which should I download?" with the catalog recommendation.</summary>
-    public string RecommendationText =>
-        $"Start with {ModelCatalog.Recommended.Title} — {ModelCatalog.Recommended.Tagline.ToLowerInvariant()}, " +
-        $"{ModelCatalog.Recommended.SizeText} download, {ModelCatalog.Recommended.SpeedText}.";
+    public string RecommendationText => Loc.F("Models.Speech.Recommendation",
+        ModelCatalogText.Title(ModelCatalog.Recommended),
+        ModelCatalogText.Tagline(ModelCatalog.Recommended).ToLower(Loc.Culture),
+        ModelCatalog.Recommended.SizeText,
+        ModelCatalogText.Speed(ModelCatalog.Recommended));
 
     public string AccuracyLeaderText => Ranking.MostAccurate is { } model
-        ? $"Most accurate: {model.Title} — {model.AccuracyText} ({model.AccuracyDetailText})"
-        : "Accuracy has not been measured for these models yet.";
+        ? Loc.F("Models.Speech.MostAccurateLeader", ModelCatalogText.Title(model), ModelCatalogText.Accuracy(model), ModelCatalogText.AccuracyDetail(model))
+        : Loc.T("Models.Speech.AccuracyNotMeasured");
 
     public string SpeedLeaderText => Ranking.Fastest is { } model
-        ? $"Fastest: {model.Title} — {model.SpeedText}"
-        : "Speed has not been measured for these models yet.";
+        ? Loc.F("Models.Speech.FastestLeader", ModelCatalogText.Title(model), ModelCatalogText.Speed(model))
+        : Loc.T("Models.Speech.SpeedNotMeasured");
 
     public string SizeLeaderText => Ranking.Smallest is { } model
-        ? $"Smallest download: {model.Title} — {model.SizeText}"
+        ? Loc.F("Models.Speech.SmallestLeader", ModelCatalogText.Title(model), model.SizeText)
         : "";
 
     [ObservableProperty]
@@ -186,7 +190,7 @@ public sealed partial class ModelManagerViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            StatusText = $"Could not clear {folderName}: {ex.Message}";
+            StatusText = Loc.F("Models.Speech.CouldNotClear", folderName, ex.Message);
         }
     }
 
@@ -216,11 +220,11 @@ public sealed partial class ModelManagerViewModel : ObservableObject
         settings.SelectedModel = card.FolderName;
         settings.ModelPath = FolderOf(card.FolderName);
 
-        _dispatcher.TryEnqueue(() => StatusText = $"Switching to {card.Title}...");
+        _dispatcher.TryEnqueue(() => StatusText = Loc.F("Models.Speech.Switching", card.Title));
         await _applySettings(settings).ConfigureAwait(false);
         _dispatcher.TryEnqueue(() =>
         {
-            StatusText = $"Now using {card.Title}";
+            StatusText = Loc.F("Models.Speech.NowUsing", card.Title);
             Refresh();
         });
     }
@@ -234,11 +238,11 @@ public sealed partial class ModelManagerViewModel : ObservableObject
             if (Directory.Exists(path))
                 Directory.Delete(path, recursive: true);
 
-            StatusText = $"Deleted {card.Title}";
+            StatusText = Loc.F("Models.Speech.Deleted", card.Title);
         }
         catch (Exception ex)
         {
-            StatusText = $"Could not delete {card.Title}: {ex.Message}";
+            StatusText = Loc.F("Models.Error.CouldNotDelete", card.Title, ex.Message);
         }
 
         Refresh();
@@ -248,6 +252,6 @@ public sealed partial class ModelManagerViewModel : ObservableObject
     public void CancelAll()
     {
         _downloads.CancelAll();
-        _dispatcher.TryEnqueue(() => StatusText = "Cancelled all downloads");
+        _dispatcher.TryEnqueue(() => StatusText = Loc.T("Models.Speech.CancelledAll"));
     }
 }

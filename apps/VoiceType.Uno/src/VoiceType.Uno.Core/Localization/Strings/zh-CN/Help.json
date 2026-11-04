@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — 帮助",
+  "Help.Close": "关闭",
+  "Help.Start.Title": "入门",
+  "Help.Start.Body": "1. 首次启动时会自动下载推荐的语音模型。\n2. 点按底部的圆形 **录音** 按钮并开始说话，转写会实时显示。录音会一直持续到您再次点按该按钮，无需按住。\n3. 打开左上角的菜单 **≡** 可切换模式：**输入到应用** 会把每个完成的句子输入到当前窗口，**实时翻译** 会添加翻译卡片，**手动输入** 可让您输入或编辑转写。\n4. 菜单中还有识别语言、语音模型、下载和 **设置**；标题下方的一行显示当前模型和模式。",
+  "Help.Hotkey.Title": "全局快捷键",
+  "Help.Hotkey.Body": "默认的开始/停止快捷键是 **Ctrl+Shift+V**。在 Linux 上，它通过 XDG GlobalShortcuts 门户注册（xdg-desktop-portal ≥ 1.18，GNOME 44+ / KDE Plasma 5.27+）；合成器会显示一次授权对话框。在不支持该门户的桌面上，快捷键会显示为不可用。",
+  "Help.LinuxInjection.Title": "Linux 上的文本输入",
+  "Help.LinuxInjection.Body": "输入时会先设置剪贴板，然后向当前窗口模拟粘贴快捷键（默认 Ctrl+V，可在“设置”中更改）。\n\n**所需工具（每组安装一个）：**\n• 剪贴板：wl-copy (Wayland) 或 xclip / xsel (X11)\n• 键盘：ydotool（Wayland，需要 ydotoold）或 libXtst / xdotool (X11)\n\nUbuntu：*sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "音频采集",
+  "Help.Audio.Body": "采集通过兼容 PulseAudio 的服务器进行（PipeWire 桌面环境和 WSLg 都提供）。\n• 麦克风：默认输入源\n• 环回：默认输出的监视源（*@DEFAULT_MONITOR@*）\n• 混合：两者按 50/50 合并",
+  "Help.Data.Title": "数据位置",
+  "Help.Data.Body": "• 设置：*~/.local/share/VoiceType/settings.json*\n• 模型：*~/.local/share/VoiceType/models/*\n（在 Windows 上位于 %LOCALAPPDATA%\\VoiceType 下）"
+}

@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml.Automation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Presentation.History;
 
@@ -35,30 +36,30 @@ internal sealed partial class HistoryFilterDialog : ContentDialog
         _total = total;
         Options = current;
 
-        Title = "Filter recordings";
-        PrimaryButtonText = "Show";
-        SecondaryButtonText = "Reset";
-        CloseButtonText = "Cancel";
+        Title = Loc.T("History.Filter.Title");
+        PrimaryButtonText = Loc.T("History.Filter.Show");
+        SecondaryButtonText = Loc.T("History.Filter.Reset");
+        CloseButtonText = Loc.T("History.Dialog.Cancel");
         DefaultButton = ContentDialogButton.Primary;
 
         var panel = new StackPanel { Spacing = 4, MaxWidth = 440 };
         _subtitle = new TextBlock { FontSize = 12, Opacity = 0.75 };
         panel.Children.Add(_subtitle);
-        panel.Children.Add(Header("SHOW"));
-        panel.Children.Add(SwitchRow("With translation", null, current.WithTranslation, out _translation));
-        panel.Children.Add(SwitchRow("Used in a chat", null, current.InChat, out _chat));
-        panel.Children.Add(SwitchRow("Audio available", null, current.WithAudio, out _audio));
-        panel.Children.Add(SwitchRow("Inject text dictations", "Short phrases typed into other apps", current.InjectOnly, out _inject));
+        panel.Children.Add(Header(Loc.T("History.Filter.Header.Show")));
+        panel.Children.Add(SwitchRow(Loc.T("History.Filter.Chip.WithTranslation"), null, current.WithTranslation, out _translation));
+        panel.Children.Add(SwitchRow(Loc.T("History.Filter.Chip.InChat"), null, current.InChat, out _chat));
+        panel.Children.Add(SwitchRow(Loc.T("History.Filter.Chip.WithAudio"), null, current.WithAudio, out _audio));
+        panel.Children.Add(SwitchRow(Loc.T("History.Filter.InjectTitle"), Loc.T("History.Filter.InjectDetail"), current.InjectOnly, out _inject));
 
-        panel.Children.Add(Header("LANGUAGE"));
-        _language = Combo("Language", languages.Select(c => c.Label), IndexOf(languages, current.Language));
+        panel.Children.Add(Header(Loc.T("History.Filter.Header.Language")));
+        _language = Combo(Loc.T("History.Filter.LanguageName"), languages.Select(c => c.Label), IndexOf(languages, current.Language));
         panel.Children.Add(_language);
-        panel.Children.Add(Header("SPEECH MODEL"));
-        _model = Combo("Speech model", models.Select(c => c.Label), IndexOf(models, current.Model));
+        panel.Children.Add(Header(Loc.T("History.Filter.Header.Model")));
+        _model = Combo(Loc.T("History.Filter.ModelName"), models.Select(c => c.Label), IndexOf(models, current.Model));
         panel.Children.Add(_model);
-        panel.Children.Add(Header("SORT"));
+        panel.Children.Add(Header(Loc.T("History.Filter.Header.Sort")));
         var sorts = Enum.GetValues<HistoryUiSort>();
-        _sort = Combo("Sort", sorts.Select(HistoryUiFilterOptions.SortLabel), Array.IndexOf(sorts, current.Sort));
+        _sort = Combo(Loc.T("History.Filter.SortName"), sorts.Select(HistoryUiFilterOptions.SortLabel), Array.IndexOf(sorts, current.Sort));
         panel.Children.Add(_sort);
 
         Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
@@ -96,8 +97,8 @@ internal sealed partial class HistoryFilterDialog : ContentDialog
             Sort = _sort.SelectedIndex >= 0 ? Enum.GetValues<HistoryUiSort>()[_sort.SelectedIndex] : HistoryUiSort.NewestFirst,
         };
         var matches = _count(Options);
-        _subtitle.Text = $"{HistoryUiFormat.Count(_total, "recording")} · {matches} match";
-        PrimaryButtonText = "Show " + matches;
+        _subtitle.Text = Loc.Plural("History.Filter.Subtitle", _total, matches);
+        PrimaryButtonText = Loc.F("History.Filter.ShowCount", matches);
     }
 
     private static HistoryUiChoice? Pick(IReadOnlyList<HistoryUiChoice> choices, int index) =>

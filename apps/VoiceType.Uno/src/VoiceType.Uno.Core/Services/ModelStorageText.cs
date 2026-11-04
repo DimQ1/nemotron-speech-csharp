@@ -1,29 +1,27 @@
-using System.Globalization;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
 /// <summary>Wording of the "Model storage" block (Settings, Models page): pure text, testable without a UI.</summary>
 public static class ModelStorageText
 {
-    public const string Title = "Model storage";
+    public static string Title => Loc.T("Models.Storage.Title");
 
-    public const string RootLabel = "Model storage folder";
+    public static string RootLabel => Loc.T("Models.Storage.RootLabel");
 
-    public const string Explanation =
-        "All models live in one folder, one sub-folder per kind. Copy a model folder into the matching sub-folder and it shows up.";
+    public static string Explanation => Loc.T("Models.Storage.Explanation");
 
-    public const string OpenFolder = "Open folder";
+    public static string OpenFolder => Loc.T("Models.Storage.OpenFolder");
 
-    public const string Browse = "Browse…";
+    public static string Browse => Loc.T("Models.Storage.Browse");
 
-    public const string ChangeRootNote =
-        "Changing the folder: models already downloaded can move there when the app restarts (same drive), or stay where they are.";
+    public static string ChangeRootNote => Loc.T("Models.Storage.ChangeRootNote");
 
     public static string KindTitle(ModelKind kind) => kind switch
     {
-        ModelKind.Speech => "Speech recognition",
-        ModelKind.Language => "Language models (Gemma)",
-        ModelKind.Speaker => "Speaker detection",
+        ModelKind.Speech => Loc.T("Models.Storage.Kind.Speech"),
+        ModelKind.Language => Loc.T("Models.Storage.Kind.Language"),
+        ModelKind.Speaker => Loc.T("Models.Storage.Kind.Speaker"),
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
@@ -31,25 +29,25 @@ public static class ModelStorageText
     public static string KindLine(ModelStorageKindLine line)
     {
         ArgumentNullException.ThrowIfNull(line);
-        var tail = line.Count <= 0
-            ? "none yet"
-            : Count(line.Count) + " · " + DownloadProgressFormatter.FormatBytes(line.Bytes);
-        return $"{KindTitle(line.Kind)} · {line.Folder}/ · {tail}";
+        return line.Count <= 0
+            ? Loc.F("Models.Storage.KindLineEmpty", KindTitle(line.Kind), line.Folder)
+            : Loc.F("Models.Storage.KindLine", KindTitle(line.Kind), line.Folder, Count(line.Count), DownloadProgressFormatter.FormatBytes(line.Bytes));
     }
 
     /// <summary><c>1 model</c> / <c>3 models</c>.</summary>
-    public static string Count(int count) =>
-        count.ToString(CultureInfo.InvariantCulture) + (count == 1 ? " model" : " models");
+    public static string Count(int count) => Loc.Plural("Models.Storage.ModelCount", count);
 
     /// <summary><c>Total 5.1 GB · 214 GB free</c>; the free part is omitted when unknown.</summary>
     public static string Total(long totalBytes, long? freeBytes)
     {
-        var total = "Total " + DownloadProgressFormatter.FormatBytes(Math.Max(0, totalBytes));
-        return freeBytes is { } free and >= 0 ? total + " · " + DownloadProgressFormatter.FormatBytes(free) + " free" : total;
+        var total = DownloadProgressFormatter.FormatBytes(Math.Max(0, totalBytes));
+        return freeBytes is { } free and >= 0
+            ? Loc.F("Models.Storage.TotalFree", total, DownloadProgressFormatter.FormatBytes(free))
+            : Loc.F("Models.Storage.Total", total);
     }
 
     /// <summary>The line under the root path: where models come from and where the kind folders are.</summary>
-    public static string PathHint(string root) => $"{root} — contains asr/, llm/ and diarization/";
+    public static string PathHint(string root) => Loc.F("Models.Storage.PathHint", root);
 
     /// <summary>"Copy a model folder here" help for one kind, e.g. in the Speakers tab.</summary>
     public static string PlaceFilesText(ModelKind kind, ModelStorageLayout layout)
@@ -57,9 +55,9 @@ public static class ModelStorageText
         ArgumentNullException.ThrowIfNull(layout);
         return kind switch
         {
-            ModelKind.Speech => $"Your own speech model? Copy its folder into {layout.AsrDir} and press Refresh.",
-            ModelKind.Language => $"Your own language model? Copy the .litertlm file into {layout.LlmDir} and press Refresh.",
-            ModelKind.Speaker => $"Offline? Copy the model folder (for example nemotron-3-diarization-onnx-int8) into {layout.DiarizationDir} and press Refresh.",
+            ModelKind.Speech => Loc.F("Models.Storage.PlaceFiles.Speech", layout.AsrDir),
+            ModelKind.Language => Loc.F("Models.Storage.PlaceFiles.Language", layout.LlmDir),
+            ModelKind.Speaker => Loc.F("Models.Storage.PlaceFiles.Speaker", layout.DiarizationDir),
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
     }
@@ -68,27 +66,23 @@ public static class ModelStorageText
     public static string StoredIn(ModelKind kind, ModelStorageLayout layout)
     {
         ArgumentNullException.ThrowIfNull(layout);
-        return $"{KindTitle(kind)} are stored in {layout.DirOf(kind)}";
+        return Loc.F("Models.Storage.StoredIn", KindTitle(kind), layout.DirOf(kind));
     }
 
     /// <summary>Title of the question shown when the user picks another storage folder while models exist.</summary>
-    public const string MoveQuestionTitle = "Move models to the new folder?";
+    public static string MoveQuestionTitle => Loc.T("Models.Storage.MoveQuestionTitle");
 
     /// <summary>Body of the move question.</summary>
     public static string MoveQuestion(string oldRoot, string newRoot, ModelStorageSummary current, bool sameDrive) =>
-        sameDrive
-            ? $"{Count(current.TotalCount)} ({DownloadProgressFormatter.FormatBytes(current.TotalBytes)}) are in {oldRoot}. "
-              + $"They move to {newRoot} when the app restarts (same drive: instant, nothing is copied). Or keep them where they are."
-            : $"{Count(current.TotalCount)} ({DownloadProgressFormatter.FormatBytes(current.TotalBytes)}) are in {oldRoot}, "
-              + $"a different drive than {newRoot}. Models are not copied between drives automatically: they stay in {oldRoot}, "
-              + "and you can copy them into the matching sub-folders (asr, llm, diarization) of the new folder yourself.";
+        Loc.F(sameDrive ? "Models.Storage.MoveQuestion.SameDrive" : "Models.Storage.MoveQuestion.OtherDrive",
+            Count(current.TotalCount), DownloadProgressFormatter.FormatBytes(current.TotalBytes), oldRoot, newRoot);
 
-    public const string MoveButton = "Move on restart";
-    public const string KeepButton = "Keep old location";
-    public const string CancelButton = "Cancel";
+    public static string MoveButton => Loc.T("Models.Storage.MoveButton");
+    public static string KeepButton => Loc.T("Models.Storage.KeepButton");
+    public static string CancelButton => Loc.T("Models.Storage.CancelButton");
 
     /// <summary>Shown while a "Move on restart" is pending.</summary>
-    public static string PendingMoveNote(string newRoot) => $"Models will move to {newRoot} when the app restarts.";
+    public static string PendingMoveNote(string newRoot) => Loc.F("Models.Storage.PendingMoveNote", newRoot);
 
     /// <summary>The note shown after a move that could not finish (different drive, in use, name clash).</summary>
     public static string MoveIncompleteNote(string wantedRoot, string actualRoot, IReadOnlyList<ModelMoveSkip> skipped)
@@ -102,6 +96,16 @@ public static class ModelStorageText
             : "the folders overlap";
         return $"Models were not moved to {wantedRoot}: {why}. They stay in {actualRoot}.";
     }
+
+    /// <summary>
+    /// The translation model of VoiceType.WinUI is on another drive than the model storage folder (<see cref="WinUiDataImport"/>):
+    /// it was put into <paramref name="foundDir"/> and the user brings it over.
+    /// </summary>
+    public static string PreviousVersionModelNote(string foundDir, string wantedDir) =>
+        $"{PreviousVersionModelNotePrefix} {foundDir} (another drive, not copied automatically). Move the .litertlm file into {wantedDir} and press Refresh, or download it again.";
+
+    /// <summary>The start of <see cref="PreviousVersionModelNote"/>, to recognise it in the stored setting.</summary>
+    public const string PreviousVersionModelNotePrefix = "The translation model of the previous VoiceType is in";
 
     /// <summary>Whether two folders are on the same drive (so a move is a rename).</summary>
     public static bool SameDrive(string a, string b)

@@ -173,6 +173,51 @@ public static class ModelStorageMigrator
     }
 
     /// <summary>
+    /// Moves every entry of <paramref name="sourceDir"/> into the <paramref name="kind"/> folder of <paramref name="to"/>
+    /// (the <c>Models\Translation</c> folder of VoiceType.WinUI, for example). Same rules as <see cref="MoveRoot"/>: same drive
+    /// only, nothing overwritten, locked items left; <see cref="AppSettings.ModelPath"/> follows moved items.
+    /// </summary>
+    public static ModelMigrationReport MoveInto(string sourceDir, ModelStorageLayout to, ModelKind kind, AppSettings? settings = null, Action<string>? log = null)
+    {
+        ArgumentNullException.ThrowIfNull(to);
+        if (!Directory.Exists(sourceDir))
+            return ModelMigrationReport.Empty;
+
+        List<string> entries;
+        try
+        {
+            entries = Directory.EnumerateFileSystemEntries(sourceDir).ToList();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            log?.Invoke($"cannot list {sourceDir}: {ex.Message}");
+            return ModelMigrationReport.Empty;
+        }
+
+        var moved = new List<ModelMove>();
+        var skipped = new List<ModelMoveSkip>();
+        var settingsChanged = false;
+        var sameDrive = SameDrive(sourceDir, to.Root);
+        foreach (var entry in entries.OrderBy(e => e, StringComparer.OrdinalIgnoreCase))
+        {
+            var destination = Path.Combine(to.DirOf(kind), Path.GetFileName(entry));
+            if (!sameDrive)
+            {
+                skipped.Add(new ModelMoveSkip(kind, entry, destination, ModelMoveSkipReason.OtherDrive));
+                log?.Invoke($"left {entry}: {ModelMoveSkipReason.OtherDrive}");
+                continue;
+            }
+
+            if (MoveOne(kind, entry, destination, moved, skipped, log))
+                settingsChanged |= RebasePaths(settings, entry, destination);
+        }
+
+        var report = new ModelMigrationReport(moved, skipped, settingsChanged);
+        log?.Invoke($"move {sourceDir} -> {to.DirOf(kind)}: {report.Summary}");
+        return report;
+    }
+
+    /// <summary>
     /// Start-up entry point: finishes a pending "Move models" request, then sorts the flat layout of the root in use.
     /// Settings are edited in place; the caller saves them when <see cref="ModelMigrationReport.SettingsChanged"/>.
     /// </summary>

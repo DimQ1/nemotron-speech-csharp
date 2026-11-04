@@ -1,4 +1,5 @@
 using System.Text.Json;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -96,7 +97,7 @@ public sealed class ReprocessChain
         if (options.Analyze) names.Add("analyze");
 
         var manifest = _store.Get(recordingId)?.Manifest
-            ?? throw new InvalidOperationException($"Recording {recordingId} no longer exists.");
+            ?? throw new InvalidOperationException(Loc.F("Speakers.Chain.RecordingGone", recordingId));
         var steps = new List<JobQueue.ChainStep>();
         var later = options.Diarize || options.Analyze;
 

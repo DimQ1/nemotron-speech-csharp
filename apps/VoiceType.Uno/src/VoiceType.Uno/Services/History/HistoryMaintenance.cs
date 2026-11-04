@@ -1,5 +1,6 @@
 using SpeechLib.AudioStorage;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -50,7 +51,7 @@ public sealed class HistoryMaintenance
         }
         catch (Exception ex)
         {
-            Problem?.Invoke($"History recovery failed: {ex.Message}");
+            Problem?.Invoke(Loc.F("Services.HistoryMaintenance.RecoveryFailed", ex.Message));
         }
     }
 
@@ -64,7 +65,7 @@ public sealed class HistoryMaintenance
         }
         catch (Exception ex)
         {
-            Problem?.Invoke($"History cleanup failed: {ex.Message}");
+            Problem?.Invoke(Loc.F("Services.HistoryMaintenance.CleanupFailed", ex.Message));
         }
     }
 

@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml.Automation;
 using VoiceType.Uno.Services;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Presentation.SettingsUi;
 
@@ -19,7 +20,7 @@ internal sealed class AudioSection : SettingsSectionView
             .ToArray();
 
         var stack = new StackPanel();
-        stack.Children.Add(SettingsRows.SectionHeader("Source"));
+        stack.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Audio.SourceHeader")));
         stack.Children.Add(SettingsRows.Card(radios));
         stack.Children.Add(SettingsRows.Note(android ? SettingsText.AudioCaptionAndroid : SettingsText.AudioCaptionDesktop));
         return stack;
@@ -43,11 +44,11 @@ internal sealed class TypingSection : SettingsSectionView
         var live = Ctx.Live;
         var stack = new StackPanel();
 
-        var toggle = SettingsRows.Switch(live.IsTextInjectionEnabled, "Type into other apps", on => Ctx.Change(s => s.IsTextInjectionEnabled = on));
+        var toggle = SettingsRows.Switch(live.IsTextInjectionEnabled, Loc.T("Settings.Typing.Toggle.Title"), on => Ctx.Change(s => s.IsTextInjectionEnabled = on));
         stack.Children.Add(SettingsRows.Card(
-            SettingsRows.Row(SettingsRows.Icon(Symbol.Keyboard), "Type into other apps", "Each finished phrase goes into the focused window", toggle)));
+            SettingsRows.Row(SettingsRows.Icon(Symbol.Keyboard), Loc.T("Settings.Typing.Toggle.Title"), Loc.T("Settings.Typing.Toggle.Detail"), toggle)));
 
-        stack.Children.Add(SettingsRows.SectionHeader("How to insert"));
+        stack.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Typing.MethodHeader")));
         var method = SettingsText.NormalizeInjectionMethod(live.TextInjectionMethod);
         var methods = SettingsText.InjectionMethodOptions
             .Select(o => (UIElement)SettingsRows.Radio(this, "method", o, o.Value == method, value =>
@@ -73,7 +74,7 @@ internal sealed class TypingSection : SettingsSectionView
 
         if (SettingsText.NormalizeInjectionMethod(method) == SettingsText.InjectionPaste)
         {
-            _pasteHost.Children.Add(SettingsRows.SectionHeader("Paste shortcut"));
+            _pasteHost.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Typing.ChordHeader")));
             var current = SettingsText.NormalizePasteChord(Ctx.Live.PasteChord);
             var radios = SettingsText.PasteChordOptionsFor(Ctx.Live.PasteChord)
                 .Select(o => (UIElement)SettingsRows.Radio(this, "paste", o, string.Equals(o.Value, current, StringComparison.OrdinalIgnoreCase),
@@ -97,34 +98,61 @@ internal sealed class GeneralSection : SettingsSectionView
         var live = Ctx.Live;
         var rows = new List<UIElement>
         {
-            SettingsRows.Row(SettingsRows.Icon(Symbol.Sort), "Follow new text", "Keep the transcript scrolled to the end",
-                SettingsRows.Switch(live.IsAutoScrollEnabled, "Follow new text", on => Ctx.Change(s => s.IsAutoScrollEnabled = on))),
-            SettingsRows.Row(SettingsRows.Icon(Symbol.Play), "Start when the model is ready", "Recording begins right after launch",
-                SettingsRows.Switch(live.AutoStartRecognition, "Start when the model is ready", on => Ctx.Change(s => s.AutoStartRecognition = on))),
+            SettingsRows.Row(SettingsRows.Icon(Symbol.Sort), Loc.T("Settings.General.Follow.Title"), Loc.T("Settings.General.Follow.Detail"),
+                SettingsRows.Switch(live.IsAutoScrollEnabled, Loc.T("Settings.General.Follow.Title"), on => Ctx.Change(s => s.IsAutoScrollEnabled = on))),
+            SettingsRows.Row(SettingsRows.Icon(Symbol.Play), Loc.T("Settings.General.AutoStart.Title"), Loc.T("Settings.General.AutoStart.Detail"),
+                SettingsRows.Switch(live.AutoStartRecognition, Loc.T("Settings.General.AutoStart.Title"), on => Ctx.Change(s => s.AutoStartRecognition = on))),
         };
         if (!Ctx.Android)
         {
-            rows.Add(SettingsRows.Row(SettingsRows.Icon(Symbol.Pin), "Keep window on top", "Stay above other windows",
-                SettingsRows.Switch(live.AlwaysOnTop, "Keep window on top", on => Ctx.Change(s => s.AlwaysOnTop = on))));
+            rows.Add(SettingsRows.Row(SettingsRows.Icon(Symbol.Pin), Loc.T("Settings.General.OnTop.Title"), Loc.T("Settings.General.OnTop.Detail"),
+                SettingsRows.Switch(live.AlwaysOnTop, Loc.T("Settings.General.OnTop.Title"), on => Ctx.Change(s => s.AlwaysOnTop = on))));
         }
-        rows.Add(SettingsRows.Row(SettingsRows.Icon(Symbol.Delete), "Clear transcript on model change", "Also when a new session starts",
-            SettingsRows.Switch(live.ClearTextOnModelOrSessionChange, "Clear transcript on model change", on => Ctx.Change(s => s.ClearTextOnModelOrSessionChange = on))));
+        rows.Add(SettingsRows.Row(SettingsRows.Icon(Symbol.Delete), Loc.T("Settings.General.Clear.Title"), Loc.T("Settings.General.Clear.Detail"),
+            SettingsRows.Switch(live.ClearTextOnModelOrSessionChange, Loc.T("Settings.General.Clear.Title"), on => Ctx.Change(s => s.ClearTextOnModelOrSessionChange = on))));
 
         var stack = new StackPanel();
         stack.Children.Add(SettingsRows.Card([.. rows]));
-        stack.Children.Add(SettingsRows.SectionHeader("Reset"));
+        if (VoiceType.Uno.Services.UpdateService.IsSupported)
+            AddUpdates(stack, live);
+        stack.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.General.ResetHeader")));
         stack.Children.Add(SettingsRows.Card(
-            SettingsRows.LinkRow(SettingsRows.Icon(Symbol.Refresh), "Reset settings to defaults", SettingsText.ResetSubtitle, () => _ = ResetAsync())));
-        stack.Children.Add(SettingsRows.Note($"VoiceType {AppVersion()} · settings.json in App data (Settings › Storage)"));
+            SettingsRows.LinkRow(SettingsRows.Icon(Symbol.Refresh), Loc.T("Settings.General.Reset.Title"), SettingsText.ResetSubtitle, () => _ = ResetAsync())));
+        stack.Children.Add(SettingsRows.Note(Loc.F("Settings.General.VersionNote", AppVersion())));
         return stack;
+    }
+
+    /// <summary>Updates from GitHub Releases: check at start, check now (with what the last check found).</summary>
+    private void AddUpdates(StackPanel stack, AppSettings live)
+    {
+        var updates = App.Services.GetRequiredService<VoiceType.Uno.Services.UpdateService>();
+        stack.Children.Add(SettingsRows.SectionHeader(Loc.T("Updates.Settings.Header")));
+        var auto = SettingsRows.Row(SettingsRows.Icon(Symbol.Sync), Loc.T("Updates.Settings.Auto.Title"), Loc.T("Updates.Settings.Auto.Detail"),
+            SettingsRows.Switch(live.CheckUpdatesOnStart, Loc.T("Updates.Settings.Auto.Title"), on => Ctx.Change(s => s.CheckUpdatesOnStart = on)));
+        TextBlock? detail = null;
+        var check = SettingsRows.LinkRow(SettingsRows.Icon(Symbol.Download), Loc.T("Updates.Settings.Check.Title"), updates.StatusText,
+            () => _ = CheckNowAsync(updates), out detail);
+        stack.Children.Add(SettingsRows.Card(auto, check));
+
+        void OnChanged() => DispatcherQueue.TryEnqueue(() => detail.Text = updates.StatusText);
+        updates.Changed += OnChanged;
+        Unloaded += (_, _) => updates.Changed -= OnChanged;
+    }
+
+    private async Task CheckNowAsync(VoiceType.Uno.Services.UpdateService updates)
+    {
+        var plan = await updates.CheckAsync();
+        if (plan is not null && Ctx.XamlRoot is { } root)
+            await UpdateDialog.ShowAsync(root, updates, plan,
+                () => App.Services.GetRequiredService<MainViewModel>().IsRecording);
     }
 
     private async Task ResetAsync()
     {
         var confirmed = await VoiceType.Uno.Presentation.History.HistoryDialogs.AskAsync(
-            Ctx.XamlRoot, "Reset settings to defaults?",
-            "Language, audio source, compute, translation, shortcuts and the other options go back to their defaults. Your folders, models and history are not touched.",
-            "Reset");
+            Ctx.XamlRoot, Loc.T("Settings.General.ResetDialog.Title"),
+            Loc.T("Settings.General.ResetDialog.Body"),
+            Loc.T("Settings.General.ResetDialog.Confirm"));
         if (!confirmed)
             return;
         await Ctx.ChangeAsync(SettingsDefaults.ResetOptions);

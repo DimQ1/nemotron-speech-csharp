@@ -3,6 +3,7 @@ using Android.Content;
 using Android.Content.PM;
 using Android.OS;
 using AndroidX.Core.App;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services.Jobs;
 
 namespace VoiceType.Uno.Droid;
@@ -36,7 +37,8 @@ public sealed class JobsForegroundService : Service
     private const string WakeLockTag = "VoiceType:jobs";
 
     private static readonly object s_channelGate = new();
-    private static bool s_channelCreated;
+    // Language the channel was last registered in: re-registering the same id renames it.
+    private static string? s_channelLanguage;
     private static JobsForegroundService? s_running;
 
     private PowerManager.WakeLock? _wakeLock;
@@ -71,7 +73,7 @@ public sealed class JobsForegroundService : Service
             default:
                 // startForeground must follow startForegroundService within a few seconds, even
                 // when the job already ended — enter the foreground first, then check.
-                if (!EnterForeground(keepAlive?.Notice ?? new JobNotice("Processing a recording", "", null))
+                if (!EnterForeground(keepAlive?.Notice ?? new JobNotice(Loc.T("Services.Android.Jobs.DefaultTitle"), "", null))
                     || keepAlive is not { IsStarted: true })
                 {
                     StopNow();
@@ -190,8 +192,8 @@ public sealed class JobsForegroundService : Service
         else
             builder.SetProgress(0, 0, true);
         builder.SetContentIntent(PendingIntent.GetActivity(context, 10, open, PendingFlags));
-        builder.AddAction(0, "Pause", ServiceIntent(context, ActionPause, 11));
-        builder.AddAction(0, "Cancel", ServiceIntent(context, ActionCancel, 12));
+        builder.AddAction(0, Loc.T("Services.Android.Jobs.Pause"), ServiceIntent(context, ActionPause, 11));
+        builder.AddAction(0, Loc.T("Services.Android.Jobs.Cancel"), ServiceIntent(context, ActionCancel, 12));
         return builder.Build()!;
     }
 
@@ -211,17 +213,17 @@ public sealed class JobsForegroundService : Service
 
         lock (s_channelGate)
         {
-            if (s_channelCreated)
+            if (s_channelLanguage == Loc.Current.Code)
                 return;
-            var channel = new NotificationChannel(ChannelId, "Background jobs", NotificationImportance.Low)
+            var channel = new NotificationChannel(ChannelId, Loc.T("Services.Android.Jobs.ChannelName"), NotificationImportance.Low)
             {
-                Description = "Shown while VoiceType re-recognizes recordings from the Queue.",
+                Description = Loc.T("Services.Android.Jobs.ChannelDescription"),
             };
             channel.SetSound(null, null);
             channel.EnableVibration(false);
             channel.SetShowBadge(false);
             (context.GetSystemService(NotificationService) as NotificationManager)?.CreateNotificationChannel(channel);
-            s_channelCreated = true;
+            s_channelLanguage = Loc.Current.Code;
         }
     }
 }

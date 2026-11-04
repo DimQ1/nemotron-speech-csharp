@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — Guida",
+  "Help.Close": "Chiudi",
+  "Help.Start.Title": "Per iniziare",
+  "Help.Start.Body": "1. Al primo avvio il modello vocale consigliato viene scaricato automaticamente.\n2. Tocca il pulsante rotondo **Registra** in basso e parla: la trascrizione appare dal vivo. La registrazione continua finché non tocchi di nuovo il pulsante; non serve tenerlo premuto.\n3. Apri il menu **≡** (in alto a sinistra) per cambiare modalità: **Digita testo** digita ogni frase completata nella finestra in primo piano, **Traduzione dal vivo** aggiunge una scheda di traduzione, **Inserimento manuale** ti permette di scrivere o modificare la trascrizione.\n4. Il menu contiene anche la lingua di riconoscimento, i modelli vocali, i download e le **Impostazioni**; la riga sotto il titolo mostra il modello e le modalità attivi.",
+  "Help.Hotkey.Title": "Scorciatoia globale",
+  "Help.Hotkey.Body": "La scorciatoia predefinita per avviare e fermare è **Ctrl+Maiusc+V**. Su Linux viene registrata tramite il portale XDG GlobalShortcuts (xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+); il compositor mostra una sola volta una finestra di consenso. Sui desktop senza supporto del portale, la scorciatoia viene segnalata come non disponibile.",
+  "Help.LinuxInjection.Title": "Digitazione del testo su Linux",
+  "Help.LinuxInjection.Body": "La digitazione copia il testo negli appunti, poi simula la combinazione per incollare (Ctrl+V per impostazione predefinita, configurabile nelle Impostazioni) nella finestra in primo piano.\n\n**Strumenti necessari (installane uno per coppia):**\n• Appunti: wl-copy (Wayland) oppure xclip / xsel (X11)\n• Tastiera: ydotool (Wayland, richiede ydotoold) oppure libXtst / xdotool (X11)\n\nUbuntu: *sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "Acquisizione audio",
+  "Help.Audio.Body": "L’acquisizione passa dal server compatibile con PulseAudio (lo forniscono sia i desktop con PipeWire sia WSLg).\n• Microfono: sorgente di ingresso predefinita\n• Loopback: monitor dell’uscita predefinita (*@DEFAULT_MONITOR@*)\n• Mix: entrambi, uniti al 50/50",
+  "Help.Data.Title": "Posizione dei dati",
+  "Help.Data.Body": "• Impostazioni: *~/.local/share/VoiceType/settings.json*\n• Modelli: *~/.local/share/VoiceType/models/*\n(su Windows si trovano in %LOCALAPPDATA%\\VoiceType)"
+}

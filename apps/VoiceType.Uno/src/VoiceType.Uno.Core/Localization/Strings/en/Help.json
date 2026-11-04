@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — Help",
+  "Help.Close": "Close",
+  "Help.Start.Title": "Getting started",
+  "Help.Start.Body": "1. On first start the recommended speech model downloads automatically.\n2. Tap the round **Record** button at the bottom and speak — the transcript appears live. Recording continues until you tap the button again; there is no need to hold it.\n3. Open the menu **≡** (top left) to switch modes — **Inject text** types each final phrase into the focused window, **Live translation** adds a translation card, **Manual input** lets you type or edit the transcript.\n4. The menu also holds the recognition language, speech models, downloads and **Settings**— the line under the title shows the active model and modes.",
+  "Help.Hotkey.Title": "Global hotkey",
+  "Help.Hotkey.Body": "The default toggle hotkey is **Ctrl+Shift+V**. On Linux it is registered through the XDG GlobalShortcuts portal (xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+); the compositor shows a one-time consent dialog. On desktops without portal support the hotkey is reported as unavailable.",
+  "Help.LinuxInjection.Title": "Text injection on Linux",
+  "Help.LinuxInjection.Body": "Injection sets the clipboard, then synthesizes the paste chord (Ctrl+V by default — configurable in Settings) into the focused window.\n\n**Required tools (install one per pair):**\n• Clipboard: wl-copy (Wayland) or xclip / xsel (X11)\n• Keyboard: ydotool (Wayland, needs ydotoold) or libXtst / xdotool (X11)\n\nUbuntu: *sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "Audio capture",
+  "Help.Audio.Body": "Capture goes through the PulseAudio-compatible server (PipeWire desktop setups and WSLg both provide one).\n• Mic — default input source\n• Loopback — monitor of the default output (*@DEFAULT_MONITOR@*)\n• Mix — both, merged 50/50",
+  "Help.Data.Title": "Data locations",
+  "Help.Data.Body": "• Settings: *~/.local/share/VoiceType/settings.json*\n• Models: *~/.local/share/VoiceType/models/*\n(on Windows these resolve under %LOCALAPPDATA%\\VoiceType)"
+}

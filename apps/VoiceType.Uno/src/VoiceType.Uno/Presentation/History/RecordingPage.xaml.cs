@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Presentation.Chat;
 using Windows.ApplicationModel.DataTransfer;
 using VirtualKey = Windows.System.VirtualKey;
@@ -197,7 +198,7 @@ public sealed partial class RecordingPage : Page
         }
         catch (Exception ex)
         {
-            await HistoryDialogs.ShowMessageAsync(XamlRoot, "Could not add the recording", ex.Message);
+            await HistoryDialogs.ShowMessageAsync(XamlRoot, Loc.T("Recording.Chats.AddFailed"), ex.Message);
             return;
         }
         ChatServices.OpenChat(XamlRoot, chatId);
@@ -214,8 +215,8 @@ public sealed partial class RecordingPage : Page
         if ((sender as FrameworkElement)?.DataContext is not ChatCardViewModel card)
             return;
         var menu = new MenuFlyout();
-        menu.Items.Add(Item("Open", Symbol.OpenFile, () => { ChatServices.OpenChat(XamlRoot, card.Id); return Task.CompletedTask; }));
-        var remove = Item("Remove this recording from the chat", Symbol.Delete, async () =>
+        menu.Items.Add(Item(Loc.T("Recording.Chats.Open"), Symbol.OpenFile, () => { ChatServices.OpenChat(XamlRoot, card.Id); return Task.CompletedTask; }));
+        var remove = Item(Loc.T("Recording.Chats.Remove"), Symbol.Delete, async () =>
         {
             if (ChatServices.Current is { } service)
                 await Task.Run(() => service.RemoveSource(card.Id, RecordingId));
@@ -301,14 +302,16 @@ public sealed partial class RecordingPage : Page
         var menu = new MenuFlyout();
         foreach (var version in manifest.Versions.OrderByDescending(v => RecordingViewModel.VersionNumber(v.Id)))
         {
-            var label = HistoryUiFormat.VersionShort(version) + (version.Id == manifest.CurrentVersion ? " · current" : "");
+            var label = version.Id == manifest.CurrentVersion
+                ? Loc.F("Recording.VersionPicker.CurrentItem", HistoryUiFormat.VersionShort(version))
+                : HistoryUiFormat.VersionShort(version);
             var item = new ToggleMenuFlyoutItem { Text = label, IsChecked = version.Id == ViewModel.ViewedVersionId, MinHeight = 44 };
             var id = version.Id;
             item.Click += async (_, _) => await ReloadAsync(id);
             menu.Items.Add(item);
         }
         menu.Items.Add(new MenuFlyoutSeparator());
-        var all = new MenuFlyoutItem { Text = "All versions…", MinHeight = 44 };
+        var all = new MenuFlyoutItem { Text = Loc.T("Recording.VersionPicker.All"), MinHeight = 44 };
         all.Click += (_, _) => SelectTab(RecordingTab.Versions);
         menu.Items.Add(all);
         menu.ShowAt((FrameworkElement)sender);
@@ -425,9 +428,9 @@ public sealed partial class RecordingPage : Page
         DetectSpeakersLabel.Text = detect.Kind switch
         {
             SpeakerDetectKind.Queued or SpeakerDetectKind.Running => SpeakerDetectUi.ChipText(detect),
-            SpeakerDetectKind.NoModel => "Detect speakers · download model",
-            SpeakerDetectKind.DownloadingModel => "Downloading speaker model…",
-            _ => ViewModel.HasLayer ? "Detect speakers again…" : "Detect speakers…",
+            SpeakerDetectKind.NoModel => Loc.T("Recording.Speakers.DetectDownloadModel"),
+            SpeakerDetectKind.DownloadingModel => Loc.T("Recording.Speakers.DownloadingModel"),
+            _ => ViewModel.HasLayer ? Loc.T("Recording.Speakers.DetectAgain") : Loc.T("Recording.Speakers.Detect"),
         };
         DetectSpeakersButton.IsEnabled = ViewModel.HasAudio && detect.Kind is not (SpeakerDetectKind.Queued or SpeakerDetectKind.Running);
     }
@@ -508,8 +511,8 @@ public sealed partial class RecordingPage : Page
             return;
         var job = SpeakerServices.Detect(RecordingId, version, runNow: true);
         if (job is null)
-            await HistoryDialogs.ShowMessageAsync(XamlRoot, "Speaker detection did not start",
-                "It is already queued for this recording, or the audio is missing.");
+            await HistoryDialogs.ShowMessageAsync(XamlRoot, Loc.T("Recording.Speakers.DetectNotStarted.Title"),
+                Loc.T("Recording.Speakers.DetectNotStarted.Text"));
         ViewModel.RefreshDetect();
     }
 
@@ -551,26 +554,26 @@ public sealed partial class RecordingPage : Page
     private void More_Click(object sender, RoutedEventArgs e)
     {
         var menu = new MenuFlyout();
-        menu.Items.Add(Item("Rename", Symbol.Rename, RenameAsync));
-        var edit = Item("Edit transcript", Symbol.Edit, () => { BeginEdit(); return Task.CompletedTask; });
+        menu.Items.Add(Item(Loc.T("Recording.Menu.Rename"), Symbol.Rename, RenameAsync));
+        var edit = Item(Loc.T("Recording.Menu.EditTranscript"), Symbol.Edit, () => { BeginEdit(); return Task.CompletedTask; });
         edit.IsEnabled = ViewModel.HasSegments;
         menu.Items.Add(edit);
-        menu.Items.Add(Item("Export…", Symbol.Save, () => ExportAsync(ViewModel.ViewedVersionId)));
-        var addToChat = Item("Add to chat…", Symbol.Add, AddToChatAsync);
+        menu.Items.Add(Item(Loc.T("Recording.Menu.Export"), Symbol.Save, () => ExportAsync(ViewModel.ViewedVersionId)));
+        var addToChat = Item(Loc.T("Recording.Menu.AddToChat"), Symbol.Add, AddToChatAsync);
         addToChat.IsEnabled = ChatServices.IsSupported;
         menu.Items.Add(addToChat);
-        var reprocess = Item("Re-recognize…", Symbol.Refresh, ReprocessAsync);
+        var reprocess = Item(Loc.T("Recording.Menu.Reprocess"), Symbol.Refresh, ReprocessAsync);
         reprocess.IsEnabled = ViewModel.HasAudio;
         menu.Items.Add(reprocess);
         if (SpeakerServices.Current is not null)
         {
-            var speakers = Item(ViewModel.HasLayer ? "Speakers…" : "Detect speakers…", Symbol.People,
+            var speakers = Item(ViewModel.HasLayer ? Loc.T("Recording.Menu.Speakers") : Loc.T("Recording.Speakers.Detect"), Symbol.People,
                 () => ViewModel.HasLayer ? ShowSpeakersSheetAsync() : DetectSpeakersAsync());
             speakers.IsEnabled = ViewModel.HasLayer || ViewModel.HasAudio;
             menu.Items.Add(speakers);
         }
         menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(Item("Delete", Symbol.Delete, DeleteRecordingAsync));
+        menu.Items.Add(Item(Loc.T("Recording.Menu.Delete"), Symbol.Delete, DeleteRecordingAsync));
         menu.ShowAt((FrameworkElement)sender);
     }
 
@@ -648,8 +651,8 @@ public sealed partial class RecordingPage : Page
     private async Task<bool> CancelEditAsync()
     {
         if (ViewModel.HasEditChanges
-            && !await HistoryDialogs.AskAsync(XamlRoot, "Discard changes?",
-                "Your edits are not saved. The transcript stays as it was.", "Discard", "Keep editing"))
+            && !await HistoryDialogs.AskAsync(XamlRoot, Loc.T("Recording.Edit.Discard.Title"),
+                Loc.T("Recording.Edit.Discard.Text"), Loc.T("Recording.Edit.Discard.Confirm"), Loc.T("Recording.Edit.Discard.Keep")))
             return false;
         ViewModel.CancelEdit();
         EditList.ItemsSource = null;
@@ -665,7 +668,7 @@ public sealed partial class RecordingPage : Page
         }
         catch (Exception ex)
         {
-            await HistoryDialogs.ShowMessageAsync(XamlRoot, "The edit could not be saved", ex.Message);
+            await HistoryDialogs.ShowMessageAsync(XamlRoot, Loc.T("Recording.Edit.SaveFailed"), ex.Message);
         }
     }
 
@@ -688,7 +691,7 @@ public sealed partial class RecordingPage : Page
             ?? ViewModel.Manifest?.Versions.Select(v => v.Id).FirstOrDefault(v => v != card.Id);
         if (reference is null)
         {
-            await HistoryDialogs.ShowMessageAsync(XamlRoot, "Nothing to compare", "This recording has only one version.");
+            await HistoryDialogs.ShowMessageAsync(XamlRoot, Loc.T("Recording.Compare.Nothing.Title"), Loc.T("Recording.Compare.Nothing.Text"));
             return;
         }
         _suppressDiffPicker = true;
@@ -704,19 +707,19 @@ public sealed partial class RecordingPage : Page
         if (CardOf(sender) is not { } card)
             return;
         var menu = new MenuFlyout();
-        menu.Items.Add(Item("View transcript", Symbol.View, async () =>
+        menu.Items.Add(Item(Loc.T("Recording.VersionMenu.ViewTranscript"), Symbol.View, async () =>
         {
             SelectTab(RecordingTab.Transcript);
             await ReloadAsync(card.Id);
         }));
-        menu.Items.Add(Item("Export…", Symbol.Save, () => ExportAsync(card.Id)));
+        menu.Items.Add(Item(Loc.T("Recording.Menu.Export"), Symbol.Save, () => ExportAsync(card.Id)));
         if (SpeakerServices.Current is not null)
         {
-            var detect = Item(card.HasSpeakers ? "Detect speakers again…" : "Detect speakers…", Symbol.People, () => DetectSpeakersAsync(card.Id));
+            var detect = Item(card.HasSpeakers ? Loc.T("Recording.Speakers.DetectAgain") : Loc.T("Recording.Speakers.Detect"), Symbol.People, () => DetectSpeakersAsync(card.Id));
             detect.IsEnabled = ViewModel.HasAudio;
             menu.Items.Add(detect);
         }
-        var delete = Item(card.IsCurrent ? "Delete (make another version current first)" : "Delete version",
+        var delete = Item(card.IsCurrent ? Loc.T("Recording.VersionMenu.DeleteCurrent") : Loc.T("Recording.VersionMenu.Delete"),
             Symbol.Delete, () => DeleteVersionAsync(card));
         delete.IsEnabled = !card.IsCurrent;
         menu.Items.Add(delete);
@@ -732,7 +735,7 @@ public sealed partial class RecordingPage : Page
 
         if (!HistoryServices.HistorySettings.ConfirmDelete)
         {
-            HistoryServices.Deletes.Schedule($"Version {versionId} deleted", [],
+            HistoryServices.Deletes.Schedule(Loc.F("Recording.Version.Deleted", versionId), [],
                 [HistoryUiPendingDeletes.VersionKey(recordingId, versionId)],
                 () => HistoryServices.DeleteVersionNow(recordingId, versionId));
             return;
@@ -754,7 +757,7 @@ public sealed partial class RecordingPage : Page
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or KeyNotFoundException)
         {
-            await HistoryDialogs.ShowMessageAsync(XamlRoot, "The version could not be deleted", ex.Message);
+            await HistoryDialogs.ShowMessageAsync(XamlRoot, Loc.T("Recording.Version.DeleteFailed"), ex.Message);
         }
         await ReloadAsync(ViewModel.ViewedVersionId == versionId ? null : ViewModel.ViewedVersionId);
     }
@@ -775,13 +778,13 @@ public sealed partial class RecordingPage : Page
     {
         if (DiffFrom.SelectedItem is not VersionChoice a || DiffTo.SelectedItem is not VersionChoice b)
         {
-            DiffStats.Text = "Pick two versions";
+            DiffStats.Text = Loc.T("Recording.Diff.PickTwo");
             DiffList.Children.Clear();
             return;
         }
-        DiffStats.Text = "Comparing…";
+        DiffStats.Text = Loc.T("Recording.Diff.Comparing");
         _diff = await ViewModel.BuildDiffAsync(a.Id, b.Id);
-        DiffStats.Text = _diff?.StatsText ?? "The versions could not be compared.";
+        DiffStats.Text = _diff?.StatsText ?? Loc.T("Recording.Diff.Failed");
         RenderDiffList();
     }
 
@@ -799,7 +802,7 @@ public sealed partial class RecordingPage : Page
         {
             DiffList.Children.Add(new TextBlock
             {
-                Text = _diff.IsIdentical ? "The two versions have the same words." : "No segments to show.",
+                Text = _diff.IsIdentical ? Loc.T("Recording.Diff.Identical") : Loc.T("Recording.Diff.NoSegments"),
                 Margin = new Thickness(16),
                 TextWrapping = TextWrapping.Wrap,
                 Opacity = 0.75,

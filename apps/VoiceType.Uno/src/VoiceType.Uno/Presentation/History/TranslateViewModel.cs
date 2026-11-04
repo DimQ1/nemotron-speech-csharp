@@ -3,6 +3,7 @@ using Microsoft.UI.Dispatching;
 using SpeechLib.ModelDownload;
 using SpeechLib.Translation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Jobs;
 
@@ -132,8 +133,8 @@ public sealed class TranslateViewModel : ObservableObject, IDisposable
 
     /// <summary><c>→ German · from v2</c> or <c>Translate to…</c>.</summary>
     public string PickerText => _selected is null
-        ? "Translate to…"
-        : $"→ {TranslateTabLogic.LanguageName(_selected.TargetLanguage)} · from {_selected.SourceVersion}";
+        ? Loc.T("Recording.Translate.TranslateTo")
+        : Loc.F("Recording.Translate.Picker", TranslateTabLogic.LanguageName(_selected.TargetLanguage), _selected.SourceVersion);
 
     public bool HasSelection => _selected is not null;
 
@@ -156,7 +157,7 @@ public sealed class TranslateViewModel : ObservableObject, IDisposable
         }
     }
 
-    public string ShowOriginalText => _showOriginal ? "Hide original" : "Show original";
+    public string ShowOriginalText => _showOriginal ? Loc.T("Recording.Translate.HideOriginal") : Loc.T("Recording.Translate.ShowOriginal");
 
     // Model state
     public bool ModelMissing => !_modelInstalled;
@@ -178,13 +179,13 @@ public sealed class TranslateViewModel : ObservableObject, IDisposable
     public bool CanContinue => _selected is { Status: not TranslationStatuses.Complete } && !IsBusy && _modelInstalled;
 
     public string PartialText => _selected is { Status: not TranslationStatuses.Complete } s
-        ? $"Partial · {s.SentencesDone} / {s.SentencesTotal} sentences"
+        ? Loc.F("Recording.Translate.Partial", s.SentencesDone, s.SentencesTotal)
         : "";
 
     public bool IsOutdated => _manifest is not null && _selected is not null && TranslateTabLogic.IsOutdated(_manifest, _selected);
 
     public string OutdatedText => _manifest?.CurrentVersion is { } current && _selected is not null
-        ? $"This translation is of {_selected.SourceVersion}; the transcript is now {current}."
+        ? Loc.F("Recording.Translate.Outdated", _selected.SourceVersion, current)
         : "";
 
     public bool CanTranslateCurrent => IsOutdated && !IsBusy && _modelInstalled;
@@ -241,15 +242,15 @@ public sealed class TranslateViewModel : ObservableObject, IDisposable
         {
             var active = llm.Active;
             _modelText = llm.DownloadPercent(active) is { } pct
-                ? $"Downloading {active.Title}… {pct:F0}%"
-                : $"Translation runs on the device with {active.Title} ({DownloadProgressFormatter.FormatBytes(active.SizeBytes)}). Download it once, then translate any recording offline.";
+                ? Loc.F("Recording.Translate.ModelDownloading", active.Title, pct)
+                : Loc.F("Recording.Translate.ModelHint", active.Title, DownloadProgressFormatter.FormatBytes(active.SizeBytes));
             return;
         }
 
         var download = _downloads.FindActive(TranslationModelInfo.Key);
         _modelText = download is null
-            ? "Translation runs on the device with Gemma 4 E2B (2.4 GB). Download it once, then translate any recording offline."
-            : download.TotalBytes > 0 ? $"Downloading the Gemma model… {download.Percent:F0}%" : "Downloading the Gemma model…";
+            ? Loc.T("Recording.Translate.ModelHintGemma")
+            : download.TotalBytes > 0 ? Loc.F("Recording.Translate.GemmaDownloadingPercent", download.Percent) : Loc.T("Recording.Translate.GemmaDownloading");
     }
 
     /// <summary>Reloads manifest, jobs, the chosen translation and the rows.</summary>
@@ -331,12 +332,12 @@ public sealed class TranslateViewModel : ObservableObject, IDisposable
         }
         else if (_job.State == JobState.Paused)
         {
-            _waitText = "Paused in the Queue";
+            _waitText = Loc.T("Recording.Translate.Paused");
         }
         else
         {
             var reason = _runner.GetWaitReason(_job, _jobs.Jobs);
-            _waitText = JobDisplay.WaitReasonText(_job, reason, DateTimeOffset.Now) ?? "Queued · starts next";
+            _waitText = JobDisplay.WaitReasonText(_job, reason, DateTimeOffset.Now) ?? Loc.T("Recording.Translate.Queued");
         }
     }
 

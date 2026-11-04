@@ -1,6 +1,7 @@
 <UserControl x:Class="VoiceType.Uno.Presentation.History.UndoSnackbar"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:VoiceType.Uno.Presentation.Localization"
              Loaded="OnLoaded"
              Unloaded="OnUnloaded"
              Visibility="Collapsed">
@@ -16,12 +17,12 @@
       </Grid.ColumnDefinitions>
       <TextBlock x:Name="Label" VerticalAlignment="Center" TextWrapping="Wrap"
                  Foreground="{ThemeResource TextFillColorInverseBrush}" />
-      <Button Grid.Column="1" Content="Undo" MinHeight="44" MinWidth="64" FontWeight="SemiBold"
+      <Button Grid.Column="1" Content="{l:Tr Key=History.Undo.Button}" MinHeight="44" MinWidth="64" FontWeight="SemiBold"
               Background="Transparent" BorderThickness="0" Click="Undo_Click"
               Foreground="{ThemeResource AccentTextFillColorTertiaryBrush}"
-              AutomationProperties.Name="Undo delete" />
+              AutomationProperties.Name="{l:Tr Key=History.Undo.Name}" />
       <Button Grid.Column="2" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
-              Click="Close_Click" AutomationProperties.Name="Dismiss" ToolTipService.ToolTip="Delete now">
+              Click="Close_Click" AutomationProperties.Name="{l:Tr Key=History.Undo.Dismiss}" ToolTipService.ToolTip="{l:Tr Key=History.Undo.DeleteNow}">
         <SymbolIcon Symbol="Cancel" Foreground="{ThemeResource TextFillColorInverseBrush}" />
       </Button>
     </Grid>

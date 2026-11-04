@@ -46,6 +46,19 @@ public sealed class AppSettings
     public bool ClearTextOnModelOrSessionChange { get; set; } = true;
     public bool SaveAudioMp3 { get; set; }
     public bool FirstRunCompleted { get; set; }
+    /// <summary>
+    /// Interface language (<c>VoiceType.Uno.Localization.Loc.Languages</c> code: <c>en</c>, <c>ru</c>, <c>zh-CN</c>, ...).
+    /// Empty until the user answered the first-run question; changed from the main menu, applied at once.
+    /// </summary>
+    public string UiLanguage { get; set; } = "";
+
+    // ── Updates from GitHub Releases (Services/Updates/AppUpdates.cs; not in the Store package) ──
+    /// <summary>Look for a newer release at start (at most every <c>AppUpdates.CheckInterval</c>).</summary>
+    public bool CheckUpdatesOnStart { get; set; } = true;
+    /// <summary>When the last check ran (null = never).</summary>
+    public DateTimeOffset? LastUpdateCheck { get; set; }
+    /// <summary>A version the user chose "Skip" for: its banner is not shown again (a newer one is).</summary>
+    public string SkippedUpdateVersion { get; set; } = "";
 
     // ── Live translation (LiteRT-LM server, OpenAI-compatible endpoint) ─────
     /// <summary>Translate recognized text on the fly via a local LiteRT-LM server.</summary>

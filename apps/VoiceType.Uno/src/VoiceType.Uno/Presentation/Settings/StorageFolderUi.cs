@@ -3,6 +3,7 @@ using System.Diagnostics;
 using VoiceType.Uno.History;
 using VoiceType.Uno.Presentation.History;
 using VoiceType.Uno.Services;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Presentation.SettingsUi;
 
@@ -99,7 +100,7 @@ internal static class StorageFolderUi
             var again = await HistoryDialogs.ShowSafeAsync(new ContentDialog
             {
                 XamlRoot = xamlRoot,
-                Title = "Choose another folder",
+                Title = Loc.T("Settings.Storage.ChooseAnotherTitle"),
                 Content = Parts(new[] { new StorageTextPart(StorageFolderText.NestedWarning) }),
                 PrimaryButtonText = StorageFolderText.ChooseAnother,
                 CloseButtonText = ModelStorageText.CancelButton,
@@ -173,7 +174,7 @@ internal static class StorageFolderUi
         foreach (var part in parts)
         {
             panel.Children.Add(part.IsPath
-                ? SettingsRows.PathBox(part.Text, "Folder path")
+                ? SettingsRows.PathBox(part.Text, Loc.T("Settings.Storage.FolderPath"))
                 : new TextBlock { Text = part.Text, TextWrapping = TextWrapping.Wrap });
         }
         return panel;

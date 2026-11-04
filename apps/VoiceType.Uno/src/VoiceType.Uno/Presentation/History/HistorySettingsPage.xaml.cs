@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VirtualKey = Windows.System.VirtualKey;
 
 namespace VoiceType.Uno.Presentation.History;
@@ -66,10 +67,10 @@ public sealed partial class HistorySettingsPage : Page
             JobsSwitch.IsOn = h.AllowJobsDuringRecording;
             TitlesSwitch.IsOn = h.AutoTitles;
             if (!VoiceType.Uno.Services.Jobs.GemmaAvailability.IsInstalled)
-                TitlesDetail.Text = "Needs a Gemma language model: download it on the Models page (Gemma tab)";
+                TitlesDetail.Text = Loc.T("History.Settings.TitlesNeedsGemma");
             InjectSwitch.IsEnabled = h.Enabled;
             if (OperatingSystem.IsAndroid())
-                JobsDetail.Text = "Slower and uses more battery while you record";
+                JobsDetail.Text = Loc.T("History.Settings.JobsDetailAndroid");
 
             var retentionIndex = HistoryUiStorage.IndexOf(ref _retention, h.AudioRetentionDays, HistoryUiStorage.RetentionLabel);
             Fill(RetentionCombo, _retention.Select(c => c.Label), retentionIndex);
@@ -124,8 +125,7 @@ public sealed partial class HistorySettingsPage : Page
         var settings = HistoryServices.HistorySettings;
         UsageBar.Value = HistoryUiStorage.UsageFraction(usage, settings, free);
         UsageText.Text = HistoryUiStorage.UsageText(usage, settings, free);
-        DeleteAllDetail.Text = HistoryUiFormat.Count(usage.Recordings, "recording") + " · " + HistoryUiFormat.Bytes(usage.TotalBytes)
-            + " · always asks first";
+        DeleteAllDetail.Text = Loc.Plural("History.Settings.DeleteAllDetail", usage.Recordings, HistoryUiFormat.Bytes(usage.TotalBytes));
         _usage = usage;
     }
 
@@ -199,7 +199,7 @@ public sealed partial class HistorySettingsPage : Page
         var ids = await Task.Run(() => store.LoadAll().Recordings.Select(r => r.Id).ToList());
         if (ids.Count == 0)
         {
-            await HistoryDialogs.ShowMessageAsync(XamlRoot, "History is empty", "There are no recordings to delete.");
+            await HistoryDialogs.ShowMessageAsync(XamlRoot, Loc.T("History.Settings.EmptyTitle"), Loc.T("History.Settings.EmptyText"));
             return;
         }
         // Always asks, without "Don't ask again" (design §4.6).

@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:history="using:VoiceType.Uno.Presentation.History"
+             xmlns:l="using:VoiceType.Uno.Presentation.Localization"
              HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
 
   <!-- Translate tab of the recording page (design §4.3, §8): language picker, run / continue / stop, progress,
@@ -53,7 +54,7 @@
         <ColumnDefinition Width="44" />
       </Grid.ColumnDefinitions>
       <Button x:Name="PickerButton" MinHeight="44" HorizontalAlignment="Left" Padding="12,0" Click="Picker_Click"
-              AutomationProperties.Name="Translation language">
+              AutomationProperties.Name="{l:Tr Key=Recording.Translate.LanguageName}">
         <StackPanel Orientation="Horizontal" Spacing="6">
           <TextBlock Text="{x:Bind ViewModel.PickerText, Mode=OneWay}" FontSize="13" TextTrimming="CharacterEllipsis"
                      VerticalAlignment="Center" />
@@ -62,12 +63,12 @@
       </Button>
       <Button x:Name="OriginalButton" Grid.Column="1" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
               Click="Original_Click" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}"
-              AutomationProperties.Name="Show original" ToolTipService.ToolTip="Show original under the translation">
+              AutomationProperties.Name="{l:Tr Key=Recording.Translate.ShowOriginal}" ToolTipService.ToolTip="{l:Tr Key=Recording.Translate.ShowOriginalTip}">
         <FontIcon Glyph="&#xE8C8;" FontSize="16" />
       </Button>
       <Button x:Name="MoreButton" Grid.Column="2" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
               Click="More_Click" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}"
-              AutomationProperties.Name="Translation actions" ToolTipService.ToolTip="Translate again, delete">
+              AutomationProperties.Name="{l:Tr Key=Recording.Translate.ActionsName}" ToolTipService.ToolTip="{l:Tr Key=Recording.Translate.ActionsTip}">
         <SymbolIcon Symbol="More" />
       </Button>
     </Grid>
@@ -78,21 +79,21 @@
     <StackPanel Spacing="8">
       <Border Style="{StaticResource HistoryHintStyle}" Visibility="{x:Bind ViewModel.ModelMissing, Mode=OneWay}">
         <StackPanel Spacing="8">
-          <TextBlock Text="Translation needs the Gemma model" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Text="{l:Tr Key=Recording.Translate.NeedsModel}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
           <TextBlock Text="{x:Bind ViewModel.ModelText, Mode=OneWay}" FontSize="13" TextWrapping="Wrap" />
           <Button Style="{StaticResource HistoryAccentButtonStyle}" HorizontalAlignment="Left" Click="Download_Click"
-                  IsEnabled="{x:Bind ViewModel.CanDownloadModel, Mode=OneWay}" Content="Download Gemma"
-                  AutomationProperties.Name="Download the Gemma model" />
+                  IsEnabled="{x:Bind ViewModel.CanDownloadModel, Mode=OneWay}" Content="{l:Tr Key=Recording.Translate.DownloadGemma}"
+                  AutomationProperties.Name="{l:Tr Key=Recording.Translate.DownloadGemmaName}" />
         </StackPanel>
       </Border>
 
       <Border Style="{StaticResource HistoryHintStyle}" Visibility="{x:Bind ViewModel.IsEmptyState, Mode=OneWay}">
         <StackPanel Spacing="8">
-          <TextBlock Text="Translate this transcript" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Text="{l:Tr Key=Recording.Translate.EmptyTitle}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
           <TextBlock x:Name="EmptyDescription" FontSize="13" TextWrapping="Wrap"
-                     Text="Gemma translates it on the device, sentence by sentence, in sync with the player. Live translations made while recording are kept with the recording." />
+                     Text="{l:Tr Key=Recording.Translate.EmptyHint}" />
           <Button x:Name="StartButton" Style="{StaticResource HistoryAccentButtonStyle}" HorizontalAlignment="Left"
-                  Click="Start_Click" Content="Translate to…" AutomationProperties.Name="Translate to a language" />
+                  Click="Start_Click" Content="{l:Tr Key=Recording.Translate.TranslateTo}" AutomationProperties.Name="{l:Tr Key=Recording.Translate.TranslateToName}" />
         </StackPanel>
       </Border>
 
@@ -106,8 +107,8 @@
           <TextBlock Text="{x:Bind ViewModel.WaitText, Mode=OneWay}" Style="{StaticResource HistorySecondaryStyle}"
                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Visibility="{x:Bind ViewModel.HasWaitText, Mode=OneWay}" />
         </StackPanel>
-        <Button Grid.Column="1" Style="{StaticResource HistoryActionButtonStyle}" Click="Stop_Click" Content="Stop"
-                AutomationProperties.Name="Stop translating" />
+        <Button Grid.Column="1" Style="{StaticResource HistoryActionButtonStyle}" Click="Stop_Click" Content="{l:Tr Key=Recording.Translate.Stop}"
+                AutomationProperties.Name="{l:Tr Key=Recording.Translate.StopName}" />
         <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Minimum="0" Maximum="1" Value="{x:Bind ViewModel.BusyFraction, Mode=OneWay}" />
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto" />
@@ -121,8 +122,8 @@
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <TextBlock Text="{x:Bind ViewModel.PartialText, Mode=OneWay}" Style="{StaticResource HistorySecondaryStyle}" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Style="{StaticResource HistoryAccentButtonStyle}" Click="Continue_Click" Content="Continue"
-                AutomationProperties.Name="Continue translating" />
+        <Button Grid.Column="1" Style="{StaticResource HistoryAccentButtonStyle}" Click="Continue_Click" Content="{l:Tr Key=Recording.Translate.Continue}"
+                AutomationProperties.Name="{l:Tr Key=Recording.Translate.ContinueName}" />
       </Grid>
 
       <Border Style="{StaticResource HistoryHintStyle}" Visibility="{x:Bind ViewModel.IsOutdated, Mode=OneWay}">
@@ -133,8 +134,8 @@
           </Grid.ColumnDefinitions>
           <TextBlock Text="{x:Bind ViewModel.OutdatedText, Mode=OneWay}" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
           <Button Grid.Column="1" Style="{StaticResource HistoryActionButtonStyle}" Click="TranslateCurrent_Click"
-                  Visibility="{x:Bind ViewModel.CanTranslateCurrent, Mode=OneWay}" Content="Update"
-                  AutomationProperties.Name="Translate the current version" />
+                  Visibility="{x:Bind ViewModel.CanTranslateCurrent, Mode=OneWay}" Content="{l:Tr Key=Recording.Translate.Update}"
+                  AutomationProperties.Name="{l:Tr Key=Recording.Translate.UpdateName}" />
         </Grid>
       </Border>
     </StackPanel>

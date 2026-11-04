@@ -1,6 +1,7 @@
 using Microsoft.UI.Dispatching;
 using SpeechLib.ModelDownload;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services.Jobs;
 
 namespace VoiceType.Uno.Presentation.History;
@@ -94,7 +95,7 @@ public sealed partial class TranslateSection : UserControl
         }
         if (menu.Items.Count > 0)
             menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(LanguageItems("New language…"));
+        menu.Items.Add(LanguageItems(Loc.T("Recording.Translate.NewLanguage")));
         menu.ShowAt((FrameworkElement)sender);
     }
 
@@ -132,11 +133,11 @@ public sealed partial class TranslateSection : UserControl
     private void More_Click(object sender, RoutedEventArgs e)
     {
         var menu = new MenuFlyout();
-        var again = new MenuFlyoutItem { Text = "Translate again", Icon = new SymbolIcon(Symbol.Refresh), MinHeight = 44 };
+        var again = new MenuFlyoutItem { Text = Loc.T("Recording.Translate.Again"), Icon = new SymbolIcon(Symbol.Refresh), MinHeight = 44 };
         again.IsEnabled = ViewModel.Selected is not null && !ViewModel.IsBusy && ViewModel.CanTranslate;
         again.Click += async (_, _) => await TranslateAgainAsync();
         menu.Items.Add(again);
-        var delete = new MenuFlyoutItem { Text = "Delete translation…", Icon = new SymbolIcon(Symbol.Delete), MinHeight = 44 };
+        var delete = new MenuFlyoutItem { Text = Loc.T("Recording.Translate.Delete"), Icon = new SymbolIcon(Symbol.Delete), MinHeight = 44 };
         delete.Click += async (_, _) => await DeleteAsync();
         menu.Items.Add(delete);
         menu.ShowAt((FrameworkElement)sender);
@@ -147,8 +148,8 @@ public sealed partial class TranslateSection : UserControl
         if (ViewModel.Selected is not { } selected)
             return;
         var name = TranslateTabLogic.LanguageName(selected.TargetLanguage);
-        if (!await HistoryDialogs.AskAsync(XamlRoot, "Translate again?",
-                $"This replaces the {name} translation of {selected.SourceVersion}: it is translated again from the start.", "Translate again"))
+        if (!await HistoryDialogs.AskAsync(XamlRoot, Loc.T("Recording.Translate.Again.Title"),
+                Loc.F("Recording.Translate.Again.Text", name, selected.SourceVersion), Loc.T("Recording.Translate.Again")))
             return;
         ViewModel.TranslateAgain(selected.SourceVersion, selected.TargetLanguage);
     }
@@ -158,8 +159,8 @@ public sealed partial class TranslateSection : UserControl
         if (ViewModel.Selected is not { } selected)
             return;
         var name = TranslateTabLogic.LanguageName(selected.TargetLanguage);
-        var text = new HistoryUiConfirmation($"Delete the {name} translation?",
-            $"The {name} translation of {selected.SourceVersion} is deleted. The transcript itself is not changed.");
+        var text = new HistoryUiConfirmation(Loc.F("Recording.Translate.Delete.Title", name),
+            Loc.F("Recording.Translate.Delete.Text", name, selected.SourceVersion));
         if (await HistoryDialogs.ConfirmDeleteAsync(XamlRoot, text, allowDontAsk: false))
             await ViewModel.DeleteSelectedAsync();
     }

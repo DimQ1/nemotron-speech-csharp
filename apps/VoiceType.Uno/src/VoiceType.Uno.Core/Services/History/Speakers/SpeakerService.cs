@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -39,8 +40,8 @@ public sealed class SpeakerService : ISpeakerService
         {
             var model = FindModel();
             return model is null
-                ? "Model not installed"
-                : $"{model.Title} · {Math.Round(model.Bytes / 1_000_000.0).ToString(CultureInfo.InvariantCulture)} MB";
+                ? Loc.T("Speakers.Model.NotInstalled")
+                : Loc.F("Speakers.Model.Status", model.Title, Math.Round(model.Bytes / 1_000_000.0).ToString(Loc.Culture));
         }
     }
 
@@ -278,7 +279,8 @@ public static class SpeakerLabels
         var map = directory is not null && directory.Map.TryGetValue(layer.Run, out var m)
             ? string.Join(',', m.Select(kv => kv.Key + ">" + kv.Value))
             : "";
-        return $"{layer.Id}:{names}:{map}:{directory?.Overrides.Count ?? 0}";
+        // The interface language is part of it: default names ("Speaker 1") are shown in that language.
+        return $"{layer.Id}:{names}:{map}:{directory?.Overrides.Count ?? 0}:{Loc.Current.Code}";
     }
 
     /// <summary>Names the user gave (default "Speaker N" names are not searchable text).</summary>

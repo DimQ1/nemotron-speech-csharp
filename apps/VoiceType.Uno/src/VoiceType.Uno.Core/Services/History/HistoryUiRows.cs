@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.History;
 
 /// <summary>Date groups of the History list (local date of the start time).</summary>
@@ -55,9 +57,9 @@ public static class HistoryUiRows
 
     public static string GroupLabel(HistoryDateGroup group) => group switch
     {
-        HistoryDateGroup.Today => "TODAY",
-        HistoryDateGroup.Yesterday => "YESTERDAY",
-        _ => "EARLIER",
+        HistoryDateGroup.Today => Loc.T("History.Group.Today"),
+        HistoryDateGroup.Yesterday => Loc.T("History.Group.Yesterday"),
+        _ => Loc.T("History.Group.Earlier"),
     };
 
     /// <summary>
@@ -74,27 +76,26 @@ public static class HistoryUiRows
                      .Where(t => t.Status != TranslationStatuses.Failed && !string.IsNullOrWhiteSpace(t.TargetLanguage))
                      .Select(t => t.TargetLanguage.Trim().ToUpperInvariant())
                      .Distinct())
-            badges.Add(new HistoryUiBadge("→ " + language, HistoryBadgeKind.Accent, "Translated to " + language));
+            badges.Add(new HistoryUiBadge("→ " + language, HistoryBadgeKind.Accent, Loc.F("History.Row.TranslatedTo", language)));
 
         if (chatCount > 0)
-        {
-            var text = HistoryUiFormat.Count(chatCount, "chat");
-            badges.Add(new HistoryUiBadge(text, HistoryBadgeKind.Neutral, "Used in " + text));
-        }
+            badges.Add(new HistoryUiBadge(Loc.Plural("History.Row.Chats", chatCount), HistoryBadgeKind.Neutral,
+                Loc.Plural("History.Row.UsedInChats", chatCount)));
 
         if (manifest.Versions.Count > 1 && manifest.CurrentVersion is { } current)
             badges.Add(new HistoryUiBadge(current, HistoryBadgeKind.Neutral,
-                $"Current version {current} of {manifest.Versions.Count}"));
+                Loc.F("History.Row.CurrentVersion", current, manifest.Versions.Count)));
 
         if (manifest.Mode.InjectText)
-            badges.Add(new HistoryUiBadge("Inject", HistoryBadgeKind.Neutral, "Inject text dictation"));
+            badges.Add(new HistoryUiBadge(Loc.T("History.Row.Inject"), HistoryBadgeKind.Neutral, Loc.T("History.Row.InjectName")));
 
         if (!manifest.HasAudio)
-            badges.Add(new HistoryUiBadge("No audio", HistoryBadgeKind.Warning, "No audio"));
+            badges.Add(new HistoryUiBadge(Loc.T("History.Row.NoAudio"), HistoryBadgeKind.Warning, Loc.T("History.Row.NoAudio")));
 
         if (manifest.State is RecordingStates.Recovered or RecordingStates.Incomplete)
-            badges.Add(new HistoryUiBadge(manifest.State == RecordingStates.Recovered ? "Recovered" : "Incomplete",
-                HistoryBadgeKind.Warning, "Recovered after the app closed unexpectedly"));
+            badges.Add(new HistoryUiBadge(
+                Loc.T(manifest.State == RecordingStates.Recovered ? "History.Row.Recovered" : "History.Row.Incomplete"),
+                HistoryBadgeKind.Warning, Loc.T("History.Row.RecoveredName")));
 
         return badges;
     }
@@ -114,8 +115,8 @@ public static class HistoryUiRows
         if (hit.MatchedIn.HasFlag(SearchField.Title))
             return null;
         if (hit.MatchedIn.HasFlag(SearchField.Translation))
-            return "Found in the translation";
-        return hit.MatchedIn.HasFlag(SearchField.Chat) ? "Found in a chat with Gemma" : null;
+            return Loc.T("History.Row.FoundInTranslation");
+        return hit.MatchedIn.HasFlag(SearchField.Chat) ? Loc.T("History.Row.FoundInChat") : null;
     }
 
     public static HistoryUiRow Build(
@@ -160,6 +161,6 @@ public static class HistoryUiRows
     public static string SelectionSubtitle(IEnumerable<HistoryUiRow> selected)
     {
         var bytes = selected.Sum(r => r.AudioBytes);
-        return bytes > 0 ? HistoryUiFormat.Bytes(bytes) + " of audio" : "No audio";
+        return bytes > 0 ? Loc.F("History.Selection.AudioBytes", HistoryUiFormat.Bytes(bytes)) : Loc.T("History.Selection.NoAudio");
     }
 }

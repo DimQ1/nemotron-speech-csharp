@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.Services;
 
 /// <summary>
@@ -10,33 +12,33 @@ public static class ModelsPageFormatter
     public static string DescribeInstalled(int installedCount, long bytesUsed)
     {
         if (installedCount <= 0)
-            return "No models installed";
+            return Loc.T("Models.Page.NoModelsInstalled");
 
         return bytesUsed > 0
-            ? $"{installedCount} installed · {DownloadProgressFormatter.FormatBytes(bytesUsed)} used"
-            : $"{installedCount} installed";
+            ? Loc.Plural("Models.Page.InstalledUsed", installedCount, DownloadProgressFormatter.FormatBytes(bytesUsed))
+            : Loc.Plural("Models.Page.Installed", installedCount);
     }
 
     /// <summary>Label of the downloads tab: the count only while something is queued or running.</summary>
     public static string DownloadsTabLabel(int activeJobs) =>
-        activeJobs > 0 ? $"Downloads · {activeJobs}" : "Downloads";
+        activeJobs > 0 ? Loc.F("Models.Tabs.DownloadsCount", activeJobs) : Loc.T("Models.Tabs.Downloads");
 
     /// <summary>Headline of the queue summary card, e.g. "2 active · 1 failed".</summary>
     public static string DescribeQueueHeadline(int active, int failed, int completed, int total)
     {
         if (total <= 0)
-            return "No downloads";
+            return Loc.T("Models.Downloads.NoDownloads");
 
         var parts = new List<string>(3);
         if (active > 0)
-            parts.Add($"{active} active");
+            parts.Add(Loc.Plural("Models.Downloads.Active", active));
         if (failed > 0)
-            parts.Add($"{failed} failed");
+            parts.Add(Loc.Plural("Models.Downloads.Failed", failed));
         if (completed > 0)
-            parts.Add($"{completed} done");
+            parts.Add(Loc.Plural("Models.Downloads.Done", completed));
 
         // Only cancelled jobs are left over.
-        return parts.Count == 0 ? $"{total} stopped" : string.Join(" · ", parts);
+        return parts.Count == 0 ? Loc.Plural("Models.Downloads.Stopped", total) : string.Join(" · ", parts);
     }
 
     /// <summary>"1.0 / 2.4 GB"-style transfer; the downloaded bytes alone when the total is unknown.</summary>
@@ -55,7 +57,7 @@ public static class ModelsPageFormatter
         if (totalBytes <= 0)
             return transfer;
 
-        return $"{percent:F0}% · {transfer}";
+        return Loc.F("Models.Progress.PercentTransfer", percent, transfer);
     }
 
     /// <summary>
@@ -67,7 +69,7 @@ public static class ModelsPageFormatter
         if (bytesPerSecond <= 0)
             return "";
 
-        var rate = $"{DownloadProgressFormatter.FormatBytes((long)bytesPerSecond)}/s";
+        var rate = Loc.F("Models.Progress.Rate", DownloadProgressFormatter.FormatBytes((long)bytesPerSecond));
         if (totalBytes <= 0 || downloadedBytes >= totalBytes)
             return rate;
 
@@ -79,11 +81,11 @@ public static class ModelsPageFormatter
     public static string FormatTimeLeft(TimeSpan remaining)
     {
         if (remaining < TimeSpan.FromMinutes(1))
-            return "< 1 min";
+            return Loc.T("Models.Progress.LessThanMinute");
 
         if (remaining < TimeSpan.FromHours(1))
-            return $"{(int)Math.Ceiling(remaining.TotalMinutes)} min";
+            return Loc.F("Models.Progress.Minutes", (int)Math.Ceiling(remaining.TotalMinutes));
 
-        return $"{(int)remaining.TotalHours} h {remaining.Minutes:D2} min";
+        return Loc.F("Models.Progress.HoursMinutes", (int)remaining.TotalHours, remaining.Minutes);
     }
 }

@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — Aide",
+  "Help.Close": "Fermer",
+  "Help.Start.Title": "Prise en main",
+  "Help.Start.Body": "1. Au premier démarrage, le modèle vocal recommandé se télécharge automatiquement.\n2. Appuyez sur le bouton rond **Enregistrer** en bas et parlez — la transcription s'affiche en direct. L'enregistrement continue jusqu'à ce que vous appuyiez de nouveau sur le bouton ; inutile de le maintenir.\n3. Ouvrez le menu **≡** (en haut à gauche) pour changer de mode — **Saisie de texte** tape chaque phrase terminée dans la fenêtre active, **Traduction en direct** ajoute une carte de traduction, **Saisie manuelle** vous permet de taper ou de modifier la transcription.\n4. Le menu contient aussi la langue de reconnaissance, les modèles vocaux, les téléchargements et les **Paramètres**— la ligne sous le titre indique le modèle et les modes actifs.",
+  "Help.Hotkey.Title": "Raccourci global",
+  "Help.Hotkey.Body": "Le raccourci par défaut pour démarrer/arrêter est **Ctrl+Shift+V**. Sous Linux, il est enregistré via le portail XDG GlobalShortcuts (xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+) ; le compositeur affiche une seule fois une demande d'autorisation. Sur les bureaux sans prise en charge du portail, le raccourci est signalé comme indisponible.",
+  "Help.LinuxInjection.Title": "Saisie de texte sous Linux",
+  "Help.LinuxInjection.Body": "La saisie place le texte dans le presse-papiers, puis simule la combinaison de collage (Ctrl+V par défaut — modifiable dans les Paramètres) dans la fenêtre active.\n\n**Outils requis (installez-en un par paire) :**\n• Presse-papiers : wl-copy (Wayland) ou xclip / xsel (X11)\n• Clavier : ydotool (Wayland, nécessite ydotoold) ou libXtst / xdotool (X11)\n\nUbuntu : *sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "Capture audio",
+  "Help.Audio.Body": "La capture passe par le serveur compatible PulseAudio (les bureaux PipeWire et WSLg en fournissent un).\n• Micro — source d'entrée par défaut\n• Loopback — moniteur de la sortie par défaut (*@DEFAULT_MONITOR@*)\n• Mix — les deux, mélangés à 50/50",
+  "Help.Data.Title": "Emplacement des données",
+  "Help.Data.Body": "• Paramètres : *~/.local/share/VoiceType/settings.json*\n• Modèles : *~/.local/share/VoiceType/models/*\n(sous Windows, ils se trouvent dans %LOCALAPPDATA%\\VoiceType)"
+}

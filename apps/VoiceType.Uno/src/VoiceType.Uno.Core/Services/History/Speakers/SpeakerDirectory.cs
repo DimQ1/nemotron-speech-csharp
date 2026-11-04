@@ -1,4 +1,5 @@
 using System.Globalization;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -145,12 +146,12 @@ public static class SpeakerDirectory
     public static string DisplayName(SpeakerPersonInfo person, int indexInPeople = 0) =>
         !string.IsNullOrWhiteSpace(person.Name)
             ? person.Name!
-            : "Speaker " + (person.Number > 0 ? person.Number : indexInPeople + 1).ToString(CultureInfo.InvariantCulture);
+            : Loc.F("Speakers.Directory.DefaultName", (person.Number > 0 ? person.Number : indexInPeople + 1).ToString(CultureInfo.InvariantCulture));
 
     public static string DisplayName(SpeakerDirectoryInfo directory, string personId)
     {
         var i = directory.People.FindIndex(p => p.Id == personId);
-        return i < 0 ? "Speaker" : DisplayName(directory.People[i], i);
+        return i < 0 ? Loc.T("Speakers.Directory.Unknown") : DisplayName(directory.People[i], i);
     }
 
     public static string? PersonOf(RecordingManifest manifest, string runId, int channel) =>

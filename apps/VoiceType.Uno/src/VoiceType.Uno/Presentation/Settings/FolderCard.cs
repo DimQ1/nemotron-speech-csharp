@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml.Automation;
 using VoiceType.Uno.Services;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Presentation.SettingsUi;
 
@@ -70,13 +71,13 @@ internal sealed class FolderCard : UserControl
             VerticalAlignment = VerticalAlignment.Top,
             Child = new TextBlock { Text = model.Badge, Style = SettingsRows.StyleOf("HistoryChipTextStyle") },
         };
-        if (model.Badge == "Custom")
+        if (model.Badge == Loc.T("Settings.Storage.Badge.Custom"))
             badge.Background = SettingsRows.ThemeBrush(_scope, "HistoryHintBrush");
         Grid.SetColumn(badge, 2);
         head.Children.Add(badge);
         _body.Children.Add(head);
 
-        _body.Children.Add(SettingsRows.PathBox(model.Path, $"{model.Title} folder path"));
+        _body.Children.Add(SettingsRows.PathBox(model.Path, Loc.F("Settings.Storage.Card.PathName", model.Title)));
 
         var facts = new TextBlock { Text = model.Facts, FontSize = 13, TextWrapping = TextWrapping.Wrap };
         _body.Children.Add(facts);
@@ -116,8 +117,8 @@ internal sealed class FolderCard : UserControl
             var row = new Grid { ColumnSpacing = 8 };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.Children.Add(ActionButton(StorageFolderText.OpenFolder, $"Open the {model.Title} folder", _open, 0));
-            row.Children.Add(ActionButton(StorageFolderText.ChangeFolder, $"Change the {model.Title} folder", _change, 1));
+            row.Children.Add(ActionButton(StorageFolderText.OpenFolder, Loc.F("Settings.Storage.Card.OpenName", model.Title), _open, 0));
+            row.Children.Add(ActionButton(StorageFolderText.ChangeFolder, Loc.F("Settings.Storage.Card.ChangeName", model.Title), _change, 1));
             _body.Children.Add(row);
         }
 

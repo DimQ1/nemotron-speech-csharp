@@ -1,5 +1,6 @@
 using SpeechLib.Llm;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services.Jobs;
 
@@ -17,7 +18,7 @@ internal sealed class ContextProgressSink(JobExecutionContext context) : IJobPro
 internal static class GemmaHost
 {
     public static ILlmHost Require(Func<ILlmHost?> host) =>
-        host() ?? throw new LlmUnavailableException("The Gemma engine is not available in this build.");
+        host() ?? throw new LlmUnavailableException(Loc.T("Services.Jobs.GemmaUnavailable"));
 }
 
 /// <summary><c>translate</c> jobs: a saved transcript version into another language (<see cref="TranslateJobWorker"/>).</summary>

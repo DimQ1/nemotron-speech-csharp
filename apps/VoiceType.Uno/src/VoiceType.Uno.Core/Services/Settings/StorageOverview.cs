@@ -1,4 +1,5 @@
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -83,7 +84,7 @@ public static class StorageOverview
     }
 
     /// <summary><c>4.6 GB in total</c>.</summary>
-    public static string TotalText(StorageUsage usage) => HistoryUiFormat.Bytes(usage.TotalBytes) + " in total";
+    public static string TotalText(StorageUsage usage) => Loc.F("Settings.Storage.Overview.Total", HistoryUiFormat.Bytes(usage.TotalBytes));
 
     /// <summary>
     /// <c>41 GB free on C: · 212 GB free on D:</c> with several drives; <c>41 GB free</c> with one drive on a desktop;
@@ -94,8 +95,10 @@ public static class StorageOverview
         if (drives.Count == 0)
             return "";
         if (drives.Count == 1)
-            return HistoryUiFormat.Bytes(drives[0].FreeBytes) + (android && drives[0].TotalBytes > 0 ? " free of " + HistoryUiFormat.Bytes(drives[0].TotalBytes) : " free");
-        return string.Join(" · ", drives.Select(d => $"{HistoryUiFormat.Bytes(d.FreeBytes)} free on {DriveLabel(d.Root)}"));
+            return android && drives[0].TotalBytes > 0
+                ? Loc.F("Settings.Storage.Overview.FreeOf", HistoryUiFormat.Bytes(drives[0].FreeBytes), HistoryUiFormat.Bytes(drives[0].TotalBytes))
+                : Loc.F("Settings.Storage.Overview.Free", HistoryUiFormat.Bytes(drives[0].FreeBytes));
+        return string.Join(" · ", drives.Select(d => Loc.F("Settings.Storage.Overview.FreeOn", HistoryUiFormat.Bytes(d.FreeBytes), DriveLabel(d.Root))));
     }
 
     /// <summary><c>C:\</c> gives <c>C:</c>; a Unix root stays as it is.</summary>
@@ -125,8 +128,8 @@ public static class StorageOverview
         var sessionsDrive = DriveOf(usage.SessionsDir);
         var differ = !string.Equals(modelsDrive, sessionsDrive, ModelStorageLayout.PathComparison);
         return differ
-            ? $"Models {HistoryUiFormat.Bytes(usage.ModelsBytes)} on {DriveLabel(modelsDrive)} · recordings on {DriveLabel(sessionsDrive)}"
-            : $"Models {HistoryUiFormat.Bytes(usage.ModelsBytes)} · recordings {HistoryUiFormat.Bytes(usage.RecordingsBytes)}";
+            ? Loc.F("Settings.Storage.Overview.HubDrives", HistoryUiFormat.Bytes(usage.ModelsBytes), DriveLabel(modelsDrive), DriveLabel(sessionsDrive))
+            : Loc.F("Settings.Storage.Overview.Hub", HistoryUiFormat.Bytes(usage.ModelsBytes), HistoryUiFormat.Bytes(usage.RecordingsBytes));
     }
 
     private static string DriveOf(string path)

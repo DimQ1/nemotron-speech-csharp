@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using VoiceType.Uno.Localization;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using SpeechLib;
@@ -186,26 +187,26 @@ public sealed class DiarizeJobWorker
 
     private string? Run(HistoryJob job, IJobProgressSink sink, CancellationToken cancellationToken)
     {
-        var entry = _store.Get(job.RecordingId) ?? throw new InvalidOperationException("The recording no longer exists.");
+        var entry = _store.Get(job.RecordingId) ?? throw new InvalidOperationException(Loc.T("Speakers.Job.RecordingGone"));
         var manifest = entry.Manifest;
         if (manifest.State == RecordingStates.Recording)
-            throw new InvalidOperationException("The recording is still being recorded.");
+            throw new InvalidOperationException(Loc.T("Speakers.Job.StillRecording"));
 
         var parameters = job.Parameters.Diarization ?? new DiarizationJobParameters();
         var settings = _settings();
         var model = _factory.Find(parameters.ModelFolder ?? settings.Speakers.ModelFolder)
-            ?? throw new InvalidOperationException("The speaker detection model is not installed. Download it on the Models page, then retry.");
+            ?? throw new InvalidOperationException(Loc.T("Speakers.Job.NoModel"));
 
         var versionId = job.Parameters.SourceVersion ?? manifest.CurrentVersion;
         if (versionId is not null && manifest.FindVersion(versionId) is null)
-            throw new InvalidOperationException($"Transcript {versionId} no longer exists.");
+            throw new InvalidOperationException(Loc.F("Speakers.Job.TranscriptGone", versionId));
 
         var preset = string.IsNullOrWhiteSpace(parameters.Preset) ? "offline" : parameters.Preset!;
         var run = FindRun(manifest, job, model, preset, parameters.ReuseExistingRun != false);
         if (run is null)
         {
             var audioPath = _store.GetAudioPath(job.RecordingId)
-                ?? throw new InvalidOperationException("The audio of this recording was deleted; only the text is left.");
+                ?? throw new InvalidOperationException(Loc.T("Speakers.Job.AudioDeleted"));
             run = RunModel(job, sink, model, parameters, preset, audioPath, settings, cancellationToken);
         }
         else
@@ -220,7 +221,7 @@ public sealed class DiarizeJobWorker
             return run.Id;
         }
 
-        sink.Detail("Labelling the transcript…");
+        sink.Detail(Loc.T("Speakers.Job.Labelling"));
         var layer = BuildLayer(job.RecordingId, run.Id, versionId);
         sink.Detail(null);
         sink.Progress(1);
@@ -251,19 +252,19 @@ public sealed class DiarizeJobWorker
         var threads = settings.Speakers.EffectiveThreads(_isPhone);
         var options = new DiarizerRunOptions(preset, threads, ExecutionProvider: null, post);
 
-        sink.Detail("Loading " + model.Title + "…");
+        sink.Detail(Loc.F("Speakers.Job.Loading", model.Title));
         cancellationToken.ThrowIfCancellationRequested();
         using var diarizer = _factory.Create(model, options);
         cancellationToken.ThrowIfCancellationRequested();
 
-        sink.Detail("Detecting speakers…");
+        sink.Detail(Loc.T("Speakers.Job.Detecting"));
         using var audio = RecordingAudioStream.Open(audioPath, DiarizationConfig.SampleRate);
         var total = audio.Length / (double)audio.SampleRate;
         var progress = new Progress95(sink);
         var result = diarizer.Diarize(Blocks(audio, cancellationToken), total, progress, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
-        sink.Detail("Saving…");
+        sink.Detail(Loc.T("Speakers.Job.Saving"));
         var document = new DiarizationRunDocument
         {
             DurationSec = Math.Round(result.DurationSeconds, 2),

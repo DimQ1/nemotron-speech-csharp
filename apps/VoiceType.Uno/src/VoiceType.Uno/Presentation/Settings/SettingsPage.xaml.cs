@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Presentation.History;
 using VoiceType.Uno.Services;
 using VirtualKey = Windows.System.VirtualKey;
@@ -99,8 +100,8 @@ public sealed partial class SettingsPage : Page
         var narrowSection = !_wide && !_showHub;
         TitleText.Text = SettingsText.HeaderTitle(narrowSection ? _shown : null, _wide);
         SubtitleText.Text = SettingsText.HeaderSubtitle(narrowSection ? _shown : null, _wide);
-        AutomationProperties.SetName(BackButton, narrowSection ? "Back to Settings" : "Close Settings");
-        ToolTipService.SetToolTip(BackButton, narrowSection ? "Back to Settings" : "Close Settings");
+        AutomationProperties.SetName(BackButton, narrowSection ? Loc.T("Settings.Page.BackToSettings") : Loc.T("Settings.Page.Close"));
+        ToolTipService.SetToolTip(BackButton, narrowSection ? Loc.T("Settings.Page.BackToSettings") : Loc.T("Settings.Page.Close"));
         // Side by side the list only selects (no chevron); on its own it opens a section (chevron).
         foreach (var chevron in _sectionChevrons)
             chevron.Visibility = _wide ? Visibility.Collapsed : Visibility.Visible;
@@ -126,7 +127,7 @@ public sealed partial class SettingsPage : Page
         ListPanel.Children.Clear();
         _navItems.Clear();
         _sectionChevrons.Clear();
-        ListPanel.Children.Add(SettingsRows.SectionHeader("App"));
+        ListPanel.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Hub.App")));
         foreach (var section in SettingsText.VisibleSections(Android))
         {
             var (button, subtitle) = NavButton(IconOf(section), SettingsText.Title(section), "", () => ShowSection(section, fromList: true), chevron: true);
@@ -135,11 +136,11 @@ public sealed partial class SettingsPage : Page
             ListPanel.Children.Add(button);
         }
 
-        ListPanel.Children.Add(SettingsRows.SectionHeader("Also in Settings"));
-        var history = NavButton(Microsoft.UI.Xaml.Controls.Symbol.Clock, "History", "", () => Frame?.Navigate(typeof(HistorySettingsPage)), chevron: true);
+        ListPanel.Children.Add(SettingsRows.SectionHeader(Loc.T("Settings.Hub.AlsoInSettings")));
+        var history = NavButton(Microsoft.UI.Xaml.Controls.Symbol.Clock, Loc.T("Settings.Hub.History"), "", () => Frame?.Navigate(typeof(HistorySettingsPage)), chevron: true);
         _historySubtitle = history.Subtitle;
         ListPanel.Children.Add(history.Button);
-        var models = NavButton(Microsoft.UI.Xaml.Controls.Symbol.Download, "Models", SettingsText.ModelsLinkSubtitle, () => Frame?.Navigate(typeof(ModelsPage), ModelsTab.Speech), chevron: true);
+        var models = NavButton(Microsoft.UI.Xaml.Controls.Symbol.Download, Loc.T("Settings.Hub.Models"), SettingsText.ModelsLinkSubtitle, () => Frame?.Navigate(typeof(ModelsPage), ModelsTab.Speech), chevron: true);
         ListPanel.Children.Add(models.Button);
         _built = true;
         RefreshHub();

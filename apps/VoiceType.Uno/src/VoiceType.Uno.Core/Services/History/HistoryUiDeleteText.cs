@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.History;
 
 /// <summary>Title and body of a delete confirmation.</summary>
@@ -8,13 +10,17 @@ public static class HistoryUiDeleteText
 {
     public static HistoryUiConfirmation Recordings(int count, long audioBytes, int chatCount)
     {
-        var title = count == 1 ? "Delete this recording?" : $"Delete {count} recordings?";
-        var audio = audioBytes > 0 ? $"Audio ({HistoryUiFormat.Bytes(audioBytes)}), transcripts" : "Transcripts";
-        var chats = chatCount > 0
-            ? " Chats keep their messages but lose " + (count == 1 ? "this source." : "these sources.")
-            : "";
-        return new HistoryUiConfirmation(title,
-            $"{audio}, versions and translations are deleted from this device.{chats} This can't be undone.");
+        var title = count == 1 ? Loc.T("History.Delete.Recordings.TitleThis") : Loc.Plural("History.Delete.Recordings.Title", count);
+        var sentences = new List<string>
+        {
+            audioBytes > 0
+                ? Loc.F("History.Delete.Recordings.BodyAudio", HistoryUiFormat.Bytes(audioBytes))
+                : Loc.T("History.Delete.Recordings.BodyText"),
+        };
+        if (chatCount > 0)
+            sentences.Add(Loc.T(count == 1 ? "History.Delete.Recordings.ChatsThis" : "History.Delete.Recordings.ChatsThese"));
+        sentences.Add(Loc.T("History.Delete.CannotUndo"));
+        return new HistoryUiConfirmation(title, string.Join(" ", sentences));
     }
 
     /// <param name="translationLanguages">Languages of the translations made from the version.</param>
@@ -23,22 +29,19 @@ public static class HistoryUiDeleteText
         string versionId, string currentVersionId, IReadOnlyCollection<string> translationLanguages, int chatCount)
     {
         ArgumentNullException.ThrowIfNull(translationLanguages);
-        var parts = new List<string> { $"Transcript {versionId} is deleted; the other versions stay." };
+        var parts = new List<string> { Loc.F("History.Delete.Version.Body", versionId) };
         if (translationLanguages.Count > 0)
-            parts.Add((translationLanguages.Count == 1 ? "Its translation " : "Its translations ")
-                      + string.Join(", ", translationLanguages.Select(l => l.ToUpperInvariant()))
-                      + " " + (translationLanguages.Count == 1 ? "is" : "are") + " deleted too.");
+            parts.Add(Loc.Plural("History.Delete.Version.Translations", translationLanguages.Count,
+                string.Join(", ", translationLanguages.Select(l => l.ToUpperInvariant()))));
         if (chatCount > 0)
-            parts.Add($"{HistoryUiFormat.Count(chatCount, "chat")} {(chatCount == 1 ? "reads" : "read")} this version; "
-                      + $"{(chatCount == 1 ? "it switches" : "they switch")} to {currentVersionId} (current).");
-        return new HistoryUiConfirmation($"Delete version {versionId}?", string.Join(" ", parts));
+            parts.Add(Loc.Plural("History.Delete.Version.Chats", chatCount, currentVersionId));
+        return new HistoryUiConfirmation(Loc.F("History.Delete.Version.Title", versionId), string.Join(" ", parts));
     }
 
     public static HistoryUiConfirmation AllHistory(int count, long totalBytes) => new(
-        "Delete all history?",
-        $"{HistoryUiFormat.Count(count, "recording")} ({HistoryUiFormat.Bytes(totalBytes)}) with their audio, versions "
-        + "and translations are deleted from this device. Chats keep their messages. This can't be undone.");
+        Loc.T("History.Delete.All.Title"),
+        Loc.Plural("History.Delete.All.Body", count, HistoryUiFormat.Bytes(totalBytes)));
 
     public static string Snackbar(int recordings) =>
-        recordings == 1 ? "Recording deleted" : $"{recordings} recordings deleted";
+        recordings == 1 ? Loc.T("History.Delete.Snackbar.This") : Loc.Plural("History.Delete.Snackbar", recordings);
 }

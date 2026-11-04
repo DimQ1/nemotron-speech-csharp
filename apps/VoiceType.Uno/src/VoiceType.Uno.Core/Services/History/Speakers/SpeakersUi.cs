@@ -1,4 +1,5 @@
 using System.Globalization;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -64,7 +65,12 @@ public static class SpeakersUi
         0xFFF28BC4,
     ];
 
-    private static readonly string[] ColorNames = ["Blue", "Rose", "Green", "Amber", "Violet", "Orange", "Teal", "Magenta"];
+    // Keys of the colour names (palette order); the text is looked up at use time.
+    private static readonly string[] ColorKeys =
+    [
+        "Speakers.Color.Blue", "Speakers.Color.Rose", "Speakers.Color.Green", "Speakers.Color.Amber",
+        "Speakers.Color.Violet", "Speakers.Color.Orange", "Speakers.Color.Teal", "Speakers.Color.Magenta",
+    ];
 
     public static int NormalizeColor(int index) => ((index % PaletteSize) + PaletteSize) % PaletteSize;
 
@@ -72,7 +78,7 @@ public static class SpeakersUi
     public static uint ColorArgb(int index, bool dark) =>
         (dark ? DarkColors : LightColors)[NormalizeColor(index)];
 
-    public static string ColorName(int index) => ColorNames[NormalizeColor(index)];
+    public static string ColorName(int index) => Loc.T(ColorKeys[NormalizeColor(index)]);
 
     /// <summary>First palette entry no person uses; falls back to the least used one.</summary>
     public static int NextFreeColor(IEnumerable<SpeakerPerson> people)
@@ -91,10 +97,10 @@ public static class SpeakersUi
 
     // ── Wording ───────────────────────────────────────────────────────────
 
-    public static string SpeakerCount(int count) => count == 1 ? "1 speaker" : count.ToString(CultureInfo.InvariantCulture) + " speakers";
+    public static string SpeakerCount(int count) => Loc.Plural("Speakers.Count", count);
 
     public static string PercentText(double percent) =>
-        Math.Round(percent, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture) + " %";
+        Loc.F("Speakers.Percent", Math.Round(percent, MidpointRounding.AwayFromZero).ToString("0", Loc.Culture));
 
     /// <summary>People ordered by their share of the talk time (people without stats last, keeping their order).</summary>
     public static IReadOnlyList<SpeakerPerson> ByTalkTime(SpeakerLayerView layer) =>
@@ -113,7 +119,7 @@ public static class SpeakersUi
 
     /// <summary>Name of a person, or "Unknown speaker" for an unlabelled segment.</summary>
     public static string NameOf(SpeakerLayerView? layer, string? personId) =>
-        PersonOf(layer, personId)?.Name is { Length: > 0 } name ? name : "Unknown speaker";
+        PersonOf(layer, personId)?.Name is { Length: > 0 } name ? name : Loc.T("Speakers.UnknownSpeaker");
 
     /// <summary>One line for narrow screens: <c>3 speakers · Anna 48 %, Mark 32 %…</c>.</summary>
     public static string SummaryLine(SpeakerLayerView layer)
@@ -137,8 +143,8 @@ public static class SpeakersUi
     public static string StatLine(SpeakerStat? stat)
     {
         if (stat is null)
-            return "No speech detected";
-        var turns = stat.Turns == 1 ? "1 turn" : stat.Turns.ToString(CultureInfo.InvariantCulture) + " turns";
+            return Loc.T("Speakers.Stat.NoSpeech");
+        var turns = Loc.Plural("Speakers.Stat.Turns", stat.Turns);
         return PercentText(stat.Percent) + " · " + Duration(stat.TalkSeconds) + " · " + turns;
     }
 
@@ -147,7 +153,7 @@ public static class SpeakersUi
     {
         var total = (int)Math.Round(Math.Max(0, seconds), MidpointRounding.AwayFromZero);
         if (total < 60)
-            return total.ToString(CultureInfo.InvariantCulture) + " s";
+            return Loc.F("Speakers.Duration.Seconds", total);
         var h = total / 3600;
         var m = total % 3600 / 60;
         var s = total % 60;
@@ -161,28 +167,28 @@ public static class SpeakersUi
     {
         if (layer.People.Count < 2 || StatOf(layer, person.Id) is not { } stat || stat.Percent >= MinorSpeakerPercent)
             return null;
-        return $"{person.Name} talks only {Duration(stat.TalkSeconds)}. Is it the same voice as another speaker?";
+        return Loc.F("Speakers.MergeHint", person.Name, Duration(stat.TalkSeconds));
     }
 
     /// <summary>"Up to 8 voices are told apart" warning when every channel is taken.</summary>
     public static string? VoiceLimitWarning(SpeakerLayerView layer) =>
-        layer.People.Count >= MaxVoices ? "Up to 8 voices are told apart — some may be mixed." : null;
+        layer.People.Count >= MaxVoices ? Loc.T("Speakers.VoiceLimit") : null;
 
     /// <summary>Versions tab: <c>Speakers 3 · Nemotron Diarization INT8</c>.</summary>
     public static string VersionLine(SpeakerLayerView layer) =>
-        "Speakers " + layer.People.Count.ToString(CultureInfo.InvariantCulture)
+        Loc.F("Speakers.VersionLine", layer.People.Count)
         + (layer.ModelTitle.Length > 0 ? " · " + layer.ModelTitle : "");
 
     /// <summary>Versions tab: <c>Detection offline, 30 s buffer</c>; empty when the layer has no preset.</summary>
     public static string PresetLine(SpeakerLayerView layer) =>
-        layer.Preset.Length == 0 ? "" : "Detection " + layer.Preset;
+        layer.Preset.Length == 0 ? "" : Loc.F("Speakers.PresetLine", layer.Preset);
 
     public static string FilterLine(string name, int shown, int total) =>
-        $"{name} only · {shown.ToString(CultureInfo.InvariantCulture)} of {total.ToString(CultureInfo.InvariantCulture)} segments";
+        Loc.F("Speakers.FilterLine", name, shown, total);
 
-    public static string PreviousTurnLabel(string name) => $"Previous turn by {name}";
+    public static string PreviousTurnLabel(string name) => Loc.F("Speakers.Turn.Previous", name);
 
-    public static string NextTurnLabel(string name) => $"Next turn by {name}";
+    public static string NextTurnLabel(string name) => Loc.F("Speakers.Turn.Next", name);
 
     public static SpeakerBarMode BarMode(double width, double height)
     {
@@ -247,7 +253,7 @@ public static class SpeakersUi
         var count = to - from;
         var names = persons.Skip(from).Take(count).Distinct().Select(p => NameOf(layer, p)).ToList();
         var who = names.Count <= 2 ? string.Join(", ", names) : names[0] + ", " + names[1] + " +" + (names.Count - 2).ToString(CultureInfo.InvariantCulture);
-        var text = "··· " + (count == 1 ? "1 segment" : count.ToString(CultureInfo.InvariantCulture) + " segments") + " by " + who;
+        var text = Loc.Plural("Speakers.Collapsed", count, who);
         rows[from] = rows[from] with { CollapsedText = text };
     }
 

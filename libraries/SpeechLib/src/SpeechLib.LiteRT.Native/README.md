@@ -106,7 +106,7 @@ terminology and register stay consistent), then the sentence; a no-repeat 8-gram
 
 - **Shared host** (`new LiteRTLmNativeTranslator(host, options)`): used by the Uno app; creating or disposing the
   translator is cheap and never touches the engine.
-- **Own host** (`new LiteRTLmNativeTranslator(options)`): the WinUI app and the CLI; the translator creates a private
+- **Own host** (`new LiteRTLmNativeTranslator(options)`): the CLI; the translator creates a private
   `GemmaEngineHost`, loads it before returning, and disposes it with itself. Only one engine may be alive per
   process, so an app that also has a shared host must use the shared form.
 - **Coalescing.** A newer revision of a sentence (its text extends the older one) cancels the older request while it

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Microsoft.UI.Dispatching;
 using SpeechLib.ModelDownload;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services.Jobs;
 
 namespace VoiceType.Uno.Presentation.Queue;
@@ -43,7 +44,7 @@ public sealed partial class QueueViewModel : ObservableObject
 
     [ObservableProperty] private string _subtitle = "";
     [ObservableProperty] private bool _isQueuePaused;
-    [ObservableProperty] private string _pauseAllLabel = "Pause the queue";
+    [ObservableProperty] private string _pauseAllLabel = Loc.T("Queue.Page.PauseQueue");
     [ObservableProperty] private bool _hasRunning;
     [ObservableProperty] private bool _hasScheduled;
     [ObservableProperty] private bool _hasWaiting;
@@ -238,25 +239,25 @@ public sealed partial class QueueViewModel : ObservableObject
         var completedToday = finished.Count(j => j.State == JobState.Completed && j.FinishedAt?.ToOffset(now.Offset).Date == today);
         HasFinished = finished.Count > 0 || Failed.Count > 0;
         FinishedText = completedToday > 0
-            ? $"{completedToday} completed today"
-            : finished.Count > 0 ? $"{finished.Count} finished" : "Finished jobs";
+            ? Loc.Plural("Queue.Finished.CompletedToday", completedToday)
+            : finished.Count > 0 ? Loc.Plural("Queue.Finished.Count", finished.Count) : Loc.T("Queue.Finished.Title");
 
         var running = jobs.Count(j => j.State == JobState.Running);
         var waiting = jobs.Count(j => j.State is JobState.Queued or JobState.Paused or JobState.Unknown);
         Subtitle = running + waiting == 0
-            ? "Nothing to do · one heavy job at a time"
-            : $"{running} running · {waiting} waiting · one heavy job at a time";
+            ? Loc.T("Queue.Page.SubtitleIdle")
+            : Loc.F("Queue.Page.Subtitle", running, waiting);
 
         IsReadOnly = _queue.IsReadOnly;
         ReadOnlyText = _queue.IsReadOnly
-            ? $"This queue was saved by a newer VoiceType (format {_queue.FileSchema}). It is shown read-only and nothing runs, so its jobs are not lost — update the app to run them."
+            ? Loc.F("Queue.Page.ReadOnly", _queue.FileSchema)
             : "";
         IsQueuePaused = _queue.IsPaused;
         ShowPausedNotice = _queue.IsPaused;
-        PauseAllLabel = _queue.IsPaused ? "Resume the queue" : "Pause the queue";
+        PauseAllLabel = _queue.IsPaused ? Loc.T("Queue.Page.ResumeQueue") : Loc.T("Queue.Page.PauseQueue");
         RunsWhenText = OperatingSystem.IsAndroid()
-            ? "Progress is saved: a closed app resumes where it stopped. Jobs run while VoiceType is open or working in the background."
-            : "Progress is saved: a closed app resumes where it stopped. Jobs run while VoiceType is running.";
+            ? Loc.T("Queue.Page.RunsWhenAndroid")
+            : Loc.T("Queue.Page.RunsWhen");
 
         HasRunning = Running.Count > 0;
         HasScheduled = Scheduled.Count > 0;
@@ -344,11 +345,11 @@ public sealed partial class JobCardViewModel : ObservableObject
 
         var kind = JobDisplay.KindTitle(lead.Kind);
         Title = IsBatch
-            ? $"Batch · {kind} {jobs.Count} recordings"
-            : $"{kind} · {manifests[0]?.EffectiveTitle ?? "Deleted recording"}";
+            ? Loc.Plural("Queue.Card.BatchTitle", jobs.Count, kind)
+            : $"{kind} · {manifests[0]?.EffectiveTitle ?? Loc.T("Queue.Card.DeletedRecording")}";
         Subtitle = DescribeParameters(lead, IsBatch ? null : manifests[0]);
         Lines = IsBatch
-            ? manifests.Select(m => m is null ? "Deleted recording" : $"{m.EffectiveTitle} · {JobDisplay.FormatClock(m.Audio?.DurationSec ?? 0)}").ToList()
+            ? manifests.Select(m => m is null ? Loc.T("Queue.Card.DeletedRecording") : $"{m.EffectiveTitle} · {JobDisplay.FormatClock(m.Audio?.DurationSec ?? 0)}").ToList()
             : [];
         HasLines = Lines.Count > 0;
         Glyph = lead.Kind == HistoryJobKind.Rerecognize ? "" : ""; // Refresh / Translate-ish
@@ -393,7 +394,7 @@ public sealed partial class JobCardViewModel : ObservableObject
     [ObservableProperty] private bool _canRunNow;
     [ObservableProperty] private bool _isRunning;
 
-    public string CancelLabel => IsBatch ? "Cancel batch" : "Cancel";
+    public string CancelLabel => IsBatch ? Loc.T("Queue.Card.CancelBatch") : Loc.T("Queue.Card.Cancel");
 
     internal bool CanMoveUp => _owner.CanMove(this, -1);
     internal bool CanMoveDown => _owner.CanMove(this, +1);
@@ -407,8 +408,8 @@ public sealed partial class JobCardViewModel : ObservableObject
         CanPause = true;
         CanCancel = true;
         LiveWarningText = ShowAndroidWarning
-            ? "Live recording in progress · slower, uses battery"
-            : "Live recording in progress · slower";
+            ? Loc.T("Queue.Card.LiveWarningBattery")
+            : Loc.T("Queue.Card.LiveWarning");
         var running = _jobs.First(j => j.State == JobState.Running);
         if (status is not null && status.JobId == running.Id)
             ApplyStatus(status, isLiveRecording);
@@ -416,7 +417,7 @@ public sealed partial class JobCardViewModel : ObservableObject
         {
             ProgressValue = running.Progress * 100;
             ProgressText = JobDisplay.ProgressLine(running.Progress, _totalAudioSeconds);
-            EtaText = "starting…";
+            EtaText = Loc.T("Queue.Card.Starting");
             ShowLiveWarning = isLiveRecording;
         }
     }
@@ -435,7 +436,7 @@ public sealed partial class JobCardViewModel : ObservableObject
         var lead = _jobs[0];
         var chips = JobDisplay.ConditionChips(lead.Condition, now).ToList();
         if (lead.Priority < JobPriorities.Normal)
-            chips.Add("Low priority");
+            chips.Add(Loc.T("Queue.Card.LowPriority"));
         Chips = chips;
         HasChips = chips.Count > 0;
         var paused = _jobs.All(j => j.State == JobState.Paused);
@@ -445,12 +446,12 @@ public sealed partial class JobCardViewModel : ObservableObject
         {
             // Resumes from its checkpoint: show where it stopped.
             ProgressText = JobDisplay.ProgressLine(lead.Progress, _totalAudioSeconds);
-            EtaText = paused ? "Paused" : "continues from here";
+            EtaText = paused ? Loc.T("Queue.Card.Paused") : Loc.T("Queue.Card.ContinuesHere");
             StatusText = paused ? null : reason;
         }
         else
         {
-            StatusText = paused ? "Paused" : reason;
+            StatusText = paused ? Loc.T("Queue.Card.Paused") : reason;
         }
         HasStatus = !string.IsNullOrEmpty(StatusText);
         if (readOnly)
@@ -464,7 +465,7 @@ public sealed partial class JobCardViewModel : ObservableObject
     internal void ConfigureFailed()
     {
         var lead = _jobs[0];
-        StatusText = "Failed: " + (lead.Error ?? "unknown error");
+        StatusText = Loc.F("Queue.Card.Failed", lead.Error ?? Loc.T("Queue.Card.UnknownError"));
         HasStatus = true;
         CanRetry = true;
     }
@@ -478,26 +479,26 @@ public sealed partial class JobCardViewModel : ObservableObject
             if (!string.IsNullOrEmpty(p.ModelFolder))
                 parts.Add(ShortModel(p.ModelFolder));
             parts.Add(p.Language is null or "keep"
-                ? (manifest is null ? "keep each language" : "same language")
-                : p.Language.Equals("auto", StringComparison.OrdinalIgnoreCase) ? "auto language" : p.Language.ToUpperInvariant());
+                ? (manifest is null ? Loc.T("Queue.Params.KeepEachLanguage") : Loc.T("Queue.Params.SameLanguage"))
+                : p.Language.Equals("auto", StringComparison.OrdinalIgnoreCase) ? Loc.T("Queue.Params.AutoLanguage") : p.Language.ToUpperInvariant());
             if (p.Settings?.TryGetValue(OfflineRecognitionJob.SettingKeys.UseVad, out var vad) == true)
-                parts.Add(vad.ValueKind == System.Text.Json.JsonValueKind.True ? "VAD on" : "VAD off");
+                parts.Add(vad.ValueKind == System.Text.Json.JsonValueKind.True ? Loc.T("Queue.Params.VadOn") : Loc.T("Queue.Params.VadOff"));
             if (manifest is not null)
-                parts.Add("creates " + ReprocessPlan.NextVersionId(manifest));
+                parts.Add(Loc.F("Queue.Params.Creates", ReprocessPlan.NextVersionId(manifest)));
         }
         else if (job.Kind == HistoryJobKind.Translate)
         {
             parts.Add("→ " + TranslateTabLogic.LanguageName(p.TargetLanguage ?? ""));
             if (p.SourceVersion is { Length: > 0 } sourceVersion)
-                parts.Add("from " + sourceVersion);
+                parts.Add(Loc.F("Queue.Params.From", sourceVersion));
         }
         else if (job.Kind == HistoryJobKind.AutoTitle)
         {
-            parts.Add(p.Regenerate == true ? "new title" : "Gemma title");
+            parts.Add(p.Regenerate == true ? Loc.T("Queue.Params.NewTitle") : Loc.T("Queue.Params.GemmaTitle"));
         }
         else if (job.Kind == HistoryJobKind.Summarize)
         {
-            parts.Add("summary for chats");
+            parts.Add(Loc.T("Queue.Params.SummaryForChats"));
         }
         else if (!string.IsNullOrEmpty(p.TargetLanguage))
         {

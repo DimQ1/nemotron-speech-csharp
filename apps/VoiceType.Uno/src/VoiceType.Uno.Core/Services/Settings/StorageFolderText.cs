@@ -1,4 +1,5 @@
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -14,59 +15,62 @@ public sealed record StorageTextPart(string Text, bool IsPath = false);
 /// <summary>Wording of the Storage cards and the "Move … to the new folder?" questions (design voicetype-uno-settings §4).</summary>
 public static class StorageFolderText
 {
-    public const string RestartNow = "Restart now";
-    public const string DontMove = "Don't move";
-    public const string OpenFolder = "Open folder";
-    public const string ChangeFolder = "Change folder…";
-    public const string ChooseAnother = "Choose another…";
-    public const string NestedWarning = "The new folder is inside the current one. Choose a folder outside it.";
+    public static string RestartNow => Loc.T("Settings.Storage.RestartNow");
+    public static string DontMove => Loc.T("Settings.Storage.DontMove");
+    public static string OpenFolder => Loc.T("Settings.Storage.OpenFolder");
+    public static string ChangeFolder => Loc.T("Settings.Storage.ChangeFolder");
+    public static string ChooseAnother => Loc.T("Settings.Storage.ChooseAnother");
+    public static string NestedWarning => Loc.T("Settings.Storage.NestedWarning");
 
     public static string Title(StorageFolderKind kind) => kind switch
     {
         StorageFolderKind.Models => ModelStorageText.Title,
-        StorageFolderKind.Recordings => "Recordings",
-        _ => "App data",
+        StorageFolderKind.Recordings => Loc.T("Settings.Storage.Recordings.Title"),
+        _ => Loc.T("Settings.Storage.Data.Title"),
     };
 
     public static string What(StorageFolderKind kind) => kind switch
     {
         StorageFolderKind.Models => ModelStorageText.Explanation,
-        StorageFolderKind.Recordings => "Audio and transcripts saved to History",
-        _ => "Settings, chats, the job queue and logs",
+        StorageFolderKind.Recordings => Loc.T("Settings.Storage.Recordings.What"),
+        _ => Loc.T("Settings.Storage.Data.What"),
     };
 
     /// <summary><c>Default</c> or <c>Custom</c>.</summary>
-    public static string Badge(string path, string defaultPath) => FolderMover.PathsEqual(path, defaultPath) ? "Default" : "Custom";
+    public static string Badge(string path, string defaultPath) => FolderMover.PathsEqual(path, defaultPath) ? Loc.T("Settings.Storage.Badge.Default") : Loc.T("Settings.Storage.Badge.Custom");
 
     /// <summary><c>1.1 GB · 24 recordings</c>.</summary>
     public static string RecordingsFacts(long bytes, int count) =>
-        HistoryUiFormat.Bytes(bytes) + " · " + HistoryUiFormat.Count(count, "recording");
+        HistoryUiFormat.Bytes(bytes) + " · " + RecordingCount(count);
+
+    /// <summary><c>1 recording</c> / <c>24 recordings</c>.</summary>
+    private static string RecordingCount(int count) => Loc.Plural("Settings.Storage.Recordings.Count", count);
 
     /// <summary>The App data size line: <c>96 MB</c>.</summary>
     public static string DataFacts(long bytes) => HistoryUiFormat.Bytes(bytes);
 
     /// <summary>What lives in the data root: (name, meaning) pairs for the contents list.</summary>
-    public static IReadOnlyList<(string Name, string Meaning)> DataContents { get; } =
+    public static IReadOnlyList<(string Name, string Meaning)> DataContents =>
     [
-        ("settings.json", "everything on these pages"),
-        ("chats" + Path.DirectorySeparatorChar, "conversations with Gemma"),
-        ("jobs" + Path.DirectorySeparatorChar + "queue.json", "background jobs"),
-        ("*.log", "errors, translation, engine host"),
+        ("settings.json", Loc.T("Settings.Storage.Data.Settings")),
+        ("chats" + Path.DirectorySeparatorChar, Loc.T("Settings.Storage.Data.Chats")),
+        ("jobs" + Path.DirectorySeparatorChar + "queue.json", Loc.T("Settings.Storage.Data.Jobs")),
+        ("*.log", Loc.T("Settings.Storage.Data.Logs")),
     ];
 
     public static string QuestionTitle(StorageFolderKind kind) => kind switch
     {
         StorageFolderKind.Models => ModelStorageText.MoveQuestionTitle,
-        StorageFolderKind.Recordings => "Move recordings to the new folder?",
-        _ => "Move app data to the new folder?",
+        StorageFolderKind.Recordings => Loc.T("Settings.Storage.Recordings.QuestionTitle"),
+        _ => Loc.T("Settings.Storage.Data.QuestionTitle"),
     };
 
     /// <summary>Models: <c>4 models (3.4 GB)</c>; recordings: <c>24 recordings (1.1 GB)</c>; data: <c>App data (96 MB)</c>.</summary>
     public static string Subject(StorageFolderKind kind, int count, long bytes) => kind switch
     {
-        StorageFolderKind.Models => $"{ModelStorageText.Count(count)} ({DownloadProgressFormatter.FormatBytes(bytes)})",
-        StorageFolderKind.Recordings => $"{HistoryUiFormat.Count(count, "recording")} ({HistoryUiFormat.Bytes(bytes)})",
-        _ => $"App data ({HistoryUiFormat.Bytes(bytes)})",
+        StorageFolderKind.Models => Loc.F("Settings.Storage.Subject", ModelStorageText.Count(count), DownloadProgressFormatter.FormatBytes(bytes)),
+        StorageFolderKind.Recordings => Loc.F("Settings.Storage.Subject", RecordingCount(count), HistoryUiFormat.Bytes(bytes)),
+        _ => Loc.F("Settings.Storage.Data.Subject", HistoryUiFormat.Bytes(bytes)),
     };
 
     /// <summary>The body of the question, as text and path parts. <see cref="FolderRelation.Nested"/> has no question, only a warning.</summary>
@@ -75,17 +79,19 @@ public static class StorageFolderText
         if (relation == FolderRelation.Nested)
             return [new StorageTextPart(NestedWarning)];
 
-        var verb = kind == StorageFolderKind.Data ? "is" : "are";
+        var lead = kind == StorageFolderKind.Data
+            ? Loc.F("Settings.Storage.Question.SubjectIsIn", subject)
+            : Loc.F("Settings.Storage.Question.SubjectAreIn", subject);
         if (relation == FolderRelation.OtherDrive)
         {
             var tail = kind == StorageFolderKind.Models
-                ? "Models are not copied between drives automatically: they stay in the old folder, and you can copy them into the matching sub-folders (asr, llm, diarization) of the new folder yourself."
-                : "Recordings are not copied between drives automatically: they stay in the old folder.";
+                ? Loc.T("Settings.Storage.Question.OtherDriveModels")
+                : Loc.T("Settings.Storage.Question.OtherDriveRecordings");
             return
             [
-                new($"{subject} {verb} in"),
+                new(lead),
                 new(oldPath, true),
-                new("a different drive than"),
+                new(Loc.T("Settings.Storage.Question.DifferentDrive")),
                 new(newPath, true),
                 new(tail),
             ];
@@ -93,15 +99,15 @@ public static class StorageFolderText
 
         var after = kind switch
         {
-            StorageFolderKind.Models => "They move when the app restarts (same drive: instant, nothing is copied). Or keep them where they are and start the new folder empty.",
-            StorageFolderKind.Recordings => "They move when the app restarts (same drive: instant). Or keep them where they are: they then leave History until you choose the old folder again.",
-            _ => "VoiceType moves settings, chats, the queue and logs when it restarts. Models and recordings stay in their own folders.",
+            StorageFolderKind.Models => Loc.T("Settings.Storage.Question.AfterModels"),
+            StorageFolderKind.Recordings => Loc.T("Settings.Storage.Question.AfterRecordings"),
+            _ => Loc.T("Settings.Storage.Question.AfterData"),
         };
         return
         [
-            new($"{subject} {verb} in"),
+            new(lead),
             new(oldPath, true),
-            new("New folder:"),
+            new(Loc.T("Settings.Storage.Question.NewFolder")),
             new(newPath, true),
             new(after),
         ];
@@ -125,17 +131,18 @@ public static class StorageFolderText
     public static string PendingNote(StorageFolderKind kind, string target) => kind switch
     {
         StorageFolderKind.Models => ModelStorageText.PendingMoveNote(target),
-        StorageFolderKind.Recordings => $"Recordings will move to {target} when the app restarts.",
-        _ => $"App data will move to {target} when the app restarts.",
+        StorageFolderKind.Recordings => Loc.F("Settings.Storage.Recordings.PendingNote", target),
+        _ => Loc.F("Settings.Storage.Data.PendingNote", target),
     };
 
     /// <summary>
     /// "Keep old location" for recordings: the history store opens once at start, so the new folder starts working after a restart.
     /// </summary>
     public static string RecordingsSwitchNote(string newFolder) =>
-        $"New recordings will be saved to {newFolder} after the app restarts. Recordings in the old folder leave History until you choose it again.";
+        Loc.F("Settings.Storage.Recordings.SwitchNote", newFolder);
 
     /// <summary>The note after a start-up move of recordings that could not finish.</summary>
+    /// <remarks>Stays English: it is stored in settings.json (<see cref="AppSettings.SessionsStorageNote"/>) at start-up, before the interface language is known.</remarks>
     public static string RecordingsIncompleteNote(string wantedRoot, string actualRoot, IReadOnlyList<FolderMoveSkip> skipped)
     {
         var why = skipped.Any(s => s.Reason == ModelMoveSkipReason.OtherDrive) ? "it is on another drive and recordings are not copied automatically"
@@ -146,6 +153,7 @@ public static class StorageFolderText
     }
 
     /// <summary>The note after a start-up move of app data that could not finish.</summary>
+    /// <remarks>Stays English: it is written to the note file at start-up, before the interface language is known.</remarks>
     public static string DataIncompleteNote(string wantedRoot, string actualRoot, IReadOnlyList<FolderMoveSkip> skipped)
     {
         var why = skipped.Any(s => s.Reason == ModelMoveSkipReason.InUse) ? "some files were in use"
@@ -156,10 +164,10 @@ public static class StorageFolderText
 
     /// <summary>The note when the saved app data folder cannot be used and the default one is in use.</summary>
     public static string DataUnavailableNote(string wantedRoot, string defaultRoot) =>
-        $"The app data folder {wantedRoot} is not available. VoiceType uses the default folder {defaultRoot} instead.";
+        Loc.F("Settings.Storage.Data.UnavailableNote", wantedRoot, defaultRoot);
 
     /// <summary>The line under the three cards.</summary>
     public static string Footer(bool android) => android
-        ? "Android keeps models, recordings and app data in VoiceType’s private storage. Nothing leaves the phone, and Android removes it all when VoiceType is uninstalled."
-        : "Everything stays on this computer. A folder change never deletes or overwrites files: moves happen at the next start, as renames on the same drive.";
+        ? Loc.T("Settings.Storage.FooterAndroid")
+        : Loc.T("Settings.Storage.FooterDesktop");
 }

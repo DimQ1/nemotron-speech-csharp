@@ -4,6 +4,7 @@
       xmlns:presentation="using:VoiceType.Uno.Presentation"
       xmlns:controls="using:VoiceType.Uno.Presentation.Controls"
       xmlns:utu="using:Uno.Toolkit.UI"
+      xmlns:l="using:VoiceType.Uno.Presentation.Localization"
       Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
       KeyDown="Page_KeyDown"
       Loaded="Page_Loaded"
@@ -183,26 +184,26 @@
                 <Border Style="{StaticResource ChipStyle}"
                         Background="{ThemeResource ModelsHintBrush}" BorderBrush="Transparent"
                         Visibility="{x:Bind ShowRecommendedBadge}">
-                  <TextBlock Text="★ Recommended" Style="{StaticResource ChipTextStyle}" FontWeight="SemiBold" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.Recommended}" Style="{StaticResource ChipTextStyle}" FontWeight="SemiBold" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}"
                         Background="{ThemeResource AccentFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
                         Visibility="{x:Bind ShowInUseBadge, Mode=OneWay}">
-                  <TextBlock Text="● In use" Style="{StaticResource ChipTextStyle}"
+                  <TextBlock Text="{l:Tr Key=Models.Chip.InUse}" Style="{StaticResource ChipTextStyle}"
                              Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind ShowInstalledBadge, Mode=OneWay}">
-                  <TextBlock Text="installed" Style="{StaticResource ChipTextStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.Installed}" Style="{StaticResource ChipTextStyle}" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind IsMostAccurate}">
-                  <TextBlock Text="most accurate" Style="{StaticResource ChipTextStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.MostAccurate}" Style="{StaticResource ChipTextStyle}" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind IsFastest}">
-                  <TextBlock Text="fastest" Style="{StaticResource ChipTextStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.Fastest}" Style="{StaticResource ChipTextStyle}" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind IsSmallest}">
-                  <TextBlock Text="smallest" Style="{StaticResource ChipTextStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.Smallest}" Style="{StaticResource ChipTextStyle}" />
                 </Border>
               </controls:ChipWrapPanel>
 
@@ -216,15 +217,15 @@
                   <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                  <TextBlock Text="Accuracy" Style="{StaticResource MetricLabelStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Card.Metric.Accuracy}" Style="{StaticResource MetricLabelStyle}" />
                   <TextBlock Text="{x:Bind AccuracyText}" Style="{StaticResource MetricValueStyle}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1">
-                  <TextBlock Text="Speed" Style="{StaticResource MetricLabelStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Card.Metric.Speed}" Style="{StaticResource MetricLabelStyle}" />
                   <TextBlock Text="{x:Bind SpeedText}" Style="{StaticResource MetricValueStyle}" />
                 </StackPanel>
                 <StackPanel Grid.Column="2">
-                  <TextBlock Text="Download" Style="{StaticResource MetricLabelStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Card.Metric.Download}" Style="{StaticResource MetricLabelStyle}" />
                   <TextBlock Text="{x:Bind SizeText}" Style="{StaticResource MetricValueStyle}" />
                 </StackPanel>
               </Grid>
@@ -248,7 +249,7 @@
               <StackPanel Spacing="4" Visibility="{x:Bind IsDetailsExpanded, Mode=OneWay}">
                 <TextBlock Text="{x:Bind Description}" Style="{StaticResource SecondaryTextStyle}" />
                 <TextBlock Style="{StaticResource SecondaryTextStyle}">
-                  <Run Text="Word error rate by language:" />
+                  <Run Text="{l:Tr Key=Models.Card.WerByLanguage}" />
                   <Run Text="{x:Bind AccuracyDetailText}" />
                 </TextBlock>
                 <TextBlock Style="{StaticResource SecondaryTextStyle}">
@@ -268,7 +269,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{x:Bind StateText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"
                            VerticalAlignment="Center" MaxLines="3" TextTrimming="CharacterEllipsis" />
-                <Button Grid.Column="1" Content="Download" Style="{StaticResource AccentActionButtonStyle}"
+                <Button Grid.Column="1" Content="{l:Tr Key=Models.Card.Action.Download}" Style="{StaticResource AccentActionButtonStyle}"
                         Click="DownloadCard_Click"
                         Visibility="{x:Bind ShowDownloadAction, Mode=OneWay}" />
                 <Button Grid.Column="1" Content="{x:Bind SecondaryActionText, Mode=OneWay}"
@@ -278,8 +279,8 @@
                         Visibility="{x:Bind ShowSecondaryAction, Mode=OneWay}" />
                 <Button Grid.Column="2" Style="{StaticResource IconButtonStyle}" Width="44" Height="44"
                         Click="MoreCard_Click"
-                        AutomationProperties.Name="More actions"
-                        ToolTipService.ToolTip="More actions">
+                        AutomationProperties.Name="{l:Tr Key=Models.Card.MoreActions}"
+                        ToolTipService.ToolTip="{l:Tr Key=Models.Card.MoreActions}">
                   <SymbolIcon Symbol="More" />
                 </Button>
               </Grid>
@@ -310,24 +311,24 @@
                 <Border Style="{StaticResource ChipStyle}"
                         Background="{ThemeResource ModelsHintBrush}" BorderBrush="Transparent"
                         Visibility="{x:Bind ShowRecommendedChip}">
-                  <TextBlock Text="★ Recommended" Style="{StaticResource ChipTextStyle}" FontWeight="SemiBold" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.Recommended}" Style="{StaticResource ChipTextStyle}" FontWeight="SemiBold" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind ShowDesktopOnlyChip}">
-                  <TextBlock Text="Desktop only" Style="{StaticResource ChipTextStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.DesktopOnly}" Style="{StaticResource ChipTextStyle}" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}"
                         Background="{ThemeResource AccentFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
                         Visibility="{x:Bind ShowInUseChip, Mode=OneWay}">
-                  <TextBlock Text="● In use" Style="{StaticResource ChipTextStyle}"
+                  <TextBlock Text="{l:Tr Key=Models.Chip.InUse}" Style="{StaticResource ChipTextStyle}"
                              Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind ShowInstalledChip, Mode=OneWay}">
-                  <TextBlock Text="installed" Style="{StaticResource ChipTextStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.Installed}" Style="{StaticResource ChipTextStyle}" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}" BorderBrush="{ThemeResource ModelsErrorBrush}"
                         Visibility="{x:Bind ShowLowMemoryChip, Mode=OneWay}">
-                  <TextBlock Text="⚠ Low memory" Style="{StaticResource ChipTextStyle}"
+                  <TextBlock Text="{l:Tr Key=Models.Chip.LowMemory}" Style="{StaticResource ChipTextStyle}"
                              Foreground="{ThemeResource ModelsErrorBrush}" FontWeight="SemiBold" />
                 </Border>
               </controls:ChipWrapPanel>
@@ -370,7 +371,7 @@
                         Click="LlmMore_Click"
                         Visibility="{x:Bind CanDelete, Mode=OneWay}"
                         AutomationProperties.Name="{x:Bind MoreAutomationName}"
-                        ToolTipService.ToolTip="More actions">
+                        ToolTipService.ToolTip="{l:Tr Key=Models.Card.MoreActions}">
                   <SymbolIcon Symbol="More" />
                 </Button>
               </Grid>
@@ -398,25 +399,25 @@
                   <TextBlock Text="{x:Bind PrecisionChip}" Style="{StaticResource ChipTextStyle}" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}">
-                  <TextBlock Text="up to 8 speakers" Style="{StaticResource ChipTextStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.UpTo8Speakers}" Style="{StaticResource ChipTextStyle}" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}"
                         Background="{ThemeResource ModelsHintBrush}" BorderBrush="Transparent"
                         Visibility="{x:Bind ShowRecommendedChip}">
-                  <TextBlock Text="★ Recommended" Style="{StaticResource ChipTextStyle}" FontWeight="SemiBold" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.Recommended}" Style="{StaticResource ChipTextStyle}" FontWeight="SemiBold" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind ShowDesktopOnlyChip}">
-                  <TextBlock Text="Desktop only" Style="{StaticResource ChipTextStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.DesktopOnly}" Style="{StaticResource ChipTextStyle}" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}"
                         Background="{ThemeResource AccentFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
                         Visibility="{x:Bind ShowInUseChip, Mode=OneWay}">
-                  <TextBlock Text="● In use" Style="{StaticResource ChipTextStyle}"
+                  <TextBlock Text="{l:Tr Key=Models.Chip.InUse}" Style="{StaticResource ChipTextStyle}"
                              Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                 </Border>
                 <Border Style="{StaticResource ChipStyle}" Visibility="{x:Bind ShowInstalledChip, Mode=OneWay}">
-                  <TextBlock Text="installed" Style="{StaticResource ChipTextStyle}" />
+                  <TextBlock Text="{l:Tr Key=Models.Chip.Installed}" Style="{StaticResource ChipTextStyle}" />
                 </Border>
               </controls:ChipWrapPanel>
 
@@ -450,7 +451,7 @@
                         Click="SpeakerMore_Click"
                         Visibility="{x:Bind CanDelete, Mode=OneWay}"
                         AutomationProperties.Name="{x:Bind MoreAutomationName}"
-                        ToolTipService.ToolTip="More actions">
+                        ToolTipService.ToolTip="{l:Tr Key=Models.Card.MoreActions}">
                   <SymbolIcon Symbol="More" />
                 </Button>
               </Grid>
@@ -494,13 +495,13 @@
               <TextBlock Text="{x:Bind StateText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"
                          VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                <Button Content="Remove" Style="{StaticResource ActionButtonStyle}"
+                <Button Content="{l:Tr Key=Models.Downloads.Item.Remove}" Style="{StaticResource ActionButtonStyle}"
                         Command="{x:Bind RemoveCommand}"
                         Visibility="{x:Bind IsFinished, Mode=OneWay}" />
-                <Button Content="Retry" Style="{StaticResource AccentActionButtonStyle}"
+                <Button Content="{l:Tr Key=Models.Card.Action.Retry}" Style="{StaticResource AccentActionButtonStyle}"
                         Command="{x:Bind RetryCommand}"
                         Visibility="{x:Bind IsFailed, Mode=OneWay}" />
-                <Button Content="Cancel" Style="{StaticResource ActionButtonStyle}"
+                <Button Content="{l:Tr Key=Models.Card.Action.Cancel}" Style="{StaticResource ActionButtonStyle}"
                         Command="{x:Bind CancelCommand}"
                         Visibility="{x:Bind IsRunning, Mode=OneWay}" />
               </StackPanel>
@@ -526,19 +527,19 @@
         <ColumnDefinition Width="48" />
       </Grid.ColumnDefinitions>
       <Button x:Name="BackButton" Style="{StaticResource IconButtonStyle}" Click="Back_Click"
-              AutomationProperties.Name="Back" ToolTipService.ToolTip="Back">
+              AutomationProperties.Name="{l:Tr Key=Models.Page.Back}" ToolTipService.ToolTip="{l:Tr Key=Models.Page.Back}">
         <Button.KeyboardAccelerators>
           <KeyboardAccelerator Key="Escape" />
         </Button.KeyboardAccelerators>
         <SymbolIcon Symbol="Back" />
       </Button>
       <StackPanel Grid.Column="1" VerticalAlignment="Center">
-        <TextBlock Text="Models" FontSize="20" FontWeight="SemiBold" />
+        <TextBlock Text="{l:Tr Key=Models.Page.Title}" FontSize="20" FontWeight="SemiBold" />
         <TextBlock Text="{x:Bind Models.InstalledSummaryText, Mode=OneWay}"
                    FontSize="12" Opacity="0.7" TextTrimming="CharacterEllipsis" />
       </StackPanel>
       <Button Grid.Column="2" Style="{StaticResource IconButtonStyle}" Click="Refresh_Click"
-              AutomationProperties.Name="Refresh" ToolTipService.ToolTip="Check the models on disk again">
+              AutomationProperties.Name="{l:Tr Key=Models.Page.Refresh}" ToolTipService.ToolTip="{l:Tr Key=Models.Page.RefreshTip}">
         <SymbolIcon Symbol="Refresh" />
       </Button>
     </Grid>
@@ -554,9 +555,9 @@
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <RadioButton x:Name="SpeechTab" GroupName="ModelsTabs" Content="Speech"
+        <RadioButton x:Name="SpeechTab" GroupName="ModelsTabs" Content="{l:Tr Key=Models.Tabs.Speech}"
                      Style="{StaticResource SegmentRadioButtonStyle}" Checked="Tab_Checked" />
-        <RadioButton x:Name="SpeakersTab" Grid.Column="1" GroupName="ModelsTabs" Content="Speakers"
+        <RadioButton x:Name="SpeakersTab" Grid.Column="1" GroupName="ModelsTabs" Content="{l:Tr Key=Models.Tabs.Speakers}"
                      Style="{StaticResource SegmentRadioButtonStyle}" Checked="Tab_Checked" />
         <RadioButton x:Name="TranslationTab" Grid.Column="2" GroupName="ModelsTabs" Content="Gemma"
                      Style="{StaticResource SegmentRadioButtonStyle}" Checked="Tab_Checked" />
@@ -576,7 +577,7 @@
         <StackPanel x:Name="SpeechPane" Spacing="8">
           <Border Style="{StaticResource HintBorderStyle}">
             <StackPanel>
-              <TextBlock Text="Which model should I download?" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{l:Tr Key=Models.Speech.WhichModel}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
               <TextBlock Text="{x:Bind Models.RecommendationText, Mode=OneWay}" FontSize="13" TextWrapping="Wrap" />
             </StackPanel>
           </Border>
@@ -595,7 +596,7 @@
           </ItemsControl>
 
           <TextBlock Style="{StaticResource SecondaryTextStyle}" FontSize="11"
-                     Text="Accuracy: word error rate on Common Voice 17 ru/en (lower is better). Speed: CPU throughput. Several downloads run in parallel; a downloaded model becomes the active one." />
+                     Text="{l:Tr Key=Models.Speech.Footnote}" />
           <TextBlock Text="{x:Bind Models.StorageText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" FontSize="11" />
         </StackPanel>
 
@@ -603,7 +604,7 @@
         <StackPanel x:Name="SpeakersPane" Spacing="8" Visibility="Collapsed">
           <Border Style="{StaticResource HintBorderStyle}">
             <StackPanel>
-              <TextBlock Text="Who spoke when" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{l:Tr Key=Models.Speakers.HintTitle}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
               <TextBlock x:Name="SpeakersIntro" FontSize="13" TextWrapping="Wrap" />
             </StackPanel>
           </Border>
@@ -621,7 +622,7 @@
               <TextBlock x:Name="SpeakersErrorText" FontSize="13" TextWrapping="Wrap"
                          Foreground="{ThemeResource ModelsErrorBrush}" VerticalAlignment="Center"
                          AutomationProperties.LiveSetting="Assertive" />
-              <Button Grid.Column="1" Content="Dismiss" Style="{StaticResource ActionButtonStyle}" Click="SpeakersDismissError_Click" />
+              <Button Grid.Column="1" Content="{l:Tr Key=Models.Page.Dismiss}" Style="{StaticResource ActionButtonStyle}" Click="SpeakersDismissError_Click" />
             </Grid>
           </Border>
 
@@ -638,7 +639,7 @@
           <TextBlock x:Name="SpeakersSource" Style="{StaticResource SecondaryTextStyle}" IsTextSelectionEnabled="True" />
           <TextBlock x:Name="SpeakersPlaceFiles" Style="{StaticResource SecondaryTextStyle}" FontSize="11" IsTextSelectionEnabled="True" />
           <TextBlock Style="{StaticResource SecondaryTextStyle}" FontSize="11"
-                     Text="Speaker labels are computed on this device from the saved audio. No voice prints are stored: speakers are numbered inside one recording." />
+                     Text="{l:Tr Key=Models.Speakers.Privacy}" />
         </StackPanel>
 
         <!-- Gemma: the on-device language model(s) -->
@@ -646,9 +647,9 @@
           <StackPanel x:Name="LlmPanel" Spacing="8">
             <Border Style="{StaticResource HintBorderStyle}">
               <StackPanel>
-                <TextBlock Text="One on-device language model" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{l:Tr Key=Models.Llm.HintTitle}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
                 <TextBlock FontSize="13" TextWrapping="Wrap"
-                           Text="Gemma (LiteRT-LM) translates, answers chat questions and writes titles. Nothing is sent to a server." />
+                           Text="{l:Tr Key=Models.Llm.HintText}" />
               </StackPanel>
             </Border>
 
@@ -675,7 +676,7 @@
                 <TextBlock Text="{x:Bind LlmModels.ErrorText, Mode=OneWay}" FontSize="13" TextWrapping="Wrap"
                            Foreground="{ThemeResource ModelsErrorBrush}" VerticalAlignment="Center"
                            AutomationProperties.LiveSetting="Assertive" />
-                <Button Grid.Column="1" Content="Dismiss" Style="{StaticResource ActionButtonStyle}" Click="LlmDismissError_Click" />
+                <Button Grid.Column="1" Content="{l:Tr Key=Models.Page.Dismiss}" Style="{StaticResource ActionButtonStyle}" Click="LlmDismissError_Click" />
               </Grid>
             </Border>
 
@@ -691,7 +692,7 @@
             <!-- Compute: CPU | GPU for the language model -->
             <Border Style="{StaticResource ModelCardStyle}">
               <StackPanel Spacing="8">
-                <TextBlock Text="Compute" Style="{StaticResource CardTitleStyle}" />
+                <TextBlock Text="{l:Tr Key=Models.Llm.ComputeTitle}" Style="{StaticResource CardTitleStyle}" />
                 <Border Padding="2" CornerRadius="8" HorizontalAlignment="Stretch" MaxWidth="320"
                         Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
@@ -703,10 +704,10 @@
                     </Grid.ColumnDefinitions>
                     <RadioButton x:Name="CpuRadio" GroupName="LlmCompute" Content="CPU"
                                  Style="{StaticResource SegmentRadioButtonStyle}" Checked="Compute_Checked"
-                                 AutomationProperties.Name="Language model on the CPU" />
+                                 AutomationProperties.Name="{l:Tr Key=Models.Llm.ComputeCpuName}" />
                     <RadioButton x:Name="GpuRadio" Grid.Column="1" GroupName="LlmCompute" Content="GPU"
                                  Style="{StaticResource SegmentRadioButtonStyle}" Checked="Compute_Checked"
-                                 AutomationProperties.Name="Language model on the GPU" />
+                                 AutomationProperties.Name="{l:Tr Key=Models.Llm.ComputeGpuName}" />
                   </Grid>
                 </Border>
                 <TextBlock Text="{x:Bind LlmModels.ComputeHint}" Style="{StaticResource SecondaryTextStyle}" />
@@ -720,9 +721,9 @@
           <StackPanel x:Name="LegacyTranslationPanel" Spacing="8" Visibility="Collapsed">
           <Border Style="{StaticResource HintBorderStyle}">
             <StackPanel>
-              <TextBlock Text="Live translation runs on the device" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{l:Tr Key=Models.Translation.HintTitle}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
               <TextBlock FontSize="13" TextWrapping="Wrap"
-                         Text="Gemma 4 E2B (LiteRT-LM) translates the transcript sentence by sentence; nothing is sent to a server." />
+                         Text="{l:Tr Key=Models.Translation.HintText}" />
             </StackPanel>
           </Border>
 
@@ -740,7 +741,7 @@
                         Background="{ThemeResource AccentFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
                         Visibility="{x:Bind TranslationModel.IsInstalled, Mode=OneWay}">
-                  <TextBlock Text="installed" Style="{StaticResource ChipTextStyle}"
+                  <TextBlock Text="{l:Tr Key=Models.Chip.Installed}" Style="{StaticResource ChipTextStyle}"
                              Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                 </Border>
               </controls:ChipWrapPanel>
@@ -764,10 +765,10 @@
               </StackPanel>
 
               <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                <Button Content="Delete" Style="{StaticResource ActionButtonStyle}"
+                <Button Content="{l:Tr Key=Models.Menu.Delete}" Style="{StaticResource ActionButtonStyle}"
                         Click="DeleteTranslation_Click"
                         Visibility="{x:Bind TranslationModel.CanDelete, Mode=OneWay}" />
-                <Button Content="Cancel" Style="{StaticResource ActionButtonStyle}"
+                <Button Content="{l:Tr Key=Models.Card.Action.Cancel}" Style="{StaticResource ActionButtonStyle}"
                         Click="CancelTranslation_Click"
                         Visibility="{x:Bind TranslationModel.IsDownloading, Mode=OneWay}" />
                 <Button Content="{x:Bind TranslationModel.DownloadText, Mode=OneWay}" Style="{StaticResource AccentActionButtonStyle}"
@@ -778,7 +779,7 @@
           </Border>
 
           <TextBlock Style="{StaticResource SecondaryTextStyle}" FontSize="11"
-                     Text="Turn on live translation from the menu on the main screen. The model is used for every target language." />
+                     Text="{l:Tr Key=Models.Translation.Footnote}" />
           </StackPanel>
         </StackPanel>
 
@@ -800,16 +801,16 @@
                   <ColumnDefinition Width="*" />
                   <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="Downloads run in parallel; Retry resumes partial files."
+                <TextBlock Text="{l:Tr Key=Models.Downloads.Note}"
                            Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" />
-                <Button Grid.Column="1" Content="Clear finished" Style="{StaticResource ActionButtonStyle}"
+                <Button Grid.Column="1" Content="{l:Tr Key=Models.Downloads.ClearFinished}" Style="{StaticResource ActionButtonStyle}"
                         Command="{x:Bind Downloads.ClearFinishedCommand}"
                         IsEnabled="{x:Bind Downloads.HasFinished, Mode=OneWay}" />
               </Grid>
             </StackPanel>
           </Border>
 
-          <TextBlock Text="No downloads yet. Pick a model on the Speech or Gemma tab and press Download."
+          <TextBlock Text="{l:Tr Key=Models.Downloads.Empty}"
                      Style="{StaticResource SecondaryTextStyle}" FontSize="13" Margin="0,8,0,0"
                      Visibility="{x:Bind Downloads.IsEmpty, Mode=OneWay}" />
 

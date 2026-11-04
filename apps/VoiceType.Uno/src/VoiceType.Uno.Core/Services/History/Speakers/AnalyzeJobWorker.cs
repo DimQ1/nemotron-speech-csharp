@@ -1,4 +1,5 @@
 using SpeechLib.Llm;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -25,17 +26,17 @@ public sealed class AnalyzeJobWorker
     /// <returns>The id of the analysis (<c>a1</c>) when statistics were written, else the version.</returns>
     public async Task<string?> RunAsync(HistoryJob job, IJobProgressSink sink, CancellationToken cancellationToken)
     {
-        var manifest = (_store.Get(job.RecordingId) ?? throw new InvalidOperationException("The recording no longer exists.")).Manifest;
+        var manifest = (_store.Get(job.RecordingId) ?? throw new InvalidOperationException(Loc.T("Speakers.Job.RecordingGone"))).Manifest;
         var versionId = job.Parameters.SourceVersion ?? manifest.CurrentVersion
-            ?? throw new InvalidOperationException("The recording has no transcript to analyze.");
+            ?? throw new InvalidOperationException(Loc.T("Speakers.Job.NoTranscript"));
         if (manifest.FindVersion(versionId) is null)
-            throw new InvalidOperationException($"Transcript {versionId} no longer exists.");
+            throw new InvalidOperationException(Loc.F("Speakers.Job.TranscriptGone", versionId));
         var analysis = job.Parameters.Analysis ?? new AnalysisJobParameters();
 
         string? resultId = null;
         if (analysis.SpeakerStats != false && manifest.CurrentSpeakerLayer(versionId) is { } layer)
         {
-            sink.Detail("Counting talk time…");
+            sink.Detail(Loc.T("Speakers.Job.CountingTalkTime"));
             resultId = WriteStats(job.RecordingId, manifest, layer, analysis).Id;
         }
         sink.Progress(0.1);
@@ -47,7 +48,7 @@ public sealed class AnalyzeJobWorker
         var wantTitle = analysis.Title != false;
         if ((wantSummary || wantTitle) && !gemma)
         {
-            sink.Detail("Summary skipped: the Gemma model is not installed");
+            sink.Detail(Loc.T("Speakers.Job.SummarySkipped"));
             sink.Progress(1);
             return resultId ?? versionId;
         }

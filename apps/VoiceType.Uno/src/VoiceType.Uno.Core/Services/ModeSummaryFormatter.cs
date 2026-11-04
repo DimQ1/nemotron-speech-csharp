@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.Services;
 
 /// <summary>
@@ -20,14 +22,14 @@ public static class ModeSummaryFormatter
     {
         var parts = new List<string>(4)
         {
-            string.IsNullOrWhiteSpace(modelDisplayName) ? "No model" : modelDisplayName.Trim(),
+            string.IsNullOrWhiteSpace(modelDisplayName) ? Loc.T("Main.Summary.NoModel") : modelDisplayName.Trim(),
             FormatLanguage(recognitionLanguage)
         };
 
         if (!string.IsNullOrWhiteSpace(translationTarget))
-            parts.Add("→ " + translationTarget.Trim().ToUpperInvariant());
+            parts.Add(Loc.F("Main.Summary.TranslateTo", translationTarget.Trim().ToUpperInvariant()));
         if (isTextInjectionEnabled)
-            parts.Add("Inject");
+            parts.Add(Loc.T("Main.Summary.Inject"));
 
         return string.Join(Separator, parts);
     }
@@ -35,6 +37,6 @@ public static class ModeSummaryFormatter
     /// <summary>"auto" (or blank) reads as "Auto"; a language code is shown upper-case ("EN").</summary>
     public static string FormatLanguage(string? languageCode) =>
         string.IsNullOrWhiteSpace(languageCode) || string.Equals(languageCode.Trim(), "auto", StringComparison.OrdinalIgnoreCase)
-            ? "Auto"
+            ? Loc.T("Main.Summary.AutoLanguage")
             : languageCode.Trim().ToUpperInvariant();
 }

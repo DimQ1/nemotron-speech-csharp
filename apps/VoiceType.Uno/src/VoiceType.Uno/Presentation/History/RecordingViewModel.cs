@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Presentation.History;
 
@@ -84,20 +85,21 @@ public sealed partial class VersionCardViewModel : ObservableObject
         VadText = Empty(HistoryUiFormat.Vad(version));
         CreatedText = HistoryUiFormat.ShortDateTime(version.CreatedAt, now);
         AppText = Empty(version.App?.Version);
-        WordsText = (version.Stats?.Words ?? 0).ToString("N0", CultureInfo.InvariantCulture);
+        WordsText = (version.Stats?.Words ?? 0).ToString("N0", Loc.Culture);
 
         var translations = manifest.Translations
             .Where(t => t.SourceVersion == version.Id && t.Status != TranslationStatuses.Failed)
             .Select(t => t.TargetLanguage.ToUpperInvariant())
             .Distinct()
             .ToList();
-        var uses = new List<string>();
-        if (translations.Count > 0)
-            uses.Add((translations.Count == 1 ? "Translation " : "Translations ") + string.Join(", ", translations));
-        if (chatCount > 0)
-            uses.Add(HistoryUiFormat.Count(chatCount, "chat"));
-        var plural = uses.Count == 2 || translations.Count > 1 || chatCount > 1;
-        UsageText = uses.Count == 0 ? "" : string.Join(" and ", uses) + (plural ? " use" : " uses") + " this version";
+        var languages = string.Join(", ", translations);
+        UsageText = translations.Count > 0 && chatCount > 0
+            ? Loc.F("Recording.Versions.Usage.Both",
+                Loc.Plural("Recording.Versions.Usage.TranslationList", translations.Count, languages),
+                Loc.Plural("Recording.Versions.Usage.ChatCount", chatCount))
+            : translations.Count > 0 ? Loc.Plural("Recording.Versions.Usage.Translations", translations.Count, languages)
+            : chatCount > 0 ? Loc.Plural("Recording.Versions.Usage.Chats", chatCount)
+            : "";
     }
 
     public TranscriptVersion Version { get; }
@@ -175,7 +177,7 @@ public sealed partial class RecordingViewModel : ObservableObject
 
     public bool IsMissing { get; private set; }
 
-    public string Title => _manifest?.EffectiveTitle ?? (IsMissing ? "Recording not found" : "");
+    public string Title => _manifest?.EffectiveTitle ?? (IsMissing ? Loc.T("Recording.Header.NotFound") : "");
 
     public string Subtitle => _manifest is null ? "" : HistoryUiFormat.HeaderSubtitle(_manifest, DateTimeOffset.Now);
 
@@ -191,15 +193,15 @@ public sealed partial class RecordingViewModel : ObservableObject
     public bool HasNoAudio => _manifest is not null && _audioPath is null;
 
     public string NoAudioText => _manifest?.Audio is { RemovedAt: not null } audio
-        ? $"Audio removed on {audio.RemovedAt.Value.ToLocalTime():d MMM} · transcript only"
-        : "No audio was saved for this recording · transcript only";
+        ? Loc.F("Recording.NoAudio.Removed", audio.RemovedAt.Value.ToLocalTime())
+        : Loc.T("Recording.NoAudio.NotSaved");
 
     public string? ViewedVersionId => _viewedVersionId;
 
     public string ViewedVersionLabel =>
         _manifest?.FindVersion(_viewedVersionId ?? "") is { } v
-            ? HistoryUiFormat.VersionShort(v) + (v.Id == _manifest.CurrentVersion ? "" : " (not current)")
-            : "No transcript";
+            ? v.Id == _manifest.CurrentVersion ? HistoryUiFormat.VersionShort(v) : Loc.F("Recording.Transcript.NotCurrent", HistoryUiFormat.VersionShort(v))
+            : Loc.T("Recording.Transcript.None");
 
     public TranscriptDocument? ViewedTranscript => _viewed;
 
@@ -413,13 +415,13 @@ public sealed partial class RecordingViewModel : ObservableObject
         foreach (var chat in _chatRecords)
         {
             var others = chat.Sources.Count - 1;
-            var who = others <= 0 ? "Only this recording" : HistoryUiFormat.Count(chat.Sources.Count, "recording");
-            var meta = HistoryUiFormat.Join(who, HistoryUiFormat.Count(ChatUiFormat.CountMessages(chat), "message"),
-                chat.UpdatedAt.ToLocalTime().ToString("d MMM HH:mm", CultureInfo.InvariantCulture));
+            var who = others <= 0 ? Loc.T("Recording.Chats.OnlyThis") : Loc.Plural("Recording.Chats.RecordingCount", chat.Sources.Count);
+            var meta = HistoryUiFormat.Join(who, Loc.Plural("Recording.Chats.MessageCount", ChatUiFormat.CountMessages(chat)),
+                chat.UpdatedAt.ToLocalTime().ToString("d MMM HH:mm", Loc.Culture));
             var last = chat.Messages.LastOrDefault(m => m.Role == ChatRoles.Assistant)?.Text.Trim() ?? "";
             if (last.Length > 140)
                 last = last[..140].TrimEnd() + "…";
-            ChatCards.Add(new ChatCardViewModel { Id = chat.Id, SourceCount = chat.Sources.Count, Title = string.IsNullOrWhiteSpace(chat.Title) ? "Chat" : chat.Title, Meta = meta, LastLine = last });
+            ChatCards.Add(new ChatCardViewModel { Id = chat.Id, SourceCount = chat.Sources.Count, Title = string.IsNullOrWhiteSpace(chat.Title) ? Loc.T("Recording.Chats.DefaultTitle") : chat.Title, Meta = meta, LastLine = last });
         }
     }
 
@@ -478,7 +480,7 @@ public sealed partial class RecordingViewModel : ObservableObject
                     var b = _store.LoadTranscript(id, card.Id);
                     return TranscriptDiff.Compute(a, b).ChangedPercent;
                 });
-                card.DiffText = $"vs {reference} {percent.ToString(percent >= 10 ? "0" : "0.0", CultureInfo.InvariantCulture)}% diff";
+                card.DiffText = Loc.F("Recording.Versions.Diff", reference, percent.ToString(percent >= 10 ? "0" : "0.0", Loc.Culture));
             }
             catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or KeyNotFoundException)
             {
@@ -515,18 +517,18 @@ public sealed partial class RecordingViewModel : ObservableObject
         await LoadAsync(id, _viewedVersionId);
     }
 
-    public string ChatsHeader => _chatCount == 0 ? "Not used in any chat yet" : "In " + HistoryUiFormat.Count(_chatCount, "chat");
+    public string ChatsHeader => _chatCount == 0 ? Loc.T("Recording.Chats.NotUsed") : Loc.Plural("Recording.Chats.Header", _chatCount);
 
     public string TranslateText => _manifest is null || _manifest.Translations.Count == 0
-        ? "No translations yet."
+        ? Loc.T("Recording.Translate.None")
         : string.Join("\n", _manifest.Translations.Select(t =>
-            $"→ {t.TargetLanguage.ToUpperInvariant()} · from {t.SourceVersion}"
-            + (t.SourceVersion != _manifest.CurrentVersion ? " (outdated)" : "")
+            Loc.F(t.SourceVersion != _manifest.CurrentVersion ? "Recording.Translate.LineOutdated" : "Recording.Translate.Line",
+                t.TargetLanguage.ToUpperInvariant(), t.SourceVersion)
             + (t.Status == TranslationStatuses.Complete ? "" : " · " + t.Status)));
 
     public string VersionsHint => HasAudio
-        ? "Re-recognize the saved audio with another model or language; each run adds a version."
-        : "The audio is gone, so this recording cannot be re-recognized. Edits still create versions.";
+        ? Loc.T("Recording.Versions.HintAudio")
+        : Loc.T("Recording.Versions.HintNoAudio");
 
     /// <summary>Index of the segment playing at <paramref name="seconds"/> (last segment that started), or -1.</summary>
     public int SegmentAt(double seconds)

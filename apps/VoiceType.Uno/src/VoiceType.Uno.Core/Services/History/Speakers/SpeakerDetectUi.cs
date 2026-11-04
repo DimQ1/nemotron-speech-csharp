@@ -1,4 +1,4 @@
-using System.Globalization;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -33,12 +33,12 @@ public sealed record SpeakerDetectInfo(SpeakerDetectKind Kind, string Title, str
 /// <summary>State machine of the "Detect speakers" button (model missing → idle → running → ready).</summary>
 public static class SpeakerDetectUi
 {
-    public const string NoModelTitle = "Speaker detection needs a model";
-    public const string NoModelDetail = "Nemotron 3 Diarization is not installed yet. Download it once (about 106 MB); it runs on this device.";
-    public const string DownloadButton = "Download";
-    public const string DownloadingTitle = "Downloading the speaker model…";
-    public const string IdleTitle = "Who spoke when";
-    public const string IdleDetail = "Detect speakers on this device. The audio never leaves it.";
+    public static string NoModelTitle => Loc.T("Speakers.Detect.NoModelTitle");
+    public static string NoModelDetail => Loc.T("Speakers.Detect.NoModelDetail");
+    public static string DownloadButton => Loc.T("Speakers.Detect.Download");
+    public static string DownloadingTitle => Loc.T("Speakers.Detect.DownloadingTitle");
+    public static string IdleTitle => Loc.T("Speakers.Detect.IdleTitle");
+    public static string IdleDetail => Loc.T("Speakers.Detect.IdleDetail");
 
     /// <param name="serviceAvailable">An <see cref="ISpeakerService"/> is registered.</param>
     /// <param name="modelAvailable"><see cref="ISpeakerService.IsModelAvailable"/>.</param>
@@ -56,31 +56,31 @@ public static class SpeakerDetectUi
         if (running is { } job)
         {
             if (job.Failed)
-                return new SpeakerDetectInfo(SpeakerDetectKind.Failed, "Speaker detection failed",
-                    string.IsNullOrWhiteSpace(job.Error) ? "Try again from the Queue." : job.Error!, "Try again", hasAudio, false, 0);
+                return new SpeakerDetectInfo(SpeakerDetectKind.Failed, Loc.T("Speakers.Detect.FailedTitle"),
+                    string.IsNullOrWhiteSpace(job.Error) ? Loc.T("Speakers.Detect.FailedDetail") : job.Error!, Loc.T("Speakers.Detect.TryAgain"), hasAudio, false, 0);
             if (job.Waiting)
-                return new SpeakerDetectInfo(SpeakerDetectKind.Queued, "Detecting speakers…", "Waiting in the Queue", "Queued", false, true, 0);
+                return new SpeakerDetectInfo(SpeakerDetectKind.Queued, Loc.T("Speakers.Detect.Detecting"), Loc.T("Speakers.Detect.Waiting"), Loc.T("Speakers.Detect.Queued"), false, true, 0);
             var percent = Math.Clamp(job.Progress, 0, 1);
-            return new SpeakerDetectInfo(SpeakerDetectKind.Running, "Detecting speakers…",
-                percent > 0 ? (percent * 100).ToString("0", CultureInfo.InvariantCulture) + " %" : "Starting", "Running", false, true, percent);
+            return new SpeakerDetectInfo(SpeakerDetectKind.Running, Loc.T("Speakers.Detect.Detecting"),
+                percent > 0 ? Loc.F("Speakers.Percent", (percent * 100).ToString("0", Loc.Culture)) : Loc.T("Speakers.Detect.Starting"), Loc.T("Speakers.Detect.Running"), false, true, percent);
         }
         if (!modelAvailable && modelDownload is { } download)
             return new SpeakerDetectInfo(SpeakerDetectKind.DownloadingModel, DownloadingTitle,
-                string.IsNullOrWhiteSpace(download.Text) ? "Starting" : download.Text, "Cancel", true, true, Math.Clamp(download.Percent / 100d, 0, 1));
+                string.IsNullOrWhiteSpace(download.Text) ? Loc.T("Speakers.Detect.Starting") : download.Text, Loc.T("Speakers.Detect.Cancel"), true, true, Math.Clamp(download.Percent / 100d, 0, 1));
         if (!modelAvailable)
             return new SpeakerDetectInfo(SpeakerDetectKind.NoModel, NoModelTitle,
-                string.IsNullOrWhiteSpace(modelError) ? NoModelDetail : modelError + " Try again.", DownloadButton, true, false, 0);
+                string.IsNullOrWhiteSpace(modelError) ? NoModelDetail : Loc.F("Speakers.Detect.ModelErrorRetry", modelError), DownloadButton, true, false, 0);
         if (!hasAudio)
-            return new SpeakerDetectInfo(SpeakerDetectKind.Idle, IdleTitle, "The audio of this recording is gone, so speakers cannot be detected.", "Detect speakers", false, false, 0);
-        return new SpeakerDetectInfo(SpeakerDetectKind.Idle, IdleTitle, IdleDetail, "Detect speakers", true, false, 0);
+            return new SpeakerDetectInfo(SpeakerDetectKind.Idle, IdleTitle, Loc.T("Speakers.Detect.NoAudio"), Loc.T("Speakers.Detect.Button"), false, false, 0);
+        return new SpeakerDetectInfo(SpeakerDetectKind.Idle, IdleTitle, IdleDetail, Loc.T("Speakers.Detect.Button"), true, false, 0);
     }
 
     /// <summary>Short chip text for a running detection (Versions tab, header).</summary>
     public static string ChipText(SpeakerDetectInfo info) =>
         info.Kind switch
         {
-            SpeakerDetectKind.Queued => "Speakers · queued",
-            SpeakerDetectKind.Running => info.Progress > 0 ? "Speakers · " + (info.Progress * 100).ToString("0", CultureInfo.InvariantCulture) + " %" : "Speakers · starting",
+            SpeakerDetectKind.Queued => Loc.T("Speakers.Detect.ChipQueued"),
+            SpeakerDetectKind.Running => info.Progress > 0 ? Loc.F("Speakers.Detect.ChipPercent", (info.Progress * 100).ToString("0", Loc.Culture)) : Loc.T("Speakers.Detect.ChipStarting"),
             _ => "",
         };
 

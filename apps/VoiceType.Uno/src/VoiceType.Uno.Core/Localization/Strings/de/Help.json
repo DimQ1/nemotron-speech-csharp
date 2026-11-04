@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — Hilfe",
+  "Help.Close": "Schließen",
+  "Help.Start.Title": "Erste Schritte",
+  "Help.Start.Body": "1. Beim ersten Start wird das empfohlene Sprachmodell automatisch heruntergeladen.\n2. Tippen Sie unten auf die runde Schaltfläche **Aufnehmen** und sprechen Sie — das Transkript erscheint live. Die Aufnahme läuft, bis Sie die Schaltfläche erneut antippen; Sie müssen sie nicht gedrückt halten.\n3. Öffnen Sie das Menü **≡** (oben links), um den Modus zu wechseln — **Text eintippen** tippt jede fertige Phrase in das aktive Fenster, **Live-Übersetzung** fügt eine Übersetzungskarte hinzu, **Manuelle Eingabe** lässt Sie das Transkript tippen oder bearbeiten.\n4. Im Menü finden Sie außerdem die Erkennungssprache, Sprachmodelle, Downloads und **Einstellungen**— die Zeile unter dem Titel zeigt das aktive Modell und die Modi.",
+  "Help.Hotkey.Title": "Globales Tastenkürzel",
+  "Help.Hotkey.Body": "Das Standard-Tastenkürzel zum Umschalten ist **Ctrl+Shift+V**. Unter Linux wird es über das XDG-Portal GlobalShortcuts registriert (xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+); der Compositor zeigt einmalig einen Zustimmungsdialog. Auf Desktops ohne Portal-Unterstützung wird das Tastenkürzel als nicht verfügbar gemeldet.",
+  "Help.LinuxInjection.Title": "Texteingabe unter Linux",
+  "Help.LinuxInjection.Body": "Beim Eintippen wird die Zwischenablage gesetzt und dann die Einfügetastenkombination (standardmäßig Ctrl+V — in den Einstellungen änderbar) an das aktive Fenster gesendet.\n\n**Benötigte Tools (je eines pro Paar installieren):**\n• Zwischenablage: wl-copy (Wayland) oder xclip / xsel (X11)\n• Tastatur: ydotool (Wayland, benötigt ydotoold) oder libXtst / xdotool (X11)\n\nUbuntu: *sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "Audioaufnahme",
+  "Help.Audio.Body": "Die Aufnahme läuft über den PulseAudio-kompatiblen Server (PipeWire-Desktops und WSLg stellen beide einen bereit).\n• Mikrofon — Standard-Eingangsquelle\n• Loopback — Monitor der Standardausgabe (*@DEFAULT_MONITOR@*)\n• Mix — beides, 50/50 gemischt",
+  "Help.Data.Title": "Speicherorte",
+  "Help.Data.Body": "• Einstellungen: *~/.local/share/VoiceType/settings.json*\n• Modelle: *~/.local/share/VoiceType/models/*\n(unter Windows liegen sie unter %LOCALAPPDATA%\\VoiceType)"
+}

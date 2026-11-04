@@ -1,4 +1,4 @@
-using System.Globalization;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -16,38 +16,38 @@ public sealed record HistoryUiOption<T>(T Value, string Label, string? Detail = 
 /// <summary>Storage measurement and the History settings choices / texts.</summary>
 public static class HistoryUiStorage
 {
-    public static readonly IReadOnlyList<HistoryUiOption<int>> RetentionChoices =
+    /// <summary>Built at each use, so the labels follow the interface language.</summary>
+    public static IReadOnlyList<HistoryUiOption<int>> RetentionChoices =>
         HistorySettings.RetentionDayChoices.Select(d => new HistoryUiOption<int>(d, RetentionLabel(d))).ToList();
 
     /// <summary>0.5 · 1 · 2 · 5 · 10 GB · No limit (MB values, 0 = no limit).</summary>
-    public static readonly IReadOnlyList<HistoryUiOption<int>> StorageCapChoices =
+    public static IReadOnlyList<HistoryUiOption<int>> StorageCapChoices =>
     [
-        new(512, "0.5 GB"),
-        new(1024, "1 GB"),
-        new(2048, "2 GB"),
-        new(5120, "5 GB"),
-        new(10240, "10 GB"),
-        new(0, "No limit"),
+        new(512, HistoryUiFormat.Gigabytes(0.5)),
+        new(1024, HistoryUiFormat.Gigabytes(1)),
+        new(2048, HistoryUiFormat.Gigabytes(2)),
+        new(5120, HistoryUiFormat.Gigabytes(5)),
+        new(10240, HistoryUiFormat.Gigabytes(10)),
+        new(0, Loc.T("History.Storage.NoLimit")),
     ];
 
-    public static readonly IReadOnlyList<HistoryUiOption<AudioQuality>> QualityChoices =
+    public static IReadOnlyList<HistoryUiOption<AudioQuality>> QualityChoices =>
     [
-        new(AudioQuality.Standard, "Standard", "Ogg Opus 48 kbps · ~19.5 MB per hour"),
-        new(AudioQuality.High, "High", "WAV · ~115 MB per hour · lossless re-recognition"),
-        new(AudioQuality.Compact, "Compact", "Ogg Opus 24 kbps · ~10 MB per hour"),
+        new(AudioQuality.Standard, Loc.T("History.Storage.Quality.Standard"), Loc.T("History.Storage.Quality.StandardDetail")),
+        new(AudioQuality.High, Loc.T("History.Storage.Quality.High"), Loc.T("History.Storage.Quality.HighDetail")),
+        new(AudioQuality.Compact, Loc.T("History.Storage.Quality.Compact"), Loc.T("History.Storage.Quality.CompactDetail")),
     ];
 
     public static string RetentionLabel(int days) => days switch
     {
-        <= 0 => "Forever",
-        365 => "1 year",
-        1 => "1 day",
-        _ => days.ToString(CultureInfo.InvariantCulture) + " days",
+        <= 0 => Loc.T("History.Retention.Forever"),
+        365 => Loc.T("History.Retention.OneYear"),
+        _ => Loc.Plural("History.Retention.Days", days),
     };
 
     public static string StorageCapLabel(int mb) =>
         StorageCapChoices.FirstOrDefault(c => c.Value == mb)?.Label
-        ?? (mb <= 0 ? "No limit" : HistoryUiFormat.Bytes(mb * 1024L * 1024L));
+        ?? (mb <= 0 ? Loc.T("History.Storage.NoLimit") : HistoryUiFormat.Bytes(mb * 1024L * 1024L));
 
     /// <summary>Index of <paramref name="value"/> in <paramref name="choices"/>; the list is extended with a custom value when missing.</summary>
     public static int IndexOf<T>(ref IReadOnlyList<HistoryUiOption<T>> choices, T value, Func<T, string> label)
@@ -72,10 +72,11 @@ public static class HistoryUiStorage
     public static string UsageText(HistoryStorageUsage usage, HistorySettings settings, long? freeBytes)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        var audio = "Audio " + HistoryUiFormat.Bytes(usage.AudioBytes)
-            + (settings.MaxAudioStorageMb > 0 ? " of " + StorageCapLabel(settings.MaxAudioStorageMb) : "");
-        var text = "text and chats " + HistoryUiFormat.Bytes(usage.TextBytes);
-        var free = freeBytes is { } f and > 0 ? HistoryUiFormat.Bytes(f) + " free on device" : null;
+        var audio = settings.MaxAudioStorageMb > 0
+            ? Loc.F("History.Storage.UsageAudioOfCap", HistoryUiFormat.Bytes(usage.AudioBytes), StorageCapLabel(settings.MaxAudioStorageMb))
+            : Loc.F("History.Storage.UsageAudio", HistoryUiFormat.Bytes(usage.AudioBytes));
+        var text = Loc.F("History.Storage.UsageText", HistoryUiFormat.Bytes(usage.TextBytes));
+        var free = freeBytes is { } f and > 0 ? Loc.F("History.Storage.UsageFree", HistoryUiFormat.Bytes(f)) : null;
         return HistoryUiFormat.Join(audio, text, free);
     }
 
@@ -83,16 +84,18 @@ public static class HistoryUiStorage
     public static string CardTitle(HistoryStorageUsage usage, HistorySettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        return "Storage · " + HistoryUiFormat.Bytes(usage.TotalBytes)
-            + (settings.MaxAudioStorageMb > 0 ? " of " + StorageCapLabel(settings.MaxAudioStorageMb) : "");
+        return settings.MaxAudioStorageMb > 0
+            ? Loc.F("History.Storage.CardTitleOfCap", HistoryUiFormat.Bytes(usage.TotalBytes), StorageCapLabel(settings.MaxAudioStorageMb))
+            : Loc.F("History.Storage.CardTitle", HistoryUiFormat.Bytes(usage.TotalBytes));
     }
 
     /// <summary>Storage card detail: <c>Audio kept 30 days, transcripts forever</c>.</summary>
     public static string CardDetail(HistorySettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        var audio = settings.KeepAudioForever ? "Audio kept forever" : "Audio kept " + RetentionLabel(settings.AudioRetentionDays);
-        return audio + ", transcripts forever";
+        return settings.KeepAudioForever
+            ? Loc.T("History.Storage.CardDetailForever")
+            : Loc.F("History.Storage.CardDetail", RetentionLabel(settings.AudioRetentionDays));
     }
 
     /// <summary>Sums the sizes of the sessions and chats folders. Missing folders count as empty.</summary>

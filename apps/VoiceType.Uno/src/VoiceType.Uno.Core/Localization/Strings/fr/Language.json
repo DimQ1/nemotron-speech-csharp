@@ -1,0 +1,7 @@
+{
+  "Language.Prompt.Title": "Choisissez la langue de l’interface",
+  "Language.Prompt.Hint": "Vous pouvez la changer à tout moment dans le menu principal, section Langue.",
+  "Language.Prompt.Continue": "Continuer",
+  "Language.Menu.Header": "Interface",
+  "Language.Menu.Name": "Langue de l’interface"
+}

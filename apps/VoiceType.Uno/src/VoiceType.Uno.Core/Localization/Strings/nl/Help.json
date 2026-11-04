@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — Help",
+  "Help.Close": "Sluiten",
+  "Help.Start.Title": "Aan de slag",
+  "Help.Start.Body": "1. Bij de eerste start wordt het aanbevolen spraakmodel automatisch gedownload.\n2. Tik onderaan op de ronde knop **Opnemen** en spreek — het transcript verschijnt live. De opname loopt door tot je opnieuw op de knop tikt; je hoeft hem niet ingedrukt te houden.\n3. Open het menu **≡** (linksboven) om van modus te wisselen — **Tekst typen** typt elke afgeronde zin in het actieve venster, **Live vertaling** voegt een vertaalkaart toe, **Handmatige invoer** laat je het transcript typen of bewerken.\n4. In het menu vind je ook de herkenningstaal, spraakmodellen, downloads en **Instellingen**— de regel onder de titel toont het actieve model en de modi.",
+  "Help.Hotkey.Title": "Globale sneltoets",
+  "Help.Hotkey.Body": "De standaardsneltoets om te starten en te stoppen is **Ctrl+Shift+V**. Op Linux wordt die geregistreerd via het XDG-portaal GlobalShortcuts (xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+); de compositor toont eenmalig een toestemmingsvenster. Op desktops zonder portaalondersteuning wordt de sneltoets als niet beschikbaar gemeld.",
+  "Help.LinuxInjection.Title": "Tekst typen op Linux",
+  "Help.LinuxInjection.Body": "Bij het typen wordt het klembord gevuld en daarna de plaktoetscombinatie (standaard Ctrl+V — aan te passen in Instellingen) naar het actieve venster gestuurd.\n\n**Benodigde tools (installeer er één per paar):**\n• Klembord: wl-copy (Wayland) of xclip / xsel (X11)\n• Toetsenbord: ydotool (Wayland, vereist ydotoold) of libXtst / xdotool (X11)\n\nUbuntu: *sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "Audio-opname",
+  "Help.Audio.Body": "De opname loopt via de PulseAudio-compatibele server (PipeWire-desktops en WSLg bieden er allebei een).\n• Microfoon — standaard invoerbron\n• Loopback — monitor van de standaarduitvoer (*@DEFAULT_MONITOR@*)\n• Mix — allebei, 50/50 gemengd",
+  "Help.Data.Title": "Gegevenslocaties",
+  "Help.Data.Body": "• Instellingen: *~/.local/share/VoiceType/settings.json*\n• Modellen: *~/.local/share/VoiceType/models/*\n(op Windows staan ze onder %LOCALAPPDATA%\\VoiceType)"
+}

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Microsoft.UI.Dispatching;
 using VoiceType.Uno.History;
 using VoiceType.Uno.Presentation.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.Presentation;
@@ -14,8 +15,8 @@ public sealed partial class SpeakerModelCardViewModel : ObservableObject
     public DiarizationCatalogModel Model { get; }
 
     public string Title => Model.Title;
-    public string Tagline => Model.Tagline;
-    public string Description => Model.Description;
+    public string Tagline => DiarizationModelCatalog.TaglineOf(Model);
+    public string Description => DiarizationModelCatalog.DescriptionOf(Model);
     public string SizeChip => DownloadProgressFormatter.FormatBytes(Model.SizeBytes);
     public string PrecisionChip => Model.Precision.ToString().ToUpperInvariant();
     public bool ShowRecommendedChip => Model.IsRecommended;
@@ -24,7 +25,7 @@ public sealed partial class SpeakerModelCardViewModel : ObservableObject
     [ObservableProperty] private bool _showInUseChip;
     [ObservableProperty] private bool _showInstalledChip;
     [ObservableProperty] private string _statusText = "";
-    [ObservableProperty] private string _actionText = "Download";
+    [ObservableProperty] private string _actionText = Loc.T("Models.Card.Action.Download");
     [ObservableProperty] private bool _actionVisible = true;
     [ObservableProperty] private bool _isAccentAction = true;
     [ObservableProperty] private bool _showProgress;
@@ -35,13 +36,13 @@ public sealed partial class SpeakerModelCardViewModel : ObservableObject
 
     public bool ShowAccentAction => ActionVisible && IsAccentAction;
     public bool ShowPlainAction => ActionVisible && !IsAccentAction;
-    public string PrimaryAutomationName => $"{ActionText} {Model.Title}";
-    public string MoreAutomationName => $"More actions for {Model.Title}";
+    public string PrimaryAutomationName => LlmUiText.ActionFor(ActionText, Model.Title);
+    public string MoreAutomationName => LlmUiText.MoreActionsFor(Model.Title);
 
     public void Apply(DiarizationUiCard card)
     {
         ShowInUseChip = card.Chips.Any(c => c.Kind == LlmUiChipKind.InUse);
-        ShowInstalledChip = card.Chips.Any(c => c.Text == "installed");
+        ShowInstalledChip = card.Chips.Any(c => c.Text == Loc.T("Models.Chip.Installed"));
         StatusText = card.StatusText;
         ActionText = card.ActionText;
         ActionVisible = card.ActionVisible;
@@ -122,7 +123,7 @@ public sealed partial class SpeakerModelsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            ErrorText = $"{card.Title}: {ex.Message}";
+            ErrorText = Loc.F("Models.Error.ModelError", card.Title, ex.Message);
             HasError = true;
             return;
         }
@@ -137,7 +138,7 @@ public sealed partial class SpeakerModelsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            ErrorText = $"{card.Title}: {ex.Message}";
+            ErrorText = Loc.F("Models.Error.ModelError", card.Title, ex.Message);
             HasError = true;
             return;
         }

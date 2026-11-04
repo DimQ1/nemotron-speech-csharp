@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.History;
 
 /// <summary>A file the export sheet will write.</summary>
@@ -67,8 +69,8 @@ public static class HistoryUiExport
     {
         ArgumentNullException.ThrowIfNull(files);
         if (files.Count == 0)
-            return "Nothing selected";
-        return HistoryUiFormat.Count(files.Count, "file") + " · " + HistoryUiFormat.Bytes(files.Sum(f => f.EstimatedBytes));
+            return Loc.T("History.Export.NothingSelected");
+        return Loc.Plural("History.Export.Summary", files.Count, HistoryUiFormat.Bytes(files.Sum(f => f.EstimatedBytes)));
     }
 
     /// <summary>The translation of <paramref name="versionId"/> to offer in the sheet (complete first, newest first).</summary>

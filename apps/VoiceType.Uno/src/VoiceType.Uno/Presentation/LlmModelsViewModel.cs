@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Microsoft.UI.Dispatching;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.Presentation;
@@ -17,10 +18,10 @@ public sealed partial class LlmModelCardViewModel : ObservableObject
     public LlmModelInfo Model { get; }
 
     public string Title => Model.Title;
-    public string Tagline => Model.Tagline;
-    public string Description => Model.Description;
+    public string Tagline => LlmUiText.TaglineOf(Model);
+    public string Description => LlmUiText.DescriptionOf(Model);
     public string SizeChip => DownloadProgressFormatter.FormatBytes(Model.SizeBytes);
-    public string ContextChip => $"{LlmUiCardBuilder.FormatContext(Model.ContextTokens)} context";
+    public string ContextChip => LlmUiText.ContextChip(Model.ContextTokens);
     public bool ShowRecommendedChip { get; private set; }
     public bool ShowDesktopOnlyChip { get; private set; }
 
@@ -30,7 +31,7 @@ public sealed partial class LlmModelCardViewModel : ObservableObject
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private string _ramText = "";
     [ObservableProperty] private string _ramWarningText = "";
-    [ObservableProperty] private string _actionText = "Download";
+    [ObservableProperty] private string _actionText = Loc.T("Models.Card.Action.Download");
     [ObservableProperty] private bool _actionVisible = true;
     [ObservableProperty] private bool _actionEnabled = true;
     [ObservableProperty] private bool _isAccentAction = true;
@@ -43,23 +44,23 @@ public sealed partial class LlmModelCardViewModel : ObservableObject
 
     public bool ShowAccentAction => ActionVisible && IsAccentAction;
     public bool ShowPlainAction => ActionVisible && !IsAccentAction;
-    public string PrimaryAutomationName => $"{ActionText} {Model.Title}";
-    public string MoreAutomationName => $"More actions for {Model.Title}";
+    public string PrimaryAutomationName => LlmUiText.ActionFor(ActionText, Model.Title);
+    public string MoreAutomationName => LlmUiText.MoreActionsFor(Model.Title);
 
     public void Apply(LlmUiCard card, double? availableGb, DateTime now)
     {
         ShowRecommendedChip = card.Chips.Any(c => c.Kind == LlmUiChipKind.Recommended);
-        ShowDesktopOnlyChip = card.Chips.Any(c => c.Text == "Desktop only");
+        ShowDesktopOnlyChip = card.Chips.Any(c => c.Text == Loc.T("Models.Chip.DesktopOnly"));
         OnPropertyChanged(nameof(ShowRecommendedChip));
         OnPropertyChanged(nameof(ShowDesktopOnlyChip));
 
         ShowInUseChip = card.Chips.Any(c => c.Kind == LlmUiChipKind.InUse);
-        ShowInstalledChip = card.Chips.Any(c => c.Text == "installed");
+        ShowInstalledChip = card.Chips.Any(c => c.Text == Loc.T("Models.Chip.Installed"));
         ShowLowMemoryChip = card.RamLow;
         StatusText = card.StatusText;
         RamText = card.RamText;
         RamWarningText = card.RamLow && availableGb is { } free
-            ? $"Only {free:0.#} GB free now. Close other apps first or loading may fail."
+            ? LlmUiText.RamWarning(free)
             : "";
         ActionText = card.ActionText;
         ActionVisible = card.ActionVisible;
@@ -200,7 +201,7 @@ public sealed partial class LlmModelsViewModel : ObservableObject
             return;
 
         var label = backend.Equals("gpu", StringComparison.OrdinalIgnoreCase) ? "GPU" : "CPU";
-        await RunLoadingAsync(null, $"Switching to {label}…", () => _service.SetComputeBackendAsync(backend), _service.Active);
+        await RunLoadingAsync(null, LlmUiText.SwitchingCompute(label), () => _service.SetComputeBackendAsync(backend), _service.Active);
     }
 
     public void ClearError()
@@ -251,7 +252,7 @@ public sealed partial class LlmModelsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            ErrorText = $"{model.Title}: {ex.Message}";
+            ErrorText = Loc.F("Models.Error.ModelError", model.Title, ex.Message);
             HasError = true;
         }
     }

@@ -1,5 +1,6 @@
 using System.Globalization;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Jobs;
 
@@ -57,7 +58,7 @@ public sealed partial class ReprocessSheet : ContentDialog
         BuildWhen();
         VadSwitch.IsOn = _settings.UseVad;
         MakeCurrentSwitch.IsOn = _recordings.Count > 1;
-        MakeCurrentLabel.Text = _recordings.Count > 1 ? "Make new versions current" : "Make it current when done";
+        MakeCurrentLabel.Text = _recordings.Count > 1 ? Loc.T("Recording.Reprocess.MakeCurrentMany") : Loc.T("Recording.Reprocess.MakeCurrent");
         ApplySteps();
         UpdateEstimate();
         UpdateStartEnabled();
@@ -82,7 +83,7 @@ public sealed partial class ReprocessSheet : ContentDialog
         if (!modelReady)
         {
             SpeakersStepSwitch.IsOn = false;
-            SpeakersStepHint.Text = "Needs the speaker model: download it on Models › Speakers (106 MB)";
+            SpeakersStepHint.Text = Loc.T("Recording.Reprocess.SpeakerModelMissing");
         }
         AnalysisStepSwitch.IsOn = false;
         AnalysisStepSwitch.IsEnabled = VoiceType.Uno.Services.Jobs.GemmaAvailability.IsInstalled;
@@ -100,9 +101,9 @@ public sealed partial class ReprocessSheet : ContentDialog
         SpeakersPresetBox.Visibility = _chain is not null && SpeakersStepSwitch.IsOn ? Visibility.Visible : Visibility.Collapsed;
         if (_chain is not null)
         {
-            TitleText.Text = speech ? "Reprocess audio" : SpeakersStepSwitch.IsOn ? "Detect speakers" : "Reprocess audio";
+            TitleText.Text = speech ? Loc.T("Recording.Reprocess.TitleChain") : SpeakersStepSwitch.IsOn ? Loc.T("Recording.Reprocess.TitleSpeakers") : Loc.T("Recording.Reprocess.TitleChain");
             if (!speech)
-                SubtitleText.Text = "Uses the current transcript · no new version";
+                SubtitleText.Text = Loc.T("Recording.Reprocess.SubtitleNoSpeech");
         }
         UpdateEstimate();
         UpdateStartEnabled();
@@ -112,21 +113,20 @@ public sealed partial class ReprocessSheet : ContentDialog
     {
         if (_recordings.Count <= 1)
         {
-            TitleText.Text = "Re-recognize audio";
-            var next = _recordings.Count == 1 ? ReprocessPlan.NextVersionId(_recordings[0]) : "a new version";
-            SubtitleText.Text = $"Creates {next} · the current version stays until you switch";
+            TitleText.Text = Loc.T("Recording.Reprocess.Title");
+            SubtitleText.Text = _recordings.Count == 1
+                ? Loc.F("Recording.Reprocess.SubtitleCreates", ReprocessPlan.NextVersionId(_recordings[0]))
+                : Loc.T("Recording.Reprocess.SubtitleCreatesNew");
         }
         else
         {
-            TitleText.Text = $"Re-recognize {_recordings.Count} recordings";
-            SubtitleText.Text = "One batch · each recording gets a new version";
+            TitleText.Text = Loc.F("Recording.Reprocess.TitleMany", _recordings.Count);
+            SubtitleText.Text = Loc.T("Recording.Reprocess.SubtitleMany");
         }
         if (_requested > _recordings.Count)
         {
             var skipped = _requested - _recordings.Count;
-            SubtitleText.Text += skipped == 1
-                ? " · 1 recording has no audio and is skipped"
-                : $" · {skipped} recordings have no audio and are skipped";
+            SubtitleText.Text += " · " + Loc.Plural("Recording.Reprocess.Skipped", skipped);
         }
     }
 
@@ -142,7 +142,7 @@ public sealed partial class ReprocessSheet : ContentDialog
             if (ReprocessPlan.UsedText(model.Folder, _recordings) is { } used)
                 details.Add(used);
             if (model.WerPercent is { } wer)
-                details.Add("WER " + wer.ToString("0.0", CultureInfo.InvariantCulture) + "%");
+                details.Add(Loc.F("Recording.Reprocess.Wer", wer));
             if (model.Descriptor?.Tagline is { Length: > 0 } tagline && details.Count < 2)
                 details.Add(tagline);
 
@@ -170,14 +170,16 @@ public sealed partial class ReprocessSheet : ContentDialog
         {
             var source = _recordings[0].Current;
             var language = OfflineRecognitionJob.ResolveLanguage(null, source);
-            keepText = $"{LanguageName(language)} (same as {source?.Id ?? "the recording"})";
+            keepText = source?.Id is { } sourceId
+                ? Loc.F("Recording.Reprocess.KeepLanguageOf", LanguageName(language), sourceId)
+                : Loc.F("Recording.Reprocess.KeepLanguage", LanguageName(language));
         }
         else
         {
-            keepText = "Keep each recording's language";
+            keepText = Loc.T("Recording.Reprocess.KeepEachLanguage");
         }
         AddLanguage(keepText, OfflineRecognitionJob.KeepLanguage);
-        AddLanguage("Auto-detect", OfflineRecognitionJob.AutoLanguage);
+        AddLanguage(Loc.T("Recording.Reprocess.AutoDetect"), OfflineRecognitionJob.AutoLanguage);
         foreach (var code in SettingsText.LanguageCodes.Where(c => c != "auto"))
             AddLanguage(LanguageName(code), code);
         LanguageBox.SelectedIndex = 0;
@@ -192,12 +194,12 @@ public sealed partial class ReprocessSheet : ContentDialog
     private void BuildWhen()
     {
         if (_runner.Status is not null)
-            WhenNowText.Text = "Now — after the running job";
+            WhenNowText.Text = Loc.T("Recording.Reprocess.NowAfterRunning");
         if (_device is { HasBattery: false })
-            WhenChargingHint.Text = "This device has no battery: starts right away";
+            WhenChargingHint.Text = Loc.T("Recording.Reprocess.NoBattery");
         WindowHint.Text = OperatingSystem.IsAndroid()
-            ? "Every night; runs while VoiceType is open or in the background"
-            : "Every night, while VoiceType is running";
+            ? Loc.T("Recording.Reprocess.WindowHintAndroid")
+            : Loc.T("Recording.Reprocess.WindowHintDesktop");
         for (var minutes = 0; minutes < 24 * 60; minutes += 30)
         {
             var text = TimeOnly.FromTimeSpan(TimeSpan.FromMinutes(minutes)).ToString("HH:mm", CultureInfo.InvariantCulture);
@@ -220,8 +222,8 @@ public sealed partial class ReprocessSheet : ContentDialog
     private void Window_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (WindowFrom.SelectedIndex >= 0 && WindowTo.SelectedIndex >= 0)
-            WindowHint.Text = JobDisplay.WindowText(WindowTime(WindowFrom), WindowTime(WindowTo))
-                + (OperatingSystem.IsAndroid() ? " · continues the next night" : " · while VoiceType is running");
+            WindowHint.Text = Loc.F(OperatingSystem.IsAndroid() ? "Recording.Reprocess.WindowTextAndroid" : "Recording.Reprocess.WindowTextDesktop",
+                JobDisplay.WindowText(WindowTime(WindowFrom), WindowTime(WindowTo)));
     }
 
     private void Start_Click(ContentDialog sender, ContentDialogButtonClickEventArgs args)
@@ -229,13 +231,13 @@ public sealed partial class ReprocessSheet : ContentDialog
         try
         {
             if (_recordings.Count == 0)
-                throw new InvalidOperationException("None of these recordings has audio to re-recognize.");
+                throw new InvalidOperationException(Loc.T("Recording.Reprocess.NoAudio"));
             var speech = _chain is null || SpeechStepSwitch.IsOn;
             var speakers = _chain is not null && SpeakersStepSwitch.IsOn;
             var analysis = _chain is not null && AnalysisStepSwitch.IsOn;
             if (!speech && !speakers && !analysis)
-                throw new InvalidOperationException("Switch on at least one step.");
-            var model = speech ? SelectedModel() ?? throw new InvalidOperationException("Choose a speech model.") : null;
+                throw new InvalidOperationException(Loc.T("Recording.Reprocess.NoStep"));
+            var model = speech ? SelectedModel() ?? throw new InvalidOperationException(Loc.T("Recording.Reprocess.NoModel")) : null;
 
             var parameters = model is null ? null : new JobParameters
             {
@@ -297,7 +299,7 @@ public sealed partial class ReprocessSheet : ContentDialog
             return;
         if (_chain is not null && !SpeechStepSwitch.IsOn)
         {
-            EstimateText.Text = "Runs from the Queue, one step after another";
+            EstimateText.Text = Loc.T("Recording.Reprocess.ChainEstimate");
             return;
         }
         var model = SelectedModel();
@@ -313,8 +315,8 @@ public sealed partial class ReprocessSheet : ContentDialog
             folder => _models.FirstOrDefault(m => string.Equals(m.Model.Folder, folder, StringComparison.OrdinalIgnoreCase)).Model?.RealTimeFactor,
             OperatingSystem.IsAndroid() ? ReprocessPlan.PhoneSlowdown : 1.0);
         var estimate = ReprocessPlan.Estimate(_recordings, measured, model.RealTimeFactor, slowdown);
-        var approximate = measured is null ? "≈ " : "";
-        EstimateText.Text = $"{approximate}{JobDisplay.FormatSpan(estimate)} on this device · runs from the Queue";
+        EstimateText.Text = Loc.F(measured is null ? "Recording.Reprocess.EstimateApprox" : "Recording.Reprocess.Estimate",
+            JobDisplay.FormatSpan(estimate));
 
         // Parakeet has no language input: the choice would be silently ignored, so it is disabled.
         var languageChoice = ReprocessPlan.SupportsLanguageChoice(model.Family);
@@ -329,12 +331,12 @@ public sealed partial class ReprocessSheet : ContentDialog
         IsPrimaryButtonEnabled = (!speech || _models.Count > 0) && anyStep && _recordings.Count > 0 && !_queue.IsReadOnly;
         if (_queue.IsReadOnly)
         {
-            ErrorText.Text = "The queue was saved by a newer VoiceType and is read-only in this version.";
+            ErrorText.Text = Loc.T("Recording.Reprocess.QueueReadOnly");
             ErrorText.Visibility = Visibility.Visible;
         }
         else if (_recordings.Count == 0)
         {
-            ErrorText.Text = "None of these recordings has audio to re-recognize.";
+            ErrorText.Text = Loc.T("Recording.Reprocess.NoAudio");
             ErrorText.Visibility = Visibility.Visible;
         }
     }
@@ -342,7 +344,7 @@ public sealed partial class ReprocessSheet : ContentDialog
     private static string LanguageName(string code)
     {
         if (string.Equals(code, OfflineRecognitionJob.AutoLanguage, StringComparison.OrdinalIgnoreCase))
-            return "Auto-detect";
+            return Loc.T("Recording.Reprocess.AutoDetect");
         try
         {
             return CultureInfo.GetCultureInfo(code).EnglishName;

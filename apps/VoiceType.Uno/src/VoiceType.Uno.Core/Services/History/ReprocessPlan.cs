@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.History;
 
 /// <summary>Pure helpers of the Reprocess / Re-recognize sheet: "used for vN" marks and the time estimate.</summary>
@@ -19,11 +21,11 @@ public static class ReprocessPlan
         if (recordings.Count == 1)
         {
             var ids = recordings[0].Versions.Where(v => Uses(v, modelFolder)).Select(v => v.Id).ToList();
-            return ids.Count == 0 ? null : "Used for " + string.Join(", ", ids);
+            return ids.Count == 0 ? null : Loc.F("Recording.Reprocess.UsedFor", string.Join(", ", ids));
         }
 
         var count = recordings.Count(r => r.Versions.Any(v => Uses(v, modelFolder)));
-        return count == 0 ? null : $"Used in {count} of {recordings.Count}";
+        return count == 0 ? null : Loc.F("Recording.Reprocess.UsedIn", count, recordings.Count);
     }
 
     /// <summary>

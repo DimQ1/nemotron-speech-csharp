@@ -1,4 +1,5 @@
 using VoiceType.Hotkeys.StatusNotifier;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services.Platform;
 
@@ -59,7 +60,7 @@ public sealed class LinuxTrayIndicator : ITrayIndicator
             return;
 
         _tray.SetStatus(isRecording ? TrayStatus.NeedsAttention : TrayStatus.Active);
-        _tray.SetTooltip(isRecording ? "VoiceType — Recording" : "VoiceType");
+        _tray.SetTooltip(isRecording ? Loc.T("Services.Tray.Recording") : "VoiceType");
     }
 
     public void Dispose() => _tray?.Dispose();

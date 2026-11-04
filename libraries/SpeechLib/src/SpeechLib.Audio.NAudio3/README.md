@@ -1,8 +1,8 @@
 # SpeechLib.Audio.NAudio3
 
 Windows audio capture provider built against `NAudio.Core` / `NAudio.Wasapi` 3.0.1.
-It is the only capture provider in the repository and is used by the CLI, VoiceType.WinUI
-and the Windows head of VoiceType.Uno.
+It is the only capture provider in the repository and is used by the CLI and
+the Windows heads of VoiceType.Uno (WinAppSDK and Skia desktop).
 
 ## Usage
 

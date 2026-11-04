@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — Pomoc",
+  "Help.Close": "Zamknij",
+  "Help.Start.Title": "Pierwsze kroki",
+  "Help.Start.Body": "1. Przy pierwszym uruchomieniu zalecany model mowy pobiera się automatycznie.\n2. Naciśnij okrągły przycisk **Nagrywaj** na dole i mów — transkrypcja pojawia się na bieżąco. Nagrywanie trwa, dopóki nie naciśniesz przycisku ponownie; nie trzeba go przytrzymywać.\n3. Otwórz menu **≡** (u góry po lewej), aby przełączać tryby: **Wpisywanie tekstu** wpisuje każde gotowe zdanie do aktywnego okna, **Tłumaczenie na żywo** dodaje kartę tłumaczenia, **Ręczne wprowadzanie** pozwala pisać lub poprawiać transkrypcję.\n4. W menu są też język rozpoznawania, modele mowy, pobieranie i **Ustawienia**— wiersz pod tytułem pokazuje aktywny model i tryby.",
+  "Help.Hotkey.Title": "Globalny skrót klawiszowy",
+  "Help.Hotkey.Body": "Domyślny skrót przełączający to **Ctrl+Shift+V**. W systemie Linux jest rejestrowany przez portal XDG GlobalShortcuts (xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+); kompozytor jednorazowo wyświetla okno zgody. Na pulpitach bez obsługi portalu skrót jest oznaczany jako niedostępny.",
+  "Help.LinuxInjection.Title": "Wpisywanie tekstu w systemie Linux",
+  "Help.LinuxInjection.Body": "Wpisywanie umieszcza tekst w schowku, a następnie symuluje skrót wklejania (domyślnie Ctrl+V — można zmienić w ustawieniach) w aktywnym oknie.\n\n**Wymagane narzędzia (po jednym z każdej pary):**\n• Schowek: wl-copy (Wayland) lub xclip / xsel (X11)\n• Klawiatura: ydotool (Wayland, wymaga ydotoold) lub libXtst / xdotool (X11)\n\nUbuntu: *sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "Przechwytywanie dźwięku",
+  "Help.Audio.Body": "Przechwytywanie odbywa się przez serwer zgodny z PulseAudio (zapewniają go zarówno pulpity z PipeWire, jak i WSLg).\n• Mikrofon — domyślne źródło wejścia\n• Dźwięk systemu — monitor domyślnego wyjścia (*@DEFAULT_MONITOR@*)\n• Miks — oba, zmieszane 50/50",
+  "Help.Data.Title": "Lokalizacje danych",
+  "Help.Data.Body": "• Ustawienia: *~/.local/share/VoiceType/settings.json*\n• Modele: *~/.local/share/VoiceType/models/*\n(w systemie Windows znajdują się w %LOCALAPPDATA%\\VoiceType)"
+}

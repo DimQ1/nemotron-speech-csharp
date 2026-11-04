@@ -4,7 +4,7 @@ using Xunit;
 namespace SpeechLib.Tests;
 
 /// <summary>
-/// The model catalog is what the Uno model manager and the WinUI downloader show
+/// The model catalog is what the Uno model manager shows
 /// to users, so its naming and the derived star ratings have to stay unambiguous:
 /// every variant must be distinguishable by name alone and the "best" badges must
 /// point at the models the numbers actually favour.

@@ -24,6 +24,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Interface strings (VoiceType.Uno.Localization.Loc): Localization/Strings/<language>/<area>.json, embedded as loc/<language>/<area>.json -->
+    <EmbeddedResource Include="Localization\Strings\**\*.json" LogicalName="loc/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="VoiceType.Uno.Tests" />
   </ItemGroup>
 </Project>

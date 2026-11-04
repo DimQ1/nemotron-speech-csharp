@@ -49,7 +49,7 @@ public sealed class ChatStore
             chat = new ChatRecord
             {
                 Id = NewId(),
-                Title = string.IsNullOrWhiteSpace(title) ? "Chat " + now.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture) : title.Trim(),
+                Title = string.IsNullOrWhiteSpace(title) ? VoiceType.Uno.Localization.Loc.F("Chat.Title.Dated", now.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)) : title.Trim(),
                 CreatedAt = now,
                 UpdatedAt = now,
             };
@@ -150,7 +150,7 @@ public sealed class ChatStore
             if (index < 0)
                 return;
             if (c.Sources.Count == 1)
-                throw new InvalidOperationException("A chat needs at least one recording; delete the chat instead.");
+                throw new InvalidOperationException(VoiceType.Uno.Localization.Loc.T("Chat.Error.LastSource"));
             c.Sources.RemoveAt(index);
         });
 

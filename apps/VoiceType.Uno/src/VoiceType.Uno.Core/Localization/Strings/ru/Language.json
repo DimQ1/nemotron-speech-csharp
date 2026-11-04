@@ -1,0 +1,7 @@
+{
+  "Language.Prompt.Title": "Выберите язык интерфейса",
+  "Language.Prompt.Hint": "Его можно сменить в любой момент в главном меню, раздел «Язык».",
+  "Language.Prompt.Continue": "Продолжить",
+  "Language.Menu.Header": "Интерфейс",
+  "Language.Menu.Name": "Язык интерфейса"
+}

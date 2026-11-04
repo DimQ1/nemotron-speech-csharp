@@ -5,7 +5,7 @@ namespace SpeechLib.ModelDownload;
 /// fp32/int8/int4) keeps its files in subfolders: the subfolder must be stripped
 /// for the LOCAL path while the REPO path stays intact, because the file is still
 /// fetched from <c>resolve/main/&lt;subfolder&gt;/&lt;file&gt;</c>.
-/// Shared by the WinUI and Uno downloaders.
+/// Used by the Uno downloader.
 /// </summary>
 public static class ModelFileSelection
 {

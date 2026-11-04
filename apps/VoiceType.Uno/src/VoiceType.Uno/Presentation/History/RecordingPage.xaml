@@ -3,6 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:history="using:VoiceType.Uno.Presentation.History"
       xmlns:controls="using:VoiceType.Uno.Presentation.Controls"
+      xmlns:l="using:VoiceType.Uno.Presentation.Localization"
       Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
       KeyDown="Page_KeyDown"
       Loaded="Page_Loaded"
@@ -102,7 +103,7 @@
             </Button>
             <Button Grid.Column="1" Width="44" Height="44" Margin="0,0,4,0" Padding="0"
                     Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
-                    Click="ChatCardMore_Click" AutomationProperties.Name="Chat actions" ToolTipService.ToolTip="More actions">
+                    Click="ChatCardMore_Click" AutomationProperties.Name="{l:Tr Key=Recording.Chats.CardActions}" ToolTipService.ToolTip="{l:Tr Key=Recording.Common.MoreActions}">
               <SymbolIcon Symbol="More" />
             </Button>
           </Grid>
@@ -117,7 +118,7 @@
               <controls:ChipWrapPanel Spacing="4">
                 <Border Style="{StaticResource HistoryChipStyle}" Visibility="{x:Bind IsCurrent}"
                         Background="{ThemeResource AccentFillColorDefaultBrush}" BorderBrush="{ThemeResource AccentFillColorDefaultBrush}">
-                  <TextBlock Text="● Current" Style="{StaticResource HistoryChipTextStyle}"
+                  <TextBlock Text="{l:Tr Key=Recording.Versions.CurrentChip}" Style="{StaticResource HistoryChipTextStyle}"
                              Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                 </Border>
                 <Border Style="{StaticResource HistoryChipStyle}">
@@ -135,23 +136,23 @@
                   <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Grid.Row="0" Grid.Column="0" FontSize="12" TextWrapping="Wrap">
-                  <Run Text="Language" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{l:Tr Key=Recording.Versions.Language}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                   <Run Text="{x:Bind LanguageText}" FontWeight="SemiBold" />
                 </TextBlock>
                 <TextBlock Grid.Row="0" Grid.Column="1" FontSize="12" TextWrapping="Wrap">
-                  <Run Text="VAD" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{l:Tr Key=Recording.Versions.Vad}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                   <Run Text="{x:Bind VadText}" FontWeight="SemiBold" />
                 </TextBlock>
                 <TextBlock Grid.Row="1" Grid.Column="0" FontSize="12" TextWrapping="Wrap">
-                  <Run Text="Created" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{l:Tr Key=Recording.Versions.Created}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                   <Run Text="{x:Bind CreatedText}" FontWeight="SemiBold" />
                 </TextBlock>
                 <TextBlock Grid.Row="1" Grid.Column="1" FontSize="12" TextWrapping="Wrap">
-                  <Run Text="App" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{l:Tr Key=Recording.Versions.App}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                   <Run Text="{x:Bind AppText}" FontWeight="SemiBold" />
                 </TextBlock>
                 <TextBlock Grid.Row="2" Grid.Column="0" FontSize="12" TextWrapping="Wrap">
-                  <Run Text="Words" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{l:Tr Key=Recording.Versions.Words}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                   <Run Text="{x:Bind WordsText}" FontWeight="SemiBold" />
                 </TextBlock>
                 <TextBlock Grid.Row="2" Grid.Column="1" FontSize="12" TextWrapping="Wrap"
@@ -160,7 +161,7 @@
               <TextBlock Text="{x:Bind UsageText}" Style="{StaticResource HistorySecondaryStyle}" Visibility="{x:Bind HasUsage}" />
               <StackPanel Spacing="2" Visibility="{x:Bind HasSpeakers}">
                 <TextBlock Style="{StaticResource HistorySecondaryStyle}">
-                  <Run Text="Speakers" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <Run Text="{l:Tr Key=Recording.Versions.Speakers}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                   <Run Text="{x:Bind SpeakersText}" FontWeight="SemiBold" />
                 </TextBlock>
                 <TextBlock Text="{x:Bind PresetText}" Style="{StaticResource HistorySecondaryStyle}" Visibility="{x:Bind HasPreset}" />
@@ -172,13 +173,13 @@
                   <ColumnDefinition Width="Auto" />
                   <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="1" Content="Make current" Style="{StaticResource HistoryActionButtonStyle}"
+                <Button Grid.Column="1" Content="{l:Tr Key=Recording.Versions.MakeCurrent}" Style="{StaticResource HistoryActionButtonStyle}"
                         Click="MakeCurrent_Click" Visibility="{x:Bind IsNotCurrent}" />
-                <Button Grid.Column="2" Content="Compare" Style="{StaticResource HistoryActionButtonStyle}"
+                <Button Grid.Column="2" Content="{l:Tr Key=Recording.Versions.Compare}" Style="{StaticResource HistoryActionButtonStyle}"
                         Click="Compare_Click" />
                 <Button Grid.Column="3" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
-                        Click="VersionMore_Click" AutomationProperties.Name="More version actions"
-                        ToolTipService.ToolTip="More actions">
+                        Click="VersionMore_Click" AutomationProperties.Name="{l:Tr Key=Recording.Versions.MoreActionsName}"
+                        ToolTipService.ToolTip="{l:Tr Key=Recording.Common.MoreActions}">
                   <SymbolIcon Symbol="More" />
                 </Button>
               </Grid>
@@ -210,7 +211,7 @@
         <ColumnDefinition Width="48" />
       </Grid.ColumnDefinitions>
       <Button x:Name="BackButton" Style="{StaticResource HistoryIconButtonStyle}" Click="Back_Click"
-              AutomationProperties.Name="Back" ToolTipService.ToolTip="Back">
+              AutomationProperties.Name="{l:Tr Key=Recording.Header.Back}" ToolTipService.ToolTip="{l:Tr Key=Recording.Header.Back}">
         <SymbolIcon Symbol="Back" />
       </Button>
       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,0,0">
@@ -221,11 +222,11 @@
       </StackPanel>
       <Button x:Name="AskGemmaHeaderButton" Grid.Column="2" Style="{StaticResource HistoryIconButtonStyle}"
               Click="AskGemma_Click"
-              AutomationProperties.Name="Ask Gemma" ToolTipService.ToolTip="Ask Gemma about this recording">
+              AutomationProperties.Name="{l:Tr Key=Recording.Header.AskGemma}" ToolTipService.ToolTip="{l:Tr Key=Recording.Header.AskGemmaTip}">
         <TextBlock Text="✦" FontSize="18" />
       </Button>
       <Button Grid.Column="3" Style="{StaticResource HistoryIconButtonStyle}" Click="More_Click"
-              AutomationProperties.Name="Recording actions" ToolTipService.ToolTip="More actions">
+              AutomationProperties.Name="{l:Tr Key=Recording.Header.Actions}" ToolTipService.ToolTip="{l:Tr Key=Recording.Common.MoreActions}">
         <SymbolIcon Symbol="More" />
       </Button>
     </Grid>
@@ -239,16 +240,16 @@
         <ColumnDefinition Width="48" />
       </Grid.ColumnDefinitions>
       <Button Style="{StaticResource HistoryIconButtonStyle}" Click="CancelEdit_Click"
-              AutomationProperties.Name="Close editing" ToolTipService.ToolTip="Close without saving">
+              AutomationProperties.Name="{l:Tr Key=Recording.Edit.CloseName}" ToolTipService.ToolTip="{l:Tr Key=Recording.Edit.CloseTip}">
         <SymbolIcon Symbol="Cancel" />
       </Button>
       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,0,0">
-        <TextBlock Text="Edit transcript" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+        <TextBlock Text="{l:Tr Key=Recording.Menu.EditTranscript}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
         <TextBlock Text="{x:Bind ViewModel.Title, Mode=OneWay}" FontSize="12" Opacity="0.7" TextTrimming="CharacterEllipsis" />
       </StackPanel>
       <Button Grid.Column="2" Style="{StaticResource HistoryIconButtonStyle}" Click="Undo_Click"
               IsEnabled="{x:Bind ViewModel.CanUndo, Mode=OneWay}"
-              AutomationProperties.Name="Undo" ToolTipService.ToolTip="Undo the last change">
+              AutomationProperties.Name="{l:Tr Key=Recording.Edit.UndoName}" ToolTipService.ToolTip="{l:Tr Key=Recording.Edit.UndoTip}">
         <SymbolIcon Symbol="Undo" />
       </Button>
     </Grid>
@@ -265,13 +266,13 @@
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <RadioButton x:Name="TranscriptTab" GroupName="RecordingTabs" Content="Transcript" IsChecked="True"
+        <RadioButton x:Name="TranscriptTab" GroupName="RecordingTabs" Content="{l:Tr Key=Recording.Tabs.Transcript}" IsChecked="True"
                      Style="{StaticResource HistorySegmentStyle}" Checked="Tab_Checked" />
-        <RadioButton x:Name="ChatsTab" Grid.Column="1" GroupName="RecordingTabs" Content="Chats"
+        <RadioButton x:Name="ChatsTab" Grid.Column="1" GroupName="RecordingTabs" Content="{l:Tr Key=Recording.Tabs.Chats}"
                      Style="{StaticResource HistorySegmentStyle}" Checked="Tab_Checked" />
-        <RadioButton x:Name="TranslateTab" Grid.Column="2" GroupName="RecordingTabs" Content="Translate"
+        <RadioButton x:Name="TranslateTab" Grid.Column="2" GroupName="RecordingTabs" Content="{l:Tr Key=Recording.Tabs.Translate}"
                      Style="{StaticResource HistorySegmentStyle}" Checked="Tab_Checked" />
-        <RadioButton x:Name="VersionsTab" Grid.Column="3" GroupName="RecordingTabs" Content="Versions"
+        <RadioButton x:Name="VersionsTab" Grid.Column="3" GroupName="RecordingTabs" Content="{l:Tr Key=Recording.Tabs.Versions}"
                      Style="{StaticResource HistorySegmentStyle}" Checked="Tab_Checked" />
       </Grid>
     </Border>
@@ -291,7 +292,7 @@
           <ColumnDefinition Width="44" />
         </Grid.ColumnDefinitions>
         <Button x:Name="VersionPickerButton" MinHeight="44" HorizontalAlignment="Left" Padding="12,0"
-                Click="VersionPicker_Click" AutomationProperties.Name="Choose version">
+                Click="VersionPicker_Click" AutomationProperties.Name="{l:Tr Key=Recording.Transcript.ChooseVersion}">
           <StackPanel Orientation="Horizontal" Spacing="6">
             <TextBlock Text="{x:Bind ViewModel.ViewedVersionLabel, Mode=OneWay}" FontSize="13"
                        TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
@@ -300,16 +301,16 @@
         </Button>
         <Button Grid.Column="1" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
                 Click="Edit_Click" IsEnabled="{x:Bind ViewModel.HasSegments, Mode=OneWay}"
-                AutomationProperties.Name="Edit transcript" ToolTipService.ToolTip="Edit transcript">
+                AutomationProperties.Name="{l:Tr Key=Recording.Menu.EditTranscript}" ToolTipService.ToolTip="{l:Tr Key=Recording.Menu.EditTranscript}">
           <SymbolIcon Symbol="Edit" />
         </Button>
         <Button Grid.Column="2" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
-                Click="Export_Click" AutomationProperties.Name="Export" ToolTipService.ToolTip="Export">
+                Click="Export_Click" AutomationProperties.Name="{l:Tr Key=Recording.Transcript.Export}" ToolTipService.ToolTip="{l:Tr Key=Recording.Transcript.Export}">
           <SymbolIcon Symbol="Download" />
         </Button>
         <Button Grid.Column="3" Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
                 Click="Copy_Click" IsEnabled="{x:Bind ViewModel.HasSegments, Mode=OneWay}"
-                AutomationProperties.Name="Copy transcript" ToolTipService.ToolTip="Copy transcript">
+                AutomationProperties.Name="{l:Tr Key=Recording.Transcript.Copy}" ToolTipService.ToolTip="{l:Tr Key=Recording.Transcript.Copy}">
           <SymbolIcon Symbol="Copy" />
         </Button>
       </Grid>
@@ -329,7 +330,7 @@
             </StackPanel>
           </ScrollViewer>
           <TextBlock Margin="16" Style="{StaticResource HistorySecondaryStyle}" FontSize="13"
-                     Text="This version has no text." Visibility="{x:Bind ViewModel.HasNoSegments, Mode=OneWay}" />
+                     Text="{l:Tr Key=Recording.Transcript.Empty}" Visibility="{x:Bind ViewModel.HasNoSegments, Mode=OneWay}" />
         </Grid>
       </Border>
     </Grid>
@@ -359,14 +360,14 @@
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <Button x:Name="AskGemmaTabButton" Style="{StaticResource HistoryAccentButtonStyle}" HorizontalAlignment="Stretch"
-                  Click="AskGemma_Click" AutomationProperties.Name="Ask Gemma">
+                  Click="AskGemma_Click" AutomationProperties.Name="{l:Tr Key=Recording.Header.AskGemma}">
             <StackPanel Orientation="Horizontal" Spacing="8">
               <TextBlock Text="✦" FontSize="14" />
-              <TextBlock Text="Ask Gemma" />
+              <TextBlock Text="{l:Tr Key=Recording.Header.AskGemma}" />
             </StackPanel>
           </Button>
           <Button x:Name="AddToChatTabButton" Grid.Column="1" Style="{StaticResource HistoryActionButtonStyle}" HorizontalAlignment="Stretch"
-                  Click="AddToChat_Click" Content="+ Add to chat…" AutomationProperties.Name="Add to chat" />
+                  Click="AddToChat_Click" Content="{l:Tr Key=Recording.Chats.AddButton}" AutomationProperties.Name="{l:Tr Key=Recording.Chats.AddName}" />
         </Grid>
         <TextBlock Text="{x:Bind ViewModel.ChatsHeader, Mode=OneWay}" Style="{StaticResource HistorySectionHeaderStyle}" Margin="0,8,0,0" />
         <ItemsControl ItemsSource="{x:Bind ViewModel.ChatCards}" ItemTemplate="{StaticResource ChatCardTemplate}" IsTabStop="False">
@@ -377,7 +378,7 @@
           </ItemsControl.ItemsPanel>
         </ItemsControl>
         <TextBlock Style="{StaticResource HistorySecondaryStyle}" FontSize="11"
-                   Text="Chats live on the Chats page: one chat can read several recordings, and a recording can be in several chats." />
+                   Text="{l:Tr Key=Recording.Chats.Hint}" />
       </StackPanel>
     </ScrollViewer>
 
@@ -391,17 +392,17 @@
       <StackPanel Margin="16,0,16,16" Spacing="8">
         <Button Style="{StaticResource HistoryAccentButtonStyle}" HorizontalAlignment="Stretch"
                 Click="Reprocess_Click" IsEnabled="{x:Bind ViewModel.HasAudio, Mode=OneWay}"
-                AutomationProperties.Name="Re-recognize">
+                AutomationProperties.Name="{l:Tr Key=Recording.Versions.ReprocessName}">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <SymbolIcon Symbol="Refresh" />
-            <TextBlock Text="Re-recognize…" />
+            <TextBlock Text="{l:Tr Key=Recording.Menu.Reprocess}" />
           </StackPanel>
         </Button>
         <Button x:Name="DetectSpeakersButton" Style="{StaticResource HistoryActionButtonStyle}" HorizontalAlignment="Stretch"
-                Click="DetectSpeakers_Click" Visibility="Collapsed" AutomationProperties.Name="Detect speakers">
+                Click="DetectSpeakers_Click" Visibility="Collapsed" AutomationProperties.Name="{l:Tr Key=Recording.Speakers.DetectName}">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <FontIcon Glyph="&#xE716;" FontSize="14" />
-            <TextBlock x:Name="DetectSpeakersLabel" Text="Detect speakers…" />
+            <TextBlock x:Name="DetectSpeakersLabel" Text="{l:Tr Key=Recording.Speakers.Detect}" />
           </StackPanel>
         </Button>
         <TextBlock Text="{x:Bind ViewModel.VersionsHint, Mode=OneWay}" Style="{StaticResource HistorySecondaryStyle}" />
@@ -430,16 +431,16 @@
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Button Width="44" Height="44" Padding="0" Background="Transparent" BorderThickness="0"
-                Click="CloseDiff_Click" AutomationProperties.Name="Back to versions" ToolTipService.ToolTip="Back to versions">
+                Click="CloseDiff_Click" AutomationProperties.Name="{l:Tr Key=Recording.Diff.Back}" ToolTipService.ToolTip="{l:Tr Key=Recording.Diff.Back}">
           <SymbolIcon Symbol="Back" />
         </Button>
         <ComboBox x:Name="DiffFrom" Grid.Column="1" Style="{StaticResource HistoryComboStyle}" MinWidth="0"
                   ItemsSource="{x:Bind ViewModel.VersionChoices}" DisplayMemberPath="Label"
-                  SelectionChanged="DiffPicker_SelectionChanged" AutomationProperties.Name="Compare from" />
+                  SelectionChanged="DiffPicker_SelectionChanged" AutomationProperties.Name="{l:Tr Key=Recording.Diff.From}" />
         <TextBlock Grid.Column="2" Text="→" VerticalAlignment="Center" Margin="2,0" />
         <ComboBox x:Name="DiffTo" Grid.Column="3" Style="{StaticResource HistoryComboStyle}" MinWidth="0"
                   ItemsSource="{x:Bind ViewModel.VersionChoices}" DisplayMemberPath="Label"
-                  SelectionChanged="DiffPicker_SelectionChanged" AutomationProperties.Name="Compare to" />
+                  SelectionChanged="DiffPicker_SelectionChanged" AutomationProperties.Name="{l:Tr Key=Recording.Diff.To}" />
       </Grid>
       <Grid Grid.Row="1" ColumnSpacing="8">
         <Grid.ColumnDefinitions>
@@ -448,9 +449,9 @@
         </Grid.ColumnDefinitions>
         <TextBlock x:Name="DiffStats" Style="{StaticResource HistorySecondaryStyle}" VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
-          <TextBlock Text="Changes only" FontSize="13" VerticalAlignment="Center" />
+          <TextBlock Text="{l:Tr Key=Recording.Diff.ChangesOnly}" FontSize="13" VerticalAlignment="Center" />
           <ToggleSwitch x:Name="ChangesOnlySwitch" Style="{StaticResource HistorySwitchStyle}" IsOn="True"
-                        Toggled="ChangesOnly_Toggled" AutomationProperties.Name="Changes only" />
+                        Toggled="ChangesOnly_Toggled" AutomationProperties.Name="{l:Tr Key=Recording.Diff.ChangesOnly}" />
         </StackPanel>
       </Grid>
       <Border Grid.Row="2" Style="{StaticResource HistoryCardStyle}">
@@ -475,8 +476,8 @@
       </Grid.ColumnDefinitions>
       <TextBlock x:Name="ChangedLabel" Text="{x:Bind ViewModel.ChangedText, Mode=OneWay}" FontSize="12"
                  VerticalAlignment="Center" TextWrapping="Wrap" Opacity="0.8" />
-      <Button Grid.Column="1" Content="Cancel" Style="{StaticResource HistoryActionButtonStyle}" Click="CancelEdit_Click" />
-      <Button Grid.Column="2" Content="Save as new version" Style="{StaticResource HistoryAccentButtonStyle}"
+      <Button Grid.Column="1" Content="{l:Tr Key=Recording.Edit.Cancel}" Style="{StaticResource HistoryActionButtonStyle}" Click="CancelEdit_Click" />
+      <Button Grid.Column="2" Content="{l:Tr Key=Recording.Edit.Save}" Style="{StaticResource HistoryAccentButtonStyle}"
               Click="SaveEdit_Click" IsEnabled="{x:Bind ViewModel.HasEditChanges, Mode=OneWay}" />
     </Grid>
 

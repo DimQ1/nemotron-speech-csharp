@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Presentation.History;
 
@@ -46,7 +47,7 @@ public sealed class HistoryRowViewModel : ObservableObject
     public IReadOnlyList<HistoryBadgeViewModel> Badges { get; }
 
     public string AutomationName => IsSelectionMode
-        ? (IsSelected ? "Selected: " : "Not selected: ") + _row.AutomationName
+        ? Loc.F(IsSelected ? "History.Row.SelectedName" : "History.Row.NotSelectedName", _row.AutomationName)
         : _row.AutomationName;
 
     public bool IsSelected
@@ -113,7 +114,7 @@ public sealed class HistoryChipViewModel
     public HistoryChipViewModel(HistoryUiFilterChip chip) => Chip = chip;
     public HistoryUiFilterChip Chip { get; }
     public string Label => Chip.Label;
-    public string AutomationName => "Remove filter " + Chip.Label;
+    public string AutomationName => Loc.F("History.Filter.Chip.RemoveName", Chip.Label);
 }
 
 /// <summary>
@@ -158,10 +159,10 @@ public sealed class HistoryViewModel : ObservableObject
     public bool HasRows => Groups.Any();
     public bool ShowStorage => _isLoaded && VisibleTotal > 0;
 
-    public string EmptyTitle => VisibleTotal == 0 ? "No recordings yet" : "Nothing found";
+    public string EmptyTitle => VisibleTotal == 0 ? Loc.T("History.List.NoRecordingsYet") : Loc.T("History.Empty.NothingFound");
     public string EmptyText => VisibleTotal == 0
-        ? "Press Record on the main screen. Every session is saved here with its audio and transcript, so you can listen, search, edit and export it later."
-        : "No recording matches the search or the filters. Clear them to see everything.";
+        ? Loc.T("History.Empty.NoRecordingsText")
+        : Loc.T("History.Empty.NothingFoundText");
 
     public HistoryUiFilterOptions Filter
     {
@@ -213,7 +214,7 @@ public sealed class HistoryViewModel : ObservableObject
 
     public IReadOnlyList<string> SelectedIds => Rows.Where(r => _selected.Contains(r.Id)).Select(r => r.Id).ToList();
 
-    public string SelectionTitle => HistoryUiFormat.Count(_selected.Count, "selected", "selected");
+    public string SelectionTitle => Loc.Plural("History.Selection.Title", _selected.Count);
 
     public string SelectionSubtitle => HistoryUiRows.SelectionSubtitle(Rows.Where(r => r.IsSelected).Select(r => r.Row));
 

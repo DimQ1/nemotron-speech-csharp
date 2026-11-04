@@ -13,7 +13,10 @@ public static class AppPaths
 
     /// <summary>
     /// The default data root (<c>%LOCALAPPDATA%\VoiceType</c>, <c>~/.local/share/VoiceType</c>). Holds the
-    /// <see cref="DataLocation.PointerFileName"/> pointer when the data lives elsewhere.
+    /// <see cref="DataLocation.PointerFileName"/> pointer when the data lives elsewhere. In the MSIX package (Microsoft Store) it
+    /// is the REAL folder Windows redirects <c>%LOCALAPPDATA%\VoiceType</c> to,
+    /// <c>%LOCALAPPDATA%\Packages\&lt;family&gt;\LocalCache\Local\VoiceType</c>: the paths Settings shows open in Explorer, and it
+    /// is the folder VoiceType.WinUI wrote under the same package identity (<see cref="WinUiDataImport"/>).
     /// </summary>
     public static string DefaultDataRoot
     {
@@ -22,9 +25,20 @@ public static class AppPaths
             var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if (string.IsNullOrWhiteSpace(baseDir))
                 baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
+            else
+                baseDir = PackageIdentity.RedirectedLocalAppData(baseDir) ?? baseDir;
             return Path.Combine(baseDir, "VoiceType");
         }
     }
+
+    /// <summary>
+    /// <c>%LOCALAPPDATA%\VoiceType</c> as a packaged app sees it (redirected to <see cref="DefaultDataRoot"/>); null when unpackaged.
+    /// Paths stored under it by VoiceType.WinUI are rewritten to the real folder.
+    /// </summary>
+    public static string? VirtualDataRoot =>
+        PackageIdentity.IsPackaged
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceType")
+            : null;
 
     /// <summary>
     /// True when the DEBUG-only sandbox (<c>VOICETYPE_DATA_ROOT</c>) names the data root: it beats the pointer file, and

@@ -38,6 +38,5 @@ an `XGrabKey` backend can be added behind the same interface.
 ## Why a separate project
 
 Global hotkeys are app-independent infrastructure: same contract will serve
-VoiceType.Uno, the Windows WinUI app (future Win32 backend replacing its local
-GlobalHotkeyService), and any CLI/tray tooling. Keeping it out of the app projects
+VoiceType.Uno and any CLI/tray tooling. Keeping it out of the app projects
 avoids the WPF↔WinUI service-duplication problem documented in the tech-debt audit.

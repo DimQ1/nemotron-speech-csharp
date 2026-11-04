@@ -1,6 +1,7 @@
 using SpeechLib.ModelDownload;
 using SpeechLib.Translation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -50,19 +51,19 @@ public static class SettingsText
 
     public static string Title(SettingsSection section) => section switch
     {
-        SettingsSection.Storage => "Storage",
-        SettingsSection.Speech => "Speech recognition",
-        SettingsSection.Audio => "Audio input",
-        SettingsSection.Translation => "Translation and Gemma",
-        SettingsSection.Typing => "Typing into apps",
-        SettingsSection.Hotkeys => "Keyboard shortcuts",
-        _ => "General",
+        SettingsSection.Storage => Loc.T("Settings.Section.Storage"),
+        SettingsSection.Speech => Loc.T("Settings.Section.Speech"),
+        SettingsSection.Audio => Loc.T("Settings.Section.Audio"),
+        SettingsSection.Translation => Loc.T("Settings.Section.Translation"),
+        SettingsSection.Typing => Loc.T("Settings.Section.Typing"),
+        SettingsSection.Hotkeys => Loc.T("Settings.Section.Hotkeys"),
+        _ => Loc.T("Settings.Section.General"),
     };
 
     /// <summary>The page title: the section on a narrow window, otherwise "Settings".</summary>
-    public static string HeaderTitle(SettingsSection? shown, bool wide) => wide || shown is null ? "Settings" : Title(shown.Value);
+    public static string HeaderTitle(SettingsSection? shown, bool wide) => wide || shown is null ? Loc.T("Settings.Page.Title") : Title(shown.Value);
 
-    public static string HeaderSubtitle(SettingsSection? shown, bool wide) => wide || shown is null ? "VoiceType" : "Settings";
+    public static string HeaderSubtitle(SettingsSection? shown, bool wide) => wide || shown is null ? Loc.T("Settings.Page.Subtitle") : Loc.T("Settings.Page.Title");
 
     // ── Option lists with the value mapping (§3.3) ───────────────────────────
 
@@ -72,14 +73,12 @@ public static class SettingsText
     public const string ComputeFollowModel = "follow_config";
 
     /// <summary>Compute for speech recognition: <c>cpu</c>, <c>webgpu:hp</c>, <c>webgpu:lp</c>, <c>follow_config</c>.</summary>
-    public static IReadOnlyList<SettingsOption> ComputeOptions { get; } =
+    public static IReadOnlyList<SettingsOption> ComputeOptions =>
     [
-        new(ComputeCpu, "Processor (CPU)", "Works everywhere", "Recommended"),
-        new(ComputeGpuPerformance, "Graphics card — performance",
-            "WebGPU on the discrete graphics card, experimental. Nemotron runs its speech encoder there and the rest on the processor; without a discrete card it runs on the processor"),
-        new(ComputeGpuPowerSaving, "Graphics card — power saving",
-            "WebGPU on the integrated graphics. Nemotron does not use it: integrated graphics are slower than the processor, so it runs on the processor"),
-        new(ComputeFollowModel, "As set by the model", "The model files do not choose a provider, so this runs on the processor"),
+        new(ComputeCpu, Loc.T("Settings.Compute.Cpu.Title"), Loc.T("Settings.Compute.Cpu.Detail"), Loc.T("Settings.Compute.Cpu.Tag")),
+        new(ComputeGpuPerformance, Loc.T("Settings.Compute.GpuPerformance.Title"), Loc.T("Settings.Compute.GpuPerformance.Detail")),
+        new(ComputeGpuPowerSaving, Loc.T("Settings.Compute.GpuPowerSaving.Title"), Loc.T("Settings.Compute.GpuPowerSaving.Detail")),
+        new(ComputeFollowModel, Loc.T("Settings.Compute.FollowModel.Title"), Loc.T("Settings.Compute.FollowModel.Detail")),
     ];
 
     /// <summary>
@@ -94,10 +93,10 @@ public static class SettingsText
     /// <summary>Short form for the section subtitle: <c>CPU</c>, <c>GPU</c>, <c>GPU (power saving)</c>, <c>CPU (by model)</c> (the model files choose no provider: it runs on the processor).</summary>
     public static string ComputeShort(string? stored) => NormalizeCompute(stored) switch
     {
-        ComputeGpuPerformance => "GPU",
-        ComputeGpuPowerSaving => "GPU (power saving)",
-        ComputeFollowModel => "CPU (by model)",
-        _ => "CPU",
+        ComputeGpuPerformance => Loc.T("Settings.Compute.Short.Gpu"),
+        ComputeGpuPowerSaving => Loc.T("Settings.Compute.Short.GpuPowerSaving"),
+        ComputeFollowModel => Loc.T("Settings.Compute.Short.FollowModel"),
+        _ => Loc.T("Settings.Compute.Short.Cpu"),
     };
 
     public const string SourceMic = "Mic";
@@ -108,14 +107,14 @@ public static class SettingsText
     public static IReadOnlyList<SettingsOption> AudioSourceOptions(bool android) => android
         ?
         [
-            new(SourceMic, "Microphone", "The phone microphone or a connected headset"),
-            new(SourceLoopback, "System audio", "Not available on Android: apps cannot record other apps’ sound", Enabled: false),
+            new(SourceMic, Loc.T("Settings.Audio.Mic.Title"), Loc.T("Settings.Audio.Mic.DetailAndroid")),
+            new(SourceLoopback, Loc.T("Settings.Audio.Loopback.Title"), Loc.T("Settings.Audio.Loopback.DetailAndroid"), Enabled: false),
         ]
         :
         [
-            new(SourceMic, "Microphone", "The default input device in your system sound settings"),
-            new(SourceLoopback, "System audio", "What you hear: calls, videos, meetings (loopback)"),
-            new(SourceMix, "Microphone + system audio", "Both sides of a call in one transcript"),
+            new(SourceMic, Loc.T("Settings.Audio.Mic.Title"), Loc.T("Settings.Audio.Mic.Detail")),
+            new(SourceLoopback, Loc.T("Settings.Audio.Loopback.Title"), Loc.T("Settings.Audio.Loopback.Detail")),
+            new(SourceMix, Loc.T("Settings.Audio.Mix.Title"), Loc.T("Settings.Audio.Mix.Detail")),
         ];
 
     /// <summary>The audio source a stored value selects (case-insensitive; unknown or unavailable falls back to the microphone).</summary>
@@ -134,9 +133,9 @@ public static class SettingsText
     /// <summary>The source on the main screen chip: short enough for a phone-width screen next to its icon.</summary>
     public static string AudioSourceChipTitle(string? stored, bool android) => NormalizeAudioSource(stored, android) switch
     {
-        SourceLoopback => "System audio",
-        SourceMix => "Mic + system audio",
-        _ => "Microphone",
+        SourceLoopback => Loc.T("Settings.Audio.Chip.Loopback"),
+        SourceMix => Loc.T("Settings.Audio.Chip.Mix"),
+        _ => Loc.T("Settings.Audio.Chip.Mic"),
     };
 
     /// <summary>The icon family of a source; the head maps it to its symbol.</summary>
@@ -148,20 +147,21 @@ public static class SettingsText
     };
 
     /// <summary>What a screen reader says for the chip: the source, and that it can be changed when it can.</summary>
-    public static string AudioSourceChipName(string? stored, bool android) =>
-        $"Audio source: {AudioSourceTitle(stored, android)}" + (HasAudioSourceChoice(android) ? ". Tap to change." : "");
+    public static string AudioSourceChipName(string? stored, bool android) => HasAudioSourceChoice(android)
+        ? Loc.F("Settings.Audio.Chip.NameChangeable", AudioSourceTitle(stored, android))
+        : Loc.F("Settings.Audio.Chip.Name", AudioSourceTitle(stored, android));
 
     /// <summary>Hint at the end of the source menu while recording: the switch happens on the fly, the recording is not interrupted.</summary>
-    public const string AudioSourceSwitchWhileRecordingHint = "The recording continues on the new source";
+    public static string AudioSourceSwitchWhileRecordingHint => Loc.T("Settings.Audio.SwitchWhileRecordingHint");
 
     public const string EngineNative = "native";
     public const string EngineHttp = "http";
 
     /// <summary>Translation engine: <c>native</c> = On this device, <c>http</c> = Local server.</summary>
-    public static IReadOnlyList<SettingsOption> EngineOptions { get; } =
+    public static IReadOnlyList<SettingsOption> EngineOptions =>
     [
-        new(EngineNative, "On this device", "Gemma runs inside VoiceType · offline"),
-        new(EngineHttp, "Local server", "A LiteRT-LM server with an OpenAI-compatible API"),
+        new(EngineNative, Loc.T("Settings.Translation.Engine.Native.Title"), Loc.T("Settings.Translation.Engine.Native.Detail")),
+        new(EngineHttp, Loc.T("Settings.Translation.Engine.Http.Title"), Loc.T("Settings.Translation.Engine.Http.Detail")),
     ];
 
     public static string NormalizeEngine(string? stored) =>
@@ -170,10 +170,10 @@ public static class SettingsText
     public static string EngineTitle(string? stored) => EngineOptions.First(o => o.Value == NormalizeEngine(stored)).Title;
 
     /// <summary>Gemma compute: <c>cpu</c> = Processor, <c>gpu</c> = Graphics card.</summary>
-    public static IReadOnlyList<SettingsOption> GemmaComputeOptions { get; } =
+    public static IReadOnlyList<SettingsOption> GemmaComputeOptions =>
     [
-        new("cpu", "Processor"),
-        new("gpu", "Graphics card"),
+        new("cpu", Loc.T("Settings.Translation.GemmaCompute.Cpu")),
+        new("gpu", Loc.T("Settings.Translation.GemmaCompute.Gpu")),
     ];
 
     public static string NormalizeGemmaCompute(string? stored) =>
@@ -183,10 +183,10 @@ public static class SettingsText
     public const string InjectionPaste = "paste";
 
     /// <summary>How a phrase gets into the focused window: <c>type</c> = key presses, <c>paste</c> = clipboard + shortcut.</summary>
-    public static IReadOnlyList<SettingsOption> InjectionMethodOptions { get; } =
+    public static IReadOnlyList<SettingsOption> InjectionMethodOptions =>
     [
-        new(InjectionType, "Type the text", "Sent as key presses · the clipboard is not touched"),
-        new(InjectionPaste, "Paste from the clipboard", "For apps that ignore typed keys · the phrase stays on the clipboard"),
+        new(InjectionType, Loc.T("Settings.Typing.Method.Type.Title"), Loc.T("Settings.Typing.Method.Type.Detail")),
+        new(InjectionPaste, Loc.T("Settings.Typing.Method.Paste.Title"), Loc.T("Settings.Typing.Method.Paste.Detail")),
     ];
 
     /// <summary>The method a stored value selects; anything but <c>paste</c> is <c>type</c>.</summary>
@@ -196,11 +196,11 @@ public static class SettingsText
     public static TextInjectionMode InjectionModeOf(string? stored) =>
         NormalizeInjectionMethod(stored) == InjectionPaste ? TextInjectionMode.Paste : TextInjectionMode.Type;
 
-    public static IReadOnlyList<SettingsOption> PasteChordOptions { get; } =
+    public static IReadOnlyList<SettingsOption> PasteChordOptions =>
     [
-        new("Ctrl+V", "Ctrl+V", "Most apps"),
-        new("Ctrl+Shift+V", "Ctrl+Shift+V", "Terminals: Windows Terminal, VS Code terminal"),
-        new("Shift+Insert", "Shift+Insert", "Older terminals and remote desktops"),
+        new("Ctrl+V", "Ctrl+V", Loc.T("Settings.Typing.Chord.CtrlV")),
+        new("Ctrl+Shift+V", "Ctrl+Shift+V", Loc.T("Settings.Typing.Chord.CtrlShiftV")),
+        new("Shift+Insert", "Shift+Insert", Loc.T("Settings.Typing.Chord.ShiftInsert")),
     ];
 
     /// <summary>The paste shortcut a stored value selects; a hand-edited chord is kept as its own extra option by the page.</summary>
@@ -211,9 +211,10 @@ public static class SettingsText
     public static IReadOnlyList<SettingsOption> PasteChordOptionsFor(string? stored)
     {
         var value = NormalizePasteChord(stored);
-        return PasteChordOptions.Any(o => string.Equals(o.Value, value, StringComparison.OrdinalIgnoreCase))
-            ? PasteChordOptions
-            : [.. PasteChordOptions, new SettingsOption(value, value, "Set in settings.json")];
+        var options = PasteChordOptions;
+        return options.Any(o => string.Equals(o.Value, value, StringComparison.OrdinalIgnoreCase))
+            ? options
+            : [.. options, new SettingsOption(value, value, Loc.T("Settings.Typing.Chord.Custom"))];
     }
 
     public static IReadOnlyList<double> RepetitionPenaltyChoices { get; } = [1.0, 1.1, 1.2, 1.5];
@@ -234,16 +235,16 @@ public static class SettingsText
     ];
 
     /// <summary>Recognition languages with names: <c>auto</c> is "Auto-detect", the rest use the shared language names.</summary>
-    public static IReadOnlyList<SettingsOption> RecognitionLanguages { get; } =
+    public static IReadOnlyList<SettingsOption> RecognitionLanguages =>
         LanguageCodes.Select(code => code == "auto"
-            ? new SettingsOption("auto", "Auto-detect")
+            ? new SettingsOption("auto", Loc.T("Settings.Speech.Language.Auto"))
             : new SettingsOption(code, TranslationLanguages.NameFor(code) ?? code)).ToList();
 
     /// <summary>The recognition language a stored code selects (unknown codes keep their own entry).</summary>
     public static string LanguageTitle(string? code)
     {
         if (string.IsNullOrWhiteSpace(code) || string.Equals(code.Trim(), "auto", StringComparison.OrdinalIgnoreCase))
-            return "Auto-detect";
+            return Loc.T("Settings.Speech.Language.Auto");
         return RecognitionLanguages.FirstOrDefault(o => string.Equals(o.Value, code.Trim(), StringComparison.OrdinalIgnoreCase))?.Title ?? code.Trim();
     }
 
@@ -271,20 +272,22 @@ public static class SettingsText
         ArgumentNullException.ThrowIfNull(context);
         return section switch
         {
-            SettingsSection.Storage => context.StorageLine ?? "Models, recordings and app data",
+            SettingsSection.Storage => context.StorageLine ?? Loc.T("Settings.Hub.Storage.Default"),
             SettingsSection.Speech => HistoryUiFormat.Join(
-                string.IsNullOrWhiteSpace(settings.SelectedModel) ? "No model selected" : ModelCatalog.DescribeFolder(settings.SelectedModel),
+                string.IsNullOrWhiteSpace(settings.SelectedModel) ? Loc.T("Settings.Hub.Speech.NoModel") : ModelCatalog.DescribeFolder(settings.SelectedModel),
                 ComputeShort(settings.ExecutionProvider),
-                IsAuto(settings.Language) ? "auto language" : LanguageTitle(settings.Language)),
+                IsAuto(settings.Language) ? Loc.T("Settings.Hub.Speech.AutoLanguage") : LanguageTitle(settings.Language)),
             SettingsSection.Audio => AudioSourceTitle(settings.AudioSource, context.Android),
             SettingsSection.Translation => settings.TranslationEnabled
-                ? $"Into {TargetTitle(settings.TranslationTargetLanguage)} · Gemma {(NormalizeEngine(settings.TranslationBackend) == EngineHttp ? "on a local server" : "on this device")}"
-                : "Off",
+                ? NormalizeEngine(settings.TranslationBackend) == EngineHttp
+                    ? Loc.F("Settings.Hub.Translation.Server", TargetTitle(settings.TranslationTargetLanguage))
+                    : Loc.F("Settings.Hub.Translation.Device", TargetTitle(settings.TranslationTargetLanguage))
+                : Loc.T("Settings.Hub.Off"),
             SettingsSection.Typing => !settings.IsTextInjectionEnabled
-                ? "Off"
+                ? Loc.T("Settings.Hub.Off")
                 : InjectionModeOf(settings.TextInjectionMethod) == TextInjectionMode.Paste
-                    ? $"On · paste with {NormalizePasteChord(settings.PasteChord)}"
-                    : "On · typed as key presses",
+                    ? Loc.F("Settings.Hub.Typing.Paste", NormalizePasteChord(settings.PasteChord))
+                    : Loc.T("Settings.Hub.Typing.Type"),
             SettingsSection.Hotkeys => HotkeyText.Summary(settings),
             _ => GeneralSummary(settings, context.Android),
         };
@@ -295,52 +298,54 @@ public static class SettingsText
     {
         var parts = new List<string>();
         if (!android && settings.AlwaysOnTop)
-            parts.Add("Window on top");
+            parts.Add(Loc.T("Settings.Hub.General.OnTop"));
         if (settings.IsAutoScrollEnabled)
-            parts.Add("auto-scroll");
+            parts.Add(Loc.T("Settings.Hub.General.AutoScroll"));
         if (settings.AutoStartRecognition)
-            parts.Add("auto-start");
-        return parts.Count == 0 ? "Everything off" : string.Join(" · ", parts);
+            parts.Add(Loc.T("Settings.Hub.General.AutoStart"));
+        return parts.Count == 0 ? Loc.T("Settings.Hub.General.AllOff") : string.Join(" · ", parts);
     }
 
     /// <summary>Subtitle of the History link: <c>Keep audio 30 days · limit 2 GB</c>.</summary>
     public static string HistoryLinkSubtitle(HistorySettings history)
     {
         ArgumentNullException.ThrowIfNull(history);
-        var keep = history.AudioRetentionDays <= 0 ? "Keep audio forever" : "Keep audio " + HistoryUiStorage.RetentionLabel(history.AudioRetentionDays);
-        var limit = history.MaxAudioStorageMb > 0 ? "limit " + HistoryUiStorage.StorageCapLabel(history.MaxAudioStorageMb) : "no limit";
+        var keep = history.AudioRetentionDays <= 0
+            ? Loc.T("Settings.Hub.History.KeepForever")
+            : Loc.F("Settings.Hub.History.Keep", HistoryUiStorage.RetentionLabel(history.AudioRetentionDays));
+        var limit = history.MaxAudioStorageMb > 0
+            ? Loc.F("Settings.Hub.History.Limit", HistoryUiStorage.StorageCapLabel(history.MaxAudioStorageMb))
+            : Loc.T("Settings.Hub.History.NoLimit");
         return keep + " · " + limit;
     }
 
     /// <summary>Retention card in Storage › Recordings: <c>Keep audio 30 days · limit 2 GB · Standard quality</c>.</summary>
     public static string RetentionLinkSubtitle(HistorySettings history) =>
-        HistoryLinkSubtitle(history) + " · " + QualityName(history.AudioQuality) + " quality";
+        HistoryLinkSubtitle(history) + " · " + QualityName(history.AudioQuality);
 
     private static string QualityName(AudioQuality quality) => quality switch
     {
-        AudioQuality.High => "High",
-        AudioQuality.Compact => "Compact",
-        _ => "Standard",
+        AudioQuality.High => Loc.T("Settings.Hub.History.QualityHigh"),
+        AudioQuality.Compact => Loc.T("Settings.Hub.History.QualityCompact"),
+        _ => Loc.T("Settings.Hub.History.QualityStandard"),
     };
 
-    public const string ModelsLinkSubtitle = "Download, switch, delete";
+    public static string ModelsLinkSubtitle => Loc.T("Settings.Hub.ModelsSubtitle");
 
     // ── Captions ─────────────────────────────────────────────────────────────
 
     /// <summary>Under the Compute group.</summary>
-    public const string ReloadCaption = "Changing the model or compute reloads the model. During a recording the change waits until you stop.";
+    public static string ReloadCaption => Loc.T("Settings.Speech.ReloadCaption");
 
     /// <summary>Shown while a change is waiting for Stop.</summary>
-    public const string WaitingForStopCaption = "Waiting for you to stop recording: the model reloads then.";
+    public static string WaitingForStopCaption => Loc.T("Settings.Speech.WaitingForStopCaption");
 
-    public const string AudioCaptionDesktop =
-        "System audio is captured from the default output and the communications device, so headset calls are included. Changing the source restarts capture without stopping the recording.";
+    public static string AudioCaptionDesktop => Loc.T("Settings.Audio.CaptionDesktop");
 
-    public const string AudioCaptionAndroid =
-        "Recording continues with the screen off. Android shows a notification while VoiceType listens.";
+    public static string AudioCaptionAndroid => Loc.T("Settings.Audio.CaptionAndroid");
 
-    public const string ServerUrlHint = "/v1/chat/completions is added automatically";
-    public const string ServerUrlError = "Enter an address like http://localhost:9379";
+    public static string ServerUrlHint => Loc.T("Settings.Translation.ServerUrlHint");
+    public static string ServerUrlError => Loc.T("Settings.Translation.ServerUrlError");
 
     /// <summary>An absolute http or https address (what the local server setting needs).</summary>
     public static bool IsValidServerUrl(string? text) =>
@@ -349,10 +354,10 @@ public static class SettingsText
     /// <summary>The note under the Typing options for the chosen method.</summary>
     public static string TypingCaptionFor(string? method) =>
         NormalizeInjectionMethod(method) == InjectionPaste
-            ? "VoiceType puts the phrase on the clipboard and sends the shortcut, so the phrase stays on the clipboard."
-            : "VoiceType types the phrase key by key, so your clipboard stays as it is. If an app ignores it, choose Paste.";
+            ? Loc.T("Settings.Typing.CaptionPaste")
+            : Loc.T("Settings.Typing.CaptionType");
 
-    public const string ResetSubtitle = "Folders, models and history are not touched";
+    public static string ResetSubtitle => Loc.T("Settings.General.ResetSubtitle");
 
     private static bool IsAuto(string? language) =>
         string.IsNullOrWhiteSpace(language) || string.Equals(language.Trim(), "auto", StringComparison.OrdinalIgnoreCase);

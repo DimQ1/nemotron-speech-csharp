@@ -8,6 +8,7 @@ using Android.Media;
 using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Models;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services.Audio;
 
@@ -22,9 +23,9 @@ public sealed class AndroidAudioSourceFactory : IAudioSourceFactory
     {
         CaptureMode.Mic => new AndroidAudioSource(sampleRate),
         CaptureMode.Loopback => throw new InvalidOperationException(
-            "System audio loopback is not available on Android without elevated privileges."),
+            Loc.T("Services.Audio.AndroidNoLoopback")),
         CaptureMode.Mix => throw new InvalidOperationException(
-            "Mic + system mix is not available on Android without elevated privileges."),
+            Loc.T("Services.Audio.AndroidNoMix")),
         _ => throw new InvalidOperationException($"Capture mode '{mode}' is not a live source.")
     };
 }
@@ -58,7 +59,7 @@ internal sealed class AndroidAudioSource : IAudioSource
         {
             if (recorder.State == State.Uninitialized)
                 throw new InvalidOperationException(
-                    "AudioRecord failed to initialize — RECORD_AUDIO permission may be missing.");
+                    Loc.T("Services.Audio.AndroidRecordInitFailed"));
 
             recorder.StartRecording();
             if (recorder.RecordingState == RecordState.Stopped)

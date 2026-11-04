@@ -1,4 +1,5 @@
 using System.Globalization;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -19,13 +20,13 @@ public static class JobDisplay
 
     public static string KindTitle(HistoryJobKind kind) => kind switch
     {
-        HistoryJobKind.Rerecognize => "Re-recognize",
-        HistoryJobKind.Translate => "Translate",
-        HistoryJobKind.AutoTitle => "Title",
-        HistoryJobKind.Summarize => "Prepare chat",
-        HistoryJobKind.Diarize => "Detect speakers",
-        HistoryJobKind.Analyze => "Analyze",
-        _ => "Job from a newer VoiceType",
+        HistoryJobKind.Rerecognize => Loc.T("Queue.Kind.Rerecognize"),
+        HistoryJobKind.Translate => Loc.T("Queue.Kind.Translate"),
+        HistoryJobKind.AutoTitle => Loc.T("Queue.Kind.AutoTitle"),
+        HistoryJobKind.Summarize => Loc.T("Queue.Kind.Summarize"),
+        HistoryJobKind.Diarize => Loc.T("Queue.Kind.Diarize"),
+        HistoryJobKind.Analyze => Loc.T("Queue.Kind.Analyze"),
+        _ => Loc.T("Queue.Kind.Unknown"),
     };
 
     /// <summary>Chips for a job's start condition, e.g. <c>Tonight 01:00–06:00</c>, <c>When charging</c>.</summary>
@@ -38,26 +39,26 @@ public static class JobDisplay
         switch (condition.Kind)
         {
             case JobConditionKind.WhenIdle:
-                chips.Add("When idle");
+                chips.Add(Loc.T("Queue.Condition.WhenIdle"));
                 break;
             case JobConditionKind.WhenCharging:
-                chips.Add("When charging");
+                chips.Add(Loc.T("Queue.Condition.WhenCharging"));
                 break;
             case JobConditionKind.AtTime:
                 if (condition.NotBefore is { } notBefore)
-                    chips.Add("From " + FormatMoment(notBefore, now));
+                    chips.Add(Loc.F("Queue.Condition.From", FormatMoment(notBefore, now)));
                 if (condition.WindowStart is { } start && condition.WindowEnd is { } end)
                     chips.Add(WindowText(start, end));
                 break;
             case JobConditionKind.Unknown:
-                chips.Add("Unknown condition");
+                chips.Add(Loc.T("Queue.Condition.Unknown"));
                 break;
         }
 
         if (condition.RequireIdle && condition.Kind != JobConditionKind.WhenIdle)
-            chips.Add("When idle");
+            chips.Add(Loc.T("Queue.Condition.WhenIdle"));
         if (condition.RequireCharging && condition.Kind != JobConditionKind.WhenCharging)
-            chips.Add("When charging");
+            chips.Add(Loc.T("Queue.Condition.WhenCharging"));
         return chips;
     }
 
@@ -65,11 +66,14 @@ public static class JobDisplay
     public static string WindowText(TimeOnly start, TimeOnly end)
     {
         if (start == end)
-            return "Any time of day";
-        var range = $"{start.ToString("HH:mm", CultureInfo.InvariantCulture)}–{end.ToString("HH:mm", CultureInfo.InvariantCulture)}";
+            return Loc.T("Queue.Window.AnyTime");
         var night = start.Hour >= 18 || start.Hour < 6;
-        return (night ? "Tonight " : "Daily ") + range;
+        return Loc.F(night ? "Queue.Window.Tonight" : "Queue.Window.Daily", RangeText(start, end));
     }
+
+    /// <summary><c>01:00–06:00</c>.</summary>
+    private static string RangeText(TimeOnly start, TimeOnly end) =>
+        start.ToString("HH:mm", Loc.Culture) + "–" + end.ToString("HH:mm", Loc.Culture);
 
     /// <summary>Why a queued job is not running, in words; null when it runs next.</summary>
     public static string? WaitReasonText(HistoryJob job, JobWaitReason reason, DateTimeOffset now) => reason switch
@@ -77,22 +81,22 @@ public static class JobDisplay
         JobWaitReason.None => null,
         JobWaitReason.NotQueued => job.State switch
         {
-            JobState.Paused => "Paused",
-            JobState.Unknown => "Unknown state · made by a newer VoiceType",
+            JobState.Paused => Loc.T("Queue.Wait.Paused"),
+            JobState.Unknown => Loc.T("Queue.Wait.UnknownState"),
             _ => null,
         },
-        JobWaitReason.UnknownKind => "Made by a newer VoiceType · not run by this version",
-        JobWaitReason.AnotherJobRunning => "After the running job · one heavy job at a time",
-        JobWaitReason.LiveRecording => "Waits until the live recording stops",
-        JobWaitReason.NotCharging => "Waits for the charger",
+        JobWaitReason.UnknownKind => Loc.T("Queue.Wait.UnknownKind"),
+        JobWaitReason.AnotherJobRunning => Loc.T("Queue.Wait.AnotherJob"),
+        JobWaitReason.LiveRecording => Loc.T("Queue.Wait.LiveRecording"),
+        JobWaitReason.NotCharging => Loc.T("Queue.Wait.Charger"),
         JobWaitReason.BeforeStartTime => job.Condition.NotBefore is { } at
-            ? "Starts " + FormatMoment(at, now)
-            : "Waits for its start time",
+            ? Loc.F("Queue.Wait.StartsAt", FormatMoment(at, now))
+            : Loc.T("Queue.Wait.StartTime"),
         JobWaitReason.OutsideWindow => job.Condition.WindowStart is { } s && job.Condition.WindowEnd is { } e
-            ? "Waits for " + WindowText(s, e).Replace("Tonight ", "", StringComparison.Ordinal).Replace("Daily ", "", StringComparison.Ordinal)
-            : "Waits for its time window",
-        JobWaitReason.UnknownCondition => "Unknown condition · made by a newer VoiceType",
-        JobWaitReason.WaitingForPreviousStep => "Waits for the previous step",
+            ? (s == e ? Loc.F("Queue.Wait.ForWindow", Loc.T("Queue.Window.AnyTime")) : Loc.F("Queue.Wait.ForWindow", RangeText(s, e)))
+            : Loc.T("Queue.Wait.Window"),
+        JobWaitReason.UnknownCondition => Loc.T("Queue.Wait.UnknownCondition"),
+        JobWaitReason.WaitingForPreviousStep => Loc.T("Queue.Wait.PreviousStep"),
         _ => null,
     };
 
@@ -100,10 +104,10 @@ public static class JobDisplay
     public static string ProgressLine(double fraction, double? durationSec)
     {
         fraction = Math.Clamp(double.IsFinite(fraction) ? fraction : 0, 0, 1);
-        var percent = ((int)Math.Floor(fraction * 100)).ToString(CultureInfo.InvariantCulture) + "%";
+        var percent = (int)Math.Floor(fraction * 100);
         if (durationSec is not > 0)
-            return percent;
-        return $"{percent} · {FormatClock(durationSec.Value * fraction)} of {FormatClock(durationSec.Value)}";
+            return Loc.F("Queue.Progress.Percent", percent);
+        return Loc.F("Queue.Progress.PercentOf", percent, FormatClock(durationSec.Value * fraction), FormatClock(durationSec.Value));
     }
 
     /// <summary>Remaining time from the elapsed time and the fraction done since the run started; null while unknown.</summary>
@@ -118,10 +122,10 @@ public static class JobDisplay
     public static string FormatEta(TimeSpan? remaining)
     {
         if (remaining is not { } r)
-            return "estimating…";
+            return Loc.T("Queue.Eta.Estimating");
         if (r < TimeSpan.FromMinutes(1))
-            return "< 1 min left";
-        return "≈ " + FormatSpan(r, withSeconds: false) + " left";
+            return Loc.T("Queue.Eta.UnderMinute");
+        return Loc.F("Queue.Eta.Left", FormatSpan(r, withSeconds: false));
     }
 
     /// <summary>Processing time of re-recognizing <paramref name="audioSeconds"/> with a model of real-time factor <paramref name="rtf"/>.</summary>
@@ -139,14 +143,14 @@ public static class JobDisplay
         var totalSeconds = (long)Math.Round(span.TotalSeconds);
         long hours = totalSeconds / 3600, minutes = totalSeconds % 3600 / 60, seconds = totalSeconds % 60;
         if (hours > 0)
-            return minutes > 0 ? $"{hours} h {minutes} min" : $"{hours} h";
+            return minutes > 0 ? Loc.F("Queue.Span.HoursMinutes", hours, minutes) : Loc.F("Queue.Span.Hours", hours);
         if (minutes > 0)
         {
             if (!withSeconds || seconds == 0)
-                return $"{Math.Max(1, (long)Math.Round(span.TotalMinutes))} min";
-            return $"{minutes} min {seconds} s";
+                return Loc.F("Queue.Span.Minutes", Math.Max(1, (long)Math.Round(span.TotalMinutes)));
+            return Loc.F("Queue.Span.MinutesSeconds", minutes, seconds);
         }
-        return withSeconds ? $"{seconds} s" : "1 min";
+        return withSeconds ? Loc.F("Queue.Span.Seconds", seconds) : Loc.F("Queue.Span.Minutes", 1L);
     }
 
     /// <summary><c>5:16</c> or <c>1:02:03</c>.</summary>
@@ -163,11 +167,11 @@ public static class JobDisplay
     public static string FormatMoment(DateTimeOffset moment, DateTimeOffset now)
     {
         var local = moment.ToOffset(now.Offset);
-        var time = local.ToString("HH:mm", CultureInfo.InvariantCulture);
+        var time = local.ToString("HH:mm", Loc.Culture);
         if (local.Date == now.Date)
             return time;
         if (local.Date == now.Date.AddDays(1))
-            return "tomorrow " + time;
-        return local.ToString("ddd d MMM ", CultureInfo.InvariantCulture) + time;
+            return Loc.F("Queue.Moment.Tomorrow", time);
+        return Loc.F("Queue.Moment.Date", local.ToString("ddd d MMM", Loc.Culture), time);
     }
 }

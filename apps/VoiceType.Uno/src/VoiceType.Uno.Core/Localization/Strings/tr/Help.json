@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — Yardım",
+  "Help.Close": "Kapat",
+  "Help.Start.Title": "Başlarken",
+  "Help.Start.Body": "1. İlk açılışta önerilen konuşma modeli otomatik olarak indirilir.\n2. Alttaki yuvarlak **Kayıt** düğmesine dokunun ve konuşun — döküm canlı olarak görünür. Kayıt, düğmeye yeniden dokunana kadar sürer; basılı tutmanız gerekmez.\n3. Modları değiştirmek için **≡** menüsünü (sol üst) açın — **Metin yazma** her son cümleyi odaktaki pencereye yazar, **Canlı çeviri** bir çeviri kartı ekler, **Elle giriş** dökümü yazmanızı veya düzenlemenizi sağlar.\n4. Menüde tanıma dili, konuşma modelleri, indirmeler ve **Ayarlar** da bulunur — başlığın altındaki satır etkin modeli ve modları gösterir.",
+  "Help.Hotkey.Title": "Genel kısayol",
+  "Help.Hotkey.Body": "Varsayılan açma/kapama kısayolu **Ctrl+Shift+V**'dir. Linux'ta XDG GlobalShortcuts portalı üzerinden kaydedilir (xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+); birleştirici bir kerelik onay penceresi gösterir. Portal desteği olmayan masaüstlerinde kısayol kullanılamıyor olarak bildirilir.",
+  "Help.LinuxInjection.Title": "Linux'ta metin yazma",
+  "Help.LinuxInjection.Body": "Yazma işlemi panoyu ayarlar, ardından odaktaki pencereye yapıştırma kısayolunu (varsayılan Ctrl+V — Ayarlar'dan değiştirilebilir) gönderir.\n\n**Gerekli araçlar (her çiftten birini yükleyin):**\n• Pano: wl-copy (Wayland) veya xclip / xsel (X11)\n• Klavye: ydotool (Wayland, ydotoold gerekir) veya libXtst / xdotool (X11)\n\nUbuntu: *sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "Ses yakalama",
+  "Help.Audio.Body": "Yakalama, PulseAudio uyumlu sunucu üzerinden yapılır (PipeWire masaüstü kurulumları ve WSLg bunu sağlar).\n• Mikrofon — varsayılan giriş kaynağı\n• Loopback — varsayılan çıkışın monitörü (*@DEFAULT_MONITOR@*)\n• Karışım — ikisi birden, 50/50 birleştirilmiş",
+  "Help.Data.Title": "Veri konumları",
+  "Help.Data.Body": "• Ayarlar: *~/.local/share/VoiceType/settings.json*\n• Modeller: *~/.local/share/VoiceType/models/*\n(Windows'ta bunlar %LOCALAPPDATA%\\VoiceType altında bulunur)"
+}

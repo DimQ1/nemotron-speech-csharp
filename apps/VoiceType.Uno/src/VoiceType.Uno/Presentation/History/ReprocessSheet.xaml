@@ -1,8 +1,9 @@
 <ContentDialog x:Class="VoiceType.Uno.Presentation.History.ReprocessSheet"
                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-               PrimaryButtonText="Start"
-               CloseButtonText="Cancel"
+               xmlns:l="using:VoiceType.Uno.Presentation.Localization"
+               PrimaryButtonText="{l:Tr Key=Recording.Reprocess.Start}"
+               CloseButtonText="{l:Tr Key=Recording.Edit.Cancel}"
                DefaultButton="Primary"
                PrimaryButtonClick="Start_Click">
 
@@ -23,7 +24,7 @@
 
   <ContentDialog.Title>
     <StackPanel Spacing="2">
-      <TextBlock x:Name="TitleText" Text="Re-recognize audio" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+      <TextBlock x:Name="TitleText" Text="{l:Tr Key=Recording.Reprocess.Title}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
       <TextBlock x:Name="SubtitleText" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
     </StackPanel>
   </ContentDialog.Title>
@@ -32,18 +33,18 @@
     <StackPanel MinWidth="280" MaxWidth="520" Padding="0,0,8,0">
       <!-- Chain steps (design §11.1): shown only when the chain adapter is registered (IReprocessChainEnqueuer) -->
       <StackPanel x:Name="ChainPanel" Visibility="Collapsed">
-        <TextBlock Text="STEPS" Style="{StaticResource SheetSectionStyle}" Margin="0,0,0,4" />
+        <TextBlock Text="{l:Tr Key=Recording.Reprocess.Steps}" Style="{StaticResource SheetSectionStyle}" Margin="0,0,0,4" />
         <Grid ColumnSpacing="12" MinHeight="44">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="1 · Speech" FontSize="14" />
-            <TextBlock Text="Recognize the audio again with the model below" Style="{StaticResource SheetHintStyle}" />
+            <TextBlock Text="{l:Tr Key=Recording.Reprocess.Step1}" FontSize="14" />
+            <TextBlock Text="{l:Tr Key=Recording.Reprocess.Step1Hint}" Style="{StaticResource SheetHintStyle}" />
           </StackPanel>
           <ToggleSwitch x:Name="SpeechStepSwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" MinHeight="48" IsOn="True"
-                        Toggled="Steps_Toggled" AutomationProperties.Name="Step 1: Speech" />
+                        Toggled="Steps_Toggled" AutomationProperties.Name="{l:Tr Key=Recording.Reprocess.Step1Name}" />
         </Grid>
         <Grid ColumnSpacing="12" MinHeight="44" Margin="0,4,0,0">
           <Grid.ColumnDefinitions>
@@ -51,16 +52,16 @@
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="2 · Speakers" FontSize="14" />
-            <TextBlock x:Name="SpeakersStepHint" Text="Who spoke when, on this device" Style="{StaticResource SheetHintStyle}" />
+            <TextBlock Text="{l:Tr Key=Recording.Reprocess.Step2}" FontSize="14" />
+            <TextBlock x:Name="SpeakersStepHint" Text="{l:Tr Key=Recording.Reprocess.Step2Hint}" Style="{StaticResource SheetHintStyle}" />
           </StackPanel>
           <ToggleSwitch x:Name="SpeakersStepSwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" MinHeight="48"
-                        Toggled="Steps_Toggled" AutomationProperties.Name="Step 2: Speakers" />
+                        Toggled="Steps_Toggled" AutomationProperties.Name="{l:Tr Key=Recording.Reprocess.Step2Name}" />
         </Grid>
         <ComboBox x:Name="SpeakersPresetBox" HorizontalAlignment="Stretch" MinHeight="44" Margin="0,4,0,0" SelectedIndex="0"
-                  AutomationProperties.Name="Speaker detection mode">
-          <ComboBoxItem Content="Best quality (offline)" />
-          <ComboBoxItem Content="Faster" />
+                  AutomationProperties.Name="{l:Tr Key=Recording.Reprocess.SpeakerMode}">
+          <ComboBoxItem Content="{l:Tr Key=Recording.Reprocess.SpeakerModeOffline}" />
+          <ComboBoxItem Content="{l:Tr Key=Recording.Reprocess.SpeakerModeFast}" />
         </ComboBox>
         <Grid ColumnSpacing="12" MinHeight="44" Margin="0,4,0,0">
           <Grid.ColumnDefinitions>
@@ -68,38 +69,38 @@
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="3 · Analysis" FontSize="14" />
-            <TextBlock Text="Summary, action items and talk time (Gemma)" Style="{StaticResource SheetHintStyle}" />
+            <TextBlock Text="{l:Tr Key=Recording.Reprocess.Step3}" FontSize="14" />
+            <TextBlock Text="{l:Tr Key=Recording.Reprocess.Step3Hint}" Style="{StaticResource SheetHintStyle}" />
           </StackPanel>
           <ToggleSwitch x:Name="AnalysisStepSwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" MinHeight="48"
-                        Toggled="Steps_Toggled" AutomationProperties.Name="Step 3: Analysis" />
+                        Toggled="Steps_Toggled" AutomationProperties.Name="{l:Tr Key=Recording.Reprocess.Step3Name}" />
         </Grid>
       </StackPanel>
 
       <StackPanel x:Name="SpeechSection">
-      <TextBlock Text="SPEECH MODEL (INSTALLED)" Style="{StaticResource SheetSectionStyle}" Margin="0,0,0,4" />
+      <TextBlock Text="{l:Tr Key=Recording.Reprocess.ModelSection}" Style="{StaticResource SheetSectionStyle}" Margin="0,0,0,4" />
       <StackPanel x:Name="ModelList" Spacing="2" />
       <TextBlock x:Name="NoModelsText" Visibility="Collapsed" Style="{StaticResource SheetHintStyle}"
-                 Text="No speech model is installed. Download one on the Models page first." />
+                 Text="{l:Tr Key=Recording.Reprocess.NoModels}" />
 
-      <TextBlock Text="LANGUAGE" Style="{StaticResource SheetSectionStyle}" />
+      <TextBlock Text="{l:Tr Key=Recording.Reprocess.LanguageSection}" Style="{StaticResource SheetSectionStyle}" />
       <ComboBox x:Name="LanguageBox" HorizontalAlignment="Stretch" MinHeight="44"
-                AutomationProperties.Name="Recognition language" />
+                AutomationProperties.Name="{l:Tr Key=Recording.Reprocess.LanguageName}" />
       <TextBlock x:Name="LanguageHint" Visibility="Collapsed" Style="{StaticResource SheetHintStyle}"
-                 Text="Parakeet detects the language itself — this choice does not apply to it." />
+                 Text="{l:Tr Key=Recording.Reprocess.LanguageHint}" />
 
-      <TextBlock Text="OPTIONS" Style="{StaticResource SheetSectionStyle}" />
+      <TextBlock Text="{l:Tr Key=Recording.Reprocess.OptionsSection}" Style="{StaticResource SheetSectionStyle}" />
       <Grid ColumnSpacing="12" MinHeight="44" Margin="0,4,0,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <StackPanel VerticalAlignment="Center">
-          <TextBlock Text="Skip silence (VAD)" FontSize="14" />
-          <TextBlock Text="Faster; same as live recording" Style="{StaticResource SheetHintStyle}" />
+          <TextBlock Text="{l:Tr Key=Recording.Reprocess.Vad}" FontSize="14" />
+          <TextBlock Text="{l:Tr Key=Recording.Reprocess.VadHint}" Style="{StaticResource SheetHintStyle}" />
         </StackPanel>
         <ToggleSwitch x:Name="VadSwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" MinHeight="48"
-                      AutomationProperties.Name="Skip silence (VAD)" />
+                      AutomationProperties.Name="{l:Tr Key=Recording.Reprocess.Vad}" />
       </Grid>
       <Grid ColumnSpacing="12" MinHeight="44" Margin="0,4,0,0">
         <Grid.ColumnDefinitions>
@@ -107,38 +108,38 @@
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <StackPanel VerticalAlignment="Center">
-          <TextBlock x:Name="MakeCurrentLabel" Text="Make it current when done" FontSize="14" />
-          <TextBlock Text="Translations and chats keep their version" Style="{StaticResource SheetHintStyle}" />
+          <TextBlock x:Name="MakeCurrentLabel" Text="{l:Tr Key=Recording.Reprocess.MakeCurrent}" FontSize="14" />
+          <TextBlock Text="{l:Tr Key=Recording.Reprocess.MakeCurrentHint}" Style="{StaticResource SheetHintStyle}" />
         </StackPanel>
         <ToggleSwitch x:Name="MakeCurrentSwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" MinHeight="48"
-                      AutomationProperties.Name="Make the new version current when done" />
+                      AutomationProperties.Name="{l:Tr Key=Recording.Reprocess.MakeCurrentName}" />
       </Grid>
 
       </StackPanel>
 
-      <TextBlock Text="WHEN" Style="{StaticResource SheetSectionStyle}" />
+      <TextBlock Text="{l:Tr Key=Recording.Reprocess.WhenSection}" Style="{StaticResource SheetSectionStyle}" />
       <RadioButton x:Name="WhenNow" GroupName="When" IsChecked="True" MinHeight="44" Checked="When_Changed">
         <StackPanel>
-          <TextBlock x:Name="WhenNowText" Text="Now" />
-          <TextBlock Text="After the running job · one job at a time" Style="{StaticResource SheetHintStyle}" />
+          <TextBlock x:Name="WhenNowText" Text="{l:Tr Key=Recording.Reprocess.Now}" />
+          <TextBlock Text="{l:Tr Key=Recording.Reprocess.NowHint}" Style="{StaticResource SheetHintStyle}" />
         </StackPanel>
       </RadioButton>
       <RadioButton x:Name="WhenIdle" GroupName="When" MinHeight="44" Checked="When_Changed">
         <StackPanel>
-          <TextBlock Text="When idle" />
-          <TextBlock Text="While no live recording is running" Style="{StaticResource SheetHintStyle}" />
+          <TextBlock Text="{l:Tr Key=Recording.Reprocess.Idle}" />
+          <TextBlock Text="{l:Tr Key=Recording.Reprocess.IdleHint}" Style="{StaticResource SheetHintStyle}" />
         </StackPanel>
       </RadioButton>
       <RadioButton x:Name="WhenCharging" GroupName="When" MinHeight="44" Checked="When_Changed">
         <StackPanel>
-          <TextBlock Text="When charging" />
-          <TextBlock x:Name="WhenChargingHint" Text="Waits for the charger" Style="{StaticResource SheetHintStyle}" />
+          <TextBlock Text="{l:Tr Key=Recording.Reprocess.Charging}" />
+          <TextBlock x:Name="WhenChargingHint" Text="{l:Tr Key=Recording.Reprocess.ChargingHint}" Style="{StaticResource SheetHintStyle}" />
         </StackPanel>
       </RadioButton>
       <RadioButton x:Name="WhenWindow" GroupName="When" MinHeight="44" Checked="When_Changed">
         <StackPanel>
-          <TextBlock Text="In a time window" />
-          <TextBlock x:Name="WindowHint" Text="Every night, continues the next night" Style="{StaticResource SheetHintStyle}" />
+          <TextBlock Text="{l:Tr Key=Recording.Reprocess.Window}" />
+          <TextBlock x:Name="WindowHint" Text="{l:Tr Key=Recording.Reprocess.WindowHint}" Style="{StaticResource SheetHintStyle}" />
         </StackPanel>
       </RadioButton>
       <StackPanel x:Name="WindowPanel" Visibility="Collapsed" Spacing="8" Margin="28,4,0,0">
@@ -148,11 +149,11 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
-          <ComboBox x:Name="WindowFrom" HorizontalAlignment="Stretch" MinHeight="44" AutomationProperties.Name="Window start" SelectionChanged="Window_Changed" />
+          <ComboBox x:Name="WindowFrom" HorizontalAlignment="Stretch" MinHeight="44" AutomationProperties.Name="{l:Tr Key=Recording.Reprocess.WindowStart}" SelectionChanged="Window_Changed" />
           <TextBlock Grid.Column="1" Text="–" VerticalAlignment="Center" />
-          <ComboBox x:Name="WindowTo" Grid.Column="2" HorizontalAlignment="Stretch" MinHeight="44" AutomationProperties.Name="Window end" SelectionChanged="Window_Changed" />
+          <ComboBox x:Name="WindowTo" Grid.Column="2" HorizontalAlignment="Stretch" MinHeight="44" AutomationProperties.Name="{l:Tr Key=Recording.Reprocess.WindowEnd}" SelectionChanged="Window_Changed" />
         </Grid>
-        <CheckBox x:Name="WindowCharging" Content="Only while charging" MinHeight="44" />
+        <CheckBox x:Name="WindowCharging" Content="{l:Tr Key=Recording.Reprocess.WindowCharging}" MinHeight="44" />
       </StackPanel>
 
       <TextBlock x:Name="EstimateText" Style="{StaticResource SheetHintStyle}" Margin="0,16,0,0" FontSize="13" Opacity="0.85" />

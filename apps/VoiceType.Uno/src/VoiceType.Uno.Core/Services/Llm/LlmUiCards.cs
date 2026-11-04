@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.Services;
 
 public enum LlmUiChipKind { Plain, Recommended, InUse, Warning }
@@ -56,36 +58,36 @@ public static class LlmUiCardBuilder
         var chips = new List<LlmUiChip>
         {
             new(DownloadProgressFormatter.FormatBytes(model.SizeBytes), LlmUiChipKind.Plain),
-            new($"{FormatContext(model.ContextTokens)} context", LlmUiChipKind.Plain),
+            new(LlmUiText.ContextChip(model.ContextTokens), LlmUiChipKind.Plain),
         };
         if (string.Equals(model.Id, defaultModelId, StringComparison.OrdinalIgnoreCase))
-            chips.Add(new("★ Recommended", LlmUiChipKind.Recommended));
+            chips.Add(new(Loc.T("Models.Chip.Recommended"), LlmUiChipKind.Recommended));
         if (!model.PhoneSupported && !isPhone)
-            chips.Add(new("Desktop only", LlmUiChipKind.Plain));
+            chips.Add(new(Loc.T("Models.Chip.DesktopOnly"), LlmUiChipKind.Plain));
         if (isActive)
-            chips.Add(new("● In use", LlmUiChipKind.InUse));
+            chips.Add(new(Loc.T("Models.Chip.InUse"), LlmUiChipKind.InUse));
         else if (state == LlmModelState.Installed)
-            chips.Add(new("installed", LlmUiChipKind.Plain));
+            chips.Add(new(Loc.T("Models.Chip.Installed"), LlmUiChipKind.Plain));
         if (low)
-            chips.Add(new("⚠ Low memory", LlmUiChipKind.Warning));
+            chips.Add(new(Loc.T("Models.Chip.LowMemory"), LlmUiChipKind.Warning));
 
         var pct = Math.Clamp(percent ?? 0, 0, 100);
         var status = isLoadingThis
             ? LlmUiText.Loading(model.Title)
             : state switch
             {
-                LlmModelState.Downloading => "Downloading…",
-                LlmModelState.Active => "In use for translation, chat and titles",
-                LlmModelState.Installed => "Installed",
-                _ => "Not downloaded",
+                LlmModelState.Downloading => Loc.T("Models.Card.Status.Downloading"),
+                LlmModelState.Active => Loc.T("Models.Llm.Status.Active"),
+                LlmModelState.Installed => Loc.T("Models.Card.Status.Installed"),
+                _ => Loc.T("Models.Card.Status.NotDownloaded"),
             };
 
         var (action, text) = state switch
         {
-            LlmModelState.Downloading => (LlmUiAction.Cancel, "Cancel"),
-            LlmModelState.Installed => (LlmUiAction.Use, isLoadingThis ? "Loading…" : "Use"),
-            LlmModelState.Active => (LlmUiAction.InUse, "In use"),
-            _ => (LlmUiAction.Download, "Download"),
+            LlmModelState.Downloading => (LlmUiAction.Cancel, Loc.T("Models.Card.Action.Cancel")),
+            LlmModelState.Installed => (LlmUiAction.Use, isLoadingThis ? Loc.T("Models.Card.Action.Loading") : Loc.T("Models.Card.Action.Use")),
+            LlmModelState.Active => (LlmUiAction.InUse, Loc.T("Models.Card.Action.InUse")),
+            _ => (LlmUiAction.Download, Loc.T("Models.Card.Action.Download")),
         };
 
         return new LlmUiCard(

@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.History;
 
 public enum HistoryUiSort
@@ -60,12 +62,12 @@ public sealed record HistoryUiFilterOptions
     public IReadOnlyList<HistoryUiFilterChip> Chips()
     {
         var chips = new List<HistoryUiFilterChip>();
-        if (WithTranslation) chips.Add(new(WithTranslationKey, "With translation"));
-        if (InChat) chips.Add(new(InChatKey, "Used in a chat"));
-        if (WithAudio) chips.Add(new(WithAudioKey, "Audio available"));
-        if (InjectOnly) chips.Add(new(InjectOnlyKey, "Inject dictations"));
-        if (!string.IsNullOrWhiteSpace(Language)) chips.Add(new(LanguageKey, "Language: " + Language.ToUpperInvariant()));
-        if (!string.IsNullOrWhiteSpace(Model)) chips.Add(new(ModelKey, "Model: " + (ModelLabel ?? Model)));
+        if (WithTranslation) chips.Add(new(WithTranslationKey, Loc.T("History.Filter.Chip.WithTranslation")));
+        if (InChat) chips.Add(new(InChatKey, Loc.T("History.Filter.Chip.InChat")));
+        if (WithAudio) chips.Add(new(WithAudioKey, Loc.T("History.Filter.Chip.WithAudio")));
+        if (InjectOnly) chips.Add(new(InjectOnlyKey, Loc.T("History.Filter.Chip.InjectOnly")));
+        if (!string.IsNullOrWhiteSpace(Language)) chips.Add(new(LanguageKey, Loc.F("History.Filter.Chip.Language", Language.ToUpperInvariant())));
+        if (!string.IsNullOrWhiteSpace(Model)) chips.Add(new(ModelKey, Loc.F("History.Filter.Chip.Model", ModelLabel ?? Model)));
         if (Sort != HistoryUiSort.NewestFirst) chips.Add(new(SortKey, SortLabel(Sort)));
         return chips;
     }
@@ -85,9 +87,9 @@ public sealed record HistoryUiFilterOptions
 
     public static string SortLabel(HistoryUiSort sort) => sort switch
     {
-        HistoryUiSort.OldestFirst => "Oldest first",
-        HistoryUiSort.LongestFirst => "Longest first",
-        _ => "Newest first",
+        HistoryUiSort.OldestFirst => Loc.T("History.Filter.Sort.OldestFirst"),
+        HistoryUiSort.LongestFirst => Loc.T("History.Filter.Sort.LongestFirst"),
+        _ => Loc.T("History.Filter.Sort.NewestFirst"),
     };
 }
 
@@ -134,7 +136,7 @@ public static class HistoryUiQuery
             .Distinct()
             .Order(StringComparer.Ordinal)
             .Select(l => new HistoryUiChoice(l, l.ToUpperInvariant()))
-            .Prepend(new HistoryUiChoice(null, "Any language"))
+            .Prepend(new HistoryUiChoice(null, Loc.T("History.Filter.AnyLanguage")))
             .ToList();
 
     /// <summary>Model folders present in the history with their short names, "Any model" first.</summary>
@@ -145,6 +147,6 @@ public static class HistoryUiQuery
             .GroupBy(m => m!.Folder!, StringComparer.OrdinalIgnoreCase)
             .Select(g => new HistoryUiChoice(g.Key, HistoryUiFormat.ShortModel(g.First())))
             .OrderBy(c => c.Label, StringComparer.OrdinalIgnoreCase)
-            .Prepend(new HistoryUiChoice(null, "Any model"))
+            .Prepend(new HistoryUiChoice(null, Loc.T("History.Filter.AnyModel")))
             .ToList();
 }

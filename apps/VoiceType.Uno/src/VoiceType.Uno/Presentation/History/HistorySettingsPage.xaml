@@ -3,6 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:history="using:VoiceType.Uno.Presentation.History"
       xmlns:controls="using:VoiceType.Uno.Presentation.Controls"
+      xmlns:l="using:VoiceType.Uno.Presentation.Localization"
       Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
       KeyDown="Page_KeyDown"
       Loaded="Page_Loaded">
@@ -39,15 +40,15 @@
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
       <Button x:Name="BackButton" Style="{StaticResource HistoryIconButtonStyle}" Click="Back_Click"
-              AutomationProperties.Name="Back" ToolTipService.ToolTip="Back">
+              AutomationProperties.Name="{l:Tr Key=History.Common.Back}" ToolTipService.ToolTip="{l:Tr Key=History.Common.Back}">
         <Button.KeyboardAccelerators>
           <KeyboardAccelerator Key="Escape" />
         </Button.KeyboardAccelerators>
         <SymbolIcon Symbol="Back" />
       </Button>
       <StackPanel Grid.Column="1" VerticalAlignment="Center">
-        <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" />
-        <TextBlock Text="History and storage" FontSize="12" Opacity="0.7" />
+        <TextBlock Text="{l:Tr Key=History.Settings.Title}" FontSize="20" FontWeight="SemiBold" />
+        <TextBlock Text="{l:Tr Key=History.Settings.Subtitle}" FontSize="12" Opacity="0.7" />
       </StackPanel>
     </Grid>
 
@@ -55,7 +56,7 @@
                   VerticalScrollBarVisibility="Auto">
       <StackPanel MaxWidth="720" Margin="16,0,16,24">
 
-        <TextBlock Text="RECORDING HISTORY" Style="{StaticResource HistorySectionHeaderStyle}" />
+        <TextBlock Text="{l:Tr Key=History.Settings.Section.History}" Style="{StaticResource HistorySectionHeaderStyle}" />
         <Border Style="{StaticResource HistoryCardStyle}">
           <StackPanel>
             <Grid Style="{StaticResource RowGridStyle}">
@@ -66,11 +67,11 @@
               </Grid.ColumnDefinitions>
               <SymbolIcon Symbol="Clock" />
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="Save recordings to History" TextWrapping="Wrap" />
-                <TextBlock Text="Audio + transcript after each Stop" Style="{StaticResource HistorySecondaryStyle}" />
+                <TextBlock Text="{l:Tr Key=History.Settings.Enabled}" TextWrapping="Wrap" />
+                <TextBlock Text="{l:Tr Key=History.Settings.EnabledDetail}" Style="{StaticResource HistorySecondaryStyle}" />
               </StackPanel>
               <ToggleSwitch x:Name="EnabledSwitch" Grid.Column="2" Style="{StaticResource HistorySwitchStyle}"
-                            AutomationProperties.Name="Save recordings to History" Toggled="Setting_Toggled" />
+                            AutomationProperties.Name="{l:Tr Key=History.Settings.Enabled}" Toggled="Setting_Toggled" />
             </Grid>
             <Border Style="{StaticResource RowDividerStyle}" />
             <Grid Style="{StaticResource RowGridStyle}">
@@ -81,11 +82,11 @@
               </Grid.ColumnDefinitions>
               <SymbolIcon Symbol="Keyboard" />
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="Save Inject text dictations" TextWrapping="Wrap" />
-                <TextBlock Text="Short phrases typed into other apps" Style="{StaticResource HistorySecondaryStyle}" />
+                <TextBlock Text="{l:Tr Key=History.Settings.Inject}" TextWrapping="Wrap" />
+                <TextBlock Text="{l:Tr Key=History.Settings.InjectDetail}" Style="{StaticResource HistorySecondaryStyle}" />
               </StackPanel>
               <ToggleSwitch x:Name="InjectSwitch" Grid.Column="2" Style="{StaticResource HistorySwitchStyle}"
-                            AutomationProperties.Name="Save Inject text dictations" Toggled="Setting_Toggled" />
+                            AutomationProperties.Name="{l:Tr Key=History.Settings.Inject}" Toggled="Setting_Toggled" />
             </Grid>
             <Border Style="{StaticResource RowDividerStyle}" />
             <Grid Style="{StaticResource RowGridStyle}">
@@ -96,16 +97,16 @@
               </Grid.ColumnDefinitions>
               <SymbolIcon Symbol="Delete" />
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="Ask before deleting" TextWrapping="Wrap" />
-                <TextBlock Text="Off: deletes at once with an 8-second Undo" Style="{StaticResource HistorySecondaryStyle}" />
+                <TextBlock Text="{l:Tr Key=History.Settings.Confirm}" TextWrapping="Wrap" />
+                <TextBlock Text="{l:Tr Key=History.Settings.ConfirmDetail}" Style="{StaticResource HistorySecondaryStyle}" />
               </StackPanel>
               <ToggleSwitch x:Name="ConfirmSwitch" Grid.Column="2" Style="{StaticResource HistorySwitchStyle}"
-                            AutomationProperties.Name="Ask before deleting" Toggled="Setting_Toggled" />
+                            AutomationProperties.Name="{l:Tr Key=History.Settings.Confirm}" Toggled="Setting_Toggled" />
             </Grid>
           </StackPanel>
         </Border>
 
-        <TextBlock Text="AUDIO STORAGE" Style="{StaticResource HistorySectionHeaderStyle}" />
+        <TextBlock Text="{l:Tr Key=History.Settings.Section.Audio}" Style="{StaticResource HistorySectionHeaderStyle}" />
         <Border Style="{StaticResource HistoryCardStyle}">
           <StackPanel>
             <Grid Style="{StaticResource RowGridStyle}">
@@ -116,11 +117,11 @@
               </Grid.ColumnDefinitions>
               <SymbolIcon Symbol="Calendar" />
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="Keep audio" TextWrapping="Wrap" />
-                <TextBlock Text="Text, versions, translations and chats are kept forever" Style="{StaticResource HistorySecondaryStyle}" />
+                <TextBlock Text="{l:Tr Key=History.Settings.KeepAudio}" TextWrapping="Wrap" />
+                <TextBlock Text="{l:Tr Key=History.Settings.KeepAudioDetail}" Style="{StaticResource HistorySecondaryStyle}" />
               </StackPanel>
               <ComboBox x:Name="RetentionCombo" Grid.Column="2" MinHeight="44" MinWidth="112" VerticalAlignment="Center"
-                        AutomationProperties.Name="Keep audio" SelectionChanged="Retention_SelectionChanged" />
+                        AutomationProperties.Name="{l:Tr Key=History.Settings.KeepAudio}" SelectionChanged="Retention_SelectionChanged" />
             </Grid>
             <Border Style="{StaticResource RowDividerStyle}" />
             <Grid Style="{StaticResource RowGridStyle}" RowSpacing="8">
@@ -135,11 +136,11 @@
               </Grid.RowDefinitions>
               <FontIcon Glyph="&#xEDA2;" FontSize="18" />
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="Storage limit for audio" TextWrapping="Wrap" />
-                <TextBlock Text="Oldest audio is removed first" Style="{StaticResource HistorySecondaryStyle}" />
+                <TextBlock Text="{l:Tr Key=History.Settings.Cap}" TextWrapping="Wrap" />
+                <TextBlock Text="{l:Tr Key=History.Settings.CapDetail}" Style="{StaticResource HistorySecondaryStyle}" />
               </StackPanel>
               <ComboBox x:Name="CapCombo" Grid.Column="2" MinHeight="44" MinWidth="112" VerticalAlignment="Center"
-                        AutomationProperties.Name="Storage limit for audio" SelectionChanged="Cap_SelectionChanged" />
+                        AutomationProperties.Name="{l:Tr Key=History.Settings.Cap}" SelectionChanged="Cap_SelectionChanged" />
               <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Spacing="6">
                 <ProgressBar x:Name="UsageBar" Minimum="0" Maximum="1" Height="6" />
                 <TextBlock x:Name="UsageText" Style="{StaticResource HistorySecondaryStyle}" />
@@ -158,11 +159,11 @@
               </Grid.RowDefinitions>
               <FontIcon Glyph="&#xE9D9;" FontSize="18" />
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="Audio quality" TextWrapping="Wrap" />
-                <TextBlock Text="For new recordings" Style="{StaticResource HistorySecondaryStyle}" />
+                <TextBlock Text="{l:Tr Key=History.Settings.Quality}" TextWrapping="Wrap" />
+                <TextBlock Text="{l:Tr Key=History.Settings.QualityDetail}" Style="{StaticResource HistorySecondaryStyle}" />
               </StackPanel>
               <ComboBox x:Name="QualityCombo" Grid.Column="2" MinHeight="44" MinWidth="112" VerticalAlignment="Center"
-                        AutomationProperties.Name="Audio quality" SelectionChanged="Quality_SelectionChanged" />
+                        AutomationProperties.Name="{l:Tr Key=History.Settings.Quality}" SelectionChanged="Quality_SelectionChanged" />
               <TextBlock x:Name="QualityDetail" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
                          Style="{StaticResource HistorySecondaryStyle}" />
             </Grid>
@@ -170,10 +171,10 @@
         </Border>
 
         <!-- The one place that says where ALL models (speech, Gemma, speaker detection) are stored -->
-        <TextBlock Text="MODEL STORAGE" Style="{StaticResource HistorySectionHeaderStyle}" />
+        <TextBlock Text="{l:Tr Key=History.Settings.Section.Models}" Style="{StaticResource HistorySectionHeaderStyle}" />
         <controls:ModelStorageBlock x:Name="ModelStorage" />
 
-        <TextBlock Text="BACKGROUND JOBS" Style="{StaticResource HistorySectionHeaderStyle}" />
+        <TextBlock Text="{l:Tr Key=History.Settings.Section.Jobs}" Style="{StaticResource HistorySectionHeaderStyle}" />
         <Border Style="{StaticResource HistoryCardStyle}">
           <Grid Style="{StaticResource RowGridStyle}">
             <Grid.ColumnDefinitions>
@@ -183,12 +184,12 @@
             </Grid.ColumnDefinitions>
             <SymbolIcon Symbol="Sync" />
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-              <TextBlock Text="Allow jobs during live recording" TextWrapping="Wrap" />
-              <TextBlock x:Name="JobsDetail" Text="Re-recognition and translation keep running while you record"
+              <TextBlock Text="{l:Tr Key=History.Settings.Jobs}" TextWrapping="Wrap" />
+              <TextBlock x:Name="JobsDetail" Text="{l:Tr Key=History.Settings.JobsDetail}"
                          Style="{StaticResource HistorySecondaryStyle}" />
             </StackPanel>
             <ToggleSwitch x:Name="JobsSwitch" Grid.Column="2" Style="{StaticResource HistorySwitchStyle}"
-                          AutomationProperties.Name="Allow jobs during live recording" Toggled="Setting_Toggled" />
+                          AutomationProperties.Name="{l:Tr Key=History.Settings.Jobs}" Toggled="Setting_Toggled" />
           </Grid>
         </Border>
 
@@ -202,18 +203,18 @@
             </Grid.ColumnDefinitions>
             <TextBlock Text="✦" FontSize="16" VerticalAlignment="Center" />
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-              <TextBlock Text="Titles by Gemma" TextWrapping="Wrap" />
-              <TextBlock x:Name="TitlesDetail" Text="Gemma names each new recording on the device. Your own titles are never replaced"
+              <TextBlock Text="{l:Tr Key=History.Settings.Titles}" TextWrapping="Wrap" />
+              <TextBlock x:Name="TitlesDetail" Text="{l:Tr Key=History.Settings.TitlesDetail}"
                          Style="{StaticResource HistorySecondaryStyle}" />
             </StackPanel>
             <ToggleSwitch x:Name="TitlesSwitch" Grid.Column="2" Style="{StaticResource HistorySwitchStyle}"
-                          AutomationProperties.Name="Titles by Gemma" Toggled="Setting_Toggled" />
+                          AutomationProperties.Name="{l:Tr Key=History.Settings.Titles}" Toggled="Setting_Toggled" />
           </Grid>
         </Border>
 
         <!-- Speakers (Nemotron 3 Diarization): automatic detection after Stop, CPU threads -->
         <StackPanel x:Name="SpeakersGroup" Visibility="Collapsed">
-          <TextBlock Text="SPEAKERS" Style="{StaticResource HistorySectionHeaderStyle}" />
+          <TextBlock Text="{l:Tr Key=History.Settings.Section.Speakers}" Style="{StaticResource HistorySectionHeaderStyle}" />
           <Border Style="{StaticResource HistoryCardStyle}">
             <StackPanel>
               <Grid Style="{StaticResource RowGridStyle}" RowSpacing="4">
@@ -228,11 +229,11 @@
                 </Grid.RowDefinitions>
                 <FontIcon Glyph="&#xE716;" FontSize="18" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                  <TextBlock Text="Detect speakers after Stop" TextWrapping="Wrap" />
+                  <TextBlock Text="{l:Tr Key=History.Settings.AutoSpeakers}" TextWrapping="Wrap" />
                   <TextBlock x:Name="AutoSpeakersDetail" Style="{StaticResource HistorySecondaryStyle}" />
                 </StackPanel>
                 <ComboBox x:Name="AutoSpeakersCombo" Grid.Column="2" MinHeight="44" MinWidth="112" VerticalAlignment="Center"
-                          AutomationProperties.Name="Detect speakers after Stop" SelectionChanged="AutoSpeakers_SelectionChanged" />
+                          AutomationProperties.Name="{l:Tr Key=History.Settings.AutoSpeakers}" SelectionChanged="AutoSpeakers_SelectionChanged" />
               </Grid>
               <Border Style="{StaticResource RowDividerStyle}" />
               <Grid Style="{StaticResource RowGridStyle}">
@@ -243,11 +244,11 @@
                 </Grid.ColumnDefinitions>
                 <FontIcon Glyph="&#xE950;" FontSize="18" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                  <TextBlock Text="CPU threads" TextWrapping="Wrap" />
+                  <TextBlock Text="{l:Tr Key=History.Settings.Threads}" TextWrapping="Wrap" />
                   <TextBlock x:Name="ThreadsDetail" Style="{StaticResource HistorySecondaryStyle}" />
                 </StackPanel>
                 <ComboBox x:Name="ThreadsCombo" Grid.Column="2" MinHeight="44" MinWidth="112" VerticalAlignment="Center"
-                          AutomationProperties.Name="CPU threads for speaker detection" SelectionChanged="Threads_SelectionChanged" />
+                          AutomationProperties.Name="{l:Tr Key=History.Settings.ThreadsName}" SelectionChanged="Threads_SelectionChanged" />
               </Grid>
             </StackPanel>
           </Border>
@@ -255,7 +256,7 @@
 
         <Border Style="{StaticResource HistoryCardStyle}" Margin="0,24,0,0">
           <Button Style="{StaticResource HistoryRowButtonStyle}" MinHeight="56" Click="DeleteAll_Click"
-                  AutomationProperties.Name="Delete all history">
+                  AutomationProperties.Name="{l:Tr Key=History.Settings.DeleteAll}">
             <Grid ColumnSpacing="12">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="24" />
@@ -263,7 +264,7 @@
               </Grid.ColumnDefinitions>
               <SymbolIcon Symbol="Delete" Foreground="{ThemeResource HistoryDangerBrush}" />
               <StackPanel Grid.Column="1">
-                <TextBlock Text="Delete all history" Foreground="{ThemeResource HistoryDangerBrush}" FontWeight="SemiBold" />
+                <TextBlock Text="{l:Tr Key=History.Settings.DeleteAll}" Foreground="{ThemeResource HistoryDangerBrush}" FontWeight="SemiBold" />
                 <TextBlock x:Name="DeleteAllDetail" Style="{StaticResource HistorySecondaryStyle}" />
               </StackPanel>
             </Grid>
@@ -271,7 +272,7 @@
         </Border>
 
         <TextBlock Margin="4,16,4,0" Style="{StaticResource HistorySecondaryStyle}" FontSize="11"
-                   Text="Recordings and transcripts are stored only on this device. Others may need to consent to being recorded." />
+                   Text="{l:Tr Key=History.Settings.Privacy}" />
       </StackPanel>
     </ScrollViewer>
   </Grid>

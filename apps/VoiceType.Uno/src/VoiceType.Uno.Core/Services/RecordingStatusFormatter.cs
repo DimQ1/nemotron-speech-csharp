@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.Services;
 
 /// <summary>What the Record button and the state pill currently represent.</summary>
@@ -44,31 +46,31 @@ public static class RecordingStatusFormatter
     /// <summary>Caption under the Record button.</summary>
     public static string GetCaption(RecordingPhase phase) => phase switch
     {
-        RecordingPhase.Recording => "Tap to stop",
-        RecordingPhase.Muted => "Muted · tap to resume",
-        RecordingPhase.LoadingModel => "Loading model…",
-        RecordingPhase.DownloadingModel => "Downloading model…",
-        _ => "Tap to start"
+        RecordingPhase.Recording => Loc.T("Main.Record.Caption.Stop"),
+        RecordingPhase.Muted => Loc.T("Main.Record.Caption.Resume"),
+        RecordingPhase.LoadingModel => Loc.T("Main.Record.LoadingModel"),
+        RecordingPhase.DownloadingModel => Loc.T("Main.Record.DownloadingModel"),
+        _ => Loc.T("Main.Record.Caption.Start")
     };
 
     /// <summary>Accessible name of the Record button (it has no visible text).</summary>
     public static string GetButtonName(RecordingPhase phase) => phase switch
     {
-        RecordingPhase.Recording => "Stop recording",
-        RecordingPhase.Muted => "Resume recording",
-        RecordingPhase.LoadingModel => "Loading model…",
-        RecordingPhase.DownloadingModel => "Downloading model…",
-        _ => "Start recording"
+        RecordingPhase.Recording => Loc.T("Main.Record.Name.Stop"),
+        RecordingPhase.Muted => Loc.T("Main.Record.Name.Resume"),
+        RecordingPhase.LoadingModel => Loc.T("Main.Record.LoadingModel"),
+        RecordingPhase.DownloadingModel => Loc.T("Main.Record.DownloadingModel"),
+        _ => Loc.T("Main.Record.Name.Start")
     };
 
     /// <summary>State pill in the top bar: "Ready", "Rec 12:34", "Muted 12:34", …</summary>
     public static string GetPillText(RecordingPhase phase, TimeSpan elapsed) => phase switch
     {
-        RecordingPhase.Recording => "Rec " + FormatElapsed(elapsed),
-        RecordingPhase.Muted => "Muted " + FormatElapsed(elapsed),
-        RecordingPhase.LoadingModel => "Loading model…",
-        RecordingPhase.DownloadingModel => "Downloading…",
-        _ => "Ready"
+        RecordingPhase.Recording => Loc.F("Main.Pill.Recording", FormatElapsed(elapsed)),
+        RecordingPhase.Muted => Loc.F("Main.Pill.Muted", FormatElapsed(elapsed)),
+        RecordingPhase.LoadingModel => Loc.T("Main.Record.LoadingModel"),
+        RecordingPhase.DownloadingModel => Loc.T("Main.Pill.Downloading"),
+        _ => Loc.T("Main.Pill.Ready")
     };
 
     /// <summary>
@@ -77,7 +79,7 @@ public static class RecordingStatusFormatter
     /// re-posted only when the state changes — a per-second re-post makes the shade re-render
     /// under the finger and swallow taps on its Mute / Stop actions.
     /// </summary>
-    public static string GetNoticeTitle(bool isMuted) => isMuted ? "Muted" : "Recording";
+    public static string GetNoticeTitle(bool isMuted) => isMuted ? Loc.T("Main.Notice.Muted") : Loc.T("Main.Notice.Recording");
 
     /// <summary>Session length: "mm:ss" below one hour, "h:mm:ss" from then on. Negative reads as zero.</summary>
     public static string FormatElapsed(TimeSpan elapsed)

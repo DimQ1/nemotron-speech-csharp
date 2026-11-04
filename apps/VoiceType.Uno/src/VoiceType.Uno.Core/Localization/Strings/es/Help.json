@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — Ayuda",
+  "Help.Close": "Cerrar",
+  "Help.Start.Title": "Primeros pasos",
+  "Help.Start.Body": "1. En el primer inicio, el modelo de voz recomendado se descarga automáticamente.\n2. Toca el botón redondo **Grabar** de abajo y habla: la transcripción aparece en directo. La grabación continúa hasta que vuelvas a tocar el botón; no hace falta mantenerlo pulsado.\n3. Abre el menú **≡** (arriba a la izquierda) para cambiar de modo: **Escribir texto** escribe cada frase terminada en la ventana activa, **Traducción en directo** añade una tarjeta de traducción y **Entrada manual** te permite escribir o editar la transcripción.\n4. El menú también contiene el idioma de reconocimiento, los modelos de voz, las descargas y la **Configuración**; la línea bajo el título muestra el modelo y los modos activos.",
+  "Help.Hotkey.Title": "Atajo global",
+  "Help.Hotkey.Body": "El atajo predeterminado para iniciar y detener es **Ctrl+Mayús+V**. En Linux se registra a través del portal XDG GlobalShortcuts (xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+); el compositor muestra una sola vez un diálogo de consentimiento. En escritorios sin soporte del portal, el atajo se indica como no disponible.",
+  "Help.LinuxInjection.Title": "Escritura de texto en Linux",
+  "Help.LinuxInjection.Body": "La escritura coloca el texto en el portapapeles y luego simula la combinación de pegado (Ctrl+V por defecto, configurable en Configuración) en la ventana activa.\n\n**Herramientas necesarias (instala una de cada par):**\n• Portapapeles: wl-copy (Wayland) o xclip / xsel (X11)\n• Teclado: ydotool (Wayland, necesita ydotoold) o libXtst / xdotool (X11)\n\nUbuntu: *sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "Captura de audio",
+  "Help.Audio.Body": "La captura pasa por el servidor compatible con PulseAudio (lo proporcionan tanto los escritorios con PipeWire como WSLg).\n• Micrófono: fuente de entrada predeterminada\n• Loopback: monitor de la salida predeterminada (*@DEFAULT_MONITOR@*)\n• Mezcla: ambos, combinados al 50/50",
+  "Help.Data.Title": "Ubicación de los datos",
+  "Help.Data.Body": "• Configuración: *~/.local/share/VoiceType/settings.json*\n• Modelos: *~/.local/share/VoiceType/models/*\n(en Windows se encuentran en %LOCALAPPDATA%\\VoiceType)"
+}

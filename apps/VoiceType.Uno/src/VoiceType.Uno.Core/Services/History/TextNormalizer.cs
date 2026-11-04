@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -80,7 +81,8 @@ public static class RecordingTitle
         if (fromText is not null)
             return fromText;
 
-        return "Recording " + manifest.StartedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+        // Computed, never stored: shown in the interface language, the date stays ISO.
+        return Loc.F("History.Title.Fallback", manifest.StartedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
     }
 
     /// <summary>First <paramref name="maxWords"/> words, with an ellipsis when cut; null for empty text.</summary>

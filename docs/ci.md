@@ -16,7 +16,6 @@ answered yet carry the default that was applied and the words *default, maintain
 | `.github/workflows/release-voicetype-uno.yml` | `VoiceType.Uno Tagged Release` | tag `uno-v*` | Version from the tag, all platform packages (Windows, Linux, Android, macOS, and the two unsigned iOS builds), GitHub release |
 | `.github/workflows/release-voicetype-uno-android.yml` | `VoiceType.Uno Android Release` | tag `uno-android-v*`, manual | Android package only; only a tag creates a release |
 | `.github/workflows/voicetype-uno-linux-smoke.yml` | `VoiceType.Uno Linux Smoke` | pull request and push to `master` with nearly the same path filter as the Uno CI, manual | Publish the Linux head and start it under Xvfb without a model for 10 s |
-| `.github/workflows/build-voicetype-winui-msix.yml` | `VoiceType.WinUI MSIX` | manual only | EXPERIMENTAL: unsigned MSIX of the WinUI app (Store / WACK candidate) |
 | `.github/workflows/convert-parakeet-tdt.yml` | `Convert Parakeet TDT to ONNX` | manual only | Python export of the Parakeet TDT model, optional upload to Hugging Face. Unchanged, never run, see [Known issues](#known-issues-and-backlog) |
 | `.github/actions/setup-build/action.yml` | (composite action) | used by every .NET job | .NET 10 SDK with the NuGet cache, then `tools/scripts/fetch-litertlmsharp-feed.ps1` |
 
@@ -75,9 +74,10 @@ Nemotron and Uno rows were raised from the later gate runs of the migration (`Un
 "about 2,000"; the real number is in the `.trx` files that every run uploads (`test-results-<os>`, 7 days). The Linux numbers are a forecast:
 none of the nine projects has ever run on Linux.
 
-Windows additionally builds the whole `NemotronSpeech.slnx` (CLI, WinUI head, libraries, tools), builds the Uno desktop head for `win-x64`
-and runs `tools/scripts/check-no-genai.ps1`. Linux builds the CLI, `VoiceType.Hotkeys`, `WerEval` and `DiarizationEval` explicitly (the
-WinUI head is Windows-only). Both start with a check that the tracked Nemotron fixtures exist.
+Windows additionally builds the whole `NemotronSpeech.slnx` (CLI, libraries, tools), builds the Uno desktop head for `win-x64`
+and runs `tools/scripts/check-no-genai.ps1`. Linux builds the CLI, `VoiceType.Hotkeys`, `WerEval` and `DiarizationEval` explicitly (since VoiceType.WinUI
+was removed every project of the slnx is plain `net10.0`, so the Linux leg could build the slnx too; `BenchmarkSuite1` has never been built
+on Linux). Both start with a check that the tracked Nemotron fixtures exist.
 
 ## Run the same checks locally
 
@@ -96,15 +96,15 @@ $filter = 'FullyQualifiedName!~.E2E_&FullyQualifiedName!~.Real_'
 Get-ChildItem libraries/SpeechLib/tests, apps/VoiceType.Uno/tests -Recurse -Filter *.Tests.csproj |
   ForEach-Object { dotnet test $_.FullName -c Release --filter $filter }
 
-# no ONNX Runtime GenAI in the restore state or in the output of the CLI, WinUI and Uno desktop heads
+# no ONNX Runtime GenAI in the restore state or in the output of the CLI and the Uno desktop head
 pwsh tools/scripts/check-no-genai.ps1
 ```
 
 `check-no-genai.ps1` needs PowerShell 7 (`#Requires -Version 7.0`) and **builds and restores nothing**: it reads `obj/project.assets.json`
-and `bin/Release` of the CLI, the WinUI head and the Uno desktop head, so the two build commands above must have run first (with
+and `bin/Release` of the CLI and the Uno desktop head, so the two build commands above must have run first (with
 `-r win-x64`, otherwise the Uno restore also pulls the `net10.0-android` target, which needs the Android workload). It exits 1 when
-GenAI is found, 2 when no head output exists. It checks Windows-style heads: on Linux the WinUI head has no restore state, so the
-CI job runs it on Windows only.
+GenAI is found, 2 when no head output exists. The CI job runs it on Windows only, after the
+win-x64 build of the Uno desktop head.
 
 Other local facts that matter for CI parity:
 
@@ -177,7 +177,6 @@ Names only. No secret is created or required by the defaults; a missing optional
 | `ANDROID_KEY_PASSWORD` | same, optional | the keystore password is used |
 | `HF_TOKEN` | `convert-parakeet-tdt.yml` | nothing is uploaded (see Known issues) |
 | `IOS_CERTIFICATE_P12_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, `APPSTORE_API_KEY_ID`, `APPSTORE_API_ISSUER_ID`, `APPSTORE_API_PRIVATE_KEY` | declared by `uno-publish.yml` for the commented-out signed-IPA steps of the `ios` job | not read today: the iOS builds are unsigned |
-| `WINUI_SIGNING_PFX_BASE64`, `WINUI_SIGNING_PFX_PASSWORD` | only named in a comment of `build-voicetype-winui-msix.yml` | not read |
 
 Secrets are not available to pull requests from forks; every check of `CI` works without them.
 
@@ -192,7 +191,8 @@ Secrets are not available to pull requests from forks; every check of `CI` works
 * **Android on a device or emulator** (the job only builds the AAB and APK), **iOS on a device or in the Simulator** (the job only compiles and links; the microphone code has never run),
   **macOS capture** (the `macos` job starts the app, but a hosted runner has no microphone and grants no audio permission, so the helper's
   capture paths have not run on a real Mac yet), **Windows ARM64 and Linux arm64**.
-* **Windows signing and the Store**: the Uno zip and the MSIX are unsigned; `build-voicetype-winui-msix.yml` is manual and never run.
+* **Windows signing and the Store**: the Uno zip is unsigned; the Store MSIX of the Uno WinAppSDK head is built locally with
+  `apps/VoiceType.Uno/src/VoiceType.Uno/build-store-msix.ps1` (no workflow; `docs/store/uno-store-release.md`) and signed by the Store.
 * **Bit identity of the mel front end on Linux**: the strict test is Windows x64 only, a tolerance test runs everywhere
   (`docs/research/nemotron-pure-ort-followups.md`, P1).
 
@@ -292,7 +292,7 @@ The maintainer has not answered these. The default column is what is in the repo
 | D5 | iOS: do it at all, how far? | **Stages 1 and 2 done** (head compiles, Simulator and device builds, both unsigned); stages 3 and 4 not started, see the iOS section |
 | D6 | Store naming (final bundle / package id, display name) | **Not decided**, nothing changed; decide together with D3 before the first Play or App Store upload |
 | D7 | Linux packaging scope | **Unchanged**: linux-x64 `.deb` and `tar.gz`; no arm64, AppImage, Flatpak or rpm |
-| D8 | Windows signing | **None**: the Uno zip and the MSIX are unsigned (SmartScreen warns) |
+| D8 | Windows signing | **None**: the Uno zip is unsigned (SmartScreen warns); the Store MSIX is signed by the Store |
 | D9 | Required checks | **Nothing marked required** (branch protection is a repository setting). Recommended once the first runs are green: `CI / Build + unit tests (windows-latest)`, `CI / Build + unit tests (ubuntu-latest)`, `CI / Lint workflows (actionlint)`, `VoiceType.Uno Linux Smoke / Linux build + startup smoke`. `ci.yml` skips docs-only changes (`paths-ignore`), which leaves a required check pending on such pull requests: remove the `paths-ignore` of `ci.yml` before requiring it. The GenAI guard is blocking inside the Windows job (no `continue-on-error`) |
 | D10 | Test coverage in CI | **Model-free tests only**: about 2,000 tests in 9 projects (table above); model-backed E2E stay local until a self-hosted runner exists |
 | D11 | Nemotron `Data/` fixtures in git | **Tracked.** Verified: `git check-ignore` reports no file of `libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data` as ignored (the `.gitignore` rule `data/` is neutralised by an exception and does not match `Data` on a case-sensitive file system). They are 330 files, 2.7 MB, **still untracked in the migration worktree**: `git add` them with the migration (`git ls-files libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Data \| wc -l` must print 330, today's count). `ci.yml` fails fast with one message when they are missing |
@@ -305,11 +305,7 @@ The maintainer has not answered these. The default column is what is in the repo
   never run. Left untouched because that is not certain. Safe fix when the workflow is first used: a step before it that writes
   `present=${{ secrets.HF_TOKEN != '' }}` into `GITHUB_OUTPUT`, and `if: steps.<id>.outputs.present == 'true'` on the upload step.
 * **Scripts and files that cannot be changed from `.github`** and still pass the dead `-p:GpuArch=CPU` (harmless, ignored): `build-deb.sh:36`,
-  `build-deb.ps1:48`, WinUI `build-dev.ps1:60` and `build-store-release.ps1:46,60`, `tools/scripts/run-voicetype-uno-linux.ps1:37`, the comment in
-  `NemotronSpeech.slnx:12`.
-* `apps/VoiceType.WinUI/.../VoiceType.WinUI.csproj` hard-codes `_Net10RuntimeDir` to `...\Microsoft.NETCore.App\10.0.9`; on a runner with another
-  patch it only warns (`netstandard.dll` not found). The WinUI head is built by `CI` (Windows leg) and the manual MSIX workflow, never on a runner before.
-* A development signing key, `VoiceTypeDev.pfx`, is tracked in the WinUI folder and referenced by no script; consider removing it from git.
+  `build-deb.ps1:48`, `tools/scripts/run-voicetype-uno-linux.ps1:37`.
 * Backlog, none of it drafted on purpose (each changes repository behaviour): a root `global.json` and a workload-set pin (D4); actions pinned by
   commit SHA and a Dependabot entry for actions (the majors in use are `checkout@v7`, `setup-dotnet@v5`, `upload-artifact@v4`,
   `download-artifact@v4`, `action-gh-release@v2`, all working; newer majors exist and should be tried on a branch); `SHA256SUMS` for every release
@@ -322,7 +318,7 @@ The maintainer has not answered these. The default column is what is in the repo
 ## What could not be verified and how to try it safely
 
 Not verified, because it only exists on GitHub's runners: **every workflow run**, the cache behaviour, the Linux results of all nine test projects
-(WSL on the maintainer's laptop has no `dotnet` and no network), the `check-no-genai.ps1` step and the WinUI build on a hosted runner, the Android
+(WSL on the maintainer's laptop has no `dotnet` and no network), the `check-no-genai.ps1` step on a hosted runner, the Android
 workload and the signing path (read from the documentation, never exercised), the `.deb` install step, and anything about macOS and iOS (no Mac; the laptop's
 `ios` workload belongs to another SDK band, so `net10.0-ios` cannot be restored here; the iOS-only C# file was compiled against the iOS
 reference assembly in a scratch project). Hosted-runner facts (images, Xcode versions) come from the `actions/runner-images` README of

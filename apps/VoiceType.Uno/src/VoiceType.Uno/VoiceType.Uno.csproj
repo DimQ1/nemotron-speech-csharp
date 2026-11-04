@@ -55,6 +55,20 @@
     <DefineConstants>$(DefineConstants);VOICE_TYPE_WINDOWS</DefineConstants>
   </PropertyGroup>
 
+  <!-- Microsoft Store MSIX of the WinAppSDK head, opt-in (build-store-msix.ps1): without VoiceTypeMsix the head stays unpackaged,
+       so F5, the parity checks and the CI builds are unchanged. The manifest is under Packaging/ (excluded from the default items)
+       because a Package.appxmanifest in the project folder would make every Windows build an MSIX. Identity = VoiceType.WinUI's. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100' and '$(VoiceTypeMsix)' == 'true'">
+    <WindowsAppxManifestPath Condition="'$(WindowsAppxManifestPath)' == ''">$(MSBuildThisFileDirectory)Packaging\Windows\Package.appxmanifest</WindowsAppxManifestPath>
+    <WindowsPackageType>MSIX</WindowsPackageType>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <AppxBundle>Never</AppxBundle>
+    <!-- The Store re-signs the package; a local install signs it with the dev certificate (build-store-msix.ps1 -Sign). -->
+    <AppxPackageSigningEnabled Condition="'$(AppxPackageSigningEnabled)' == ''">false</AppxPackageSigningEnabled>
+    <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
+    <AppxSymbolPackageEnabled>false</AppxSymbolPackageEnabled>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
     <!-- ONNX Runtime AAR declares minSdk 24 (uses APIs not available below);
          align the app's minSdk with the library instead of overrideLibrary. -->
@@ -90,7 +104,7 @@
     <!-- Single recognition library: the Nemotron, Parakeet TDT, Qwen3-ASR and VibeVoice providers
          on plain ONNX Runtime (CPU execution provider on Linux and Android). -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Providers\SpeechLib.Providers.csproj" />
-    <!-- Shared model catalog for the downloader (WinUI + Uno) -->
+    <!-- Shared model catalog and downloader (SpeechLib.ModelDownload) -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.ModelDownload\SpeechLib.ModelDownload.csproj" />
     <!-- Global hotkeys: XDG GlobalShortcuts portal on Linux (Wayland + X11) -->
     <ProjectReference Include="..\..\..\..\libraries\VoiceType.Hotkeys\VoiceType.Hotkeys.csproj" />

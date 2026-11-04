@@ -1,4 +1,5 @@
 using SpeechLib.ModelDownload;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -19,7 +20,8 @@ public static class KnownModels
     /// folder name for a custom model. "no model selected" for an empty folder.
     /// </summary>
     public static string Describe(string? folderName) =>
-        string.Equals(folderName, DefaultFolder, StringComparison.OrdinalIgnoreCase)
+        string.IsNullOrWhiteSpace(folderName) ? Loc.T("Models.Known.NoModelSelected")
+        : string.Equals(folderName, DefaultFolder, StringComparison.OrdinalIgnoreCase)
             ? DefaultTitle
             : ModelCatalog.DescribeFolder(folderName);
 }

@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Models;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services.Audio;
 
@@ -17,8 +18,7 @@ public sealed class AlsaAudioSourceFactory : IAudioSourceFactory
     {
         CaptureMode.Mic => new AlsaAudioSource(sampleRate),
         _ => throw new NotSupportedException(
-            $"Capture mode '{mode}' is not supported by the ALSA backend yet. " +
-            "Loopback capture requires a PulseAudio/PipeWire monitor source.")
+            Loc.F("Services.Audio.AlsaModeUnsupported", mode))
     };
 }
 
@@ -26,7 +26,7 @@ public sealed class AlsaAudioSourceFactory : IAudioSourceFactory
 /// Captures 16-bit PCM mono audio from the default ALSA device ("default")
 /// and pushes float32 batches into the shared <see cref="ConcurrentQueueWrapper"/>.
 /// Runs the blocking capture loop on the caller thread, exactly like the NAudio
-/// sources used by the WinUI app.
+/// sources used on Windows.
 /// </summary>
 internal sealed class AlsaAudioSource : IAudioSource
 {

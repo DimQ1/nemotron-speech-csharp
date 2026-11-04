@@ -4,6 +4,7 @@ using System.Diagnostics;
 using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Models;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services.Audio;
 
@@ -223,7 +224,7 @@ public sealed class HelperAudioSource : IAudioSource
         {
             var last = _helper.ErrorText.Split('\n').Select(l => l.Trim()).LastOrDefault(l => l.Length > 0);
             return last ?? _readError
-                ?? $"The {Name} capture helper stopped (exit code {_helper.ExitCode?.ToString() ?? "unknown"}).";
+                ?? Loc.F("Main.Capture.HelperStopped", Name, _helper.ExitCode?.ToString(Loc.Culture) ?? Loc.T("Main.Capture.ExitCodeUnknown"));
         }
 
         public void RequestStop()
@@ -374,7 +375,7 @@ public sealed class MacAudioSourceFactory : IAudioSourceFactory
     public IAudioSource Create(CaptureMode mode, int sampleRate)
     {
         var helper = FindHelper()
-            ?? throw new InvalidOperationException("The audio helper voicetype-audio is missing from VoiceType.app (Contents/MacOS).");
+            ?? throw new InvalidOperationException(Loc.T("Main.Capture.HelperMissing"));
         (string, Func<IPcmHelper>) Helper(string name) => (name, () => new ProcessPcmHelper(helper, name));
         return mode switch
         {

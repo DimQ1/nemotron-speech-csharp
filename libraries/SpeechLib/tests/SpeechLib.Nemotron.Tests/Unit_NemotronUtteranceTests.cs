@@ -1201,7 +1201,7 @@ public sealed class Unit_NemotronUtteranceTests
         var typed = new System.Text.StringBuilder();
         var snapshots = new List<string>();
 
-        // the composition of VoiceType.WinUI RecognitionService.HandleStreamingResult: finalized utterances plus the stable open one
+        // the composition of the former VoiceType.WinUI RecognitionService.HandleStreamingResult (the app was removed): finalized utterances plus the stable open one
         void Handle(StreamingResult result)
         {
             if (!string.IsNullOrEmpty(result.Final))

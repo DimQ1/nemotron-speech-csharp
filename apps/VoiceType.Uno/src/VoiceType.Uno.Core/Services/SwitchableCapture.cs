@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Models;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -202,7 +203,7 @@ public sealed class SwitchableCapture : IDisposable
                 if (started.Thread.Join(StopTimeout))
                     started.State.Dispose();
                 next.Dispose();
-                return Fallback(current.Mode, failure ?? new InvalidOperationException("The audio source stopped right after it started."));
+                return Fallback(current.Mode, failure ?? new InvalidOperationException(Loc.T("Main.Capture.StoppedAfterStart")));
             }
 
             Volatile.Write(ref _active, started);

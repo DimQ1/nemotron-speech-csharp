@@ -1,6 +1,7 @@
 <UserControl x:Class="VoiceType.Uno.Presentation.Controls.ModelStorageBlock"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:VoiceType.Uno.Presentation.Localization">
 
   <!-- The ONE "Model storage" block (Settings › History and storage, Models page): the root folder, one live line per
        model kind with its sub-folder, count and size, total + free space, and the one-line explanation. -->
@@ -25,7 +26,7 @@
       <Border Background="{ThemeResource ControlFillColorSecondaryBrush}" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
               BorderThickness="1" CornerRadius="6" Padding="10,8">
         <TextBlock x:Name="RootText" FontSize="13" TextWrapping="Wrap" IsTextSelectionEnabled="True"
-                   AutomationProperties.Name="Model storage folder" />
+                   AutomationProperties.Name="{l:Tr Key=Models.Storage.RootLabel}" />
       </Border>
       <TextBlock x:Name="SpeechLine" FontSize="13" TextWrapping="Wrap" Margin="0,4,0,0" />
       <TextBlock x:Name="LanguageLine" FontSize="13" TextWrapping="Wrap" />
@@ -40,11 +41,11 @@
         </Grid.ColumnDefinitions>
         <Button x:Name="RestartButton" MinHeight="44" MinWidth="44" HorizontalAlignment="Stretch"
                 Style="{StaticResource AccentButtonStyle}" Click="Restart_Click"
-                AutomationProperties.Name="Restart now">
+                AutomationProperties.Name="{l:Tr Key=Models.Storage.RestartNowName}">
           <TextBlock x:Name="RestartLabel" TextWrapping="Wrap" TextAlignment="Center" />
         </Button>
         <Button x:Name="DontMoveButton" Grid.Column="1" MinHeight="44" MinWidth="44" HorizontalAlignment="Stretch"
-                Click="DontMove_Click" AutomationProperties.Name="Don't move">
+                Click="DontMove_Click" AutomationProperties.Name="{l:Tr Key=Models.Storage.DontMoveName}">
           <TextBlock x:Name="DontMoveLabel" TextWrapping="Wrap" TextAlignment="Center" />
         </Button>
       </Grid>
@@ -54,12 +55,12 @@
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Button x:Name="OpenFolderButton" MinHeight="44" MinWidth="44" HorizontalAlignment="Stretch"
-                Click="OpenFolder_Click" AutomationProperties.Name="Open the model storage folder">
+                Click="OpenFolder_Click" AutomationProperties.Name="{l:Tr Key=Models.Storage.OpenFolderName}">
           <TextBlock x:Name="OpenFolderLabel" TextWrapping="Wrap" TextAlignment="Center" />
         </Button>
         <Button x:Name="ChangeFolderButton" Grid.Column="1" MinHeight="44" MinWidth="44" HorizontalAlignment="Stretch"
-                Click="ChangeFolder_Click" AutomationProperties.Name="Change the model storage folder">
-          <TextBlock Text="Change folder…" TextWrapping="Wrap" TextAlignment="Center" />
+                Click="ChangeFolder_Click" AutomationProperties.Name="{l:Tr Key=Models.Storage.ChangeFolderName}">
+          <TextBlock Text="{l:Tr Key=Models.Storage.ChangeFolder}" TextWrapping="Wrap" TextAlignment="Center" />
         </Button>
       </Grid>
     </StackPanel>

@@ -6,7 +6,7 @@ namespace SpeechLib.ModelFormats;
 /// ONNX Runtime GenAI export format the models are published in) and
 /// Parakeet TDT exports (<c>config.json</c> with <c>model_type:
 /// "nemo-conformer-tdt"</c>), plus regular and manifest-based Qwen3-ASR ONNX
-/// packages. Shared by the WinUI and Uno settings screens and the model path
+/// packages. Shared by the Uno settings screens and the model path
 /// resolver so all of them detect the same folders.
 /// </summary>
 public static class ModelFolderScanner

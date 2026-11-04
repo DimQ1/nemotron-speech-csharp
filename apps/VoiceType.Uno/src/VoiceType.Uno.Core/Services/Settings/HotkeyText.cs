@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.Services;
 
 /// <summary>The three global shortcuts of the app.</summary>
@@ -6,33 +8,42 @@ public enum HotkeyAction { ToggleRecording, ToggleMute, InjectText }
 /// <summary>Shortcut names, key chips, chord validation and the registration-error texts (design §3.3, hotkeys screens).</summary>
 public static class HotkeyText
 {
-    public const string Help = "Select a field and press the new combination. Esc clears it. Shortcuts need at least one of Ctrl, Alt or Win.";
-    public const string RecordingPrompt = "Press keys… Esc clears";
+    public static string Help => Loc.T("Settings.Hotkeys.Help");
+    public static string RecordingPrompt => Loc.T("Settings.Hotkeys.RecordingPrompt");
+
+    /// <summary>
+    /// The English text of <see cref="NeedsModifierText"/>, kept a constant because test attributes need one; the screen shows
+    /// <see cref="NeedsModifierText"/> (what <see cref="Validate"/> returns).
+    /// </summary>
     public const string NeedsModifier = "A shortcut needs at least one of Ctrl, Alt or Win.";
-    public const string NoShortcut = "No shortcut";
+
+    /// <summary>The reason <see cref="Validate"/> gives for a chord without Ctrl, Alt or Win, in the interface language.</summary>
+    public static string NeedsModifierText => Loc.T("Settings.Hotkeys.NeedsModifier");
+
+    public static string NoShortcut => Loc.T("Settings.Hotkeys.NoShortcut");
 
     /// <summary>The row's second line when a shortcut could not be registered.</summary>
-    public const string NotRegistered = "Not registered";
+    public static string NotRegistered => Loc.T("Settings.Hotkeys.NotRegistered");
 
     public static string Title(HotkeyAction action) => action switch
     {
-        HotkeyAction.ToggleRecording => "Start or stop recording",
-        HotkeyAction.ToggleMute => "Mute microphone",
-        _ => "Type the transcript",
+        HotkeyAction.ToggleRecording => Loc.T("Settings.Hotkeys.ToggleRecording.Title"),
+        HotkeyAction.ToggleMute => Loc.T("Settings.Hotkeys.ToggleMute.Title"),
+        _ => Loc.T("Settings.Hotkeys.InjectText.Title"),
     };
 
     public static string Detail(HotkeyAction action) => action switch
     {
-        HotkeyAction.InjectText => "Into the focused app",
+        HotkeyAction.InjectText => Loc.T("Settings.Hotkeys.InjectText.Detail"),
         _ => "",
     };
 
     /// <summary>What an action is called inside the "has no shortcut" sentence.</summary>
     private static string ShortName(HotkeyAction action) => action switch
     {
-        HotkeyAction.ToggleRecording => "Start/stop",
-        HotkeyAction.ToggleMute => "Mute",
-        _ => "Type transcript",
+        HotkeyAction.ToggleRecording => Loc.T("Settings.Hotkeys.ToggleRecording.Short"),
+        HotkeyAction.ToggleMute => Loc.T("Settings.Hotkeys.ToggleMute.Short"),
+        _ => Loc.T("Settings.Hotkeys.InjectText.Short"),
     };
 
     public static string Chord(AppSettings settings, HotkeyAction action) => (action switch
@@ -82,7 +93,7 @@ public static class HotkeyText
             k.Equals("Ctrl", StringComparison.OrdinalIgnoreCase)
             || k.Equals("Alt", StringComparison.OrdinalIgnoreCase)
             || k.Equals("Win", StringComparison.OrdinalIgnoreCase));
-        return hasModifier ? null : NeedsModifier;
+        return hasModifier ? null : NeedsModifierText;
     }
 
     /// <summary>The other action that already has this chord, else null.</summary>
@@ -96,7 +107,7 @@ public static class HotkeyText
         return null;
     }
 
-    public static string DuplicateMessage(string chord, HotkeyAction other) => $"{chord} is already used for “{Title(other)}”.";
+    public static string DuplicateMessage(string chord, HotkeyAction other) => Loc.F("Settings.Hotkeys.Duplicate", chord, Title(other));
 
     /// <summary>
     /// The banner after a registration failure: <c>Ctrl+Shift+M is taken by another app. Mute has no shortcut until you choose a
@@ -109,11 +120,11 @@ public static class HotkeyText
         var chords = string.Join(", ", failed.Select(f => f.Chord));
         var names = string.Join(", ", failed.Select(f => ShortName(f.Action)));
         return failed.Count == 1
-            ? $"{chords} is taken by another app. {names} has no shortcut until you choose a different one."
-            : $"{chords} are taken by other apps. {names} have no shortcut until you choose different ones.";
+            ? Loc.F("Settings.Hotkeys.ConflictOne", chords, names)
+            : Loc.F("Settings.Hotkeys.ConflictMany", chords, names);
     }
 
     /// <summary>The Keyboard shortcuts line in the hub: <c>Ctrl+Shift+V starts and stops</c>.</summary>
     public static string Summary(AppSettings settings) =>
-        string.IsNullOrWhiteSpace(settings.ToggleHotkey) ? "No shortcut to start and stop" : settings.ToggleHotkey.Trim() + " starts and stops";
+        string.IsNullOrWhiteSpace(settings.ToggleHotkey) ? Loc.T("Settings.Hotkeys.SummaryNone") : Loc.F("Settings.Hotkeys.Summary", settings.ToggleHotkey.Trim());
 }

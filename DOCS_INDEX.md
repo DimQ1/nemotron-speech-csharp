@@ -11,20 +11,18 @@ Quick navigation for the most important project documents.
 
 ## Store publishing
 
-- Store submission guide: [VoiceType.WinUI/StoreSubmissionGuide.md](apps/VoiceType.WinUI/src/VoiceType.WinUI/StoreSubmissionGuide.md)
+- Store release runbook of the Uno app (replaces VoiceType.WinUI under the same identity): [docs/store/uno-store-release.md](docs/store/uno-store-release.md)
+- Store MSIX build script: [apps/VoiceType.Uno/src/VoiceType.Uno/build-store-msix.ps1](apps/VoiceType.Uno/src/VoiceType.Uno/build-store-msix.ps1)
 - Store CSV imports (all): [docs/store/imports](docs/store/imports)
 - EN/RU full import template: [docs/store/imports/listingData-store-import-v1.1.29-en-ru-full-template.csv](docs/store/imports/listingData-store-import-v1.1.29-en-ru-full-template.csv)
 - EN/RU compact import template: [docs/store/imports/listingData-store-import-v1.1.29-en-ru.csv](docs/store/imports/listingData-store-import-v1.1.29-en-ru.csv)
 - Multilang import template: [docs/store/imports/listingData-store-import-v1.1.29-multilang.csv](docs/store/imports/listingData-store-import-v1.1.29-multilang.csv)
 - Certification artifacts: [docs/store/certification](docs/store/certification)
 
-## WinUI app
+## Uno app
 
-- App-level technical README: [VoiceType.WinUI/README.md](apps/VoiceType.WinUI/src/VoiceType.WinUI/README.md)
-- Local dev MSIX build/install scripts:
-  - [VoiceType.WinUI/build-dev.ps1](apps/VoiceType.WinUI/src/VoiceType.WinUI/build-dev.ps1)
-  - [VoiceType.WinUI/install-dev.ps1](apps/VoiceType.WinUI/src/VoiceType.WinUI/install-dev.ps1)
-- Store release packaging script: [VoiceType.WinUI/build-store-release.ps1](apps/VoiceType.WinUI/src/VoiceType.WinUI/build-store-release.ps1)
+- App README (status, heads, build and run): [apps/VoiceType.Uno/README.md](apps/VoiceType.Uno/README.md)
+- The former VoiceType.WinUI app was removed; the Uno app replaced it, also in the Microsoft Store.
 
 ## Research and plans
 

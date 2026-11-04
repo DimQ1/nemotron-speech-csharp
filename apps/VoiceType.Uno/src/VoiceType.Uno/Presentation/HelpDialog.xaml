@@ -1,105 +1,50 @@
 <ContentDialog x:Class="VoiceType.Uno.Presentation.HelpDialog"
                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-               Title="VoiceType — Help"
-               CloseButtonText="Close"
+               xmlns:l="using:VoiceType.Uno.Presentation.Localization"
+               Title="{l:Tr Key=Help.Title}"
+               CloseButtonText="{l:Tr Key=Help.Close}"
                DefaultButton="Close">
   <ScrollViewer MaxHeight="560" VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="12" Padding="4">
 
       <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
         <StackPanel Spacing="6">
-          <TextBlock Text="Getting started" FontWeight="SemiBold" />
-          <TextBlock TextWrapping="Wrap">
-            <Run Text="1. On first start the recommended speech model downloads automatically." />
-            <LineBreak />
-            <Run Text="2. Tap the round " />
-            <Run Text="Record" FontWeight="SemiBold" />
-            <Run Text=" button at the bottom and speak — the transcript appears live. Recording " />
-            <Run Text="continues until you tap the button again; there is no need to hold it." />
-            <LineBreak />
-            <Run Text="3. Open the menu " />
-            <Run Text="≡" FontWeight="SemiBold" />
-            <Run Text=" (top left) to switch modes — " />
-            <Run Text="Inject text" FontWeight="SemiBold" />
-            <Run Text=" types each final phrase into the focused window, " />
-            <Run Text="Live translation" FontWeight="SemiBold" />
-            <Run Text=" adds a translation card, " />
-            <Run Text="Manual input" FontWeight="SemiBold" />
-            <Run Text=" lets you type or edit the transcript." />
-            <LineBreak />
-            <Run Text="4. The menu also holds the recognition language, speech models, downloads and " />
-            <Run Text="Settings" FontWeight="SemiBold" />
-            <Run Text="— the line under the title shows the active model and modes." />
-          </TextBlock>
+          <TextBlock Text="{l:Tr Key=Help.Start.Title}" FontWeight="SemiBold" />
+          <!-- Help.Start.Body: **bold**, *italic*, \n = line break (HelpDialog.xaml.cs) -->
+          <TextBlock x:Name="StartBody" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
 
       <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
         <StackPanel Spacing="6">
-          <TextBlock Text="Global hotkey" FontWeight="SemiBold" />
-          <TextBlock TextWrapping="Wrap">
-            <Run Text="The default toggle hotkey is " />
-            <Run Text="Ctrl+Shift+V" FontWeight="SemiBold" />
-            <Run Text=". On Linux it is registered through the XDG GlobalShortcuts portal " />
-            <Run Text="(xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+); the compositor " />
-            <Run Text="shows a one-time consent dialog. On desktops without portal support the " />
-            <Run Text="hotkey is reported as unavailable." />
-          </TextBlock>
+          <TextBlock Text="{l:Tr Key=Help.Hotkey.Title}" FontWeight="SemiBold" />
+          <!-- Help.Hotkey.Body: **bold**, *italic*, \n = line break (HelpDialog.xaml.cs) -->
+          <TextBlock x:Name="HotkeyBody" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
 
       <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
         <StackPanel Spacing="6">
-          <TextBlock Text="Text injection on Linux" FontWeight="SemiBold" />
-          <TextBlock TextWrapping="Wrap">
-            <Run Text="Injection sets the clipboard, then synthesizes the paste chord " />
-            <Run Text="(Ctrl+V by default — configurable in Settings) into the focused window." />
-            <LineBreak />
-            <LineBreak />
-            <Run Text="Required tools (install one per pair):" FontWeight="SemiBold" />
-            <LineBreak />
-            <Run Text="• Clipboard: wl-copy (Wayland) or xclip / xsel (X11)" />
-            <LineBreak />
-            <Run Text="• Keyboard: ydotool (Wayland, needs ydotoold) or libXtst / xdotool (X11)" />
-            <LineBreak />
-            <LineBreak />
-            <Run Text="Ubuntu: " />
-            <Run Text="sudo apt install wl-clipboard xclip xdotool" FontStyle="Italic" />
-          </TextBlock>
+          <TextBlock Text="{l:Tr Key=Help.LinuxInjection.Title}" FontWeight="SemiBold" />
+          <!-- Help.LinuxInjection.Body: **bold**, *italic*, \n = line break (HelpDialog.xaml.cs) -->
+          <TextBlock x:Name="LinuxInjectionBody" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
 
       <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
         <StackPanel Spacing="6">
-          <TextBlock Text="Audio capture" FontWeight="SemiBold" />
-          <TextBlock TextWrapping="Wrap">
-            <Run Text="Capture goes through the PulseAudio-compatible server " />
-            <Run Text="(PipeWire desktop setups and WSLg both provide one)." />
-            <LineBreak />
-            <Run Text="• Mic — default input source" />
-            <LineBreak />
-            <Run Text="• Loopback — monitor of the default output (" />
-            <Run Text="@DEFAULT_MONITOR@" FontStyle="Italic" />
-            <Run Text=")" />
-            <LineBreak />
-            <Run Text="• Mix — both, merged 50/50" />
-          </TextBlock>
+          <TextBlock Text="{l:Tr Key=Help.Audio.Title}" FontWeight="SemiBold" />
+          <!-- Help.Audio.Body: **bold**, *italic*, \n = line break (HelpDialog.xaml.cs) -->
+          <TextBlock x:Name="AudioBody" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
 
       <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" Padding="12">
         <StackPanel Spacing="6">
-          <TextBlock Text="Data locations" FontWeight="SemiBold" />
-          <TextBlock TextWrapping="Wrap">
-            <Run Text="• Settings: " />
-            <Run Text="~/.local/share/VoiceType/settings.json" FontStyle="Italic" />
-            <LineBreak />
-            <Run Text="• Models: " />
-            <Run Text="~/.local/share/VoiceType/models/" FontStyle="Italic" />
-            <LineBreak />
-            <Run Text="(on Windows these resolve under %LOCALAPPDATA%\VoiceType)" />
-          </TextBlock>
+          <TextBlock Text="{l:Tr Key=Help.Data.Title}" FontWeight="SemiBold" />
+          <!-- Help.Data.Body: **bold**, *italic*, \n = line break (HelpDialog.xaml.cs) -->
+          <TextBlock x:Name="DataBody" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
 

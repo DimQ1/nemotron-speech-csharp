@@ -3,6 +3,7 @@ using System.Text;
 using SpeechLib.Agents;
 using SpeechLib.Llm;
 using SpeechLib.Translation;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -46,7 +47,7 @@ public static class GemmaJobs
         {
             var waiting = status.RunningPriority is LlmPriority.Live or LlmPriority.Interactive;
             sink.Detail(waiting
-                ? status.Detail ?? (status.RunningPriority == LlmPriority.Live ? "Waiting for live translation" : "Waiting for a chat answer")
+                ? status.Detail ?? (status.RunningPriority == LlmPriority.Live ? Loc.T("Recording.Jobs.WaitingLive") : Loc.T("Recording.Jobs.WaitingChat"))
                 : null);
         }
 
@@ -67,7 +68,7 @@ public static class GemmaJobs
     internal static void EnsureAvailable(ILlmHost? host)
     {
         if (host is null || !host.IsModelInstalled)
-            throw new LlmUnavailableException("The Gemma model is not installed. Download it on the Models page, then retry.");
+            throw new LlmUnavailableException(Loc.T("Recording.Jobs.GemmaMissing"));
     }
 }
 
@@ -89,14 +90,14 @@ public sealed class TranslateJobWorker
     public async Task<string?> RunAsync(HistoryJob job, IJobProgressSink sink, CancellationToken cancellationToken)
     {
         GemmaJobs.EnsureAvailable(_host);
-        var entry = _store.Get(job.RecordingId) ?? throw new InvalidOperationException("The recording no longer exists.");
+        var entry = _store.Get(job.RecordingId) ?? throw new InvalidOperationException(Loc.T("Recording.Jobs.RecordingGone"));
         var manifest = entry.Manifest;
         var versionId = job.Parameters.SourceVersion ?? manifest.CurrentVersion
-            ?? throw new InvalidOperationException("The recording has no transcript to translate.");
+            ?? throw new InvalidOperationException(Loc.T("Recording.Jobs.NoTranscriptToTranslate"));
         var version = manifest.FindVersion(versionId)
-            ?? throw new InvalidOperationException($"Transcript {versionId} no longer exists.");
+            ?? throw new InvalidOperationException(Loc.F("Recording.Jobs.TranscriptGone", versionId));
         var code = TranslationLanguageCodes.Normalize(job.Parameters.TargetLanguage)
-            ?? throw new InvalidOperationException("No target language was chosen.");
+            ?? throw new InvalidOperationException(Loc.T("Recording.Jobs.NoTargetLanguage"));
 
         var transcript = _store.LoadTranscript(job.RecordingId, versionId);
         var existing = manifest.Translations.FirstOrDefault(t =>
@@ -188,9 +189,9 @@ public sealed class AutoTitleJobWorker
     public async Task<string?> RunAsync(HistoryJob job, IJobProgressSink sink, CancellationToken cancellationToken)
     {
         GemmaJobs.EnsureAvailable(_host);
-        var manifest = (_store.Get(job.RecordingId) ?? throw new InvalidOperationException("The recording no longer exists.")).Manifest;
+        var manifest = (_store.Get(job.RecordingId) ?? throw new InvalidOperationException(Loc.T("Recording.Jobs.RecordingGone"))).Manifest;
         if (manifest.State == RecordingStates.Recording)
-            throw new InvalidOperationException("The recording is still being recorded.");
+            throw new InvalidOperationException(Loc.T("Recording.Jobs.StillRecording"));
 
         var regenerate = job.Parameters.Regenerate == true;
         // A title the user typed, or one Gemma already wrote, is left alone unless asked for explicitly.
@@ -255,11 +256,11 @@ public sealed class SummarizeJobWorker
     public async Task<string?> RunAsync(HistoryJob job, IJobProgressSink sink, CancellationToken cancellationToken)
     {
         GemmaJobs.EnsureAvailable(_host);
-        var manifest = (_store.Get(job.RecordingId) ?? throw new InvalidOperationException("The recording no longer exists.")).Manifest;
+        var manifest = (_store.Get(job.RecordingId) ?? throw new InvalidOperationException(Loc.T("Recording.Jobs.RecordingGone"))).Manifest;
         var versionId = job.Parameters.SourceVersion ?? manifest.CurrentVersion
-            ?? throw new InvalidOperationException("The recording has no transcript.");
+            ?? throw new InvalidOperationException(Loc.T("Recording.Jobs.NoTranscript"));
         if (manifest.FindVersion(versionId) is null)
-            throw new InvalidOperationException($"Transcript {versionId} no longer exists.");
+            throw new InvalidOperationException(Loc.F("Recording.Jobs.TranscriptGone", versionId));
 
         using var watch = GemmaJobs.WatchHost(_host, sink);
         var summarizer = new MapReduceSummarizer(_host, new AnalysisSummaryStore(_store, _time), LlmPriority.Background);

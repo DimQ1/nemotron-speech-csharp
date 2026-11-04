@@ -69,7 +69,7 @@ internal static class ChatServices
         }
         catch (Exception ex)
         {
-            await HistoryDialogs.ShowMessageAsync(root, "Could not start the chat", ex.Message);
+            await HistoryDialogs.ShowMessageAsync(root, VoiceType.Uno.Localization.Loc.T("Chat.Error.StartFailed"), ex.Message);
             return false;
         }
     }

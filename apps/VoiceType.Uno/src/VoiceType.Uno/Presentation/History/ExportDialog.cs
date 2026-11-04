@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml.Automation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 
@@ -37,10 +38,10 @@ internal sealed partial class ExportDialog : ContentDialog
         _audioPath = audioPath;
         _audioBytes = audioBytes;
 
-        Title = "Export";
-        PrimaryButtonText = "Save to…";
-        SecondaryButtonText = "Quick save";
-        CloseButtonText = "Cancel";
+        Title = Loc.T("History.Export.Title");
+        PrimaryButtonText = Loc.T("History.Export.SaveTo");
+        SecondaryButtonText = Loc.T("History.Export.QuickSave");
+        CloseButtonText = Loc.T("History.Dialog.Cancel");
         DefaultButton = ContentDialogButton.Primary;
 
         var panel = new StackPanel { Spacing = 8, MaxWidth = 460 };
@@ -52,7 +53,7 @@ internal sealed partial class ExportDialog : ContentDialog
             TextWrapping = TextWrapping.Wrap,
         });
 
-        _text = Option("Transcript with timestamps (.txt)", "[00:03:20] text, one line per segment", isChecked: true);
+        _text = Option(Loc.T("History.Export.Text"), Loc.T("History.Export.TextDetail"), isChecked: true);
         panel.Children.Add(_text);
 
         _withTranslation = new ToggleSwitch { OnContent = "", OffContent = "", MinWidth = 0, MinHeight = 44 };
@@ -60,10 +61,10 @@ internal sealed partial class ExportDialog : ContentDialog
         translationRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         translationRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var language = translationInfo?.TargetLanguage.ToUpperInvariant() ?? "";
-        translationRow.Children.Add(Label($"Add the {language} translation", "Under each line of .txt and .srt"));
+        translationRow.Children.Add(Label(Loc.F("History.Export.Translation", language), Loc.T("History.Export.TranslationDetail")));
         Grid.SetColumn(_withTranslation, 1);
         translationRow.Children.Add(_withTranslation);
-        AutomationProperties.SetName(_withTranslation, "Add the translation");
+        AutomationProperties.SetName(_withTranslation, Loc.T("History.Export.TranslationName"));
         translationRow.Visibility = translation is null ? Visibility.Collapsed : Visibility.Visible;
         panel.Children.Add(translationRow);
 
@@ -73,17 +74,17 @@ internal sealed partial class ExportDialog : ContentDialog
         var speakerRow = new Grid { ColumnSpacing = 12, MinHeight = 44 };
         speakerRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         speakerRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        speakerRow.Children.Add(Label("Include speaker names", "Anna: … in front of each line of .txt, .srt and .lrc"));
+        speakerRow.Children.Add(Label(Loc.T("History.Export.Speakers"), Loc.T("History.Export.SpeakersDetail")));
         Grid.SetColumn(_speakerNames, 1);
         speakerRow.Children.Add(_speakerNames);
-        AutomationProperties.SetName(_speakerNames, "Include speaker names");
+        AutomationProperties.SetName(_speakerNames, Loc.T("History.Export.Speakers"));
         speakerRow.Visibility = layer is null ? Visibility.Collapsed : Visibility.Visible;
         panel.Children.Add(speakerRow);
 
         var audioDetail = audioPath is null
-            ? "No audio: it was not recorded or was removed by the retention rule"
-            : $"{Path.GetExtension(audioPath).TrimStart('.').ToUpperInvariant()} audio ({HistoryUiFormat.Bytes(audioBytes)}) + .lrc (music players) + .srt (video players, VLC)";
-        _audio = Option("Audio for media players", audioDetail, isChecked: audioPath is not null);
+            ? Loc.T("History.Export.NoAudio")
+            : Loc.F("History.Export.AudioDetail", Path.GetExtension(audioPath).TrimStart('.').ToUpperInvariant(), HistoryUiFormat.Bytes(audioBytes));
+        _audio = Option(Loc.T("History.Export.Audio"), audioDetail, isChecked: audioPath is not null);
         _audio.IsEnabled = audioPath is not null;
         panel.Children.Add(_audio);
 
@@ -91,7 +92,7 @@ internal sealed partial class ExportDialog : ContentDialog
         panel.Children.Add(_summary);
         panel.Children.Add(new TextBlock
         {
-            Text = "Quick save writes to " + DocumentsFolder(),
+            Text = Loc.F("History.Export.QuickSaveHint", DocumentsFolder()),
             FontSize = 11,
             Opacity = 0.6,
             TextWrapping = TextWrapping.Wrap,
@@ -188,12 +189,12 @@ internal sealed partial class ExportDialog : ContentDialog
                 await Task.Run(() => WriteToDirectory(dir, files));
                 where = dir;
             }
-            await HistoryDialogs.ShowMessageAsync(xamlRoot, "Exported",
-                $"{HistoryUiFormat.Count(files.Count, "file")} saved to {where}:\n" + string.Join("\n", files.Select(f => f.FileName)));
+            await HistoryDialogs.ShowMessageAsync(xamlRoot, Loc.T("History.Export.Done"),
+                Loc.Plural("History.Export.Saved", files.Count, where) + "\n" + string.Join("\n", files.Select(f => f.FileName)));
         }
         catch (Exception ex)
         {
-            await HistoryDialogs.ShowMessageAsync(xamlRoot, "Export failed", ex.Message);
+            await HistoryDialogs.ShowMessageAsync(xamlRoot, Loc.T("History.Export.Failed"), ex.Message);
         }
     }
 

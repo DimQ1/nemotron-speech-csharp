@@ -1,5 +1,6 @@
 using SpeechLib.Llm;
 using SpeechLib.ModelDownload;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -104,9 +105,9 @@ public sealed class LlmModelService : ILlmModelService, IDisposable
     {
         ArgumentNullException.ThrowIfNull(model);
         if (!model.IsInstalled)
-            throw new InvalidOperationException($"{model.Title} is not downloaded.");
+            throw new InvalidOperationException(Loc.F("Models.Error.NotDownloaded", model.Title));
         if (OperatingSystem.IsAndroid() && !model.PhoneSupported)
-            throw new InvalidOperationException($"{model.Title} is too large for a phone.");
+            throw new InvalidOperationException(Loc.F("Models.Error.TooLargeForPhone", model.Title));
 
         await _switchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -153,7 +154,7 @@ public sealed class LlmModelService : ILlmModelService, IDisposable
     {
         ArgumentNullException.ThrowIfNull(model);
         if (SameModel(model, Active))
-            throw new InvalidOperationException($"{model.Title} is the active model; switch to another model first.");
+            throw new InvalidOperationException(Loc.F("Models.Error.ActiveModel", model.Title));
 
         CancelDownload(model);
         DeleteFiles(model);
@@ -175,7 +176,7 @@ public sealed class LlmModelService : ILlmModelService, IDisposable
         ArgumentNullException.ThrowIfNull(model);
         return new ModelDownloadRequest(
             LlmModelCatalog.DownloadKey(model),
-            $"Language model · {model.Title}",
+            Loc.F("Models.Downloads.LanguageModelJob", model.Title),
             model.RepoId,
             Path.GetDirectoryName(model.LocalPath) ?? ModelStorageLayout.Current.LlmDir)
         {

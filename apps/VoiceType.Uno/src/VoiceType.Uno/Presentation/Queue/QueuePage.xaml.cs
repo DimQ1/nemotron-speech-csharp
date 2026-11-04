@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services.Jobs;
 using Windows.System;
 
@@ -70,23 +71,23 @@ public sealed partial class QueuePage : Page
 
         if (!card.IsRunning)
         {
-            Add("Run now", card.CanRunNow, () => card.RunNowCommand.Execute(null));
-            Add("Move up", card.CanMoveUp, card.MoveUp);
-            Add("Move down", card.CanMoveDown, card.MoveDown);
+            Add(Loc.T("Queue.Menu.RunNow"), card.CanRunNow, () => card.RunNowCommand.Execute(null));
+            Add(Loc.T("Queue.Menu.MoveUp"), card.CanMoveUp, card.MoveUp);
+            Add(Loc.T("Queue.Menu.MoveDown"), card.CanMoveDown, card.MoveDown);
         }
         if (card.CanResume)
-            Add("Resume", true, () => card.ResumeCommand.Execute(null));
+            Add(Loc.T("Queue.Menu.Resume"), true, () => card.ResumeCommand.Execute(null));
         if (card.IsRunning || card.CanPause)
-            Add("Pause", true, () => card.PauseCommand.Execute(null));
+            Add(Loc.T("Queue.Menu.Pause"), true, () => card.PauseCommand.Execute(null));
         if (card.CanRetry)
-            Add("Retry", true, () => card.RetryCommand.Execute(null));
+            Add(Loc.T("Queue.Menu.Retry"), true, () => card.RetryCommand.Execute(null));
         if (card.CanCancel)
         {
             menu.Items.Add(new MenuFlyoutSeparator());
             Add(card.CancelLabel, true, () => card.CancelCommand.Execute(null));
         }
         if (menu.Items.Count == 0)
-            Add("No actions", false, static () => { });
+            Add(Loc.T("Queue.Menu.NoActions"), false, static () => { });
 
         menu.ShowAt(anchor, new FlyoutShowOptions { Placement = FlyoutPlacementMode.BottomEdgeAlignedRight });
     }

@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using SpeechLib.AudioStorage;
 using VoiceType.Uno.History;
 using AppInfo = VoiceType.Uno.History.AppInfo;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -78,7 +79,7 @@ public sealed class LiveRecordingSession : IRecognitionTap
     public bool UserTouched { get; set; }
 
     /// <summary>Set when audio could not be started; the session records text only.</summary>
-    public string? AudioWarning => _audioError is null ? null : $"Audio is not being saved ({_audioError.Message}); the text will be.";
+    public string? AudioWarning => _audioError is null ? null : Loc.F("Services.LiveRecording.AudioNotSaved", _audioError.Message);
 
     /// <summary>
     /// Creates the recording folder and opens the audio writer. Synchronous file I/O:
@@ -241,7 +242,7 @@ public sealed class LiveRecordingSession : IRecognitionTap
             // Retention runs again at the next start and after the next save.
         }
 
-        var warning = _audioError is null ? null : $"Saved to History without audio: {_audioError.Message}";
+        var warning = _audioError is null ? null : Loc.F("Services.LiveRecording.SavedWithoutAudio", _audioError.Message);
         return new LiveRecordingOutcome(RecordingId, warning);
     }
 

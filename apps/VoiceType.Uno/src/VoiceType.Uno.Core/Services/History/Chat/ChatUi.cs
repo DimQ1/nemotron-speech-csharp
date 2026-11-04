@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -65,13 +66,13 @@ public sealed record ChatOutdatedNotice(string RecordingId, string Text, bool Ca
 
 public static class ChatUiFormat
 {
-    public const string Subtitle = "Gemma 4 E2B on this device";
+    public static string Subtitle => Loc.T("Chat.Subtitle");
 
     /// <summary>Longest recording title shown inside a citation chip.</summary>
     public const int CitationTitleMax = 24;
 
     public static string SourcesSummary(int count) =>
-        count == 0 ? "No recordings" : HistoryUiFormat.Count(count, "recording");
+        count == 0 ? Loc.T("Chat.Sources.None") : Loc.Plural("Chat.Sources.Count", count);
 
     /// <summary><c>Weekly sync v2, Supplier call v1, +2</c> (first names, then a count).</summary>
     public static string SourcesLine(IReadOnlyList<(string Title, string VersionId)> sources, int maxNames = 2)
@@ -89,19 +90,29 @@ public static class ChatUiFormat
     {
         ArgumentNullException.ThrowIfNull(chat);
         return HistoryUiFormat.Join(SourcesSummary(chat.Sources.Count),
-            HistoryUiFormat.Count(CountMessages(chat), "message"), "on this device");
+            Loc.Plural("Chat.Messages.Count", CountMessages(chat)), Loc.T("Chat.Header.OnDevice"));
     }
 
     /// <summary>Chats list header: <c>5 chats · Gemma 4 E2B on this device</c>.</summary>
     public static string ListSubtitle(int chats) =>
-        chats == 0 ? "No chats yet · " + Subtitle : HistoryUiFormat.Count(chats, "chat") + " · " + Subtitle;
+        chats == 0 ? Loc.F("Chat.List.SubtitleEmpty", Subtitle) : Loc.Plural("Chat.List.Subtitle", chats, Subtitle);
 
     /// <summary>Menu entry second line.</summary>
-    public static string MenuSummary(int chats) => chats switch
+    public static string MenuSummary(int chats) =>
+        chats == 0 ? Loc.T("Chat.MainMenu.Empty") : Loc.Plural("Chat.MainMenu.Count", chats);
+
+    /// <summary>
+    /// Label of a quick prompt in the interface language. The labels come from SpeechLib (<c>ChatPrompts</c>, English);
+    /// the known ids are translated here, an unknown one keeps its label. The prompt text sent to Gemma stays English.
+    /// </summary>
+    public static string QuickPromptLabel(string id, string label) => id switch
     {
-        0 => "Ask Gemma across recordings",
-        1 => "1 chat",
-        _ => chats.ToString(CultureInfo.InvariantCulture) + " chats",
+        "summary" => Loc.T("Chat.QuickPrompt.Summary"),
+        "actions" => Loc.T("Chat.QuickPrompt.Actions"),
+        "decisions" => Loc.T("Chat.QuickPrompt.Decisions"),
+        "questions" => Loc.T("Chat.QuickPrompt.Questions"),
+        "speakers" => Loc.T("Chat.QuickPrompt.Speakers"),
+        _ => label,
     };
 
     /// <summary>User and assistant messages (events are not counted).</summary>
@@ -113,10 +124,10 @@ public static class ChatUiFormat
     public static string ContextLine(IReadOnlyList<(string VersionId, double DurationSeconds)> sources) =>
         sources.Count switch
         {
-            0 => "Add a recording to continue",
-            1 => HistoryUiFormat.Join("Reads transcript " + sources[0].VersionId,
+            0 => Loc.T("Chat.Context.AddRecording"),
+            1 => HistoryUiFormat.Join(Loc.F("Chat.Context.ReadsTranscript", sources[0].VersionId),
                 sources[0].DurationSeconds > 0 ? HistoryUiFormat.Duration(sources[0].DurationSeconds) : null),
-            _ => "Reads a summary of each recording + the passages closest to your question",
+            _ => Loc.T("Chat.Context.ReadsSummaries"),
         };
 
     /// <summary><c>Weekly sync 03:20</c>; a deleted recording reads <c>Deleted recording 03:20</c>.</summary>
@@ -125,7 +136,7 @@ public static class ChatUiFormat
         ArgumentNullException.ThrowIfNull(citation);
         ArgumentNullException.ThrowIfNull(titleOf);
         var title = titleOf(citation.RecordingId);
-        title = string.IsNullOrWhiteSpace(title) ? "Deleted recording" : Shorten(title.Trim(), CitationTitleMax);
+        title = string.IsNullOrWhiteSpace(title) ? Loc.T("Chat.Citation.DeletedRecording") : Shorten(title.Trim(), CitationTitleMax);
         var time = HistoryUiFormat.SegmentTime(citation.StartSec);
         if (string.IsNullOrWhiteSpace(speakerOverride ?? citation.Speaker))
             return title + " " + time;
@@ -147,11 +158,11 @@ public static class ChatUiFormat
         ArgumentNullException.ThrowIfNull(titleOf);
         var who = chat.Sources.Count switch
         {
-            0 => "No recordings",
-            1 => Shorten(titleOf(chat.Sources[0].RecordingId)?.Trim() is { Length: > 0 } t ? t : "Deleted recording", 28),
-            var n => HistoryUiFormat.Count(n, "recording"),
+            0 => Loc.T("Chat.Sources.None"),
+            1 => Shorten(titleOf(chat.Sources[0].RecordingId)?.Trim() is { Length: > 0 } t ? t : Loc.T("Chat.Citation.DeletedRecording"), 28),
+            var n => Loc.Plural("Chat.Sources.Count", n),
         };
-        return HistoryUiFormat.Join(who, HistoryUiFormat.Count(CountMessages(chat), "message"),
+        return HistoryUiFormat.Join(who, Loc.Plural("Chat.Messages.Count", CountMessages(chat)),
             WhenText(chat.UpdatedAt, now));
     }
 
@@ -161,14 +172,14 @@ public static class ChatUiFormat
         var local = value.ToOffset(now.Offset);
         return HistoryUiRows.GroupOf(value, now) switch
         {
-            HistoryDateGroup.Today => local.ToString("HH:mm", CultureInfo.InvariantCulture),
-            HistoryDateGroup.Yesterday => "Yesterday",
-            _ => local.ToString(local.Year == now.Year ? "d MMM" : "d MMM yyyy", CultureInfo.InvariantCulture),
+            HistoryDateGroup.Today => local.ToString("HH:mm", Loc.Culture),
+            HistoryDateGroup.Yesterday => Loc.T("Chat.When.Yesterday"),
+            _ => local.ToString(local.Year == now.Year ? "d MMM" : "d MMM yyyy", Loc.Culture),
         };
     }
 
     public static string DisplayTitle(ChatRecord chat) =>
-        string.IsNullOrWhiteSpace(chat.Title) ? "Chat" : chat.Title.Trim();
+        string.IsNullOrWhiteSpace(chat.Title) ? Loc.T("Chat.Title.Default") : chat.Title.Trim();
 
     /// <summary>Last answer (or question) of a chat on one line, for the list.</summary>
     public static string LastLine(ChatRecord chat, int maxChars = 140)
@@ -208,12 +219,12 @@ public static class ChatUiFormat
         {
             return finish.GetString() switch
             {
-                "length" => "Answer cut off · too long",
-                "error" => "Answer incomplete · an error occurred",
-                _ => "Stopped · answer incomplete",
+                "length" => Loc.T("Chat.Incomplete.Length"),
+                "error" => Loc.T("Chat.Incomplete.Error"),
+                _ => Loc.T("Chat.Incomplete.Stopped"),
             };
         }
-        return "Stopped · answer incomplete";
+        return Loc.T("Chat.Incomplete.Stopped");
     }
 
     /// <summary>Case- and diacritics-insensitive filter: every word must be in the title, a message or a source name.</summary>
@@ -259,8 +270,8 @@ public static class ChatUiThread
             items.Add(new ChatThreadItem(
                 Id: string.IsNullOrEmpty(m.Id) ? "i" + i.ToString(CultureInfo.InvariantCulture) : m.Id,
                 Kind: kind,
-                Text: m.Text.Trim(),
-                TimeText: m.CreatedAt == default ? "" : m.CreatedAt.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture),
+                Text: (isEvent ? ChatSourceEvents.DisplayText(m) : m.Text).Trim(),
+                TimeText: m.CreatedAt == default ? "" : m.CreatedAt.ToLocalTime().ToString("HH:mm", Loc.Culture),
                 ShowRoleLabel: !isEvent && previous != kind,
                 ShowTime: !isEvent && next != kind,
                 IsIncomplete: kind == ChatThreadKind.Assistant && ChatUiFormat.IsIncomplete(m),
@@ -282,7 +293,7 @@ public static class ChatUiThread
                 continue;
             var exists = titleOf(c.RecordingId) is not null;
             chips.Add(new ChatCitationChip(label, c.RecordingId, c.VersionId, c.StartSec, exists,
-                exists ? "Open " + label : label + " (recording deleted)"));
+                exists ? Loc.F("Chat.Citation.OpenName", label) : Loc.F("Chat.Citation.DeletedName", label)));
         }
         return chips;
     }
@@ -299,7 +310,7 @@ public static class ChatUiThread
             if (o.RecordingMissing)
                 continue; // a deleted recording is dropped from the sources by the store; nothing to update
             notices.Add(new ChatOutdatedNotice(o.RecordingId,
-                $"{title ?? o.RecordingId} · outdated source: answers use {o.ChatVersionId}, current is {o.CurrentVersionId}",
+                Loc.F("Chat.Outdated.Notice", title ?? o.RecordingId, o.ChatVersionId, o.CurrentVersionId),
                 CanUseCurrent: true));
         }
         return notices;

@@ -3,6 +3,7 @@ using Android.Content;
 using Android.Content.PM;
 using Android.OS;
 using AndroidX.Core.App;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.Droid;
@@ -25,7 +26,8 @@ public sealed class RecordingService : Service
     private const string WakeLockTag = "VoiceType:recording";
 
     private static readonly object s_channelGate = new();
-    private static bool s_channelCreated;
+    // Language the channel was last registered in: re-registering the same id renames it.
+    private static string? s_channelLanguage;
     private static RecordingService? s_running;
 
     private PowerManager.WakeLock? _wakeLock;
@@ -61,7 +63,7 @@ public sealed class RecordingService : Service
             default:
                 // StartForeground must follow startForegroundService within 5 seconds, even when
                 // recording was stopped in the meantime — so enter the foreground first, then check.
-                if (!EnterForeground(keepAlive?.Notice ?? new RecordingNotice("Recording", string.Empty, false))
+                if (!EnterForeground(keepAlive?.Notice ?? new RecordingNotice(Loc.T("Services.Android.Recording.DefaultTitle"), string.Empty, false))
                     || keepAlive is not { IsStarted: true })
                 {
                     StopNow();
@@ -185,8 +187,8 @@ public sealed class RecordingService : Service
         // Android 12+ otherwise delays a foreground-service notification by up to 10 s.
         builder.SetForegroundServiceBehavior(NotificationCompat.ForegroundServiceImmediate);
         builder.SetContentIntent(PendingIntent.GetActivity(context, 0, open, PendingFlags));
-        builder.AddAction(0, notice.IsMuted ? "Unmute" : "Mute", ServiceIntent(context, ActionToggleMute, 1));
-        builder.AddAction(0, "Stop", ServiceIntent(context, ActionStop, 2));
+        builder.AddAction(0, notice.IsMuted ? Loc.T("Services.Android.Recording.Unmute") : Loc.T("Services.Android.Recording.Mute"), ServiceIntent(context, ActionToggleMute, 1));
+        builder.AddAction(0, Loc.T("Services.Android.Recording.Stop"), ServiceIntent(context, ActionStop, 2));
         return builder.Build()!;
     }
 
@@ -206,18 +208,18 @@ public sealed class RecordingService : Service
 
         lock (s_channelGate)
         {
-            if (s_channelCreated)
+            if (s_channelLanguage == Loc.Current.Code)
                 return;
 
-            var channel = new NotificationChannel(ChannelId, "Recording", NotificationImportance.Low)
+            var channel = new NotificationChannel(ChannelId, Loc.T("Services.Android.Recording.ChannelName"), NotificationImportance.Low)
             {
-                Description = "Shown while VoiceType records from the microphone.",
+                Description = Loc.T("Services.Android.Recording.ChannelDescription"),
             };
             channel.SetSound(null, null);
             channel.EnableVibration(false);
             channel.SetShowBadge(false);
             (context.GetSystemService(NotificationService) as NotificationManager)?.CreateNotificationChannel(channel);
-            s_channelCreated = true;
+            s_channelLanguage = Loc.Current.Code;
         }
     }
 }

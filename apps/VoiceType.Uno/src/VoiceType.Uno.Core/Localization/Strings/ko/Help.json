@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — 도움말",
+  "Help.Close": "닫기",
+  "Help.Start.Title": "시작하기",
+  "Help.Start.Body": "1. 처음 실행하면 권장 음성 모델이 자동으로 다운로드됩니다.\n2. 아래쪽의 둥근 **녹음** 버튼을 누르고 말하면 받아쓰기가 실시간으로 표시됩니다. 버튼을 다시 누를 때까지 녹음이 계속되므로 누르고 있을 필요가 없습니다.\n3. 왼쪽 위의 메뉴 **≡**를 열어 모드를 바꿀 수 있습니다. **앱에 입력**은 완성된 문장을 포커스된 창에 입력하고, **실시간 번역**은 번역 카드를 추가하며, **직접 입력**에서는 받아쓰기를 입력하거나 편집할 수 있습니다.\n4. 메뉴에는 인식 언어, 음성 모델, 다운로드, **설정**도 있습니다. 제목 아래 줄에 사용 중인 모델과 모드가 표시됩니다.",
+  "Help.Hotkey.Title": "전역 단축키",
+  "Help.Hotkey.Body": "기본 시작/중지 단축키는 **Ctrl+Shift+V**입니다. Linux에서는 XDG GlobalShortcuts 포털(xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+)을 통해 등록되며, 컴포지터가 한 번 동의 대화 상자를 표시합니다. 포털을 지원하지 않는 데스크톱에서는 단축키를 사용할 수 없다고 표시됩니다.",
+  "Help.LinuxInjection.Title": "Linux의 텍스트 입력",
+  "Help.LinuxInjection.Body": "입력할 때는 클립보드를 설정한 다음 포커스된 창에 붙여넣기 키 조합(기본값 Ctrl+V, 설정에서 변경 가능)을 보냅니다.\n\n**필요한 도구(각 쌍에서 하나씩 설치):**\n• 클립보드: wl-copy(Wayland) 또는 xclip / xsel(X11)\n• 키보드: ydotool(Wayland, ydotoold 필요) 또는 libXtst / xdotool(X11)\n\nUbuntu: *sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "오디오 캡처",
+  "Help.Audio.Body": "캡처는 PulseAudio 호환 서버를 통해 이루어집니다(PipeWire 데스크톱 환경과 WSLg 모두 제공).\n• 마이크: 기본 입력 소스\n• 루프백: 기본 출력의 모니터(*@DEFAULT_MONITOR@*)\n• 믹스: 둘을 50/50으로 합침",
+  "Help.Data.Title": "데이터 위치",
+  "Help.Data.Body": "• 설정: *~/.local/share/VoiceType/settings.json*\n• 모델: *~/.local/share/VoiceType/models/*\n(Windows에서는 %LOCALAPPDATA%\\VoiceType 아래에 있습니다)"
+}

@@ -6,7 +6,7 @@ namespace VoiceType.Uno.Services.Platform;
 /// <summary>
 /// Windows text injector for the WinUI 3 head (net10.0-windows10.0.26100).
 /// <see cref="Inject"/> types the text straight into the focused window with
-/// SendInput Unicode key events (same as VoiceType.WinUI's SendInputStrategy):
+/// SendInput Unicode key events:
 /// the clipboard is neither used nor overwritten. With <see cref="Mode"/> set to
 /// <see cref="TextInjectionMode.Paste"/> it puts the text on the clipboard and sends
 /// <see cref="PasteChord"/> instead (for apps that ignore synthetic Unicode keys).

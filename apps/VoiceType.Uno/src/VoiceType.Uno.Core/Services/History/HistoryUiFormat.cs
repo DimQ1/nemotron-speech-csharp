@@ -1,12 +1,13 @@
 using System.Globalization;
 using System.Text.Json;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.History;
 
 /// <summary>
 /// Display strings of the History screens (list rows, recording header, version cards).
-/// Pure and culture-invariant (the app UI is English), so the screens are unit-tested.
+/// Pure (texts from <see cref="Loc"/>, dates and numbers in <see cref="Loc.Culture"/>), so the screens are unit-tested.
 /// </summary>
 public static class HistoryUiFormat
 {
@@ -56,12 +57,12 @@ public static class HistoryUiFormat
     public static string LongModel(ModelInfo? model)
     {
         if (model is null)
-            return "Unknown model";
+            return Loc.T("History.Model.Unknown");
         // Versions saved before the default model had a title carry its folder name as the title.
         var folder = model.Folder;
         if (folder is { Length: > 0 } && (string.IsNullOrWhiteSpace(model.Title) || string.Equals(model.Title, folder, StringComparison.OrdinalIgnoreCase)))
             return KnownModels.Describe(folder);
-        return model.Title is { Length: > 0 } title ? title : "Unknown model";
+        return model.Title is { Length: > 0 } title ? title : Loc.T("History.Model.Unknown");
     }
 
     /// <summary>Upper-case language code of a version (detected, else requested unless auto); empty when unknown.</summary>
@@ -78,7 +79,7 @@ public static class HistoryUiFormat
         var detected = Usable(language?.Detected);
         var isAuto = string.IsNullOrWhiteSpace(requested) || string.Equals(requested, "auto", StringComparison.OrdinalIgnoreCase);
         if (isAuto)
-            return detected is null ? "Auto" : "Auto → " + detected.ToUpperInvariant();
+            return detected is null ? Loc.T("History.Language.Auto") : Loc.F("History.Language.AutoDetected", detected.ToUpperInvariant());
         return requested!.ToUpperInvariant();
     }
 
@@ -92,8 +93,8 @@ public static class HistoryUiFormat
         var started = manifest.StartedAt.ToOffset(now.Offset);
         var group = HistoryUiRows.GroupOf(manifest.StartedAt, now);
         var when = group == HistoryDateGroup.Earlier
-            ? started.ToString(started.Year == now.Year ? "MMM d" : "MMM d, yyyy", CultureInfo.InvariantCulture)
-            : started.ToString("HH:mm", CultureInfo.InvariantCulture);
+            ? Loc.F(started.Year == now.Year ? "History.Row.DateThisYear" : "History.Row.DateOtherYear", started)
+            : Loc.F("History.Row.Time", started);
         return Join(when, Duration(DurationSeconds(manifest)), ShortModel(manifest.Current?.Model),
             LanguageCode(manifest.Current?.Language));
     }
@@ -103,8 +104,7 @@ public static class HistoryUiFormat
     {
         ArgumentNullException.ThrowIfNull(manifest);
         var started = manifest.StartedAt.ToOffset(now.Offset);
-        var date = started.ToString(started.Year == now.Year ? "ddd d MMM, HH:mm" : "ddd d MMM yyyy, HH:mm",
-            CultureInfo.InvariantCulture);
+        var date = Loc.F(started.Year == now.Year ? "History.Header.DateThisYear" : "History.Header.DateOtherYear", started);
         return Join(date, Duration(DurationSeconds(manifest)), LanguageCode(manifest.Current?.Language));
     }
 
@@ -113,11 +113,11 @@ public static class HistoryUiFormat
     {
         ArgumentNullException.ThrowIfNull(version);
         if (version.Kind == VersionKinds.Edited)
-            return version.Id + " · Edited";
+            return Loc.F("History.Version.ShortEdited", version.Id);
         var model = ShortModel(version.Model);
         if (model.Length > 0)
             return version.Id + " · " + model;
-        return version.Id + (version.Kind == VersionKinds.Live ? " · Live" : "");
+        return version.Kind == VersionKinds.Live ? Loc.F("History.Version.ShortLive", version.Id) : version.Id;
     }
 
     /// <summary>Narrow diff pickers: <c>v1 · Live</c>, <c>v2 · FP32</c>, <c>v3 · Edited</c>.</summary>
@@ -126,11 +126,11 @@ public static class HistoryUiFormat
         ArgumentNullException.ThrowIfNull(version);
         var detail = version.Kind switch
         {
-            VersionKinds.Live => "Live",
-            VersionKinds.Edited => "Edited",
+            VersionKinds.Live => Loc.T("History.Version.Live"),
+            VersionKinds.Edited => Loc.T("History.Version.Edited"),
             _ => !string.IsNullOrWhiteSpace(version.Model?.Variant) ? version.Model!.Variant!.Trim()
                 : !string.IsNullOrWhiteSpace(version.Model?.Precision) ? version.Model!.Precision!.Trim().ToUpperInvariant()
-                : "Re-run",
+                : Loc.T("History.Version.Rerun"),
         };
         return version.Id + " · " + detail;
     }
@@ -148,9 +148,11 @@ public static class HistoryUiFormat
         ArgumentNullException.ThrowIfNull(version);
         return version.Kind switch
         {
-            VersionKinds.Live => version.Edited ? "Recorded live · typed during recording" : "Recorded live",
-            VersionKinds.Rerecognized => "Re-recognized",
-            VersionKinds.Edited => version.Parent is { Length: > 0 } parent ? "Edited from " + parent : "Edited",
+            VersionKinds.Live => Loc.T(version.Edited ? "History.Version.KindLiveTyped" : "History.Version.KindLive"),
+            VersionKinds.Rerecognized => Loc.T("History.Version.KindRerecognized"),
+            VersionKinds.Edited => version.Parent is { Length: > 0 } parent
+                ? Loc.F("History.Version.KindEditedFrom", parent)
+                : Loc.T("History.Version.KindEdited"),
             _ => version.Kind,
         };
     }
@@ -163,8 +165,8 @@ public static class HistoryUiFormat
             return "";
         return value.ValueKind switch
         {
-            JsonValueKind.True => "on",
-            JsonValueKind.False => "off",
+            JsonValueKind.True => Loc.T("History.Vad.On"),
+            JsonValueKind.False => Loc.T("History.Vad.Off"),
             _ => "",
         };
     }
@@ -173,7 +175,7 @@ public static class HistoryUiFormat
     public static string ShortDateTime(DateTimeOffset value, DateTimeOffset now)
     {
         var local = value.ToOffset(now.Offset);
-        return local.ToString(local.Year == now.Year ? "d MMM HH:mm" : "d MMM yyyy HH:mm", CultureInfo.InvariantCulture);
+        return Loc.F(local.Year == now.Year ? "History.Date.ShortThisYear" : "History.Date.ShortOtherYear", local);
     }
 
     /// <summary><c>980 KB</c>, <c>41 MB</c>, <c>1.2 GB</c> (binary units, like the storage settings).</summary>
@@ -181,21 +183,27 @@ public static class HistoryUiFormat
     {
         const double kb = 1024, mb = kb * 1024, gb = mb * 1024;
         if (bytes <= 0)
-            return "0 MB";
+            return Loc.F("History.Size.MB", 0.ToString(Loc.Culture));
         if (bytes >= gb)
-            return (bytes / gb).ToString(bytes >= 10 * gb ? "0" : "0.#", CultureInfo.InvariantCulture) + " GB";
+            return Loc.F("History.Size.GB", (bytes / gb).ToString(bytes >= 10 * gb ? "0" : "0.#", Loc.Culture));
         if (bytes >= mb)
-            return (bytes / mb).ToString(bytes >= 10 * mb ? "0" : "0.#", CultureInfo.InvariantCulture) + " MB";
-        return Math.Max(1, Math.Round(bytes / kb)).ToString(CultureInfo.InvariantCulture) + " KB";
+            return Loc.F("History.Size.MB", (bytes / mb).ToString(bytes >= 10 * mb ? "0" : "0.#", Loc.Culture));
+        return Loc.F("History.Size.KB", Math.Max(1, Math.Round(bytes / kb)).ToString(Loc.Culture));
     }
 
-    /// <summary><c>1 recording</c> / <c>24 recordings</c> and other simple plurals.</summary>
+    /// <summary><c>0.5 GB</c>, <c>2 GB</c>: a size given in gigabytes (the storage cap choices).</summary>
+    public static string Gigabytes(double gb) => Loc.F("History.Size.GB", gb.ToString("0.#", Loc.Culture));
+
+    /// <summary>
+    /// <c>1 recording</c> / <c>24 recordings</c>: an ENGLISH-only plural of an English noun, kept for callers that have not
+    /// moved to <see cref="Loc.Plural"/> yet. New interface texts use <see cref="Loc.Plural"/> with a key.
+    /// </summary>
     public static string Count(int n, string singular, string? plural = null) =>
         n.ToString(CultureInfo.InvariantCulture) + " " + (n == 1 ? singular : plural ?? singular + "s");
 
     /// <summary>History header subtitle: <c>24 recordings · 1.2 GB</c>.</summary>
     public static string ListSubtitle(int recordings, long totalBytes) =>
-        recordings == 0 ? "No recordings yet" : Count(recordings, "recording") + " · " + Bytes(totalBytes);
+        recordings == 0 ? Loc.T("History.List.NoRecordingsYet") : Loc.Plural("History.List.Subtitle", recordings, Bytes(totalBytes));
 
     /// <summary>Joins the non-empty parts with <c> · </c>.</summary>
     public static string Join(params string?[] parts) =>

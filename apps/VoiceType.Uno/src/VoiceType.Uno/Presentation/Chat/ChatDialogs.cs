@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Media;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Presentation.History;
 using Windows.Storage;
 
@@ -29,18 +30,18 @@ internal static class ChatDialogs
         var box = new TextBox
         {
             Text = ChatUiFormat.DisplayTitle(chat),
-            PlaceholderText = "Chat title",
+            PlaceholderText = Loc.T("Chat.Rename.Placeholder"),
             MinHeight = 44,
             AcceptsReturn = false,
             TextWrapping = TextWrapping.NoWrap,
         };
-        AutomationProperties.SetName(box, "Chat title");
+        AutomationProperties.SetName(box, Loc.T("Chat.Rename.Placeholder"));
 
         var body = new StackPanel { Spacing = 12, MaxWidth = 440 };
         body.Children.Add(box);
         body.Children.Add(new TextBlock
         {
-            Text = "✦ Gemma suggests a title after the first answer. Your own title is never replaced.",
+            Text = Loc.T("Chat.Rename.Hint"),
             FontSize = 12,
             Opacity = 0.75,
             TextWrapping = TextWrapping.Wrap,
@@ -49,10 +50,10 @@ internal static class ChatDialogs
         var dialog = new ContentDialog
         {
             XamlRoot = xamlRoot,
-            Title = "Rename chat",
+            Title = Loc.T("Chat.Rename.Title"),
             Content = body,
-            PrimaryButtonText = "Save",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Loc.T("Chat.Dialog.Save"),
+            CloseButtonText = Loc.T("Chat.Dialog.Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
         box.TextChanged += (_, _) => dialog.IsPrimaryButtonEnabled = !string.IsNullOrWhiteSpace(box.Text);
@@ -85,13 +86,12 @@ internal static class ChatDialogs
         var id = chat.Id;
         if (!HistoryServices.HistorySettings.ConfirmDelete)
         {
-            HistoryServices.Deletes.Schedule("Chat deleted", [DeleteKey(id)], null, () => DeleteNow(id));
+            HistoryServices.Deletes.Schedule(Loc.T("Chat.Delete.Snackbar"), [DeleteKey(id)], null, () => DeleteNow(id));
             return DeleteOutcome.Pending;
         }
 
-        var text = new HistoryUiConfirmation("Delete chat?",
-            $"“{ChatUiFormat.DisplayTitle(chat)}” and its {HistoryUiFormat.Count(ChatUiFormat.CountMessages(chat), "message")} "
-            + "are deleted from this device. The recordings stay. This can't be undone.");
+        var text = new HistoryUiConfirmation(Loc.T("Chat.Delete.Title"),
+            Loc.Plural("Chat.Delete.Body", ChatUiFormat.CountMessages(chat), ChatUiFormat.DisplayTitle(chat)));
         if (!await HistoryDialogs.ConfirmDeleteAsync(xamlRoot, text, allowDontAsk: true))
             return DeleteOutcome.Cancelled;
         await Task.Run(() => DeleteNow(id));
@@ -120,9 +120,12 @@ internal static class ChatDialogs
     /// Searchable checklist of recordings. <paramref name="already"/> are shown disabled with
     /// <paramref name="alreadyText"/>. Returns the ticked ids, or null when cancelled.
     /// </summary>
-    /// <param name="actionFormat">Primary button: <c>Start chat</c>, <c>Add {0}</c>.</param>
+    /// <param name="actionKey">
+    /// String key of the primary button: <c>actionKey</c> without a selection (<c>Start chat</c>), the plural
+    /// <c>actionKey.Count</c> with the number of ticked recordings (<c>Add {0}</c>).
+    /// </param>
     public static async Task<IReadOnlyList<string>?> PickRecordingsAsync(
-        XamlRoot? xamlRoot, string title, string actionFormat, IReadOnlySet<string> already, string alreadyText,
+        XamlRoot? xamlRoot, string title, string actionKey, IReadOnlySet<string> already, string alreadyText,
         string? hint = null, IReadOnlyCollection<string>? preselected = null)
     {
         var data = await Task.Run(() =>
@@ -132,7 +135,7 @@ internal static class ChatDialogs
             var index = HistorySearch.BuildIndex(store, HistoryServices.Chats);
             return (entries, index);
         });
-        var picker = new RecordingPickerDialog(xamlRoot, title, actionFormat, already, alreadyText, hint,
+        var picker = new RecordingPickerDialog(xamlRoot, title, actionKey, already, alreadyText, hint,
             data.entries, data.index, preselected);
         return await picker.RunAsync();
     }
@@ -140,7 +143,7 @@ internal static class ChatDialogs
     private sealed class RecordingPickerDialog
     {
         private readonly ContentDialog _dialog;
-        private readonly string _actionFormat;
+        private readonly string _actionKey;
         private readonly IReadOnlySet<string> _already;
         private readonly string _alreadyText;
         private readonly Dictionary<string, RecordingManifest> _manifests;
@@ -151,11 +154,11 @@ internal static class ChatDialogs
         private readonly TextBox _search;
 
         public RecordingPickerDialog(
-            XamlRoot? xamlRoot, string title, string actionFormat, IReadOnlySet<string> already, string alreadyText,
+            XamlRoot? xamlRoot, string title, string actionKey, IReadOnlySet<string> already, string alreadyText,
             string? hint, Dictionary<string, RecordingManifest> manifests, IReadOnlyList<HistorySearchDocument> index,
             IReadOnlyCollection<string>? preselected)
         {
-            _actionFormat = actionFormat;
+            _actionKey = actionKey;
             _already = already;
             _alreadyText = alreadyText;
             _manifests = manifests;
@@ -163,11 +166,11 @@ internal static class ChatDialogs
             foreach (var id in preselected ?? [])
                 _selected.Add(id);
 
-            _search = new TextBox { PlaceholderText = "Search recordings", MinHeight = 44, VerticalContentAlignment = VerticalAlignment.Center };
-            AutomationProperties.SetName(_search, "Search recordings");
+            _search = new TextBox { PlaceholderText = Loc.T("Chat.Picker.Search"), MinHeight = 44, VerticalContentAlignment = VerticalAlignment.Center };
+            AutomationProperties.SetName(_search, Loc.T("Chat.Picker.Search"));
             _search.TextChanged += (_, _) => Rebuild();
 
-            _empty = new TextBlock { Text = "No recordings found", Opacity = 0.7, Margin = new Thickness(4, 12, 4, 12), Visibility = Visibility.Collapsed };
+            _empty = new TextBlock { Text = Loc.T("Chat.Picker.Empty"), Opacity = 0.7, Margin = new Thickness(4, 12, 4, 12), Visibility = Visibility.Collapsed };
             var scroll = new ScrollViewer
             {
                 Content = new StackPanel { Children = { _list, _empty } },
@@ -187,8 +190,8 @@ internal static class ChatDialogs
                 XamlRoot = xamlRoot,
                 Title = title,
                 Content = body,
-                PrimaryButtonText = actionFormat.Replace(" ({0})", "").Replace(" {0}", ""),
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = Loc.T(actionKey),
+                CloseButtonText = Loc.T("Chat.Dialog.Cancel"),
                 DefaultButton = ContentDialogButton.Primary,
                 IsPrimaryButtonEnabled = false,
             };
@@ -243,8 +246,8 @@ internal static class ChatDialogs
         private void UpdatePrimary()
         {
             _dialog.PrimaryButtonText = _selected.Count == 0
-                ? _actionFormat.Replace(" ({0})", "").Replace(" {0}", "")
-                : string.Format(System.Globalization.CultureInfo.InvariantCulture, _actionFormat, _selected.Count);
+                ? Loc.T(_actionKey)
+                : Loc.Plural(_actionKey + ".Count", _selected.Count);
             _dialog.IsPrimaryButtonEnabled = _selected.Count > 0;
         }
     }
@@ -260,7 +263,7 @@ internal static class ChatDialogs
         var chats = await Task.Run(() => HistoryServices.Chats.LoadAll().Chats);
         var now = DateTimeOffset.Now;
         AddToChatChoice? choice = null;
-        var dialog = new ContentDialog { XamlRoot = xamlRoot, Title = "Add to chat", CloseButtonText = "Cancel" };
+        var dialog = new ContentDialog { XamlRoot = xamlRoot, Title = Loc.T("Chat.AddTo.Title"), CloseButtonText = Loc.T("Chat.Dialog.Cancel") };
 
         var list = new StackPanel { Spacing = 4, MaxWidth = 520 };
         var fresh = new Button
@@ -269,9 +272,9 @@ internal static class ChatDialogs
             MinHeight = 48,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Left,
-            Content = "✦  New chat with this recording",
+            Content = Loc.T("Chat.AddTo.NewChatButton"),
         };
-        AutomationProperties.SetName(fresh, "New chat with this recording");
+        AutomationProperties.SetName(fresh, Loc.T("Chat.AddTo.NewChat"));
         fresh.Click += (_, _) => { choice = new AddToChatChoice(null); dialog.Hide(); };
         list.Children.Add(fresh);
 
@@ -282,7 +285,7 @@ internal static class ChatDialogs
             label.Children.Add(new TextBlock { Text = ChatUiFormat.DisplayTitle(chat), TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis });
             label.Children.Add(new TextBlock
             {
-                Text = includes ? "Already includes it" : ChatUiFormat.RowMeta(chat, ChatServices.TitleOf, now),
+                Text = includes ? Loc.T("Chat.AddTo.AlreadyIncludes") : ChatUiFormat.RowMeta(chat, ChatServices.TitleOf, now),
                 FontSize = 12,
                 Opacity = 0.7,
                 TextWrapping = TextWrapping.NoWrap,
@@ -296,7 +299,7 @@ internal static class ChatDialogs
                 HorizontalContentAlignment = HorizontalAlignment.Left,
                 IsEnabled = !includes,
             };
-            AutomationProperties.SetName(button, ChatUiFormat.DisplayTitle(chat) + (includes ? " · already includes it" : ""));
+            AutomationProperties.SetName(button, includes ? Loc.F("Chat.AddTo.AlreadyIncludesName", ChatUiFormat.DisplayTitle(chat)) : ChatUiFormat.DisplayTitle(chat));
             var id = chat.Id;
             button.Click += (_, _) => { choice = new AddToChatChoice(id); dialog.Hide(); };
             list.Children.Add(button);
@@ -331,11 +334,11 @@ internal static class ChatDialogs
     public static async Task<SourcesOutcome> ShowSourcesAsync(XamlRoot? xamlRoot, string chatId, IChatService service)
     {
         var outcome = new SourcesOutcome(SourcesAction.None, null);
-        var dialog = new ContentDialog { XamlRoot = xamlRoot, Title = "Sources", CloseButtonText = "Done" };
+        var dialog = new ContentDialog { XamlRoot = xamlRoot, Title = Loc.T("Chat.Sources.Title"), CloseButtonText = Loc.T("Chat.Dialog.Done") };
         var list = new StackPanel { Spacing = 4, MaxWidth = 520 };
         var footnote = new TextBlock
         {
-            Text = "Removed recordings are no longer read. Earlier answers keep their citations.",
+            Text = Loc.T("Chat.Sources.Footnote"),
             FontSize = 12,
             Opacity = 0.7,
             TextWrapping = TextWrapping.Wrap,
@@ -343,12 +346,12 @@ internal static class ChatDialogs
         };
         var add = new Button
         {
-            Content = "+  Add recording",
+            Content = Loc.T("Chat.Sources.AddButton"),
             MinHeight = 44,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Style = (Style)Application.Current.Resources["DefaultButtonStyle"],
         };
-        AutomationProperties.SetName(add, "Add recording");
+        AutomationProperties.SetName(add, Loc.T("Chat.Sources.Add"));
         add.Click += (_, _) => { outcome = new SourcesOutcome(SourcesAction.Add, null); dialog.Hide(); };
 
         void Rebuild()
@@ -362,8 +365,8 @@ internal static class ChatDialogs
                 var title = ChatServices.TitleOf(source.RecordingId);
                 var current = ChatServices.CurrentVersionOf(source.RecordingId);
                 var outdated = current is not null && current != source.VersionId;
-                var detail = HistoryUiFormat.Join(source.VersionId + " · added " + ChatUiFormat.WhenText(source.AddedAt, now),
-                    outdated ? "outdated, current is " + current : null);
+                var detail = HistoryUiFormat.Join(Loc.F("Chat.Sources.Added", source.VersionId, ChatUiFormat.WhenText(source.AddedAt, now)),
+                    outdated ? Loc.F("Chat.Sources.OutdatedCurrent", current) : null);
 
                 var row = new Grid { ColumnSpacing = 0, MinHeight = 52 };
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -371,7 +374,7 @@ internal static class ChatDialogs
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
                 var label = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                label.Children.Add(new TextBlock { Text = title ?? "Deleted recording", TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis });
+                label.Children.Add(new TextBlock { Text = title ?? Loc.T("Chat.Citation.DeletedRecording"), TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis });
                 label.Children.Add(new TextBlock { Text = detail, FontSize = 12, Opacity = 0.7, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis });
                 var open = new Button
                 {
@@ -383,15 +386,15 @@ internal static class ChatDialogs
                     BorderThickness = new Thickness(0),
                     IsEnabled = title is not null,
                 };
-                AutomationProperties.SetName(open, "Open " + (title ?? "recording"));
+                AutomationProperties.SetName(open, title is null ? Loc.T("Chat.Sources.OpenRecording") : Loc.F("Chat.Sources.OpenName", title));
                 var id = source.RecordingId;
                 open.Click += (_, _) => { outcome = new SourcesOutcome(SourcesAction.Open, id); dialog.Hide(); };
                 row.Children.Add(open);
 
                 if (outdated)
                 {
-                    var update = new Button { Content = "Use " + current, MinHeight = 44, Padding = new Thickness(10, 0, 10, 0) };
-                    AutomationProperties.SetName(update, $"Use version {current} of {title}");
+                    var update = new Button { Content = Loc.F("Chat.Notice.UseVersion", current), MinHeight = 44, Padding = new Thickness(10, 0, 10, 0) };
+                    AutomationProperties.SetName(update, Loc.F("Chat.Sources.UseVersionName", current, title));
                     Grid.SetColumn(update, 1);
                     update.Click += async (_, _) =>
                     {
@@ -411,8 +414,8 @@ internal static class ChatDialogs
                     Content = new SymbolIcon(Symbol.Cancel),
                     IsEnabled = chat.Sources.Count > 1,
                 };
-                AutomationProperties.SetName(remove, "Remove " + (title ?? "recording"));
-                ToolTipService.SetToolTip(remove, chat.Sources.Count > 1 ? "Remove from chat" : "A chat needs at least one recording");
+                AutomationProperties.SetName(remove, title is null ? Loc.T("Chat.Sources.RemoveRecording") : Loc.F("Chat.Sources.RemoveName", title));
+                ToolTipService.SetToolTip(remove, chat.Sources.Count > 1 ? Loc.T("Chat.Sources.RemoveFromChat") : Loc.T("Chat.Sources.NeedsOne"));
                 Grid.SetColumn(remove, 2);
                 remove.Click += async (_, _) =>
                 {
@@ -446,7 +449,7 @@ internal static class ChatDialogs
         }
         catch (Exception ex)
         {
-            await HistoryDialogs.ShowMessageAsync(xamlRoot, "Could not change the sources", ex.Message);
+            await HistoryDialogs.ShowMessageAsync(xamlRoot, Loc.T("Chat.Sources.ChangeFailed"), ex.Message);
         }
     }
 
@@ -473,10 +476,10 @@ internal static class ChatDialogs
             return;
 
         var panel = new StackPanel { Spacing = 8, MaxWidth = 460 };
-        panel.Children.Add(new TextBlock { Text = "Markdown document (.md)", TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock { Text = Loc.T("Chat.Export.Format"), TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(new TextBlock
         {
-            Text = "Title, sources with their versions, the conversation and the citations (recording and time).",
+            Text = Loc.T("Chat.Export.Contents"),
             FontSize = 12,
             Opacity = 0.7,
             TextWrapping = TextWrapping.Wrap,
@@ -490,7 +493,7 @@ internal static class ChatDialogs
         });
         panel.Children.Add(new TextBlock
         {
-            Text = "Quick save writes to " + ExportDialog.DocumentsFolder(),
+            Text = Loc.F("Chat.Export.QuickSaveHint", ExportDialog.DocumentsFolder()),
             FontSize = 11,
             Opacity = 0.6,
             TextWrapping = TextWrapping.Wrap,
@@ -498,11 +501,11 @@ internal static class ChatDialogs
         var dialog = new ContentDialog
         {
             XamlRoot = xamlRoot,
-            Title = "Export chat",
+            Title = Loc.T("Chat.Export.Title"),
             Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
-            PrimaryButtonText = "Save to…",
-            SecondaryButtonText = "Quick save",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Loc.T("Chat.Export.SaveTo"),
+            SecondaryButtonText = Loc.T("Chat.Export.QuickSave"),
+            CloseButtonText = Loc.T("Chat.Dialog.Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
         var result = await HistoryDialogs.ShowSafeAsync(dialog);
@@ -527,11 +530,11 @@ internal static class ChatDialogs
                 await Task.Run(() => ExportFiles.WriteText(Path.Combine(dir.Length == 0 ? "." : EnsureDirectory(dir), export.FileName), export.Markdown));
                 where = dir;
             }
-            await HistoryDialogs.ShowMessageAsync(xamlRoot, "Exported", $"{export.FileName} saved to {where}.");
+            await HistoryDialogs.ShowMessageAsync(xamlRoot, Loc.T("Chat.Export.Done"), Loc.F("Chat.Export.Saved", export.FileName, where));
         }
         catch (Exception ex)
         {
-            await HistoryDialogs.ShowMessageAsync(xamlRoot, "Export failed", ex.Message);
+            await HistoryDialogs.ShowMessageAsync(xamlRoot, Loc.T("Chat.Export.Failed"), ex.Message);
         }
     }
 

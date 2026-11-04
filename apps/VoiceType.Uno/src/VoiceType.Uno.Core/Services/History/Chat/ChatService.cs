@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.Channels;
 using SpeechLib.Agents;
 using SpeechLib.Llm;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -56,7 +57,7 @@ public sealed class ChatService : IChatService
                 sources.Add((id, version));
         }
         if (sources.Count == 0)
-            throw new ArgumentException("None of the recordings has a transcript to chat about.", nameof(recordingIds));
+            throw new ArgumentException(Loc.T("Chat.Error.NoTranscripts"), nameof(recordingIds));
 
         var chat = _chats.Create(title, sources);
         foreach (var (recordingId, versionId) in sources)
@@ -69,7 +70,7 @@ public sealed class ChatService : IChatService
     public ChatRecord AddSource(string chatId, string recordingId)
     {
         var version = _recordings.Get(recordingId)?.Manifest.CurrentVersion
-            ?? throw new InvalidOperationException("That recording has no transcript to chat about.");
+            ?? throw new InvalidOperationException(Loc.T("Chat.Error.NoTranscriptToChat"));
         var before = _chats.Get(chatId) ?? throw new KeyNotFoundException($"Chat {chatId} not found.");
         EnsureAliasEvents(before);
         if (before.Includes(recordingId))
@@ -96,7 +97,7 @@ public sealed class ChatService : IChatService
     public ChatRecord UseCurrentVersion(string chatId, string recordingId)
     {
         var version = _recordings.Get(recordingId)?.Manifest.CurrentVersion
-            ?? throw new InvalidOperationException("That recording has no transcript.");
+            ?? throw new InvalidOperationException(Loc.T("Chat.Error.NoTranscript"));
         var chat = _chats.Get(chatId) ?? throw new KeyNotFoundException($"Chat {chatId} not found.");
         EnsureAliasEvents(chat);
         if (chat.Sources.Find(s => s.RecordingId == recordingId)?.VersionId == version)
@@ -175,25 +176,25 @@ public sealed class ChatService : IChatService
     {
         if (string.IsNullOrWhiteSpace(userText))
         {
-            output.TryWrite(new ChatEvent.Failed("Type a question first."));
+            output.TryWrite(new ChatEvent.Failed(Loc.T("Chat.Error.EmptyQuestion")));
             return;
         }
         var chat = _chats.Get(chatId);
         if (chat is null)
         {
-            output.TryWrite(new ChatEvent.Failed("This chat no longer exists."));
+            output.TryWrite(new ChatEvent.Failed(Loc.T("Chat.Error.ChatGone")));
             return;
         }
         if (!_host.IsModelInstalled)
         {
-            output.TryWrite(new ChatEvent.Failed("The Gemma model is not installed. Download it in Models to ask questions about recordings."));
+            output.TryWrite(new ChatEvent.Failed(Loc.T("Chat.Error.ModelNotInstalled")));
             return;
         }
 
         var runtime = GetRuntime(chat);
         if (!runtime.Turn.Wait(0, CancellationToken.None))
         {
-            output.TryWrite(new ChatEvent.Failed("The previous answer is still being written."));
+            output.TryWrite(new ChatEvent.Failed(Loc.T("Chat.Error.Busy")));
             return;
         }
 
@@ -215,7 +216,7 @@ public sealed class ChatService : IChatService
             _chats.AppendMessage(chatId, new ChatMessage { Role = ChatRoles.User, Text = userText.Trim(), CreatedAt = _time.GetLocalNow() });
 
             var count = chat.Sources.Count;
-            output.TryWrite(new ChatEvent.Status(count == 1 ? "Reading the recording…" : $"Reading {count} recordings…"));
+            output.TryWrite(new ChatEvent.Status(count == 1 ? Loc.T("Chat.Status.ReadingOne") : Loc.F("Chat.Status.ReadingMany", count)));
             if (PreparationStatus(chat) is { } preparing)
                 output.TryWrite(new ChatEvent.Status(preparing));
 
@@ -240,7 +241,7 @@ public sealed class ChatService : IChatService
         }
         catch (Exception ex)
         {
-            failure = ex is LlmUnavailableException ? "The Gemma model is not available: " + ex.Message : ex.Message;
+            failure = ex is LlmUnavailableException ? Loc.F("Chat.Error.ModelUnavailable", ex.Message) : ex.Message;
         }
 
         try
@@ -268,7 +269,7 @@ public sealed class ChatService : IChatService
             if (finalText.Length == 0)
             {
                 runtime.Session = null;
-                output.TryWrite(new ChatEvent.Failed("Gemma returned an empty answer. Try asking again."));
+                output.TryWrite(new ChatEvent.Failed(Loc.T("Chat.Error.EmptyAnswer")));
                 return;
             }
 

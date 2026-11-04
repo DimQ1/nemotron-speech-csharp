@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services.Playback;
 
 namespace VoiceType.Uno.Presentation.History;
@@ -69,7 +70,7 @@ public sealed partial class PlayerBar : UserControl
         catch (Exception ex)
         {
             await player.DisposeAsync();
-            if (version == _loadVersion) ShowError($"Can't open the audio: {ex.Message}");
+            if (version == _loadVersion) ShowError(Loc.F("Recording.Player.OpenFailed", ex.Message));
             return;
         }
         if (version != _loadVersion) // a newer load or Unload won
@@ -113,7 +114,7 @@ public sealed partial class PlayerBar : UserControl
         }
         catch (Exception ex)
         {
-            ShowError($"Can't play: {ex.Message}");
+            ShowError(Loc.F("Recording.Player.PlayFailed", ex.Message));
         }
     }
 
@@ -236,8 +237,8 @@ public sealed partial class PlayerBar : UserControl
         BackIcon.Symbol = turn ? Symbol.Previous : Symbol.Undo;
         ForwardIcon.Symbol = turn ? Symbol.Next : Symbol.Redo;
         BackSeconds.Visibility = ForwardSeconds.Visibility = turn ? Visibility.Collapsed : Visibility.Visible;
-        var back = turn ? $"Previous turn by {speakerName}" : "Back 10 seconds";
-        var forward = turn ? $"Next turn by {speakerName}" : "Forward 10 seconds";
+        var back = turn ? Loc.F("Recording.Player.PreviousTurn", speakerName) : Loc.T("Recording.Player.Back10");
+        var forward = turn ? Loc.F("Recording.Player.NextTurn", speakerName) : Loc.T("Recording.Player.Forward10");
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(BackButton, back);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(ForwardButton, forward);
         ToolTipService.SetToolTip(BackButton, back);
@@ -290,7 +291,7 @@ public sealed partial class PlayerBar : UserControl
     private void UpdatePlayIcon(bool playing)
     {
         PlayIcon.Symbol = playing ? Symbol.Pause : Symbol.Play;
-        var label = playing ? "Pause" : "Play";
+        var label = playing ? Loc.T("Recording.Player.Pause") : Loc.T("Recording.Player.Play");
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PlayButton, label);
         ToolTipService.SetToolTip(PlayButton, label);
     }

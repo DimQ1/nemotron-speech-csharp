@@ -1,8 +1,8 @@
 namespace SpeechLib.ModelDownload;
 
 /// <summary>
-/// The single source of truth for the downloadable ASR model catalog, shared
-/// between the WinUI and Uno apps. Each entry carries a commercial name, a
+/// The single source of truth for the downloadable ASR model catalog, used
+/// by the Uno app. Each entry carries a commercial name, a
 /// plain-language description, and structured measured metrics (WER, speed).
 /// Metrics come from build/wer-reports/*-20261026.md (Common Voice 17, 250 ru + 250 en
 /// files, tools/WerEval --streaming on one machine and day: CPU, 4 threads for Nemotron,

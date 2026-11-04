@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
 using SpeechLib.ModelDownload;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.Presentation;
@@ -11,7 +12,7 @@ namespace VoiceType.Uno.Presentation;
 /// ViewModel for the Downloads tab of the Models page: lists every
 /// queued/active/finished download with per-item progress, and the aggregate
 /// progress of the queue. It reads the shared <see cref="ModelDownloadManager"/> —
-/// the same pipeline the main window, the Speech tab and the WinUI app use.
+/// the same pipeline the main window and the Speech tab use.
 /// </summary>
 public sealed partial class DownloadsViewModel : ObservableObject
 {
@@ -36,7 +37,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
 
     /// <summary>Summary headline, e.g. "2 active · 1 failed".</summary>
     [ObservableProperty]
-    private string _aggregateText = "No downloads";
+    private string _aggregateText = Loc.T("Models.Downloads.NoDownloads");
 
     /// <summary>Bytes over the whole queue, e.g. "1.0 / 2.4 GB".</summary>
     [ObservableProperty]
@@ -57,7 +58,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
 
     /// <summary>"Downloads · 2" while jobs are active, "Downloads" otherwise.</summary>
     [ObservableProperty]
-    private string _tabLabel = "Downloads";
+    private string _tabLabel = Loc.T("Models.Tabs.Downloads");
 
     /// <summary>Unsubscribes from the download manager when the host view closes.</summary>
     public void Detach()
@@ -165,18 +166,20 @@ public sealed partial class DownloadItemViewModel : ObservableObject
 
         DetailText = _job.State switch
         {
-            DownloadJobState.Queued => "Queued",
+            DownloadJobState.Queued => Loc.T("Models.Card.Status.Queued"),
             DownloadJobState.Downloading => _job.TotalBytes > 0
-                ? string.IsNullOrEmpty(_job.CurrentFile) ? $"{_job.Percent:F0}%" : $"{_job.Percent:F0}% · {_job.CurrentFile}"
-                : string.IsNullOrEmpty(_job.CurrentFile) ? "Starting…" : _job.CurrentFile,
+                ? string.IsNullOrEmpty(_job.CurrentFile)
+                    ? Loc.F("Models.Downloads.Item.Percent", _job.Percent)
+                    : Loc.F("Models.Downloads.Item.PercentFile", _job.Percent, _job.CurrentFile)
+                : string.IsNullOrEmpty(_job.CurrentFile) ? Loc.T("Models.Progress.Starting") : _job.CurrentFile,
             DownloadJobState.Completed => _job.TotalBytes > 0
-                ? $"Completed · {DownloadProgressFormatter.FormatBytes(_job.TotalBytes)}"
-                : "Completed",
-            DownloadJobState.Cancelled => "Cancelled — partial files kept",
+                ? Loc.F("Models.Downloads.Item.CompletedSize", DownloadProgressFormatter.FormatBytes(_job.TotalBytes))
+                : Loc.T("Models.Downloads.Item.Completed"),
+            DownloadJobState.Cancelled => Loc.T("Models.Downloads.Item.Cancelled"),
             _ => ""
         };
 
-        ErrorText = IsError ? $"Failed — {_job.Error ?? "unknown error"}; partial files kept" : "";
+        ErrorText = IsError ? Loc.F("Models.Downloads.Item.Failed", _job.Error ?? Loc.T("Models.Downloads.Item.UnknownError")) : "";
 
         TransferText = _job.IsActive
             ? ModelsPageFormatter.DescribeTransfer(_job.DownloadedBytes, _job.TotalBytes)
@@ -184,7 +187,7 @@ public sealed partial class DownloadItemViewModel : ObservableObject
 
         var rate = ModelsPageFormatter.DescribeRate(_job.BytesPerSecond, _job.DownloadedBytes, _job.TotalBytes);
         StateText = _job.State == DownloadJobState.Downloading
-            ? rate.Length > 0 ? $"Downloading · {rate}" : "Downloading"
+            ? rate.Length > 0 ? Loc.F("Models.Downloads.Item.DownloadingRate", rate) : Loc.T("Models.Downloads.Item.Downloading")
             : "";
     }
 }

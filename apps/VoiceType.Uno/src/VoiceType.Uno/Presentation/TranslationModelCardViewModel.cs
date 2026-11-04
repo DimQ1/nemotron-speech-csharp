@@ -1,5 +1,6 @@
 using Microsoft.UI.Dispatching;
 using SpeechLib.ModelDownload;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno.Presentation;
@@ -66,7 +67,7 @@ public sealed partial class TranslationModelCardViewModel : ObservableObject
     private bool _canDownload;
 
     [ObservableProperty]
-    private string _downloadText = "Download";
+    private string _downloadText = Loc.T("Models.Card.Action.Download");
 
     [ObservableProperty]
     private bool _canDelete;
@@ -91,12 +92,12 @@ public sealed partial class TranslationModelCardViewModel : ObservableObject
 
         StatusText = (active, job?.State) switch
         {
-            (true, DownloadJobState.Queued) => "Queued — starts when a download slot is free",
-            (true, _) => job!.TotalBytes > 0 ? $"Downloading {job.Percent:F0}%" : "Downloading…",
-            _ when installed => "Installed",
-            (_, DownloadJobState.Failed) => $"Download failed: {job!.Error}",
-            _ when partial => "Partial download — download again to finish",
-            _ => "Not downloaded"
+            (true, DownloadJobState.Queued) => Loc.T("Models.Translation.Status.Queued"),
+            (true, _) => job!.TotalBytes > 0 ? Loc.F("Models.Translation.Status.DownloadingPercent", job.Percent) : Loc.T("Models.Card.Status.Downloading"),
+            _ when installed => Loc.T("Models.Card.Status.Installed"),
+            (_, DownloadJobState.Failed) => Loc.F("Models.Translation.Status.Failed", job!.Error),
+            _ when partial => Loc.T("Models.Translation.Status.Partial"),
+            _ => Loc.T("Models.Card.Status.NotDownloaded")
         };
 
         DetailText = active
@@ -106,7 +107,9 @@ public sealed partial class TranslationModelCardViewModel : ObservableObject
                 : "";
 
         CanDownload = !active && !installed;
-        DownloadText = partial || job?.State is DownloadJobState.Failed or DownloadJobState.Cancelled ? "Retry" : "Download";
+        DownloadText = partial || job?.State is DownloadJobState.Failed or DownloadJobState.Cancelled
+            ? Loc.T("Models.Card.Action.Retry")
+            : Loc.T("Models.Card.Action.Download");
         CanDelete = installed && !active;
     }
 
@@ -130,7 +133,7 @@ public sealed partial class TranslationModelCardViewModel : ObservableObject
         Refresh();
 
         if (TranslationModelInfo.IsDownloaded)
-            StatusText = "Could not delete — the model is in use. Turn off live translation and try again.";
+            StatusText = Loc.T("Models.Translation.CouldNotDeleteInUse");
     }
 
     /// <summary>Unsubscribes from the download manager when the page closes.</summary>

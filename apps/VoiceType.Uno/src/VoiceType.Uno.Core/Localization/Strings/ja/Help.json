@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — ヘルプ",
+  "Help.Close": "閉じる",
+  "Help.Start.Title": "はじめに",
+  "Help.Start.Body": "1. 初回起動時に、推奨の音声モデルが自動的にダウンロードされます。\n2. 下部の丸い **録音** ボタンをタップして話すと、文字起こしがリアルタイムで表示されます。もう一度ボタンをタップするまで録音は続くので、押し続ける必要はありません。\n3. 左上のメニュー **≡** を開くとモードを切り替えられます。**アプリに入力** は確定した文をフォーカス中のウィンドウに入力し、**ライブ翻訳** は翻訳カードを追加し、**手動入力** では文字起こしを入力・編集できます。\n4. メニューには認識言語、音声モデル、ダウンロード、**設定** もあります。タイトルの下の行に、使用中のモデルとモードが表示されます。",
+  "Help.Hotkey.Title": "グローバルショートカット",
+  "Help.Hotkey.Body": "開始/停止の既定のショートカットは **Ctrl+Shift+V** です。Linux では XDG GlobalShortcuts ポータル（xdg-desktop-portal ≥ 1.18、GNOME 44+ / KDE Plasma 5.27+）を通じて登録され、コンポジターが一度だけ許可のダイアログを表示します。ポータルに対応していないデスクトップでは、ショートカットは使用不可と表示されます。",
+  "Help.LinuxInjection.Title": "Linux でのテキスト入力",
+  "Help.LinuxInjection.Body": "入力時はクリップボードを設定してから、フォーカス中のウィンドウに貼り付けのキー操作（既定は Ctrl+V、[設定] で変更可能）を送ります。\n\n**必要なツール（各組から 1 つをインストール）：**\n• クリップボード：wl-copy (Wayland) または xclip / xsel (X11)\n• キーボード：ydotool（Wayland、ydotoold が必要）または libXtst / xdotool (X11)\n\nUbuntu：*sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "音声のキャプチャ",
+  "Help.Audio.Body": "キャプチャは PulseAudio 互換サーバーを通じて行われます（PipeWire のデスクトップ環境と WSLg はどちらも提供しています）。\n• マイク：既定の入力ソース\n• ループバック：既定の出力のモニター（*@DEFAULT_MONITOR@*）\n• ミックス：両方を 50/50 で合成",
+  "Help.Data.Title": "データの保存場所",
+  "Help.Data.Body": "• 設定：*~/.local/share/VoiceType/settings.json*\n• モデル：*~/.local/share/VoiceType/models/*\n（Windows では %LOCALAPPDATA%\\VoiceType 以下になります）"
+}

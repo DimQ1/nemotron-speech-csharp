@@ -8,6 +8,7 @@ using SpeechLib;
 using SpeechLib.Audio;
 using SpeechLib.Models;
 using System.Runtime.InteropServices;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services.Audio;
 
@@ -21,9 +22,9 @@ public sealed class IosAudioSourceFactory : IAudioSourceFactory
     {
         CaptureMode.Mic => new IosAudioSource(sampleRate),
         CaptureMode.Loopback => throw new InvalidOperationException(
-            "System audio loopback is not available on iOS."),
+            Loc.T("Services.Audio.IosNoLoopback")),
         CaptureMode.Mix => throw new InvalidOperationException(
-            "Mic + system mix is not available on iOS."),
+            Loc.T("Services.Audio.IosNoMix")),
         _ => throw new InvalidOperationException($"Capture mode '{mode}' is not a live source.")
     };
 }
@@ -59,7 +60,7 @@ internal sealed class IosAudioSource : IAudioSource
         var input = engine.InputNode;
         var inputFormat = input.GetBusOutputFormat(0);
         if (inputFormat.SampleRate <= 0 || inputFormat.ChannelCount == 0)
-            throw new InvalidOperationException("The microphone is not available (no input format).");
+            throw new InvalidOperationException(Loc.T("Services.Audio.IosNoInputFormat"));
 
         // The converter does the sample-rate change and the mixdown to mono in one step.
         using var target = new AVAudioFormat(AVAudioCommonFormat.PCMFloat32, _sampleRate, 1, false);
@@ -125,7 +126,7 @@ internal sealed class IosAudioSource : IAudioSource
 #pragma warning restore CA1422
         if (!granted.Task.Wait(PermissionTimeout) || !granted.Task.Result)
             throw new InvalidOperationException(
-                "Microphone permission was not granted. Allow VoiceType to use the microphone in Settings > Privacy.");
+                Loc.T("Services.Audio.IosPermissionDenied"));
     }
 
     public void Dispose()

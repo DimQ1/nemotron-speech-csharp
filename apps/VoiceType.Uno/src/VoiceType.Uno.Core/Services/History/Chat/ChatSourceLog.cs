@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SpeechLib.Agents;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -19,16 +20,10 @@ public static class ChatSourceEvents
     /// <summary>A system message the UI can show as a line in the thread ("Added “Weekly sync” as S2").</summary>
     public static ChatMessage Create(string kind, string alias, string recordingId, string versionId, string title, DateTimeOffset now)
     {
-        var text = kind switch
-        {
-            AddedKind => $"Added “{title}” as {alias}",
-            RemovedKind => $"Removed “{title}” ({alias})",
-            _ => $"{alias} “{title}” now reads transcript {versionId}",
-        };
         return new ChatMessage
         {
             Role = ChatRoles.System,
-            Text = text,
+            Text = Format(kind, alias, versionId, title),
             CreatedAt = now,
             ExtensionData = new Dictionary<string, JsonElement>
             {
@@ -36,8 +31,35 @@ public static class ChatSourceEvents
                 ["alias"] = JsonSerializer.SerializeToElement(alias, ChatJsonContext.Default.String),
                 ["recordingId"] = JsonSerializer.SerializeToElement(recordingId, ChatJsonContext.Default.String),
                 ["versionId"] = JsonSerializer.SerializeToElement(versionId, ChatJsonContext.Default.String),
+                [TitleKey] = JsonSerializer.SerializeToElement(title, ChatJsonContext.Default.String),
             },
         };
+    }
+
+    private const string TitleKey = "title";
+
+    private static string Format(string kind, string alias, string versionId, string title) => kind switch
+    {
+        AddedKind => Loc.F("Chat.Event.Added", title, alias),
+        RemovedKind => Loc.F("Chat.Event.Removed", title, alias),
+        _ => Loc.F("Chat.Event.VersionChanged", alias, title, versionId),
+    };
+
+    /// <summary>
+    /// The event line in the current interface language. The stored <see cref="ChatMessage.Text"/> is in the language of
+    /// the moment it was logged; events that carry their title are formatted again, older ones show the stored text.
+    /// </summary>
+    public static string DisplayText(ChatMessage message)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        if (!TryRead(message, out var kind, out var alias, out _)
+            || message.ExtensionData is not { } data
+            || !data.TryGetValue(TitleKey, out var title) || title.ValueKind != JsonValueKind.String)
+            return message.Text;
+        var versionId = data.TryGetValue("versionId", out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+        if (kind is not (AddedKind or RemovedKind or VersionChangedKind))
+            return message.Text;
+        return Format(kind, alias, versionId, title.GetString() ?? "");
     }
 
     public static bool TryRead(ChatMessage message, out string kind, out string alias, out string recordingId)

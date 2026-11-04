@@ -2,7 +2,7 @@ namespace SpeechLib.ModelDownload;
 
 /// <summary>
 /// Formats model metrics for display. Centralizes size/speed/WER formatting so
-/// UI layers (WinUI cards, Uno lists) share one implementation.
+/// every UI layer (the Uno lists and cards) shares one implementation.
 /// </summary>
 public static class ModelMetricsFormatter
 {

@@ -6,11 +6,12 @@ using VoiceType.Uno.Presentation.Chat;
 using VoiceType.Uno.Presentation.Controls;
 using VoiceType.Uno.Presentation.History;
 using VoiceType.Uno.Presentation.Queue;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 
 namespace VoiceType.Uno;
 
-public sealed partial class MainPage : Page
+public sealed partial class MainPage : Page, VoiceType.Uno.Presentation.Localization.IRetirablePage
 {
     private const double MaxPaneWidth = 320;
     private const double MaxPaneWidthRatio = 0.85;
@@ -28,6 +29,8 @@ public sealed partial class MainPage : Page
         // NavigationCacheMode="Required" keeps this instance across trips to the Models
         // page, so the singleton view model is subscribed exactly once.
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        // A language change replaces this cached page with a new one: Retire detaches it from the view model.
+        VoiceType.Uno.Presentation.Localization.LanguageSwitcher.Register(this);
         SizeChanged += (_, _) => ApplyLayout();
         Loaded += OnLoaded;
         BuildSourceChip();
@@ -237,6 +240,38 @@ public sealed partial class MainPage : Page
         UpdateVisualStates(useTransitions: false);
     }
 
+    /// <summary>Detaches this page from the singleton view model and the platform events (language switch).</summary>
+    public void Retire()
+    {
+        ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+#if !VOICE_TYPE_WINDOWS
+        if (!_platformHooksAttached)
+            return;
+        try
+        {
+            var inputPane = Windows.UI.ViewManagement.InputPane.GetForCurrentView();
+            inputPane.Showing -= OnInputPaneShowing;
+            inputPane.Hiding -= OnInputPaneHiding;
+        }
+        catch (Exception)
+        {
+        }
+        try
+        {
+            Windows.UI.Core.SystemNavigationManager.GetForCurrentView().BackRequested -= OnBackRequested;
+        }
+        catch (Exception)
+        {
+        }
+#endif
+    }
+
+#if !VOICE_TYPE_WINDOWS
+    private void OnInputPaneShowing(Windows.UI.ViewManagement.InputPane sender, Windows.UI.ViewManagement.InputPaneVisibilityEventArgs args) => SetKeyboardOpen(true);
+
+    private void OnInputPaneHiding(Windows.UI.ViewManagement.InputPane sender, Windows.UI.ViewManagement.InputPaneVisibilityEventArgs args) => SetKeyboardOpen(false);
+#endif
+
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
@@ -429,8 +464,8 @@ public sealed partial class MainPage : Page
         try
         {
             var inputPane = Windows.UI.ViewManagement.InputPane.GetForCurrentView();
-            inputPane.Showing += (_, _) => SetKeyboardOpen(true);
-            inputPane.Hiding += (_, _) => SetKeyboardOpen(false);
+            inputPane.Showing += OnInputPaneShowing;
+            inputPane.Hiding += OnInputPaneHiding;
         }
         catch (Exception ex)
         {
@@ -546,7 +581,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            ChatsSummaryText.Text = "Ask Gemma across recordings";
+            ChatsSummaryText.Text = Loc.T("Main.Menu.ChatsSummary");
         }
     }
 
@@ -588,6 +623,19 @@ public sealed partial class MainPage : Page
 
     private void BannerText_Tapped(object sender, TappedRoutedEventArgs e)
         => OpenModelsPage(ModelsTab.Downloads);
+
+    private async void UpdateBannerShow_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.UpdateBannerPlan is not { } plan || XamlRoot is null)
+            return;
+        await ClosePaneAsync();
+        var updates = App.Services.GetRequiredService<UpdateService>();
+        await UpdateDialog.ShowAsync(XamlRoot, updates, plan, () => ViewModel.IsRecording);
+        if (updates.IsSkipped(plan))
+            ViewModel.DismissUpdateBanner();
+    }
+
+    private void UpdateBannerDismiss_Click(object sender, RoutedEventArgs e) => ViewModel.DismissUpdateBanner();
 
     private void DownloadAsrModel_Click(object sender, RoutedEventArgs e)
         => ViewModel.EnqueueAsrModelDownload();

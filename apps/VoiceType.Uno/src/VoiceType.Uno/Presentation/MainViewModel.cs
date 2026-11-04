@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using VoiceType.Hotkeys;
 using VoiceType.Hotkeys.XdgPortal;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Presentation.SettingsUi;
 using VoiceType.Uno.Services;
 using VoiceType.Uno.Services.Platform;
@@ -16,9 +17,8 @@ using VoiceType.Uno.Services.Platform.Linux;
 namespace VoiceType.Uno.Presentation;
 
 /// <summary>
-/// Main dictation ViewModel. Mirrors the WinUI MainViewModel behavior
-/// (start/stop, mute, model lifecycle, text injection toggle, language)
-/// but depends on platform abstractions instead of Win32 services.
+/// Main dictation ViewModel (start/stop, mute, model lifecycle, text injection
+/// toggle, language); depends on platform abstractions instead of Win32 services.
 /// </summary>
 public sealed partial class MainViewModel : ObservableObject
 {
@@ -50,15 +50,20 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly Stopwatch _sessionClock = new();
     private bool _isKeepAliveStarted;
 
-    private const string ListeningStatus = "Listening...";
-    private const string MutedStatus = "Muted (audio discarded)";
+    private static string ReadyStatus() => Loc.T("Main.Status.Ready");
+    private static string ListeningStatus() => Loc.T("Main.Status.Listening");
+    private static string MutedStatus() => Loc.T("Main.Status.Muted");
 
-    // Status lines that only echo the recording state, which the pill already shows;
+    // Status lines that only echo the recording state, which the pill already shows, are "routine";
     // anything else (errors, "download a model" hints) is surfaced under the top bar.
-    private static readonly HashSet<string> RoutineStatuses = new(StringComparer.Ordinal)
-    {
-        "Ready", ListeningStatus, MutedStatus
-    };
+    private bool _isRoutineStatus = true;
+
+    // The singleton outlives a language change: each formatted text keeps how it was made, so
+    // OnUiLanguageChanged can produce it again in the new language.
+    private Func<string>? _statusSource = ReadyStatus;
+    private Func<string>? _modelStatusSource = () => Loc.T("Main.Model.NoneLoaded");
+    private Func<string>? _translationStatusSource = () => Loc.T("Main.Translation.Off");
+    private Func<string> _historySummarySource = () => Loc.T("Main.Menu.HistorySummary");
 
     // Speech-to-transcript merging (throttled partials, manual-input hand-off, "speech
     // continues after the text already in the field") lives in the coordinator; this
@@ -158,7 +163,7 @@ public sealed partial class MainViewModel : ObservableObject
             _scheduler.Post(() =>
             {
                 IsRecording = false;
-                StatusText = "Ready";
+                SetStatus(ReadyStatus, routine: true);
                 _tray.SetRecording(false);
 
                 // The final result was posted before this, so the field holds the
@@ -171,18 +176,18 @@ public sealed partial class MainViewModel : ObservableObject
         {
             IsModelLoading = state == ModelLifecycleState.Loading;
             IsModelReady = state == ModelLifecycleState.Loaded;
-            ModelStatusText = state switch
+            SetModelStatus(() => state switch
             {
-                ModelLifecycleState.Unloaded => "No model loaded",
-                ModelLifecycleState.Loading => "Loading model...",
-                ModelLifecycleState.Loaded => $"Model ready — {ModelDisplayName}",
-                ModelLifecycleState.Error => "Model load error",
+                ModelLifecycleState.Unloaded => Loc.T("Main.Model.NoneLoaded"),
+                ModelLifecycleState.Loading => Loc.T("Main.Model.Loading"),
+                ModelLifecycleState.Loaded => Loc.F("Main.Model.ReadyNamed", ModelDisplayName),
+                ModelLifecycleState.Error => Loc.T("Main.Model.LoadError"),
                 _ => ""
-            };
+            });
             OnPropertyChanged(nameof(RecordButtonText));
         });
         _recognition.Error += exception => _scheduler.Post(() =>
-            StatusText = $"Recognition error: {exception.Message}");
+            SetStatus(() => Loc.F("Main.Status.RecognitionError", exception.Message)));
 
         // Aggregated progress for the whole download queue (ASR + translation in
         // parallel) comes from the shared manager; the same events drive the
@@ -208,7 +213,7 @@ public sealed partial class MainViewModel : ObservableObject
         // Tray indicator: register with the desktop environment; activation
         // (icon click) toggles recording like the main button.
         _tray.Activated += () => _scheduler.Post(() => _ = ToggleAsync());
-        _ = RunInBackgroundAsync(_tray.InitializeAsync(), "Tray indicator");
+        _ = RunInBackgroundAsync(_tray.InitializeAsync(), "Main.Status.TrayError");
 
         // Recording notification actions (Android foreground service; no-op elsewhere).
         // Raised on any thread, so both hop onto the UI thread first.
@@ -219,9 +224,9 @@ public sealed partial class MainViewModel : ObservableObject
         // server; translated text is displayed (and injectable) alongside the
         // original transcript.
         _translation.TranslationChanged += text => _scheduler.Post(() => TranslatedText = text);
-        _translation.StatusChanged += status => _scheduler.Post(() => TranslationStatusText = status);
+        _translation.StatusChanged += status => _scheduler.Post(() => SetTranslationStatus(() => status));
 
-        _ = RunInBackgroundAsync(InitializeHotkeysAsync(), "Global hotkeys");
+        _ = RunInBackgroundAsync(InitializeHotkeysAsync(), "Main.Status.HotkeysError");
 
         RefreshModelBanners();
         SubscribeLlmModels();
@@ -230,12 +235,70 @@ public sealed partial class MainViewModel : ObservableObject
         // Recordings history: queue badge and the menu summary.
         PendingJobCount = _jobs.PendingCount;
         _jobs.Changed += () => _scheduler.Post(() => PendingJobCount = _jobs.PendingCount);
-        _historyMaintenance.Problem += message => _scheduler.Post(() => StatusText = message);
-        _ = RunInBackgroundAsync(RefreshHistorySummaryAfterStartupAsync(), "History");
+        _historyMaintenance.Problem += message => _scheduler.Post(() => SetStatus(() => message));
+        _ = RunInBackgroundAsync(RefreshHistorySummaryAfterStartupAsync(), "Main.Status.HistoryError");
 
         IsModelLoading = true;
-        ModelStatusText = "Checking model...";
+        SetModelStatus(() => Loc.T("Main.Model.Checking"));
         _modelInitializationTask = InitializeModelAsync();
+
+        // Raised on the UI thread; the pages are rebuilt, this singleton re-computes its texts.
+        Loc.LanguageChanged += OnUiLanguageChanged;
+    }
+
+    /// <summary>Shows a status line; <paramref name="text"/> is kept so a language change can produce it again.</summary>
+    private void SetStatus(Func<string> text, bool routine = false)
+    {
+        _statusSource = text;
+        _isRoutineStatus = routine;
+        StatusText = text();
+        // The routine flag may change while the text stays the same.
+        OnPropertyChanged(nameof(StatusNotice));
+        OnPropertyChanged(nameof(IsStatusNoticeVisible));
+    }
+
+    /// <summary>Shows the model status line; <paramref name="text"/> is kept for a language change.</summary>
+    private void SetModelStatus(Func<string> text)
+    {
+        _modelStatusSource = text;
+        ModelStatusText = text();
+    }
+
+    /// <summary>Shows the translation status line; <paramref name="text"/> is kept for a language change.</summary>
+    private void SetTranslationStatus(Func<string> text)
+    {
+        _translationStatusSource = text;
+        TranslationStatusText = text();
+    }
+
+    /// <summary>
+    /// The interface language changed (UI thread): every text this long-lived view model formatted is produced again
+    /// in the new language, and the computed texts are re-read by their bindings.
+    /// </summary>
+    private void OnUiLanguageChanged()
+    {
+        if (_statusSource is { } status)
+            StatusText = status();
+        if (_modelStatusSource is { } model)
+            ModelStatusText = model();
+        if (_translationStatusSource is { } translation)
+            TranslationStatusText = translation();
+        HistorySummary = _historySummarySource();
+        SavedSnackbarText = Loc.T("Main.Snackbar.Saved");
+        RefreshQueueProgress();
+        RefreshModelBanners();
+
+        OnPropertyChanged(nameof(RecordButtonText));
+        OnPropertyChanged(nameof(RecordCaption));
+        OnPropertyChanged(nameof(StatePillText));
+        OnPropertyChanged(nameof(ModeSummary));
+        OnPropertyChanged(nameof(TranscriptHeader));
+        OnPropertyChanged(nameof(QueueSummary));
+        OnPropertyChanged(nameof(StatusNotice));
+        OnPropertyChanged(nameof(AudioSourceLabel));
+        OnPropertyChanged(nameof(AudioSourceChipName));
+        OnPropertyChanged(nameof(AudioSourceOptions));
+        UpdateKeepAliveNotice();
     }
 
     private async Task InitializeHotkeysAsync()
@@ -292,7 +355,8 @@ public sealed partial class MainViewModel : ObservableObject
     /// Runs a fire-and-forget startup task, reporting failures on the status line
     /// instead of leaving an unobserved task exception behind.
     /// </summary>
-    private async Task RunInBackgroundAsync(Task task, string operation)
+    /// <param name="errorKey">The status text of a failure, one placeholder for the message ("Tray indicator error: {0}").</param>
+    private async Task RunInBackgroundAsync(Task task, string errorKey)
     {
         try
         {
@@ -300,7 +364,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _scheduler.Post(() => StatusText = $"{operation} error: {ex.Message}");
+            _scheduler.Post(() => SetStatus(() => Loc.F(errorKey, ex.Message)));
         }
     }
 
@@ -323,7 +387,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _scheduler.Post(() => StatusText = $"Hotkey error: {ex.Message}");
+            _scheduler.Post(() => SetStatus(() => Loc.F("Main.Status.HotkeyError", ex.Message)));
         }
         finally
         {
@@ -354,7 +418,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _scheduler.Post(() => StatusText = $"Hotkey error: {ex.Message}");
+            _scheduler.Post(() => SetStatus(() => Loc.F("Main.Status.HotkeyError", ex.Message)));
         }
         finally
         {
@@ -367,7 +431,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// the live settings instance and serializes the file writes.
     /// </summary>
     private void Persist(Action<AppSettings> mutate) =>
-        _settingsStore.Post(mutate, ex => _scheduler.Post(() => StatusText = $"Settings error: {ex.Message}"));
+        _settingsStore.Post(mutate, ex => _scheduler.Post(() => SetStatus(() => Loc.F("Main.Status.SettingsError", ex.Message))));
 
     // Tail of the injection queue: every Inject continues the previous one.
     private Task _injectTail = Task.CompletedTask;
@@ -406,7 +470,7 @@ public sealed partial class MainViewModel : ObservableObject
             }
             catch (Exception ex)
             {
-                _scheduler.Post(() => StatusText = $"Injection error: {ex.Message}");
+                _scheduler.Post(() => SetStatus(() => Loc.F("Main.Status.InjectionError", ex.Message)));
             }
         }, TaskScheduler.Default);
 
@@ -426,7 +490,7 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    private string _statusText = "Ready";
+    private string _statusText = Loc.T("Main.Status.Ready");
 
     [ObservableProperty]
     private string _floatingText = "";
@@ -492,7 +556,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _isModelReady;
 
     [ObservableProperty]
-    private string _modelStatusText = "No model loaded";
+    private string _modelStatusText = Loc.T("Main.Model.NoneLoaded");
 
     /// <summary>
     /// Friendly name of the model the app is configured with: the catalog title
@@ -543,7 +607,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _isAsrModelMissing;
 
     [ObservableProperty]
-    private string _asrModelBannerText = "ASR model is not available — download it to start dictation.";
+    private string _asrModelBannerText = Loc.T("Main.Banner.AsrMissing");
 
     // While the model is already downloading, the queue progress row says so —
     // offering "Download" again would only confuse.
@@ -554,8 +618,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _isTranslationModelMissing;
 
     [ObservableProperty]
-    private string _translationModelBannerText =
-        "Gemma language model is not downloaded — translation will use the HTTP server fallback or stay off.";
+    private string _translationModelBannerText = Loc.T("Main.Banner.GemmaMissing");
 
     [ObservableProperty]
     private bool _isAsrModelPartial;
@@ -582,7 +645,7 @@ public sealed partial class MainViewModel : ObservableObject
             return;
 
         DownloadProgress = job.Percent;
-        ModelStatusText = status;
+        SetModelStatus(() => DownloadProgressFormatter.DescribeJob(job) ?? status);
         OnPropertyChanged(nameof(RecordButtonText));
     }
 
@@ -602,10 +665,8 @@ public sealed partial class MainViewModel : ObservableObject
         IsAsrModelMissing = asrIntegrity != ModelPathResolver.ModelIntegrity.Complete;
         AsrModelBannerText = asrIntegrity switch
         {
-            ModelPathResolver.ModelIntegrity.Broken =>
-                "ASR model is broken or incomplete — re-download it to start dictation.",
-            ModelPathResolver.ModelIntegrity.Missing =>
-                "ASR model is not available — download it to start dictation.",
+            ModelPathResolver.ModelIntegrity.Broken => Loc.T("Main.Banner.AsrBroken"),
+            ModelPathResolver.ModelIntegrity.Missing => Loc.T("Main.Banner.AsrMissing"),
             _ => AsrModelBannerText
         };
 
@@ -627,9 +688,9 @@ public sealed partial class MainViewModel : ObservableObject
             IsTranslationModelPartial = !TranslationModelInfo.IsDownloaded && TranslationModelInfo.HasPartialDownload;
             IsTranslationModelMissing = !TranslationModelInfo.IsDownloaded;
             TranslationModelBannerText = IsTranslationModelPartial
-                ? "Gemma language model download is incomplete — re-download it to finish."
-                : "Gemma language model is not downloaded — translation will use the HTTP server fallback or stay off.";
-            LlmSubtitle = "Gemma 4, on-device";
+                ? Loc.T("Main.Banner.GemmaPartial")
+                : Loc.T("Main.Banner.GemmaMissing");
+            LlmSubtitle = Loc.T("Main.Menu.LlmSubtitle");
         }
 
         OnPropertyChanged(nameof(IsTranslationModelBannerVisible));
@@ -674,7 +735,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _scheduler.Post(() => StatusText = $"Settings error: {ex.Message}");
+            _scheduler.Post(() => SetStatus(() => Loc.F("Main.Status.SettingsError", ex.Message)));
             return;
         }
 
@@ -686,7 +747,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>Side-menu subtitle under "Live translation": the active language model.</summary>
     [ObservableProperty]
-    private string _llmSubtitle = "Gemma 4, on-device";
+    private string _llmSubtitle = Loc.T("Main.Menu.LlmSubtitle");
 
     private bool _llmSubscribed;
 
@@ -772,7 +833,7 @@ public sealed partial class MainViewModel : ObservableObject
     private string _translatedText = "";
 
     [ObservableProperty]
-    private string _translationStatusText = "Translation off";
+    private string _translationStatusText = Loc.T("Main.Translation.Off");
 
     [ObservableProperty]
     private string _translationTargetLanguage = "ru";
@@ -847,8 +908,9 @@ public sealed partial class MainViewModel : ObservableObject
             // property saves the old source; the switch back is a no-op, that source is the one running.
             if (string.Equals(AudioSource, source, StringComparison.Ordinal))
                 AudioSource = active;
-            StatusText = $"Could not switch to {SettingsText.AudioSourceTitle(source, android)}: {result.Error?.Message} " +
-                         $"Still using {SettingsText.AudioSourceTitle(active, android)}.";
+            var reason = result.Error?.Message;
+            SetStatus(() => Loc.F("Main.Status.SourceSwitchFailed",
+                SettingsText.AudioSourceTitle(source, android), reason, SettingsText.AudioSourceTitle(active, android)));
         });
     }
 
@@ -916,10 +978,10 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>False on platforms that cannot type into other apps; hides the mode.</summary>
     public bool IsTextInjectionAvailable => _textInjector.CanInject;
 
-    public string TranscriptHeader => IsManualInputEnabled ? "Transcript · editing" : "Transcript";
+    public string TranscriptHeader => IsManualInputEnabled ? Loc.T("Main.Transcript.HeaderEditing") : Loc.T("Main.Transcript.Header");
 
     /// <summary>Errors and hints from <see cref="StatusText"/>; empty for routine recording states.</summary>
-    public string StatusNotice => RoutineStatuses.Contains(StatusText) ? "" : StatusText;
+    public string StatusNotice => _isRoutineStatus ? "" : StatusText;
 
     public bool IsStatusNoticeVisible => StatusNotice.Length > 0;
 
@@ -964,7 +1026,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _recognition.SetMuted(false);
             IsCaptureMuted = false;
-            StatusText = ListeningStatus;
+            SetStatus(ListeningStatus, routine: true);
             return;
         }
 
@@ -985,7 +1047,7 @@ public sealed partial class MainViewModel : ObservableObject
             }
             catch (Exception ex)
             {
-                StatusText = $"Model load error: {ex.Message}";
+                SetStatus(() => Loc.F("Main.Status.ModelLoadError", ex.Message));
                 return;
             }
         }
@@ -1004,12 +1066,15 @@ public sealed partial class MainViewModel : ObservableObject
         {
             await _recognition.StartAsync(Settings, historySession);
             IsRecording = true;
-            StatusText = historySession?.AudioWarning ?? ListeningStatus;
+            if (historySession?.AudioWarning is { } audioWarning)
+                SetStatus(() => audioWarning);
+            else
+                SetStatus(ListeningStatus, routine: true);
             _tray.SetRecording(true);
         }
         catch (Exception ex)
         {
-            StatusText = $"Error: {ex.Message}";
+            SetStatus(() => Loc.F("Main.Status.Error", ex.Message));
             IsRecording = false;
             if (Interlocked.CompareExchange(ref _historySession, null, historySession) == historySession && historySession is not null)
                 _ = historySession.AbandonAsync();
@@ -1046,7 +1111,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _scheduler.Post(() => StatusText = $"History is not saving this recording: {ex.Message}");
+            _scheduler.Post(() => SetStatus(() => Loc.F("Main.Status.HistoryNotSaving", ex.Message)));
             return null;
         }
     }
@@ -1061,7 +1126,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _scheduler.Post(() => StatusText = $"History save error: {ex.Message}");
+            _scheduler.Post(() => SetStatus(() => Loc.F("Main.Status.HistorySaveError", ex.Message)));
             return;
         }
 
@@ -1079,8 +1144,8 @@ public sealed partial class MainViewModel : ObservableObject
 
         _scheduler.Post(() =>
         {
-            if (outcome.Warning is not null)
-                StatusText = outcome.Warning;
+            if (outcome.Warning is { } warning)
+                SetStatus(() => warning);
             if (outcome.RecordingId is { } id)
                 ShowSavedSnackbar(id);
         });
@@ -1091,7 +1156,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _isSavedSnackbarVisible;
 
     [ObservableProperty]
-    private string _savedSnackbarText = "Saved to History";
+    private string _savedSnackbarText = Loc.T("Main.Snackbar.Saved");
 
     /// <summary>Recording the snackbar's Open button navigates to.</summary>
     public string? LastSavedRecordingId { get; private set; }
@@ -1099,7 +1164,7 @@ public sealed partial class MainViewModel : ObservableObject
     private void ShowSavedSnackbar(string recordingId)
     {
         LastSavedRecordingId = recordingId;
-        SavedSnackbarText = "Saved to History";
+        SavedSnackbarText = Loc.T("Main.Snackbar.Saved");
         IsSavedSnackbarVisible = true;
         _savedSnackbarTimer.Stop();
         _savedSnackbarTimer.Start();
@@ -1128,16 +1193,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool IsQueueBadgeVisible => PendingJobCount > 0;
 
-    public string QueueSummary => PendingJobCount switch
-    {
-        0 => "No jobs waiting",
-        1 => "1 job waiting",
-        var n => $"{n} jobs waiting",
-    };
+    public string QueueSummary => PendingJobCount == 0
+        ? Loc.T("Main.Menu.QueueSummary.None")
+        : Loc.Plural("Main.Menu.QueueSummary.Count", PendingJobCount);
 
     /// <summary>Second line of the History menu entry ("12 recordings").</summary>
     [ObservableProperty]
-    private string _historySummary = "Recordings and transcripts";
+    private string _historySummary = Loc.T("Main.Menu.HistorySummary");
 
     private async Task RefreshHistorySummaryAfterStartupAsync()
     {
@@ -1151,18 +1213,21 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var count = await Task.Run(() => _recordings.LoadAll().Recordings.Count).ConfigureAwait(false);
-            var text = count switch
-            {
-                0 => "No recordings yet",
-                1 => "1 recording",
-                _ => $"{count} recordings",
-            };
-            _scheduler.Post(() => HistorySummary = text);
+            Func<string> text = () => count == 0
+                ? Loc.T("Main.Menu.HistorySummary.None")
+                : Loc.Plural("Main.Menu.HistorySummary.Count", count);
+            _scheduler.Post(() => SetHistorySummary(text));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _scheduler.Post(() => HistorySummary = "History is unavailable");
+            _scheduler.Post(() => SetHistorySummary(() => Loc.T("Main.Menu.HistorySummary.Unavailable")));
         }
+    }
+
+    private void SetHistorySummary(Func<string> text)
+    {
+        _historySummarySource = text;
+        HistorySummary = text();
     }
 
     /// <summary>Stops the session outright (notification Stop), even while muted.</summary>
@@ -1179,7 +1244,7 @@ public sealed partial class MainViewModel : ObservableObject
         var muted = !IsCaptureMuted;
         _recognition.SetMuted(muted);
         IsCaptureMuted = muted;
-        StatusText = muted ? MutedStatus : ListeningStatus;
+        SetStatus(muted ? MutedStatus : ListeningStatus, routine: true);
     }
 
     /// <summary>Translates the whole current transcript (live translation otherwise starts when it is switched on).</summary>
@@ -1195,7 +1260,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            TranslationStatusText = $"Translation error: {ex.Message}";
+            SetTranslationStatus(() => Loc.F("Main.Translation.Error", ex.Message));
         }
     }
 
@@ -1251,7 +1316,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             // Recording still works in the foreground; only background capture is lost.
-            StatusText = $"Background recording unavailable: {ex.Message}";
+            SetStatus(() => Loc.F("Main.Status.BackgroundUnavailable", ex.Message));
         }
     }
 
@@ -1277,7 +1342,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusText = $"Recording notification error: {ex.Message}";
+            SetStatus(() => Loc.F("Main.Status.NotificationError", ex.Message));
         }
     }
 
@@ -1302,7 +1367,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusText = $"Recording notification error: {ex.Message}";
+            SetStatus(() => Loc.F("Main.Status.NotificationError", ex.Message));
         }
     }
 
@@ -1387,7 +1452,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _scheduler.Post(() => StatusText = $"Settings error: {ex.Message}");
+            _scheduler.Post(() => SetStatus(() => Loc.F("Main.Status.SettingsError", ex.Message)));
         }
         finally
         {
@@ -1407,7 +1472,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 IsModelLoading = false;
                 IsModelDownloading = false;
-                ModelStatusText = "Model ready";
+                SetModelStatus(() => Loc.T("Main.Model.Ready"));
                 if (Settings.AutoStartRecognition)
                     _ = ToggleAsync();
             });
@@ -1418,8 +1483,8 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 IsModelLoading = false;
                 IsModelDownloading = false;
-                ModelStatusText = $"Model unavailable: {ex.Message}";
-                StatusText = "Ready - download or select a model in Settings";
+                SetModelStatus(() => Loc.F("Main.Model.Unavailable", ex.Message));
+                SetStatus(() => Loc.T("Main.Status.ReadyNoModel"));
             });
         }
     }
@@ -1429,7 +1494,7 @@ public sealed partial class MainViewModel : ObservableObject
         var modelPath = ModelPathResolver.FindExistingModelPath(Settings);
         if (modelPath is null)
         {
-            SetModelPreparationState(true, true, "Downloading model...");
+            SetModelPreparationState(true, true, () => Loc.T("Main.Download.Job"));
             var layout = ModelStorageLayout.Resolve(Settings);
 
             // Enqueue into the shared download manager and await this job's
@@ -1452,10 +1517,10 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         _scheduler.Post(RefreshModelBanners);
-        SetModelPreparationState(true, false, "Loading model...");
+        SetModelPreparationState(true, false, () => Loc.T("Main.Model.Loading"));
         await _recognition.LoadModelAsync(Settings).ConfigureAwait(false);
         if (_recognition.ModelState != ModelLifecycleState.Loaded)
-            throw new InvalidOperationException("The speech model did not reach the Loaded state.");
+            throw new InvalidOperationException(Loc.T("Main.Model.NotLoaded"));
     }
 
     private async Task ReloadModelAsync(AppSettings settings, string? modelPath, int version)
@@ -1464,7 +1529,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             IsModelReady = false;
             IsModelLoading = true;
-            ModelStatusText = "Reloading model...";
+            SetModelStatus(() => Loc.T("Main.Model.Reloading"));
         });
 
         await _recognition.StopAndCleanupAsync().ConfigureAwait(false);
@@ -1478,7 +1543,7 @@ public sealed partial class MainViewModel : ObservableObject
             _scheduler.Post(() =>
             {
                 IsModelLoading = false;
-                ModelStatusText = "No model selected";
+                SetModelStatus(() => Loc.T("Main.Model.NoneSelected"));
             });
             return;
         }
@@ -1528,7 +1593,7 @@ public sealed partial class MainViewModel : ObservableObject
         _scheduler.Post(() =>
         {
             IsRecording = true;
-            StatusText = ListeningStatus;
+            SetStatus(ListeningStatus, routine: true);
             _tray.SetRecording(true);
         });
     }
@@ -1577,13 +1642,13 @@ public sealed partial class MainViewModel : ObservableObject
         _textInjector.PasteChord = SettingsText.NormalizePasteChord(settings.PasteChord);
     }
 
-    private void SetModelPreparationState(bool loading, bool downloading, string status)
+    private void SetModelPreparationState(bool loading, bool downloading, Func<string> status)
     {
         _scheduler.Post(() =>
         {
             IsModelLoading = loading;
             IsModelDownloading = downloading;
-            ModelStatusText = status;
+            SetModelStatus(status);
         });
     }
 

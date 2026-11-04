@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.History;
 
 /// <summary>
@@ -60,10 +62,10 @@ public sealed class HistoryUiEditSession
     }
 
     /// <summary><c>2 segments changed</c> / <c>No changes</c>.</summary>
-    public string ChangedText => ChangedCount == 0 ? "No changes" : HistoryUiFormat.Count(ChangedCount, "segment") + " changed";
+    public string ChangedText => ChangedCount == 0 ? Loc.T("History.Edit.NoChanges") : Loc.Plural("History.Edit.SegmentsChanged", ChangedCount);
 
     /// <summary><c>Editing v2 · Save creates v3 · edited; v2 stays as it is.</c></summary>
-    public string Caption => $"Editing {SourceVersionId} · Save creates {NextVersionId} · edited; {SourceVersionId} stays as it is.";
+    public string Caption => Loc.F("History.Edit.Caption", SourceVersionId, NextVersionId);
 
     /// <summary>Next free version id of a manifest (<c>v1, v2</c> → <c>v3</c>).</summary>
     public static string NextVersionIdOf(RecordingManifest manifest)

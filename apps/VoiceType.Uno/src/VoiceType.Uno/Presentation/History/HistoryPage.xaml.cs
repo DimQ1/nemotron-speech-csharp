@@ -2,6 +2,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VirtualKey = Windows.System.VirtualKey;
 
 namespace VoiceType.Uno.Presentation.History;
@@ -204,14 +205,14 @@ public sealed partial class HistoryPage : Page
             return;
 
         var menu = new MenuFlyout();
-        menu.Items.Add(Item("Rename", Symbol.Rename, async () => await RenameAsync(row.Id)));
-        menu.Items.Add(Item("Export…", Symbol.Save, async () => await ExportAsync(row.Id)));
-        var reprocess = Item("Re-recognize…", Symbol.Refresh, async () => await ReprocessAsync([row.Id]));
+        menu.Items.Add(Item(Loc.T("History.Menu.Rename"), Symbol.Rename, async () => await RenameAsync(row.Id)));
+        menu.Items.Add(Item(Loc.T("History.Menu.Export"), Symbol.Save, async () => await ExportAsync(row.Id)));
+        var reprocess = Item(Loc.T("History.Menu.Rerecognize"), Symbol.Refresh, async () => await ReprocessAsync([row.Id]));
         reprocess.IsEnabled = row.Row.HasAudio;
         menu.Items.Add(reprocess);
-        menu.Items.Add(Item("Select", Symbol.SelectAll, () => { ViewModel.StartSelection(row); return Task.CompletedTask; }));
+        menu.Items.Add(Item(Loc.T("History.Menu.Select"), Symbol.SelectAll, () => { ViewModel.StartSelection(row); return Task.CompletedTask; }));
         menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(Item("Delete", Symbol.Delete, async () => await DeleteAsync([row.Id], row.Row.AudioBytes)));
+        menu.Items.Add(Item(Loc.T("History.Menu.Delete"), Symbol.Delete, async () => await DeleteAsync([row.Id], row.Row.AudioBytes)));
         menu.ShowAt(anchor);
     }
 

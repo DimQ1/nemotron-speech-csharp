@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.Services;
 
 /// <summary>Wording of the language-model UI (Models page, banners, side menu), testable without a UI.</summary>
@@ -5,39 +7,42 @@ public static class LlmUiText
 {
     public const string TabLabel = "Gemma";
 
-    public const string ComputeTitle = "Compute";
+    public static string ComputeTitle => Loc.T("Models.Llm.ComputeTitle");
 
-    public const string ComputeHint =
-        "GPU is much faster for the 12B model; the first load compiles shaders and takes a while.";
+    public static string ComputeHint => Loc.T("Models.Llm.ComputeHint");
 
-    public const string ComputeUnavailableHint = "The language model runs on the CPU on this device.";
+    public static string ComputeUnavailableHint => Loc.T("Models.Llm.ComputeUnavailableHint");
 
-    public const string SharedModelNote =
-        "Live translation, chat, titles and saved-transcript translation all share the one selected model. "
-        + "A larger model answers better but live translation becomes slower — switch back to E2B if live translation lags.";
+    public static string SharedModelNote => Loc.T("Models.Llm.SharedModelNote");
 
-    public static string Loading(string title) => $"Loading {title}…";
+    public static string Loading(string title) => Loc.F("Models.Llm.Loading", title);
+
+    /// <summary>The model's tagline in the current language (the catalog keeps the English one).</summary>
+    public static string TaglineOf(LlmModelInfo model) => Lookup("Models.Llm." + KeyOf(model) + ".Tagline", model.Tagline);
+
+    /// <summary>The model's description in the current language (the catalog keeps the English one).</summary>
+    public static string DescriptionOf(LlmModelInfo model) => Lookup("Models.Llm." + KeyOf(model) + ".Description", model.Description);
 
     public static string ShortName(LlmModelInfo model) =>
         model.Title.StartsWith("Gemma 4 ", StringComparison.Ordinal) ? model.Title["Gemma 4 ".Length..] : model.Title;
 
     /// <summary>Subtitle under "Live translation" in the side menu.</summary>
-    public static string SideMenuSubtitle(string modelTitle) => $"{modelTitle}, on-device";
+    public static string SideMenuSubtitle(string modelTitle) => Loc.F("Models.Llm.SideMenuSubtitle", modelTitle);
 
     public static string BannerMissing(string modelTitle) =>
-        $"{modelTitle} is not downloaded — translation will use the HTTP server fallback or stay off.";
+        Loc.F("Models.Llm.BannerMissing", modelTitle);
 
     public static string BannerPartial(string modelTitle) =>
-        $"{modelTitle} download is incomplete — re-download it to finish.";
+        Loc.F("Models.Llm.BannerPartial", modelTitle);
 
     public static string ChatMissingDetail(LlmModelInfo model) =>
-        $"Chat runs on this device. Download the {model.Title} model (about {DownloadProgressFormatter.FormatBytes(model.SizeBytes)}) to ask questions.";
+        Loc.F("Models.Llm.ChatMissingDetail", model.Title, DownloadProgressFormatter.FormatBytes(model.SizeBytes));
 
     public static string ChatMissingTitle(string modelTitle, bool downloading) =>
-        downloading ? $"Downloading {modelTitle}…" : $"{modelTitle} is not installed";
+        downloading ? Loc.F("Models.Llm.ChatDownloading", modelTitle) : Loc.F("Models.Llm.ChatNotInstalled", modelTitle);
 
     public static string DeleteConsequence(LlmModelInfo model) =>
-        $"The {DownloadProgressFormatter.FormatBytes(model.SizeBytes)} model file is removed from this device. You can download it again later.";
+        Loc.F("Models.Llm.DeleteConsequence", DownloadProgressFormatter.FormatBytes(model.SizeBytes));
 
     /// <summary>Inline banner for a failed switch (not enough memory, load failure).</summary>
     public static string SwitchError(LlmModelInfo model, Exception error)
@@ -45,7 +50,32 @@ public static class LlmUiText
         var oom = error is OutOfMemoryException
             || error.Message.Contains("memory", StringComparison.OrdinalIgnoreCase);
         return oom
-            ? $"Not enough memory to load {model.Title} (needs ≈{model.MinFreeRamGb:0.#} GB free). Close other apps or pick a smaller model."
-            : $"Could not load {model.Title}: {error.Message}";
+            ? Loc.F("Models.Llm.SwitchErrorMemory", model.Title, model.MinFreeRamGb)
+            : Loc.F("Models.Llm.SwitchError", model.Title, error.Message);
+    }
+
+    /// <summary>"Switching to GPU…" while the compute backend changes.</summary>
+    public static string SwitchingCompute(string label) => Loc.F("Models.Llm.SwitchingCompute", label);
+
+    /// <summary>The red line under a card when the free RAM is below the model's need.</summary>
+    public static string RamWarning(double freeGb) => Loc.F("Models.Llm.RamWarning", freeGb);
+
+    /// <summary>Accessible name of a card's "⋯" button.</summary>
+    public static string MoreActionsFor(string title) => Loc.F("Models.Card.MoreActionsFor", title);
+
+    /// <summary>Accessible name of a card's primary button: "Download Gemma 4 E2B".</summary>
+    public static string ActionFor(string action, string title) => Loc.F("Models.Card.ActionFor", action, title);
+
+    /// <summary>The "8K context" chip.</summary>
+    public static string ContextChip(int tokens) => Loc.F("Models.Llm.ContextChip", LlmUiCardBuilder.FormatContext(tokens));
+
+    /// <summary>Key segment of a model id: characters outside <c>[A-Za-z0-9_.]</c> become <c>_</c>.</summary>
+    private static string KeyOf(LlmModelInfo model) =>
+        new(model.Id.Select(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '.' ? c : '_').ToArray());
+
+    private static string Lookup(string key, string fallback)
+    {
+        var text = Loc.T(key);
+        return text == key ? fallback : text;
     }
 }

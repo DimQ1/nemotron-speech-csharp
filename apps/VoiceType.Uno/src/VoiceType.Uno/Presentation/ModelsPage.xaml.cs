@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using SpeechLib.ModelDownload;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using VoiceType.Uno.Services;
 using Windows.System;
 
@@ -260,7 +261,7 @@ public sealed partial class ModelsPage : Page
     {
         SpeakersIntro.Text = SpeakersModelsUi.Intro;
         SpeakersFacts.Text = SpeakersModelsUi.Facts;
-        SpeakersLicence.Text = "Licence: " + SpeakersModelsUi.Licence;
+        SpeakersLicence.Text = Loc.F("Models.Speakers.LicenceLine", SpeakersModelsUi.Licence);
         SpeakersSource.Text = SpeakersModelsUi.SourceText;
 
         if (SpeakerModels is null)
@@ -318,10 +319,10 @@ public sealed partial class ModelsPage : Page
             return;
 
         var menu = new MenuFlyout();
-        var delete = new MenuFlyoutItem { Text = "Delete", Icon = new SymbolIcon(Symbol.Delete) };
+        var delete = new MenuFlyoutItem { Text = Loc.T("Models.Menu.Delete"), Icon = new SymbolIcon(Symbol.Delete) };
         delete.Click += async (_, _) =>
         {
-            if (await ConfirmDeleteAsync(card.Title, $"The {DownloadProgressFormatter.FormatBytes(card.Model.SizeBytes)} model files are removed from this device. You can download them again later."))
+            if (await ConfirmDeleteAsync(card.Title, Loc.F("Models.Speakers.DeleteConsequence", DownloadProgressFormatter.FormatBytes(card.Model.SizeBytes))))
             {
                 SpeakerModels.Delete(card);
                 Models.Refresh();
@@ -376,17 +377,17 @@ public sealed partial class ModelsPage : Page
         if (card.CanRedownload)
         {
             // Starts from an empty folder, which also repairs a broken install.
-            var redownload = new MenuFlyoutItem { Text = "Re-download", Icon = new SymbolIcon(Symbol.Download) };
+            var redownload = new MenuFlyoutItem { Text = Loc.T("Models.Menu.Redownload"), Icon = new SymbolIcon(Symbol.Download) };
             redownload.Click += async (_, _) => await card.DownloadAsync(force: true);
             menu.Items.Add(redownload);
         }
 
         if (card.CanDelete)
         {
-            var delete = new MenuFlyoutItem { Text = "Delete", Icon = new SymbolIcon(Symbol.Delete) };
+            var delete = new MenuFlyoutItem { Text = Loc.T("Models.Menu.Delete"), Icon = new SymbolIcon(Symbol.Delete) };
             delete.Click += async (_, _) =>
             {
-                if (await ConfirmDeleteAsync(card.Title, "The model files are removed from this device. You can download it again later."))
+                if (await ConfirmDeleteAsync(card.Title, Loc.T("Models.Speech.DeleteConsequence")))
                     card.Delete();
             };
             menu.Items.Add(delete);
@@ -394,7 +395,7 @@ public sealed partial class ModelsPage : Page
 
         var details = new MenuFlyoutItem
         {
-            Text = card.IsDetailsExpanded ? "Hide details" : "Show details",
+            Text = card.IsDetailsExpanded ? Loc.T("Models.Menu.HideDetails") : Loc.T("Models.Menu.ShowDetails"),
             Icon = new SymbolIcon(Symbol.View)
         };
         details.Click += (_, _) => card.IsDetailsExpanded = !card.IsDetailsExpanded;
@@ -422,7 +423,7 @@ public sealed partial class ModelsPage : Page
             return;
 
         var menu = new MenuFlyout();
-        var delete = new MenuFlyoutItem { Text = "Delete", Icon = new SymbolIcon(Symbol.Delete) };
+        var delete = new MenuFlyoutItem { Text = Loc.T("Models.Menu.Delete"), Icon = new SymbolIcon(Symbol.Delete) };
         delete.Click += async (_, _) =>
         {
             if (await ConfirmDeleteAsync(card.Title, LlmUiText.DeleteConsequence(card.Model)))
@@ -485,7 +486,7 @@ public sealed partial class ModelsPage : Page
 
     private async void DeleteTranslation_Click(object sender, RoutedEventArgs e)
     {
-        if (await ConfirmDeleteAsync(TranslationModel.Title, "Live translation stops working until the model is downloaded again."))
+        if (await ConfirmDeleteAsync(TranslationModel.Title, Loc.T("Models.Translation.DeleteConsequence")))
         {
             TranslationModel.Delete();
             Models.Refresh();
@@ -499,10 +500,10 @@ public sealed partial class ModelsPage : Page
             var dialog = new ContentDialog
             {
                 XamlRoot = XamlRoot,
-                Title = $"Delete {title}?",
+                Title = Loc.F("Models.DeleteDialog.Title", title),
                 Content = new TextBlock { Text = consequence, TextWrapping = TextWrapping.Wrap },
-                PrimaryButtonText = "Delete",
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = Loc.T("Models.DeleteDialog.Delete"),
+                CloseButtonText = Loc.T("Models.DeleteDialog.Cancel"),
                 DefaultButton = ContentDialogButton.Close
             };
 

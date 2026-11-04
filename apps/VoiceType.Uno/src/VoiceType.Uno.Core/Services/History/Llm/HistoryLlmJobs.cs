@@ -1,5 +1,5 @@
-using System.Globalization;
 using SpeechLib.Translation;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -14,7 +14,7 @@ public static class HistoryLlmJobs
     public static HistoryJob EnqueueTranslate(JobQueue queue, RecordingManifest manifest, string? sourceVersion, string targetLanguage)
     {
         var version = sourceVersion ?? manifest.CurrentVersion
-            ?? throw new InvalidOperationException("The recording has no transcript to translate.");
+            ?? throw new InvalidOperationException(Loc.T("Recording.Jobs.NoTranscriptToTranslate"));
         var code = TranslationLanguageCodes.Normalize(targetLanguage)
             ?? throw new ArgumentException("A translation needs a target language.", nameof(targetLanguage));
 
@@ -89,9 +89,9 @@ public static class HistoryLlmJobs
             return null;
         var chunks = new AnalysisStore(recordings).LoadChunks(recordingId, versionId);
         if (chunks is null || chunks.Chunks.Count == 0)
-            return "Preparing the recording…";
+            return Loc.T("Recording.Jobs.Preparing");
         var done = chunks.Chunks.Count(c => !string.IsNullOrWhiteSpace(c.Summary));
-        return string.Create(CultureInfo.InvariantCulture, $"Preparing the recording… {done}/{chunks.Chunks.Count + 1}");
+        return Loc.F("Recording.Jobs.PreparingProgress", done, chunks.Chunks.Count + 1);
     }
 
     /// <summary>Title jobs run after a save only when the setting is on and the model is installed.</summary>
@@ -157,10 +157,10 @@ public static class TranslateTabLogic
                 var outdated = IsOutdated(manifest, t);
                 var name = LanguageName(t.TargetLanguage);
                 var status = partial
-                    ? $"Partial · {t.SentencesDone.ToString(CultureInfo.InvariantCulture)} / {t.SentencesTotal.ToString(CultureInfo.InvariantCulture)} sentences"
-                    : "Complete";
+                    ? Loc.F("Recording.Translate.Partial", t.SentencesDone, t.SentencesTotal)
+                    : Loc.T("Recording.Translate.Complete");
                 return new TranslationListItem(t.Id, t.TargetLanguage, name, t.SourceVersion, outdated, partial, status,
-                    $"→ {name} · from {t.SourceVersion}" + (outdated ? " · outdated" : ""));
+                    Loc.F(outdated ? "Recording.Translate.ListLabelOutdated" : "Recording.Translate.ListLabel", name, t.SourceVersion));
             })
             .ToList();
 
@@ -188,6 +188,6 @@ public static class TranslateTabLogic
     /// <summary><c>Translating to German · 6 / 14 sentences</c>.</summary>
     public static string ProgressText(string languageName, int done, int total) =>
         total <= 0
-            ? $"Translating to {languageName}…"
-            : $"Translating to {languageName} · {done.ToString(CultureInfo.InvariantCulture)} / {total.ToString(CultureInfo.InvariantCulture)} sentences";
+            ? Loc.F("Recording.Translate.Progress", languageName)
+            : Loc.F("Recording.Translate.ProgressCount", languageName, done, total);
 }

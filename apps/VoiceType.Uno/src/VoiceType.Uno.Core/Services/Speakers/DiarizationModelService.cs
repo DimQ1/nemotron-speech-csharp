@@ -1,5 +1,6 @@
 using SpeechLib.Diarization;
 using SpeechLib.ModelDownload;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.Services;
 
@@ -60,7 +61,8 @@ public sealed class DiarizationModelService : IDiarizationModelService, IDisposa
     private readonly Func<string?, Task> _savePreferredFolder;
     private readonly bool _isPhone;
     private readonly object _lock = new();
-    private string? _lastError;
+    // Formatted when read, so the banner follows a change of the interface language.
+    private Func<string>? _lastError;
 
     public DiarizationModelService(
         ModelDownloadManager downloads,
@@ -99,8 +101,10 @@ public sealed class DiarizationModelService : IDiarizationModelService, IDisposa
     {
         get
         {
+            Func<string>? error;
             lock (_lock)
-                return _lastError;
+                error = _lastError;
+            return error?.Invoke();
         }
     }
 
@@ -140,7 +144,7 @@ public sealed class DiarizationModelService : IDiarizationModelService, IDisposa
             return null;
         return job.TotalBytes > 0
             ? ModelsPageFormatter.DescribeProgress(job.Percent, job.DownloadedBytes, job.TotalBytes)
-            : "Starting…";
+            : Loc.T("Models.Progress.Starting");
     }
 
     public void StartDownload(DiarizationCatalogModel model)
@@ -168,9 +172,9 @@ public sealed class DiarizationModelService : IDiarizationModelService, IDisposa
     {
         ArgumentNullException.ThrowIfNull(model);
         if (!model.IsInstalledIn(_layout()))
-            throw new InvalidOperationException($"{model.Title} is not downloaded.");
+            throw new InvalidOperationException(Loc.F("Models.Error.NotDownloaded", model.Title));
         if (_isPhone && !model.PhoneSupported)
-            throw new InvalidOperationException($"{model.Title} is too large for a phone.");
+            throw new InvalidOperationException(Loc.F("Models.Error.TooLargeForPhone", model.Title));
 
         await _savePreferredFolder(model.Folder).ConfigureAwait(false);
         RaiseChanged();
@@ -188,8 +192,9 @@ public sealed class DiarizationModelService : IDiarizationModelService, IDisposa
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            var message = ex.Message;
             lock (_lock)
-                _lastError = $"Could not delete {model.Title}: {ex.Message}";
+                _lastError = () => Loc.F("Models.Error.CouldNotDelete", model.Title, message);
         }
         RaiseChanged();
     }
@@ -201,7 +206,7 @@ public sealed class DiarizationModelService : IDiarizationModelService, IDisposa
         ArgumentNullException.ThrowIfNull(layout);
         return new ModelDownloadRequest(
             DiarizationModelCatalog.DownloadKey(model),
-            $"Speaker detection · {model.Title}",
+            Loc.F("Models.Downloads.SpeakerModelJob", model.Title),
             model.RepoId,
             layout.DiarizationModelPath(model.Folder))
         {
@@ -238,8 +243,9 @@ public sealed class DiarizationModelService : IDiarizationModelService, IDisposa
 
         if (job.State == DownloadJobState.Failed)
         {
+            var error = job.Error;
             lock (_lock)
-                _lastError = $"Download of {model.Title} failed: {job.Error}";
+                _lastError = () => Loc.F("Models.Error.DownloadFailed", model.Title, error);
         }
         RaiseChanged();
     }
@@ -282,27 +288,27 @@ public static class DiarizationUiCardBuilder
             new(model.Precision == DiarizationPrecision.Int8 ? "INT8" : "FP32", LlmUiChipKind.Plain),
         };
         if (model.IsRecommended)
-            chips.Add(new("★ Recommended", LlmUiChipKind.Recommended));
+            chips.Add(new(Loc.T("Models.Chip.Recommended"), LlmUiChipKind.Recommended));
         if (!model.PhoneSupported)
-            chips.Add(new("Desktop only", LlmUiChipKind.Plain));
+            chips.Add(new(Loc.T("Models.Chip.DesktopOnly"), LlmUiChipKind.Plain));
         if (state == DiarizationModelState.Active)
-            chips.Add(new("● In use", LlmUiChipKind.InUse));
+            chips.Add(new(Loc.T("Models.Chip.InUse"), LlmUiChipKind.InUse));
         else if (state == DiarizationModelState.Installed)
-            chips.Add(new("installed", LlmUiChipKind.Plain));
+            chips.Add(new(Loc.T("Models.Chip.Installed"), LlmUiChipKind.Plain));
 
         var status = state switch
         {
-            DiarizationModelState.Downloading => "Downloading…",
-            DiarizationModelState.Active => "In use for speaker detection",
-            DiarizationModelState.Installed => "Installed",
-            _ => "Not downloaded",
+            DiarizationModelState.Downloading => Loc.T("Models.Card.Status.Downloading"),
+            DiarizationModelState.Active => Loc.T("Models.Speakers.Status.Active"),
+            DiarizationModelState.Installed => Loc.T("Models.Card.Status.Installed"),
+            _ => Loc.T("Models.Card.Status.NotDownloaded"),
         };
         var (action, text) = state switch
         {
-            DiarizationModelState.Downloading => (LlmUiAction.Cancel, "Cancel"),
-            DiarizationModelState.Installed => (LlmUiAction.Use, "Use"),
-            DiarizationModelState.Active => (LlmUiAction.InUse, "In use"),
-            _ => (LlmUiAction.Download, "Download"),
+            DiarizationModelState.Downloading => (LlmUiAction.Cancel, Loc.T("Models.Card.Action.Cancel")),
+            DiarizationModelState.Installed => (LlmUiAction.Use, Loc.T("Models.Card.Action.Use")),
+            DiarizationModelState.Active => (LlmUiAction.InUse, Loc.T("Models.Card.Action.InUse")),
+            _ => (LlmUiAction.Download, Loc.T("Models.Card.Action.Download")),
         };
         return new DiarizationUiCard(model, state, chips, status, action, text,
             ActionVisible: action != LlmUiAction.InUse,

@@ -3,6 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:local="using:VoiceType.Uno"
       xmlns:utu="using:Uno.Toolkit.UI"
+      xmlns:l="using:VoiceType.Uno.Presentation.Localization"
       NavigationCacheMode="Required"
       Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
   <!-- Layout (design docs/design/voicetype-uno-mobile §5): an overlay SplitView menu
@@ -126,8 +127,8 @@
           <Button Grid.Column="0" Width="48" Height="48"
                   Style="{StaticResource IconButtonStyle}"
                   Click="CloseMenu_Click"
-                  AutomationProperties.Name="Close menu"
-                  ToolTipService.ToolTip="Close menu">
+                  AutomationProperties.Name="{l:Tr Key=Main.Menu.Close}"
+                  ToolTipService.ToolTip="{l:Tr Key=Main.Menu.Close}">
             <SymbolIcon Symbol="GlobalNavigationButton" />
           </Button>
           <TextBlock Grid.Column="1" Text="VoiceType" FontSize="16" FontWeight="SemiBold"
@@ -138,10 +139,10 @@
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="8,0,8,8">
             <!-- Recordings history (design voicetype-uno-history §4.1): first section. -->
-            <TextBlock Text="RECORDINGS" Style="{StaticResource SectionHeaderStyle}" />
+            <TextBlock Text="{l:Tr Key=Main.Menu.Section.Recordings}" Style="{StaticResource SectionHeaderStyle}" />
             <Button Style="{StaticResource PaneItemButtonStyle}"
                     Click="History_Click"
-                    AutomationProperties.Name="History">
+                    AutomationProperties.Name="{l:Tr Key=Main.Menu.History}">
               <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="24" />
@@ -149,7 +150,7 @@
                 </Grid.ColumnDefinitions>
                 <FontIcon Grid.Column="0" Glyph="&#xE81C;" FontSize="18" />
                 <StackPanel Grid.Column="1">
-                  <TextBlock Text="History" />
+                  <TextBlock Text="{l:Tr Key=Main.Menu.History}" />
                   <TextBlock Text="{x:Bind ViewModel.HistorySummary, Mode=OneWay}"
                              Style="{StaticResource SecondaryLineStyle}"
                              TextTrimming="CharacterEllipsis" />
@@ -158,7 +159,7 @@
             </Button>
             <Button Style="{StaticResource PaneItemButtonStyle}"
                     Click="Chats_Click"
-                    AutomationProperties.Name="Chats">
+                    AutomationProperties.Name="{l:Tr Key=Main.Menu.Chats}">
               <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="24" />
@@ -166,8 +167,8 @@
                 </Grid.ColumnDefinitions>
                 <FontIcon Grid.Column="0" Glyph="&#xE8BD;" FontSize="18" />
                 <StackPanel Grid.Column="1">
-                  <TextBlock Text="Chats" />
-                  <TextBlock x:Name="ChatsSummaryText" Text="Ask Gemma across recordings"
+                  <TextBlock Text="{l:Tr Key=Main.Menu.Chats}" />
+                  <TextBlock x:Name="ChatsSummaryText" Text="{l:Tr Key=Main.Menu.ChatsSummary}"
                              Style="{StaticResource SecondaryLineStyle}"
                              TextTrimming="CharacterEllipsis" />
                 </StackPanel>
@@ -175,7 +176,7 @@
             </Button>
             <Button Style="{StaticResource PaneItemButtonStyle}"
                     Click="Queue_Click"
-                    AutomationProperties.Name="Queue">
+                    AutomationProperties.Name="{l:Tr Key=Main.Menu.Queue}">
               <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="24" />
@@ -184,7 +185,7 @@
                 </Grid.ColumnDefinitions>
                 <FontIcon Grid.Column="0" Glyph="&#xE9D5;" FontSize="18" />
                 <StackPanel Grid.Column="1">
-                  <TextBlock Text="Queue" />
+                  <TextBlock Text="{l:Tr Key=Main.Menu.Queue}" />
                   <TextBlock Text="{x:Bind ViewModel.QueueSummary, Mode=OneWay}"
                              Style="{StaticResource SecondaryLineStyle}"
                              TextTrimming="CharacterEllipsis" />
@@ -200,7 +201,7 @@
               </Grid>
             </Button>
 
-            <TextBlock Text="MODE" Style="{StaticResource SectionHeaderStyle}" />
+            <TextBlock Text="{l:Tr Key=Main.Menu.Section.Mode}" Style="{StaticResource SectionHeaderStyle}" />
 
             <Grid MinHeight="48" Padding="12,4" ColumnSpacing="12"
                   Visibility="{x:Bind ViewModel.IsTextInjectionAvailable}">
@@ -211,12 +212,12 @@
               </Grid.ColumnDefinitions>
               <SymbolIcon Grid.Column="0" Symbol="Keyboard" />
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="Inject text" TextWrapping="Wrap" />
-                <TextBlock Text="Type each phrase into the focused app"
+                <TextBlock Text="{l:Tr Key=Main.Menu.Inject}" TextWrapping="Wrap" />
+                <TextBlock Text="{l:Tr Key=Main.Menu.InjectHint}"
                            Style="{StaticResource SecondaryLineStyle}" TextWrapping="Wrap" />
               </StackPanel>
               <ToggleSwitch Grid.Column="2" Style="{StaticResource ModeSwitchStyle}"
-                            AutomationProperties.Name="Inject text"
+                            AutomationProperties.Name="{l:Tr Key=Main.Menu.Inject}"
                             IsOn="{x:Bind ViewModel.IsTextInjectionEnabled, Mode=TwoWay}" />
             </Grid>
 
@@ -228,12 +229,12 @@
               </Grid.ColumnDefinitions>
               <SymbolIcon Grid.Column="0" Symbol="Globe" />
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="Live translation" TextWrapping="Wrap" />
+                <TextBlock Text="{l:Tr Key=Main.Menu.LiveTranslation}" TextWrapping="Wrap" />
                 <TextBlock Text="{x:Bind ViewModel.LlmSubtitle, Mode=OneWay}"
                            Style="{StaticResource SecondaryLineStyle}" TextWrapping="Wrap" />
               </StackPanel>
               <ToggleSwitch Grid.Column="2" Style="{StaticResource ModeSwitchStyle}"
-                            AutomationProperties.Name="Live translation"
+                            AutomationProperties.Name="{l:Tr Key=Main.Menu.LiveTranslation}"
                             IsOn="{x:Bind ViewModel.IsTranslationEnabled, Mode=TwoWay}" />
             </Grid>
 
@@ -245,32 +246,40 @@
               </Grid.ColumnDefinitions>
               <SymbolIcon Grid.Column="0" Symbol="Edit" />
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="Manual input" TextWrapping="Wrap" />
-                <TextBlock Text="Type or edit the transcript"
+                <TextBlock Text="{l:Tr Key=Main.Menu.ManualInput}" TextWrapping="Wrap" />
+                <TextBlock Text="{l:Tr Key=Main.Menu.ManualInputHint}"
                            Style="{StaticResource SecondaryLineStyle}" TextWrapping="Wrap" />
               </StackPanel>
               <ToggleSwitch Grid.Column="2" Style="{StaticResource ModeSwitchStyle}"
-                            AutomationProperties.Name="Manual input"
+                            AutomationProperties.Name="{l:Tr Key=Main.Menu.ManualInput}"
                             IsOn="{x:Bind ViewModel.IsManualInputEnabled, Mode=TwoWay}" />
             </Grid>
 
-            <TextBlock Text="LANGUAGE" Style="{StaticResource SectionHeaderStyle}" />
+            <TextBlock Text="{l:Tr Key=Main.Menu.Section.Language}" Style="{StaticResource SectionHeaderStyle}" />
             <ComboBox Margin="4,0" MinHeight="44"
                       HorizontalAlignment="Stretch"
-                      Header="Recognition"
-                      AutomationProperties.Name="Recognition language"
+                      Header="{l:Tr Key=Main.Menu.Recognition}"
+                      AutomationProperties.Name="{l:Tr Key=Main.Menu.RecognitionName}"
                       IsEnabled="{x:Bind ViewModel.IsLanguageChoiceAvailable, Mode=OneWay}"
                       ItemsSource="{x:Bind ViewModel.LanguageOptions}"
                       SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}" />
             <TextBlock Margin="16,-4,16,0" TextWrapping="Wrap"
                        Style="{StaticResource SecondaryLineStyle}"
-                       Text="Parakeet detects the language itself."
+                       Text="{l:Tr Key=Main.Menu.ParakeetAutoLanguage}"
                        Visibility="{x:Bind ViewModel.IsLanguageChoiceHintVisible, Mode=OneWay}" />
+            <!-- Interface language: applied at once, the pages are rebuilt in the new language (LanguageSwitcher). -->
+            <ComboBox x:Name="UiLanguageBox" Margin="4,8,4,0" MinHeight="44"
+                      HorizontalAlignment="Stretch"
+                      Header="{l:Tr Key=Language.Menu.Header}"
+                      AutomationProperties.Name="{l:Tr Key=Language.Menu.Name}"
+                      AutomationProperties.AutomationId="UiLanguageBox"
+                      ItemsSource="{x:Bind ViewModel.UiLanguages}"
+                      SelectedItem="{x:Bind ViewModel.SelectedUiLanguage, Mode=TwoWay}" />
 
-            <TextBlock Text="MODELS" Style="{StaticResource SectionHeaderStyle}" />
+            <TextBlock Text="{l:Tr Key=Main.Menu.Section.Models}" Style="{StaticResource SectionHeaderStyle}" />
             <Button Style="{StaticResource PaneItemButtonStyle}"
                     Click="SpeechModels_Click"
-                    AutomationProperties.Name="Speech models">
+                    AutomationProperties.Name="{l:Tr Key=Main.Menu.SpeechModels}">
               <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="24" />
@@ -278,7 +287,7 @@
                 </Grid.ColumnDefinitions>
                 <SymbolIcon Grid.Column="0" Symbol="Library" />
                 <StackPanel Grid.Column="1">
-                  <TextBlock Text="Speech models" />
+                  <TextBlock Text="{l:Tr Key=Main.Menu.SpeechModels}" />
                   <TextBlock Text="{x:Bind ViewModel.ModelDisplayName, Mode=OneWay}"
                              Style="{StaticResource SecondaryLineStyle}"
                              TextTrimming="CharacterEllipsis" />
@@ -287,7 +296,7 @@
             </Button>
             <Button Style="{StaticResource PaneItemButtonStyle}"
                     Click="Downloads_Click"
-                    AutomationProperties.Name="Downloads">
+                    AutomationProperties.Name="{l:Tr Key=Main.Menu.Downloads}">
               <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="24" />
@@ -295,7 +304,7 @@
                   <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <SymbolIcon Grid.Column="0" Symbol="Download" />
-                <TextBlock Grid.Column="1" Text="Downloads" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{l:Tr Key=Main.Menu.Downloads}" VerticalAlignment="Center" />
                 <Border Grid.Column="2" MinWidth="20" Height="20" Padding="6,0" CornerRadius="10"
                         Background="{ThemeResource AccentFillColorDefaultBrush}"
                         Visibility="{x:Bind ViewModel.IsQueueActive, Mode=OneWay}">
@@ -313,25 +322,25 @@
                 BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
           <StackPanel>
             <Button Style="{StaticResource PaneItemButtonStyle}" Click="Settings_Click"
-                    AutomationProperties.Name="Settings">
+                    AutomationProperties.Name="{l:Tr Key=Main.Menu.Settings}">
               <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="24" />
                   <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <SymbolIcon Grid.Column="0" Symbol="Setting" />
-                <TextBlock Grid.Column="1" Text="Settings" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{l:Tr Key=Main.Menu.Settings}" VerticalAlignment="Center" />
               </Grid>
             </Button>
             <Button Style="{StaticResource PaneItemButtonStyle}" Click="Help_Click"
-                    AutomationProperties.Name="Help">
+                    AutomationProperties.Name="{l:Tr Key=Main.Menu.Help}">
               <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="24" />
                   <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <SymbolIcon Grid.Column="0" Symbol="Help" />
-                <TextBlock Grid.Column="1" Text="Help" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{l:Tr Key=Main.Menu.Help}" VerticalAlignment="Center" />
               </Grid>
             </Button>
           </StackPanel>
@@ -361,8 +370,8 @@
         <Button Grid.Column="0" Width="48" Height="48"
                 Style="{StaticResource IconButtonStyle}"
                 Click="Menu_Click"
-                AutomationProperties.Name="Open menu"
-                ToolTipService.ToolTip="Menu">
+                AutomationProperties.Name="{l:Tr Key=Main.TopBar.OpenMenu}"
+                ToolTipService.ToolTip="{l:Tr Key=Main.TopBar.Menu}">
           <SymbolIcon Symbol="GlobalNavigationButton" />
         </Button>
         <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -395,7 +404,7 @@
                      Fill="{ThemeResource TextFillColorSecondaryBrush}" />
             <TextBlock Text="{x:Bind ViewModel.StatePillText, Mode=OneWay}"
                        FontSize="12" VerticalAlignment="Center"
-                       AutomationProperties.Name="Status"
+                       AutomationProperties.Name="{l:Tr Key=Main.TopBar.Status}"
                        AutomationProperties.LiveSetting="Polite" />
           </StackPanel>
         </Border>
@@ -431,6 +440,36 @@
                    Style="{StaticResource SecondaryLineStyle}"
                    TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
 
+        <!-- A newer release on GitHub (UpdateService; never in the Store package). -->
+        <Border Style="{StaticResource BannerStyle}"
+                Visibility="{x:Bind ViewModel.IsUpdateBannerVisible, Mode=OneWay}">
+          <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <FontIcon Grid.Column="0" Glyph="&#xE895;" FontSize="14" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1"
+                       Text="{x:Bind ViewModel.UpdateBannerText, Mode=OneWay}"
+                       FontSize="13" VerticalAlignment="Center"
+                       TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
+            <Button Grid.Column="2" Content="{l:Tr Key=Updates.Banner.Show}" MinHeight="44"
+                    VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="UpdateBannerShow"
+                    Click="UpdateBannerShow_Click" />
+            <Button Grid.Column="3" MinHeight="44" MinWidth="44" Padding="8,0"
+                    Style="{StaticResource IconButtonStyle}"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="{l:Tr Key=Updates.Banner.Dismiss}"
+                    ToolTipService.ToolTip="{l:Tr Key=Updates.Banner.Dismiss}"
+                    Click="UpdateBannerDismiss_Click">
+              <SymbolIcon Symbol="Cancel" />
+            </Button>
+          </Grid>
+        </Border>
+
         <Border Style="{StaticResource BannerStyle}"
                 Visibility="{x:Bind ViewModel.IsAsrModelBannerVisible, Mode=OneWay}">
           <Grid ColumnSpacing="8">
@@ -445,8 +484,8 @@
                        FontSize="13" VerticalAlignment="Center"
                        TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
                        Tapped="BannerText_Tapped"
-                       ToolTipService.ToolTip="Open model downloads" />
-            <Button Grid.Column="2" Content="Download" MinHeight="44"
+                       ToolTipService.ToolTip="{l:Tr Key=Main.Banner.OpenDownloads}" />
+            <Button Grid.Column="2" Content="{l:Tr Key=Main.Banner.Download}" MinHeight="44"
                     VerticalAlignment="Center"
                     Click="DownloadAsrModel_Click" />
           </Grid>
@@ -466,8 +505,8 @@
                        FontSize="13" VerticalAlignment="Center"
                        TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
                        Tapped="BannerText_Tapped"
-                       ToolTipService.ToolTip="Open model downloads" />
-            <Button Grid.Column="2" Content="Download" MinHeight="44"
+                       ToolTipService.ToolTip="{l:Tr Key=Main.Banner.OpenDownloads}" />
+            <Button Grid.Column="2" Content="{l:Tr Key=Main.Banner.Download}" MinHeight="44"
                     VerticalAlignment="Center"
                     Click="DownloadTranslationModel_Click" />
           </Grid>
@@ -517,22 +556,22 @@
                 <Button Grid.Column="1" Width="44" Height="44"
                         Style="{StaticResource IconButtonStyle}"
                         Command="{x:Bind ViewModel.ClearCommand}"
-                        AutomationProperties.Name="Clear transcript"
-                        ToolTipService.ToolTip="Clear transcript">
+                        AutomationProperties.Name="{l:Tr Key=Main.Transcript.Clear}"
+                        ToolTipService.ToolTip="{l:Tr Key=Main.Transcript.Clear}">
                   <SymbolIcon Symbol="Delete" />
                 </Button>
               </Grid>
             </Border>
             <ScrollViewer x:Name="TranscriptScroll" Grid.Row="1" Padding="4">
               <TextBox Text="{x:Bind ViewModel.FloatingText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                       AutomationProperties.Name="Transcript"
+                       AutomationProperties.Name="{l:Tr Key=Main.Transcript.Name}"
                        IsReadOnly="{x:Bind ViewModel.IsTranscriptReadOnly, Mode=OneWay}"
                        AcceptsReturn="True"
                        TextWrapping="Wrap"
                        FontSize="15"
                        BorderThickness="0"
                        Background="Transparent"
-                       PlaceholderText="Tap Record to dictate, or turn on Manual input in the menu to type" />
+                       PlaceholderText="{l:Tr Key=Main.Transcript.Placeholder}" />
             </ScrollViewer>
           </Grid>
         </Border>
@@ -553,19 +592,19 @@
                   <ColumnDefinition Width="*" />
                   <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="TranslationTitle" Grid.Column="0" Text="Translation  →"
+                <TextBlock x:Name="TranslationTitle" Grid.Column="0" Text="{l:Tr Key=Main.Translation.Title}"
                            Style="{StaticResource SecondaryLineStyle}" VerticalAlignment="Center" />
                 <ComboBox x:Name="TranslationTargetCombo" Grid.Column="1"
                           MinWidth="72" MinHeight="44" VerticalAlignment="Center"
                           BorderThickness="0" Background="Transparent"
-                          AutomationProperties.Name="Translation target language"
+                          AutomationProperties.Name="{l:Tr Key=Main.Translation.TargetName}"
                           ItemsSource="{x:Bind ViewModel.TranslationLanguageOptions}"
                           SelectedItem="{x:Bind ViewModel.TranslationTargetLanguage, Mode=TwoWay}" />
                 <Button Grid.Column="3" Width="44" Height="44"
                         Style="{StaticResource IconButtonStyle}"
                         Command="{x:Bind ViewModel.TranslateAllCommand}"
-                        AutomationProperties.Name="Translate all"
-                        ToolTipService.ToolTip="Translate the whole transcript (live translation starts from the moment it is switched on)">
+                        AutomationProperties.Name="{l:Tr Key=Main.Translation.TranslateAll}"
+                        ToolTipService.ToolTip="{l:Tr Key=Main.Translation.TranslateAllHint}">
                   <SymbolIcon Symbol="Globe" />
                 </Button>
               </Grid>
@@ -581,7 +620,7 @@
                          TextTrimming="CharacterEllipsis" />
               <ScrollViewer x:Name="TranslationScroll" Grid.Row="1" Padding="12,6,12,12">
                 <TextBlock Text="{x:Bind ViewModel.TranslatedText, Mode=OneWay}"
-                           AutomationProperties.Name="Translation"
+                           AutomationProperties.Name="{l:Tr Key=Main.Translation.Name}"
                            FontSize="15"
                            TextWrapping="Wrap" IsTextSelectionEnabled="True" />
               </ScrollViewer>
@@ -600,10 +639,10 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
-          <ToggleButton x:Name="TranscriptTab" Grid.Column="0" Content="Transcript"
+          <ToggleButton x:Name="TranscriptTab" Grid.Column="0" Content="{l:Tr Key=Main.Tab.Transcript}"
                         Style="{StaticResource TabToggleStyle}" IsChecked="True"
                         Click="CompactTab_Click" />
-          <ToggleButton x:Name="TranslationTab" Grid.Column="1" Content="Translation"
+          <ToggleButton x:Name="TranslationTab" Grid.Column="1" Content="{l:Tr Key=Main.Tab.Translation}"
                         Style="{StaticResource TabToggleStyle}"
                         Click="CompactTab_Click" />
         </Grid>
@@ -626,16 +665,16 @@
           <TextBlock Grid.Column="0" Text="{x:Bind ViewModel.SavedSnackbarText, Mode=OneWay}"
                      VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                      AutomationProperties.LiveSetting="Polite" />
-          <Button Grid.Column="1" Content="Open" MinHeight="44" MinWidth="64"
+          <Button Grid.Column="1" Content="{l:Tr Key=Main.Snackbar.Open}" MinHeight="44" MinWidth="64"
                   Background="Transparent" BorderThickness="0"
                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                   Click="SnackbarOpen_Click"
-                  AutomationProperties.Name="Open the saved recording" />
+                  AutomationProperties.Name="{l:Tr Key=Main.Snackbar.OpenName}" />
           <Button Grid.Column="2" Width="44" Height="44"
                   Style="{StaticResource IconButtonStyle}"
                   Command="{x:Bind ViewModel.DismissSavedSnackbarCommand}"
-                  AutomationProperties.Name="Dismiss"
-                  ToolTipService.ToolTip="Dismiss">
+                  AutomationProperties.Name="{l:Tr Key=Main.Snackbar.Dismiss}"
+                  ToolTipService.ToolTip="{l:Tr Key=Main.Snackbar.Dismiss}">
             <SymbolIcon Symbol="Cancel" />
           </Button>
         </Grid>
@@ -663,8 +702,8 @@
                 Width="48" Height="48" CornerRadius="24" Padding="0"
                 Command="{x:Bind ViewModel.ToggleMuteCommand}"
                 IsEnabled="{x:Bind ViewModel.IsRecording, Mode=OneWay}"
-                AutomationProperties.Name="Mute microphone"
-                ToolTipService.ToolTip="Mute / unmute the microphone">
+                AutomationProperties.Name="{l:Tr Key=Main.Bottom.Mute}"
+                ToolTipService.ToolTip="{l:Tr Key=Main.Bottom.MuteHint}">
           <SymbolIcon Symbol="Mute" />
         </Button>
 
@@ -695,8 +734,8 @@
                 HorizontalAlignment="Left" VerticalAlignment="Center"
                 Width="48" Height="48" CornerRadius="24" Padding="0"
                 Command="{x:Bind ViewModel.CopyCommand}"
-                AutomationProperties.Name="Copy transcript"
-                ToolTipService.ToolTip="Copy the transcript">
+                AutomationProperties.Name="{l:Tr Key=Main.Bottom.Copy}"
+                ToolTipService.ToolTip="{l:Tr Key=Main.Bottom.CopyHint}">
           <SymbolIcon Symbol="Copy" />
         </Button>
       </Grid>

@@ -1,0 +1,14 @@
+{
+  "Help.Title": "VoiceType — Ajuda",
+  "Help.Close": "Fechar",
+  "Help.Start.Title": "Primeiros passos",
+  "Help.Start.Body": "1. Na primeira inicialização, o modelo de fala recomendado é baixado automaticamente.\n2. Toque no botão redondo **Gravar** na parte inferior e fale — a transcrição aparece ao vivo. A gravação continua até você tocar no botão novamente; não é preciso mantê-lo pressionado.\n3. Abra o menu **≡** (no canto superior esquerdo) para trocar de modo — **Digitar texto** digita cada frase concluída na janela em foco, **Tradução ao vivo** adiciona um cartão de tradução e **Entrada manual** permite digitar ou editar a transcrição.\n4. O menu também reúne o idioma de reconhecimento, os modelos de fala, os downloads e as **Configurações** — a linha abaixo do título mostra o modelo e os modos ativos.",
+  "Help.Hotkey.Title": "Atalho global",
+  "Help.Hotkey.Body": "O atalho padrão para iniciar e parar é **Ctrl+Shift+V**. No Linux, ele é registrado pelo portal XDG GlobalShortcuts (xdg-desktop-portal ≥ 1.18, GNOME 44+ / KDE Plasma 5.27+); o compositor mostra uma única vez uma caixa de diálogo de consentimento. Em ambientes de desktop sem suporte ao portal, o atalho é informado como indisponível.",
+  "Help.LinuxInjection.Title": "Digitação de texto no Linux",
+  "Help.LinuxInjection.Body": "A digitação coloca o texto na área de transferência e depois simula a combinação de colar (Ctrl+V por padrão — configurável em Configurações) na janela em foco.\n\n**Ferramentas necessárias (instale uma de cada par):**\n• Área de transferência: wl-copy (Wayland) ou xclip / xsel (X11)\n• Teclado: ydotool (Wayland, precisa do ydotoold) ou libXtst / xdotool (X11)\n\nUbuntu: *sudo apt install wl-clipboard xclip xdotool*",
+  "Help.Audio.Title": "Captura de áudio",
+  "Help.Audio.Body": "A captura passa pelo servidor compatível com PulseAudio (ambientes de desktop com PipeWire e o WSLg oferecem um).\n• Microfone — fonte de entrada padrão\n• Loopback — monitor da saída padrão (*@DEFAULT_MONITOR@*)\n• Mix — os dois, combinados 50/50",
+  "Help.Data.Title": "Locais dos dados",
+  "Help.Data.Body": "• Configurações: *~/.local/share/VoiceType/settings.json*\n• Modelos: *~/.local/share/VoiceType/models/*\n(no Windows, ficam em %LOCALAPPDATA%\\VoiceType)"
+}

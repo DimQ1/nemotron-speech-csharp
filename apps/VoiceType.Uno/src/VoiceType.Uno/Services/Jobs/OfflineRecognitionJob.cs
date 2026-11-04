@@ -7,6 +7,7 @@ using SpeechLib;
 using SpeechLib.AudioStorage;
 using SpeechLib.Providers;
 using VoiceType.Uno.History;
+using VoiceType.Uno.Localization;
 using AppInfo = VoiceType.Uno.History.AppInfo;
 
 namespace VoiceType.Uno.Services.Jobs;
@@ -75,12 +76,12 @@ public sealed class OfflineRecognitionJob : IJobExecutor
     public Task<string?> RunAsync(HistoryJob job, JobExecutionContext context, CancellationToken cancellationToken)
     {
         var entry = _store.Get(job.RecordingId)
-            ?? throw new InvalidOperationException("The recording no longer exists.");
+            ?? throw new InvalidOperationException(Loc.T("Services.Rerecognize.RecordingGone"));
         var manifest = entry.Manifest;
         if (manifest.State == RecordingStates.Recording)
-            throw new InvalidOperationException("The recording is still being recorded.");
+            throw new InvalidOperationException(Loc.T("Services.Rerecognize.StillRecording"));
         var audioPath = _store.GetAudioPath(job.RecordingId)
-            ?? throw new InvalidOperationException("The audio of this recording was deleted; only the text is left.");
+            ?? throw new InvalidOperationException(Loc.T("Services.Rerecognize.AudioDeleted"));
 
         var app = _settings();
         var parameters = job.Parameters;
@@ -88,7 +89,7 @@ public sealed class OfflineRecognitionJob : IJobExecutor
             ? parameters.ModelFolder
             : Path.GetFileName(app.ModelPath.TrimEnd('/', '\\'));
         var model = InstalledAsrModels.Find(folder, _modelRoots(app))
-            ?? throw new InvalidOperationException($"The model '{ModelTitle(folder)}' is not installed.");
+            ?? throw new InvalidOperationException(Loc.F("Services.Rerecognize.ModelMissing", ModelTitle(folder)));
 
         var sourceVersion = parameters.SourceVersion is { } requestedSource && manifest.FindVersion(requestedSource) is { } found
             ? found
@@ -97,11 +98,11 @@ public sealed class OfflineRecognitionJob : IJobExecutor
         var options = BuildOptions(model, language, parameters.Settings, app);
 
         cancellationToken.ThrowIfCancellationRequested();
-        context.ReportDetail("Loading " + model.Title + "…");
+        context.ReportDetail(Loc.F("Services.Rerecognize.LoadingModel", model.Title));
         using var recognizer = _createRecognizer(options);
         cancellationToken.ThrowIfCancellationRequested();
 
-        context.ReportDetail("Reading the audio…");
+        context.ReportDetail(Loc.T("Services.Rerecognize.ReadingAudio"));
         var samples = RecordingAudioReader.ReadMono(audioPath, recognizer.SampleRate);
         double rate = recognizer.SampleRate;
         cancellationToken.ThrowIfCancellationRequested();

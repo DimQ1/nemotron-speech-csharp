@@ -1,4 +1,4 @@
-using System.Globalization;
+using VoiceType.Uno.Localization;
 
 namespace VoiceType.Uno.History;
 
@@ -89,11 +89,11 @@ public static class HistoryUiDiff
     {
         ArgumentNullException.ThrowIfNull(result);
         if (result.IsIdentical)
-            return "No word changes";
+            return Loc.T("History.Diff.NoWordChanges");
         var segmentsB = result.BTokens.Select(t => t.SegmentIndex).Distinct().Count();
-        var percent = result.ChangedPercent.ToString(result.ChangedPercent >= 10 ? "0" : "0.0", CultureInfo.InvariantCulture);
-        return $"{HistoryUiFormat.Count(result.WordsChanged, "word")} changed in {result.SegmentsChanged} of " +
-               $"{HistoryUiFormat.Count(segmentsB, "segment")} · {percent}% of words";
+        var percent = result.ChangedPercent.ToString(result.ChangedPercent >= 10 ? "0" : "0.0", Loc.Culture);
+        return Loc.Plural("History.Diff.Stats", result.WordsChanged, result.SegmentsChanged,
+            Loc.Plural("History.Diff.OfSegments", segmentsB), percent);
     }
 
     // Same rule as TranscriptDiff: a replacement/insertion belongs to the segment of its

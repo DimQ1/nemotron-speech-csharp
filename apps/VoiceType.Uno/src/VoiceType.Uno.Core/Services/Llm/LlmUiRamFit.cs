@@ -1,3 +1,5 @@
+using VoiceType.Uno.Localization;
+
 namespace VoiceType.Uno.Services;
 
 /// <summary>Reads the memory that is free on this device right now.</summary>
@@ -61,7 +63,8 @@ public static class LlmUiRamCheck
     /// <summary>"Needs ≈6 GB free RAM · 9.2 GB free now".</summary>
     public static string Describe(double minFreeRamGb, double? availableGb)
     {
-        var need = $"Needs ≈{minFreeRamGb:0.#} GB free RAM";
-        return availableGb is { } free ? $"{need} · {free:0.#} GB free now" : need;
+        return availableGb is { } free
+            ? Loc.F("Models.Llm.RamNeedFree", minFreeRamGb, free)
+            : Loc.F("Models.Llm.RamNeed", minFreeRamGb);
     }
 }

@@ -19,8 +19,7 @@ nemotron-speech-csharp/
 ├── NemotronSpeech.slnx           # .NET 10 solution file
 ├── apps/                         # Executable products, each with local source and tests
 │   ├── NemotronSpeech/src/       # 🎙️ Nemotron recognizer CLI
-│   ├── VoiceType.WinUI/src/      # 🪟 WinUI 3 packaged desktop app
-│   └── VoiceType.Uno/            # 🐧 Uno Platform app (Skia desktop: Windows and Linux, plus Android) and its tests
+│   └── VoiceType.Uno/            # 🐧 Uno Platform app (Skia desktop: Windows, Linux, macOS; WinAppSDK head = Microsoft Store; Android) and its tests
 ├── libraries/SpeechLib/          # 📚 Speech contracts, audio, recognizers (src/) and their tests (tests/)
 ├── .github/                      # ⚙️ CI/CD workflows and composite action (see docs/ci.md)
 ├── tools/                        # 📊 Benchmarks, inspection utilities, and converters
@@ -41,10 +40,9 @@ nemotron-speech-csharp/
 |---------|------|-------------|
 | [**SpeechLib**](libraries/SpeechLib/src/SpeechLib/README.md) | .NET 10 Library | Provider-neutral interfaces, bounded audio queues, capture lifecycle, and `LiveTranscriber` |
 | **SpeechLib.Providers** | .NET 10 Library | Recognizers on plain ONNX Runtime (NVIDIA Nemotron, Parakeet TDT, Qwen3-ASR, VibeVoice) and the `RecognizerFactory` that selects them |
-| **SpeechLib.Audio.NAudio3** | .NET 10 Library | NAudio 3.0.1 WASAPI capture provider used by the CLI, VoiceType.WinUI and VoiceType.Uno (Windows) |
+| **SpeechLib.Audio.NAudio3** | .NET 10 Library | NAudio 3.0.1 WASAPI capture provider used by the CLI and VoiceType.Uno (Windows) |
 | [**NemotronSpeech**](apps/NemotronSpeech/src/NemotronSpeech/README.md) | .NET 10 Console App | Command-line front end over `RecognizerFactory` for NVIDIA Nemotron 3.5 ASR and Parakeet TDT (plain ONNX Runtime, CPU). |
-| [**VoiceType.WinUI**](apps/VoiceType.WinUI/src/VoiceType.WinUI/README.md) | .NET 10 WinUI 3 MSIX App | Packaged dictation app using NAudio 3, model setup, text injection, session persistence, and local MSIX installation |
-| [**VoiceType.Uno**](apps/VoiceType.Uno/README.md) | .NET 10 Uno Platform App | Cross-platform port of the dictation app (Skia desktop on Windows and Linux, Android): global hotkeys, text typed into the focused window, recordings History, live translation |
+| [**VoiceType.Uno**](apps/VoiceType.Uno/README.md) | .NET 10 Uno Platform App | The dictation app (Skia desktop on Windows, Linux and macOS, the WinAppSDK head that ships in the Microsoft Store, Android): global hotkeys, text typed into the focused window, recordings History, live translation. It replaced the former VoiceType.WinUI app, also in the Store |
 | **BenchmarkSuite1** | .NET 10 Console App | BenchmarkDotNet suite for CPU threads, VAD, execution mode, RTF, and process CPU measurements |
 
 ## Quick Start
@@ -62,9 +60,9 @@ dotnet build NemotronSpeech.slnx -c Release
 dotnet run --project apps/NemotronSpeech/src/NemotronSpeech -c Release -- --help
 ```
 
-The apps are started from their own folders: the packaged WinUI app with the scripts described in
-[its README](apps/VoiceType.WinUI/src/VoiceType.WinUI/README.md) (`build-dev.ps1`, `install-dev.ps1`), the Uno app as in
-[its README](apps/VoiceType.Uno/README.md). The Uno projects are not in `NemotronSpeech.slnx`.
+The Uno app is built and started as described in [its README](apps/VoiceType.Uno/README.md); its projects are not in
+`NemotronSpeech.slnx`. The Microsoft Store package is made by `apps/VoiceType.Uno/src/VoiceType.Uno/build-store-msix.ps1`
+([docs/store/uno-store-release.md](docs/store/uno-store-release.md)).
 
 ### Continuous integration
 
@@ -94,8 +92,6 @@ graph TD
   PR --> SL
   CLI[NemotronSpeech] --> PR
   CLI --> NA3
-  VU[VoiceType WinUI] --> PR
-  VU --> NA3
   UNO[VoiceType.Uno] --> PR
   UNO --> NA3
   NA3 --> |MP3| LAME[NAudio.Lame]
@@ -105,7 +101,7 @@ The core assembly does not reference NAudio; its only inference dependency is pl
 
 ### Audio capture
 
-All Windows heads (CLI, VoiceType.WinUI, VoiceType.Uno) capture through `NAudio3AudioSourceFactory`; the former NAudio 2 provider was removed. Devices are opened in their native WASAPI mix format and converted to the recognizer rate with the anti-aliased `StreamingResampler` from the core library. To use the provider in another application, reference `SpeechLib.Audio.NAudio3`, create an `NAudio3AudioSourceFactory`, and pass its source to `LiveTranscriber.Run`. See [SpeechLib.Audio.NAudio3 README](libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/README.md).
+All Windows heads (CLI, VoiceType.Uno) capture through `NAudio3AudioSourceFactory`; the former NAudio 2 provider was removed. Devices are opened in their native WASAPI mix format and converted to the recognizer rate with the anti-aliased `StreamingResampler` from the core library. To use the provider in another application, reference `SpeechLib.Audio.NAudio3`, create an `NAudio3AudioSourceFactory`, and pass its source to `LiveTranscriber.Run`. See [SpeechLib.Audio.NAudio3 README](libraries/SpeechLib/src/SpeechLib.Audio.NAudio3/README.md).
 
 ### CPU execution mode
 
@@ -172,8 +168,8 @@ See [tools/converters/NemotronAsr/README.md](tools/converters/NemotronAsr/README
 ### 📖 Detailed Documentation
 - [SpeechLib README](libraries/SpeechLib/src/SpeechLib/README.md) — library architecture & extensibility
 - [NemotronSpeech README](apps/NemotronSpeech/src/NemotronSpeech/README.md) — model setup, CLI args
-- [VoiceType.WinUI README](apps/VoiceType.WinUI/src/VoiceType.WinUI/README.md) — WinUI build, MSIX packaging, and local installation
 - [VoiceType.Uno README](apps/VoiceType.Uno/README.md) — Uno app status, platforms, packaging
+- [Microsoft Store release of the Uno app](docs/store/uno-store-release.md) — MSIX build, migration from VoiceType.WinUI, Partner Center steps
 - [CI/CD](docs/ci.md) — workflows, tests in CI, releases, Android signing, open decisions
 
 ### Language Codes (common)
