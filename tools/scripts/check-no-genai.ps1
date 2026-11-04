@@ -5,14 +5,14 @@
 
 .DESCRIPTION
   Needs PowerShell 7 (pwsh): Windows PowerShell 5.1 cannot load System.Reflection.Metadata, which check 3 uses. Works on Windows
-  and Linux (paths are built with Join-Path; on Linux the WinUI head is reported as NOT BUILT).
+  and Linux (paths are built with Join-Path).
 
   Three checks. The script builds nothing and restores nothing: it only reads what a previous build or restore left on disk, and
   fails with a clear message when that state is missing (run `dotnet build` / `dotnet restore` first).
    1. restore state: no obj/project.assets.json of any project of the repository mentions an OnnxRuntimeGenAI package;
-   2. `dotnet list package --include-transitive --no-restore` of the CLI, WinUI and Uno heads (the same fact as seen by NuGet,
+   2. `dotnet list package --include-transitive --no-restore` of the CLI and the Uno head (the same fact as seen by NuGet,
       read from the existing project.assets.json; a head without one is reported as a failure);
-   3. build output: in bin/<Configuration> of the CLI, the WinUI app and the Uno desktop head no file is named
+   3. build output: in bin/<Configuration> of the CLI and the Uno desktop head no file is named
       *onnxruntime-genai* / *OnnxRuntimeGenAI* (managed, native, import library, aar, .so), and no product assembly
       (SpeechLib*, VoiceType*, NemotronSpeech) references a GenAI assembly (read from the file metadata, nothing is loaded).
   A head whose output folder does not exist is reported as NOT BUILT; the script exits 2 when no head output was found at all,
@@ -21,7 +21,8 @@
     dotnet build NemotronSpeech.slnx -c Release
     dotnet build apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -c Release -f net10.0-desktop -p:RuntimeIdentifier=win-x64   (from apps/VoiceType.Uno/src)
 
-  What it does not see: an Android APK/AAB (build one and look inside) and any output folder that is not one of the three above.
+  What it does not see: an Android APK/AAB (build one and look inside) and any output folder that is not one of the two above
+  (VoiceType.WinUI, the third head, was removed; its successor in the Store is the Uno WinAppSDK head, whose MSIX output is not scanned).
   The same rules for the SpeechLib assemblies are enforced by Unit_AssemblyLayeringTests, which only sees the output of the SpeechLib.Tests project.
 
 .PARAMETER RepoRoot       Repository (or worktree) root; default: two folders above this script.
@@ -39,12 +40,10 @@ function Join-PathParts([string]$root, [string[]]$parts) { foreach ($part in $pa
 
 $heads = [ordered]@{
     'CLI (NemotronSpeech)' = @('apps', 'NemotronSpeech', 'src', 'NemotronSpeech')
-    'WinUI'                = @('apps', 'VoiceType.WinUI', 'src', 'VoiceType.WinUI')
     'Uno desktop'          = @('apps', 'VoiceType.Uno', 'src', 'VoiceType.Uno')
 }
 $headOutput = @{
     'CLI (NemotronSpeech)' = @('bin', $Configuration)
-    'WinUI'                = @('bin', $Configuration)
     'Uno desktop'          = @('bin', $Configuration, 'net10.0-desktop')
 }
 $pattern = 'OnnxRuntimeGenAI|onnxruntime-genai'

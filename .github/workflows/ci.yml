@@ -2,8 +2,8 @@ name: CI
 
 run-name: CI · ${{ github.ref_name }} · #${{ github.run_number }}
 
-# Build + unit tests of every project, on Windows (whole solution incl. the WinUI head) and Linux (everything that
-# is not Windows-only). Needs no models and no secrets, so it also runs for pull requests from forks.
+# Build + unit tests of every project, on Windows (whole solution plus the Uno desktop head) and Linux (the CLI,
+# the libraries, the tools the tests do not pull in, and the tests). Needs no models and no secrets, so it also runs for pull requests from forks.
 # The model-backed tests (E2E_* / Real_* classes) are left to the maintainer's machine: they skip themselves
 # without models, and the filter below keeps CI independent of whatever a runner happens to contain.
 # See docs/ci.md for what runs where, how to run the same commands locally and what CI does not cover.
@@ -67,16 +67,17 @@ jobs:
             fi
           done
 
-      # ---- Windows: the whole solution (CLI, WinUI head, libraries, tools, tests) ----
+      # ---- Windows: the whole solution (CLI, libraries, tools, tests) ----
       - name: Restore + build NemotronSpeech.slnx (Windows)
         if: runner.os == 'Windows'
         run: |
           dotnet restore NemotronSpeech.slnx
           dotnet build NemotronSpeech.slnx -c Release --no-restore
 
-      # ---- Linux: the same minus the Windows-only WinUI head (net10.0-windows10.0.26100.0) ----
-      # The test projects pull in almost every library; the rest is built explicitly. An .slnf would do the same
-      # with one line, but needs a repo change (see docs/ci.md, backlog).
+      # ---- Linux: the cross-platform projects ----
+      # The test projects pull in almost every library; the rest is built explicitly. Since VoiceType.WinUI was removed
+      # every project of the slnx targets plain net10.0, so this step could become a build of NemotronSpeech.slnx
+      # (not done yet: tools/BenchmarkSuite1 has never been built on a Linux runner).
       - name: Build cross-platform projects (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -135,9 +136,9 @@ jobs:
           if ($failed.Count -gt 0) { Write-Host "::error::failed test projects: $($failed -join ', ')"; exit 1 }
 
       # ---- Windows: ONNX Runtime GenAI must not come back (restore state, dotnet list package, build output) ----
-      # check-no-genai.ps1 builds and restores nothing: it needs the restore state and the Release output of the CLI,
-      # the WinUI head (both from the slnx build above) and the Uno desktop head (built here; -r win-x64 keeps the
-      # android TFM, which needs a workload, out of the restore).
+      # check-no-genai.ps1 builds and restores nothing: it needs the restore state and the Release output of the CLI
+      # (from the slnx build above) and the Uno desktop head (built here; -r win-x64 keeps the android TFM, which
+      # needs a workload, out of the restore).
       - name: Build the Uno desktop head (win-x64) for the GenAI check
         if: runner.os == 'Windows'
         run: >-

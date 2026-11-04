@@ -94,13 +94,14 @@ await dialog.ShowAsync();
 
 ## Project Context
 
-This is a WinUI 3 packaged app (MSIX) with:
-- `UseWinUI=true` in .csproj
-- Windows App SDK 2.3.1
-- Target: `net10.0-windows10.0.26100.0`
+The WinUI 3 code of this repository is the Windows App SDK head of the Uno app
+(`apps/VoiceType.Uno/src/VoiceType.Uno`, target `net10.0-windows10.0.26100`; the other heads are
+`net10.0-desktop` (Skia) and Android):
+- Uno Platform single project (`Uno.Sdk`), XAML shared by every head
+- Unpackaged by default; the Microsoft Store MSIX is opt-in (`-p:VoiceTypeMsix=true`, `build-store-msix.ps1`)
 - MVVM with CommunityToolkit.Mvvm
-- NAudio for audio recording
-- OnnxRuntime for speech recognition
+- NAudio 3 (WASAPI) for audio capture on Windows
+- ONNX Runtime for speech recognition
 
 ## Debugging Tips
 
