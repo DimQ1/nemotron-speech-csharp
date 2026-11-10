@@ -1,0 +1,135 @@
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/LanguageNames.cs
+  s_13d57ddad0c9ec::t_562d34f9058794 1-25
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Languages.json
+  s_13d57ddad0c9ec::t_beccc19f108329 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ar/Services.json
+  s_13d57ddad0c9ec::t_c705e51a8aada7 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Languages.json
+  s_13d57ddad0c9ec::t_727ffd2a253599 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/de/Services.json
+  s_13d57ddad0c9ec::t_d7ce9f11a57d8f 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Languages.json
+  s_13d57ddad0c9ec::t_b0842056cea928 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/en/Services.json
+  s_13d57ddad0c9ec::t_1c87505936558d 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Languages.json
+  s_13d57ddad0c9ec::t_c2041bfb4fd8ea 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/es/Services.json
+  s_13d57ddad0c9ec::t_775f0b02eefe18 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Languages.json
+  s_13d57ddad0c9ec::t_47172f3b0a0a73 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/fr/Services.json
+  s_13d57ddad0c9ec::t_bb2cf487deee2a 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Languages.json
+  s_13d57ddad0c9ec::t_c5dffb62cb1484 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/hi/Services.json
+  s_13d57ddad0c9ec::t_6d4e176eb68638 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Languages.json
+  s_13d57ddad0c9ec::t_e5c83066165e6c 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/it/Services.json
+  s_13d57ddad0c9ec::t_dde7df7f75aca4 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Languages.json
+  s_13d57ddad0c9ec::t_125b65670d42fb 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ja/Services.json
+  s_13d57ddad0c9ec::t_3a83f2577c2835 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Languages.json
+  s_13d57ddad0c9ec::t_111c0fda94166b 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ko/Services.json
+  s_13d57ddad0c9ec::t_25ddbd2871bbce 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Languages.json
+  s_13d57ddad0c9ec::t_000b41ecd9b470 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/nl/Services.json
+  s_13d57ddad0c9ec::t_cf1dc8cb30aee1 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Languages.json
+  s_13d57ddad0c9ec::t_505d4cc62706cd 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pl/Services.json
+  s_13d57ddad0c9ec::t_77741f57ad2b4b 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Languages.json
+  s_13d57ddad0c9ec::t_5d97bf518b9e19 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/pt-BR/Services.json
+  s_13d57ddad0c9ec::t_92a8c4907a6119 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Languages.json
+  s_13d57ddad0c9ec::t_558f5db82e816c 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/ru/Services.json
+  s_13d57ddad0c9ec::t_46da3aae0575db 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Languages.json
+  s_13d57ddad0c9ec::t_da0ad5767ae345 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/tr/Services.json
+  s_13d57ddad0c9ec::t_a6af00a85016b7 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Languages.json
+  s_13d57ddad0c9ec::t_855cc5f657a9cb 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/uk/Services.json
+  s_13d57ddad0c9ec::t_dc1d1602cb3fb5 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Languages.json
+  s_13d57ddad0c9ec::t_d82db129afe101 1-18
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Localization/Strings/zh-CN/Services.json
+  s_13d57ddad0c9ec::t_5a7a5a18618e54 44-46
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/History/Llm/HistoryLlmJobs.cs
+  s_13d57ddad0c9ec::t_b42f390d3a2721 147
+apps/VoiceType.Uno/src/VoiceType.Uno.Core/Services/Settings/SettingsText.cs
+  s_13d57ddad0c9ec::t_11e2f61a1a5934 241,252-253,256
+apps/VoiceType.Uno/src/VoiceType.Uno/Presentation/History/ReprocessSheet.xaml.cs
+  s_13d57ddad0c9ec::t_19e6449e49a351 350-352
+apps/VoiceType.Uno/src/VoiceType.Uno/Services/TranslationService.cs
+  s_13d57ddad0c9ec::t_d35c2cd83e78e4 41-47
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/ar/Resources.resw
+  s_13d57ddad0c9ec::t_40e50c0283f022 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/de/Resources.resw
+  s_13d57ddad0c9ec::t_a57f7ab741e1ab 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/es/Resources.resw
+  s_13d57ddad0c9ec::t_1f2d6df5034ab3 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/fr/Resources.resw
+  s_13d57ddad0c9ec::t_d30b372d6813a6 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/hi/Resources.resw
+  s_13d57ddad0c9ec::t_f567c67d164fbc 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/it/Resources.resw
+  s_13d57ddad0c9ec::t_832bb78ca5d2c1 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/ja/Resources.resw
+  s_13d57ddad0c9ec::t_2adbc0b608df56 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/ko/Resources.resw
+  s_13d57ddad0c9ec::t_b5717d0bdd0d8e 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/nl/Resources.resw
+  s_13d57ddad0c9ec::t_598b5146b5d7be 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/pl/Resources.resw
+  s_13d57ddad0c9ec::t_684d11fb0c8c54 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/pt-BR/Resources.resw
+  s_13d57ddad0c9ec::t_0901dc173c66f6 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/ru/Resources.resw
+  s_13d57ddad0c9ec::t_5eddd2931bae58 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/tr/Resources.resw
+  s_13d57ddad0c9ec::t_99d04394538090 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/uk/Resources.resw
+  s_13d57ddad0c9ec::t_9cb86d2750bc07 1-123
+apps/VoiceType.Uno/src/VoiceType.Uno/Strings/zh-CN/Resources.resw
+  s_13d57ddad0c9ec::t_9f5136db0b5637 1-123
+docs/store/imports/make-listing-v2.0.0.py
+  s_13d57ddad0c9ec::t_70dee7f22925ca 15-18,20-25,978-1048,1060-1062,1075,1078-1081,1089-1097,1112
+docs/store/imports/v2.0.0/listingData-store-import-v2.0.0.0-multilang.csv
+  s_13d57ddad0c9ec::t_28550a05161f6d 1-4,35-36,66-67,97-98,128-129,159-160,190-191,221-222,252-253,283-284,314-315,345-346,376-377,407-408,438-439,469-470,500-501,529-1384
+docs/store/uno-store-release.md
+  s_13d57ddad0c9ec::t_d3d7346d6aa458 7-12
+tools/store-screenshots/README.md
+  s_13d57ddad0c9ec::t_040ef400e35159 21-32
+tools/store-screenshots/drive.ps1
+  s_13d57ddad0c9ec::t_468881f2569f00 1-39
+tools/store-screenshots/shoot-all.ps1
+  s_13d57ddad0c9ec::t_d25ce17f8b33c3 1-19
+tools/store-screenshots/shoot-lang.ps1
+  s_13d57ddad0c9ec::t_763b9d5a4e7a22 1-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "63ad5add7ec4fd9d3296756699de4dd1073f2d21",
+  "prompts": {},
+  "sessions": {
+    "s_13d57ddad0c9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f3c1a7d-4d02-4295-9d0e-8f091fc2075f",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
