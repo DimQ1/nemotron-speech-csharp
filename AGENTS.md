@@ -1,5 +1,9 @@
 # Nemotron ASR .NET — AI Agent Instructions
 
+## Product Scope
+
+Two products only, both developed further: **VoiceType.Uno** (`apps/VoiceType.Uno`, the one app, built for every platform: Skia desktop Windows/Linux/macOS, the WinAppSDK head = Microsoft Store, Android, iOS) and the **CLI** (`apps/NemotronSpeech`). The former WPF and WinUI apps are gone; their unmerged branches survive only as `archive/*` tags. Do not add another app head or resurrect those; new features go into VoiceType.Uno (pure logic in VoiceType.Uno.Core) or the CLI, and every change must keep all Uno heads building (`build-voicetype-uno.yml` Windows/Linux/Android/macOS, `build-voicetype-uno-ios.yml`, CI for the CLI and libraries).
+
 ## Build Commands
 
 ```powershell

@@ -19,7 +19,7 @@ nemotron-speech-csharp/
 ├── NemotronSpeech.slnx           # .NET 10 solution file
 ├── apps/                         # Executable products, each with local source and tests
 │   ├── NemotronSpeech/src/       # 🎙️ Nemotron recognizer CLI
-│   └── VoiceType.Uno/            # 🐧 Uno Platform app (Skia desktop: Windows, Linux, macOS; WinAppSDK head = Microsoft Store; Android) and its tests
+│   └── VoiceType.Uno/            # 🐧 Uno Platform app (Skia desktop: Windows, Linux, macOS; WinAppSDK head = Microsoft Store; Android; iOS) and its tests
 ├── libraries/SpeechLib/          # 📚 Speech contracts, audio, recognizers (src/) and their tests (tests/)
 ├── .github/                      # ⚙️ CI/CD workflows and composite action (see docs/ci.md)
 ├── tools/                        # 📊 Benchmarks, inspection utilities, and converters
@@ -42,7 +42,7 @@ nemotron-speech-csharp/
 | **SpeechLib.Providers** | .NET 10 Library | Recognizers on plain ONNX Runtime (NVIDIA Nemotron, Parakeet TDT, Qwen3-ASR, VibeVoice) and the `RecognizerFactory` that selects them |
 | **SpeechLib.Audio.NAudio3** | .NET 10 Library | NAudio 3.0.1 WASAPI capture provider used by the CLI and VoiceType.Uno (Windows) |
 | [**NemotronSpeech**](apps/NemotronSpeech/src/NemotronSpeech/README.md) | .NET 10 Console App | Command-line front end over `RecognizerFactory` for NVIDIA Nemotron 3.5 ASR and Parakeet TDT (plain ONNX Runtime, CPU). |
-| [**VoiceType.Uno**](apps/VoiceType.Uno/README.md) | .NET 10 Uno Platform App | The dictation app (Skia desktop on Windows, Linux and macOS, the WinAppSDK head that ships in the Microsoft Store, Android): global hotkeys, text typed into the focused window, recordings History, live translation. It replaced the former VoiceType.WinUI app, also in the Store |
+| [**VoiceType.Uno**](apps/VoiceType.Uno/README.md) | .NET 10 Uno Platform App | The dictation app (Skia desktop on Windows, Linux and macOS, the WinAppSDK head that ships in the Microsoft Store, Android, iOS): global hotkeys, text typed into the focused window, recordings History, live translation. It replaced the former VoiceType.WinUI app, also in the Store |
 | **BenchmarkSuite1** | .NET 10 Console App | BenchmarkDotNet suite for CPU threads, VAD, execution mode, RTF, and process CPU measurements |
 
 ## Quick Start
