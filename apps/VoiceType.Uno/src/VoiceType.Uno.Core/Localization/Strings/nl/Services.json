@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "Pauzeren",
   "Services.Android.Jobs.Cancel": "Annuleren",
   "Services.Android.Jobs.ChannelName": "Achtergrondtaken",
-  "Services.Android.Jobs.ChannelDescription": "Wordt getoond terwijl VoiceType opnamen uit de wachtrij opnieuw herkent."
+  "Services.Android.Jobs.ChannelDescription": "Wordt getoond terwijl VoiceType opnamen uit de wachtrij opnieuw herkent.",
+  "Services.Translation.LibLoading": "Vertaalmodel laden…",
+  "Services.Translation.LibReady": "Vertaalmodel gereed"
 }

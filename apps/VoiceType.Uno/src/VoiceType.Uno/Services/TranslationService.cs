@@ -38,7 +38,13 @@ public sealed class TranslationService : IDisposable, IAsyncDisposable
             CreateTranslatorAsync,
             new LiveTranslationOptions { DraftDebounceMs = 80, MaxTailChars = 200 });
         _session.TranslationChanged += text => TranslationChanged?.Invoke(text);
-        _session.StatusChanged += status => StatusChanged?.Invoke(status);
+        // The library reports two fixed English statuses; the interface shows them in its own language.
+        _session.StatusChanged += status => StatusChanged?.Invoke(status switch
+        {
+            "Loading translation model..." => Loc.T("Services.Translation.LibLoading"),
+            "Translation model ready" => Loc.T("Services.Translation.LibReady"),
+            _ => status,
+        });
         Log($"created with backend={backend}, maxOutputTokens={options.MaxTokens}, model={options.Model}");
     }
 

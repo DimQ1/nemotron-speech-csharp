@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "Pausar",
   "Services.Android.Jobs.Cancel": "Cancelar",
   "Services.Android.Jobs.ChannelName": "Tarefas em segundo plano",
-  "Services.Android.Jobs.ChannelDescription": "Exibida enquanto o VoiceType reconhece novamente gravações da Fila."
+  "Services.Android.Jobs.ChannelDescription": "Exibida enquanto o VoiceType reconhece novamente gravações da Fila.",
+  "Services.Translation.LibLoading": "Carregando o modelo de tradução…",
+  "Services.Translation.LibReady": "Modelo de tradução pronto"
 }

@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "रोकें",
   "Services.Android.Jobs.Cancel": "रद्द करें",
   "Services.Android.Jobs.ChannelName": "बैकग्राउंड काम",
-  "Services.Android.Jobs.ChannelDescription": "जब VoiceType कतार से रिकॉर्डिंग फिर से पहचानता है तब दिखता है।"
+  "Services.Android.Jobs.ChannelDescription": "जब VoiceType कतार से रिकॉर्डिंग फिर से पहचानता है तब दिखता है।",
+  "Services.Translation.LibLoading": "अनुवाद मॉडल लोड हो रहा है…",
+  "Services.Translation.LibReady": "अनुवाद मॉडल तैयार है"
 }

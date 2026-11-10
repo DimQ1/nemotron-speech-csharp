@@ -144,7 +144,7 @@ public static class TranslateTabLogic
     public static bool IsOutdated(RecordingManifest manifest, TranslationInfo translation) =>
         manifest.CurrentVersion is { } current && !string.Equals(translation.SourceVersion, current, StringComparison.Ordinal);
 
-    public static string LanguageName(string code) => TranslationLanguages.NameFor(code) ?? code;
+    public static string LanguageName(string code) => VoiceType.Uno.Localization.LanguageNames.Of(code) ?? code;
 
     /// <summary>Translations of the recording, newest first.</summary>
     public static List<TranslationListItem> List(RecordingManifest manifest) =>

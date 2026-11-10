@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "Pause",
   "Services.Android.Jobs.Cancel": "Annuler",
   "Services.Android.Jobs.ChannelName": "Tâches en arrière-plan",
-  "Services.Android.Jobs.ChannelDescription": "Affichée pendant que VoiceType retranscrit des enregistrements de la file d'attente."
+  "Services.Android.Jobs.ChannelDescription": "Affichée pendant que VoiceType retranscrit des enregistrements de la file d'attente.",
+  "Services.Translation.LibLoading": "Chargement du modèle de traduction…",
+  "Services.Translation.LibReady": "Modèle de traduction prêt"
 }

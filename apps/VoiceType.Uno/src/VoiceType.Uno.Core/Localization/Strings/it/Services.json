@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "Pausa",
   "Services.Android.Jobs.Cancel": "Annulla",
   "Services.Android.Jobs.ChannelName": "Attività in background",
-  "Services.Android.Jobs.ChannelDescription": "Mostrata mentre VoiceType riconosce di nuovo le registrazioni dalla coda."
+  "Services.Android.Jobs.ChannelDescription": "Mostrata mentre VoiceType riconosce di nuovo le registrazioni dalla coda.",
+  "Services.Translation.LibLoading": "Caricamento del modello di traduzione…",
+  "Services.Translation.LibReady": "Modello di traduzione pronto"
 }

@@ -12,14 +12,17 @@ HERE = pathlib.Path(__file__).parent / "v2.0.0"
 LANGS = ["en-us", "ru-ru", "de-de", "fr-fr", "es-es", "zh-cn", "ja-jp", "ko-kr", "pt-br", "it-it", "ar-sa", "hi-in", "tr-tr", "uk-ua", "pl-pl", "nl-nl"]
 TEXT = "Текст"
 PATH = "Относительный путь (или URL-адрес файла в Центре партнеров)"
+# One set per interface language: screenshots/<app language>/NN-name.png (tools/store-screenshots, shoot-lang).
+SHOT_FOLDER = {"en-us": "en", "ru-ru": "ru", "de-de": "de", "fr-fr": "fr", "es-es": "es", "zh-cn": "zh-CN", "ja-jp": "ja",
+               "ko-kr": "ko", "pt-br": "pt-BR", "it-it": "it", "ar-sa": "ar", "hi-in": "hi", "tr-tr": "tr", "uk-ua": "uk",
+               "pl-pl": "pl", "nl-nl": "nl"}
 SCREENSHOTS = [
-    "screenshots/01-history-speakers.png",
-    "screenshots/02-live-translation.png",
-    "screenshots/03-ask-gemma.png",
-    "screenshots/04-translate-recording.png",
-    "screenshots/05-typing-into-apps.png",
-    "screenshots/06-hotkeys.png",
-    "screenshots/07-models.png",
+    "01-history-speakers.png",
+    "02-live-translation.png",
+    "03-ask-gemma.png",
+    "04-translate-recording.png",
+    "05-typing-into-apps.png",
+    "06-hotkeys.png",
 ]
 MAX_FEATURES = 20
 OUT_NAME = "listingData-store-import-v2.0.0.0-multilang.csv"
@@ -972,6 +975,77 @@ Vereisten: Windows 10 versie 2004 of later, x64-processor, 8 GB RAM (16 GB aanbe
 )
 
 
+# 2.0: the interface itself speaks the 16 languages (asked at the first start, switchable in the main menu at any time).
+# Per language: a line for the description (after the first paragraph), a sentence for the release notes, a feature.
+EXTRA = {
+    "en-us": ("The interface is available in 16 languages: choose yours at the first start and switch at any time from the main menu.",
+              "The interface is now available in 16 languages, chosen at the first start and switchable at any time.",
+              "Interface in 16 languages"),
+    "ru-ru": ("Интерфейс доступен на 16 языках: выберите свой при первом запуске и меняйте в любой момент в главном меню.",
+              "Интерфейс теперь доступен на 16 языках: язык выбирается при первом запуске и меняется в любой момент.",
+              "Интерфейс на 16 языках"),
+    "de-de": ("Die Oberfläche gibt es in 16 Sprachen: Wählen Sie Ihre beim ersten Start und wechseln Sie jederzeit im Hauptmenü.",
+              "Die Oberfläche ist jetzt in 16 Sprachen verfügbar, beim ersten Start gewählt und jederzeit umschaltbar.",
+              "Oberfläche in 16 Sprachen"),
+    "fr-fr": ("L’interface existe en 16 langues : choisissez la vôtre au premier démarrage et changez-la à tout moment depuis le menu principal.",
+              "L’interface est désormais disponible en 16 langues, choisie au premier démarrage et modifiable à tout moment.",
+              "Interface en 16 langues"),
+    "es-es": ("La interfaz está disponible en 16 idiomas: elige el tuyo al iniciar por primera vez y cámbialo cuando quieras desde el menú principal.",
+              "La interfaz ya está disponible en 16 idiomas: se elige al iniciar por primera vez y se puede cambiar en cualquier momento.",
+              "Interfaz en 16 idiomas"),
+    "zh-cn": ("界面提供 16 种语言：首次启动时选择，之后可随时在主菜单中切换。",
+              "界面现已支持 16 种语言，首次启动时选择，可随时切换。",
+              "界面支持 16 种语言"),
+    "ja-jp": ("表示言語は 16 言語から選べます。初回起動時に選び、メイン メニューからいつでも切り替えられます。",
+              "表示言語が 16 言語に対応しました。初回起動時に選択でき、いつでも切り替えられます。",
+              "16 言語の表示言語"),
+    "ko-kr": ("인터페이스는 16개 언어로 제공됩니다. 처음 시작할 때 고르고 주 메뉴에서 언제든지 바꿀 수 있습니다.",
+              "이제 인터페이스가 16개 언어로 제공되며, 처음 시작할 때 선택하고 언제든지 바꿀 수 있습니다.",
+              "16개 언어 인터페이스"),
+    "pt-br": ("A interface está disponível em 16 idiomas: escolha o seu na primeira execução e troque quando quiser no menu principal.",
+              "A interface agora está disponível em 16 idiomas, escolhidos na primeira execução e alteráveis a qualquer momento.",
+              "Interface em 16 idiomas"),
+    "it-it": ("L’interfaccia è disponibile in 16 lingue: scegli la tua al primo avvio e cambiala quando vuoi dal menu principale.",
+              "L’interfaccia è ora disponibile in 16 lingue, scelta al primo avvio e modificabile in qualsiasi momento.",
+              "Interfaccia in 16 lingue"),
+    "ar-sa": ("الواجهة متوفرة بـ 16 لغة: اختر لغتك عند التشغيل الأول وغيّرها في أي وقت من القائمة الرئيسية.",
+              "أصبحت الواجهة متوفرة بـ 16 لغة، تُختار عند التشغيل الأول ويمكن تغييرها في أي وقت.",
+              "واجهة بـ 16 لغة"),
+    "hi-in": ("इंटरफ़ेस 16 भाषाओं में उपलब्ध है: पहली बार शुरू करने पर अपनी भाषा चुनें और मुख्य मेनू से कभी भी बदलें।",
+              "इंटरफ़ेस अब 16 भाषाओं में उपलब्ध है, जिसे पहली बार शुरू करने पर चुना और कभी भी बदला जा सकता है।",
+              "16 भाषाओं में इंटरफ़ेस"),
+    "tr-tr": ("Arayüz 16 dilde sunulur: dilinizi ilk açılışta seçin ve ana menüden istediğiniz zaman değiştirin.",
+              "Arayüz artık 16 dilde; dil ilk açılışta seçilir ve istediğiniz zaman değiştirilebilir.",
+              "16 dilde arayüz"),
+    "uk-ua": ("Інтерфейс доступний 16 мовами: виберіть свою під час першого запуску й змінюйте будь-коли в головному меню.",
+              "Інтерфейс тепер доступний 16 мовами: мова вибирається під час першого запуску й змінюється будь-коли.",
+              "Інтерфейс 16 мовами"),
+    "pl-pl": ("Interfejs jest dostępny w 16 językach: wybierz swój przy pierwszym uruchomieniu i zmieniaj w dowolnej chwili w menu głównym.",
+              "Interfejs jest teraz dostępny w 16 językach, wybieranych przy pierwszym uruchomieniu i zmienianych w dowolnej chwili.",
+              "Interfejs w 16 językach"),
+    "nl-nl": ("De interface is er in 16 talen: kies de jouwe bij de eerste start en wissel op elk moment via het hoofdmenu.",
+              "De interface is nu beschikbaar in 16 talen, gekozen bij de eerste start en op elk moment te wijzigen.",
+              "Interface in 16 talen"),
+}
+# The Models screenshot was dropped in 2.0.1: six per language.
+for _d in L.values():
+    _d["captions"] = _d["captions"][: len(SCREENSHOTS)]
+
+
+def shot_folder(lang):
+    """The language's own screenshots, else the English ones (a language still being shot)."""
+    own = SHOT_FOLDER[lang]
+    return own if all((HERE / "screenshots" / own / s).exists() for s in SCREENSHOTS) else "en"
+
+
+for _lang, (_desc, _note, _feature) in EXTRA.items():
+    _d = L[_lang]
+    _head, _sep, _rest = _d["description"].partition("\n\n")
+    _d["description"] = _head + "\n\n" + _desc + _sep + _rest
+    _d["notes"] = _d["notes"].rstrip() + " " + _note
+    _d["features"] = _d["features"][:1] + [_feature] + _d["features"][1:]
+
+
 def check():
     assert set(L) == set(LANGS), set(LANGS) ^ set(L)
     for lang, d in L.items():
@@ -983,8 +1057,9 @@ def check():
         assert len(d["features"]) <= MAX_FEATURES and all(len(f) <= 200 for f in d["features"]), (lang, "features")
         assert len(d["terms"]) == 7 and all(len(t) <= 30 for t in d["terms"]), (lang, "terms")
         assert sum(len(t.split()) for t in d["terms"]) <= 21, (lang, "search term words")
-    for shot in SCREENSHOTS:
-        assert (HERE / shot).exists(), shot
+    for lang in LANGS:
+        for shot in SCREENSHOTS:
+            assert (HERE / "screenshots" / shot_folder(lang) / shot).exists(), (lang, shot)
     assert [p.name for p in HERE.glob("*.csv")] in ([], [OUT_NAME]), "the upload folder may hold one CSV only"
 
 
@@ -997,14 +1072,27 @@ def rows():
     yield row("Description", 2, TEXT, [L[l]["description"] for l in LANGS])
     yield row("ReleaseNotes", 3, TEXT, [L[l]["notes"] for l in LANGS])
     for i, shot in enumerate(SCREENSHOTS):
-        yield row(f"DesktopScreenshot{i + 1}", 100 + i, PATH, [f"{HERE.name}/{shot}"] * len(LANGS))
+        yield row(f"DesktopScreenshot{i + 1}", 100 + i, PATH, [f"{HERE.name}/screenshots/{shot_folder(l)}/{shot}" for l in LANGS])
     for i in range(len(SCREENSHOTS)):
         yield row(f"DesktopScreenshotCaption{i + 1}", 150 + i, TEXT, [L[l]["captions"][i] for l in LANGS])
+    # Older submissions had more screenshots: empty rows remove them (and their captions).
+    for i in range(len(SCREENSHOTS), 30):
+        yield row(f"DesktopScreenshot{i + 1}", 100 + i, PATH, [""] * len(LANGS))
+        yield row(f"DesktopScreenshotCaption{i + 1}", 150 + i, TEXT, [""] * len(LANGS))
     # Version 1 listed 14 features: the rows up to 20 are written (empty ones clear the old text).
     for i in range(MAX_FEATURES):
         yield row(f"Feature{i + 1}", 700 + i, TEXT, [L[l]["features"][i] if i < len(L[l]["features"]) else "" for l in LANGS])
     for i in range(7):
         yield row(f"SearchTerm{i + 1}", 900 + i, TEXT, [L[l]["terms"][i] for l in LANGS])
+
+
+def _column_language(column):
+    """A column the package languages added ("ru", "zh-CN", "pt-BR", "en") -> our listing language of that language."""
+    c = column.lower()
+    for lang in LANGS:
+        if lang == c or lang.split("-")[0] == c.split("-")[0] and (c.split("-")[0] not in ("zh", "pt") or lang == c or "-" not in c):
+            return lang
+    return "en-us"
 
 
 def fill_export(export_path, texts_only=False):
@@ -1021,7 +1109,7 @@ def fill_export(export_path, texts_only=False):
     for row in table[1:]:
         if row and row[0] in ours:
             values = dict(zip(LANGS, ours[row[0]]))
-            row[4:] = [values.get(lang, values["en-us"]) for lang in columns]
+            row[4:] = [values.get(lang.lower()) or values.get(_column_language(lang), values["en-us"]) for lang in columns]
     return table
 
 

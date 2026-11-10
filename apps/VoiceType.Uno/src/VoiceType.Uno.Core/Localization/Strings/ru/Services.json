@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "Пауза",
   "Services.Android.Jobs.Cancel": "Отмена",
   "Services.Android.Jobs.ChannelName": "Фоновые задачи",
-  "Services.Android.Jobs.ChannelDescription": "Показывается, пока VoiceType повторно распознаёт записи из очереди."
+  "Services.Android.Jobs.ChannelDescription": "Показывается, пока VoiceType повторно распознаёт записи из очереди.",
+  "Services.Translation.LibLoading": "Загрузка модели перевода…",
+  "Services.Translation.LibReady": "Модель перевода готова"
 }

@@ -347,7 +347,9 @@ public sealed partial class ReprocessSheet : ContentDialog
             return Loc.T("Recording.Reprocess.AutoDetect");
         try
         {
-            return CultureInfo.GetCultureInfo(code).EnglishName;
+            return LanguageNames.Of(code) is { } name && !string.Equals(name, code, StringComparison.OrdinalIgnoreCase)
+                ? name
+                : CultureInfo.GetCultureInfo(code).EnglishName;
         }
         catch (CultureNotFoundException)
         {

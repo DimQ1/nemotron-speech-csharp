@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "暂停",
   "Services.Android.Jobs.Cancel": "取消",
   "Services.Android.Jobs.ChannelName": "后台任务",
-  "Services.Android.Jobs.ChannelDescription": "VoiceType 重新识别队列中的录音时显示。"
+  "Services.Android.Jobs.ChannelDescription": "VoiceType 重新识别队列中的录音时显示。",
+  "Services.Translation.LibLoading": "正在加载翻译模型…",
+  "Services.Translation.LibReady": "翻译模型已就绪"
 }

@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "일시 중지",
   "Services.Android.Jobs.Cancel": "취소",
   "Services.Android.Jobs.ChannelName": "백그라운드 작업",
-  "Services.Android.Jobs.ChannelDescription": "VoiceType이 대기열의 녹음을 다시 인식하는 동안 표시됩니다."
+  "Services.Android.Jobs.ChannelDescription": "VoiceType이 대기열의 녹음을 다시 인식하는 동안 표시됩니다.",
+  "Services.Translation.LibLoading": "번역 모델을 불러오는 중…",
+  "Services.Translation.LibReady": "번역 모델 준비 완료"
 }

@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "Duraklat",
   "Services.Android.Jobs.Cancel": "İptal",
   "Services.Android.Jobs.ChannelName": "Arka plan işleri",
-  "Services.Android.Jobs.ChannelDescription": "VoiceType kuyruktaki kayıtları yeniden tanırken gösterilir."
+  "Services.Android.Jobs.ChannelDescription": "VoiceType kuyruktaki kayıtları yeniden tanırken gösterilir.",
+  "Services.Translation.LibLoading": "Çeviri modeli yükleniyor…",
+  "Services.Translation.LibReady": "Çeviri modeli hazır"
 }

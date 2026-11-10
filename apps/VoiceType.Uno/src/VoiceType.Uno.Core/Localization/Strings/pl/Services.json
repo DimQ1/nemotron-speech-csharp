@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "Wstrzymaj",
   "Services.Android.Jobs.Cancel": "Anuluj",
   "Services.Android.Jobs.ChannelName": "Zadania w tle",
-  "Services.Android.Jobs.ChannelDescription": "Wyświetlane, gdy VoiceType ponownie rozpoznaje nagrania z kolejki."
+  "Services.Android.Jobs.ChannelDescription": "Wyświetlane, gdy VoiceType ponownie rozpoznaje nagrania z kolejki.",
+  "Services.Translation.LibLoading": "Wczytywanie modelu tłumaczenia…",
+  "Services.Translation.LibReady": "Model tłumaczenia gotowy"
 }

@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "Pause",
   "Services.Android.Jobs.Cancel": "Cancel",
   "Services.Android.Jobs.ChannelName": "Background jobs",
-  "Services.Android.Jobs.ChannelDescription": "Shown while VoiceType re-recognizes recordings from the Queue."
+  "Services.Android.Jobs.ChannelDescription": "Shown while VoiceType re-recognizes recordings from the Queue.",
+  "Services.Translation.LibLoading": "Loading translation model…",
+  "Services.Translation.LibReady": "Translation model ready"
 }

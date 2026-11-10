@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "Pause",
   "Services.Android.Jobs.Cancel": "Abbrechen",
   "Services.Android.Jobs.ChannelName": "Hintergrundaufträge",
-  "Services.Android.Jobs.ChannelDescription": "Wird angezeigt, während VoiceType Aufnahmen aus der Warteschlange neu erkennt."
+  "Services.Android.Jobs.ChannelDescription": "Wird angezeigt, während VoiceType Aufnahmen aus der Warteschlange neu erkennt.",
+  "Services.Translation.LibLoading": "Übersetzungsmodell wird geladen…",
+  "Services.Translation.LibReady": "Übersetzungsmodell bereit"
 }

@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "一時停止",
   "Services.Android.Jobs.Cancel": "キャンセル",
   "Services.Android.Jobs.ChannelName": "バックグラウンドジョブ",
-  "Services.Android.Jobs.ChannelDescription": "VoiceType がキューの録音を再認識している間に表示されます。"
+  "Services.Android.Jobs.ChannelDescription": "VoiceType がキューの録音を再認識している間に表示されます。",
+  "Services.Translation.LibLoading": "翻訳モデルを読み込んでいます…",
+  "Services.Translation.LibReady": "翻訳モデルの準備ができました"
 }

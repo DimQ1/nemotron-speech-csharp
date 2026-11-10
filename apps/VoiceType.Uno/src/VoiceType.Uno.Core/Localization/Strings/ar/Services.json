@@ -41,5 +41,7 @@
   "Services.Android.Jobs.Pause": "إيقاف مؤقت",
   "Services.Android.Jobs.Cancel": "إلغاء",
   "Services.Android.Jobs.ChannelName": "المهام في الخلفية",
-  "Services.Android.Jobs.ChannelDescription": "يظهر أثناء إعادة VoiceType التعرف على التسجيلات من قائمة الانتظار."
+  "Services.Android.Jobs.ChannelDescription": "يظهر أثناء إعادة VoiceType التعرف على التسجيلات من قائمة الانتظار.",
+  "Services.Translation.LibLoading": "جارٍ تحميل نموذج الترجمة…",
+  "Services.Translation.LibReady": "نموذج الترجمة جاهز"
 }

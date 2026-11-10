@@ -238,7 +238,7 @@ public static class SettingsText
     public static IReadOnlyList<SettingsOption> RecognitionLanguages =>
         LanguageCodes.Select(code => code == "auto"
             ? new SettingsOption("auto", Loc.T("Settings.Speech.Language.Auto"))
-            : new SettingsOption(code, TranslationLanguages.NameFor(code) ?? code)).ToList();
+            : new SettingsOption(code, LanguageNames.Of(code) ?? code)).ToList();
 
     /// <summary>The recognition language a stored code selects (unknown codes keep their own entry).</summary>
     public static string LanguageTitle(string? code)
@@ -249,11 +249,11 @@ public static class SettingsText
     }
 
     /// <summary>Translation targets: the shared catalog (names, not codes).</summary>
-    public static IReadOnlyList<SettingsOption> TranslationTargets { get; } =
-        TranslationLanguages.All.Select(l => new SettingsOption(l.Code, l.Name)).ToList();
+    public static IReadOnlyList<SettingsOption> TranslationTargets =>
+        TranslationLanguages.All.Select(l => new SettingsOption(l.Code, LanguageNames.Of(l.Code) ?? l.Name)).ToList();
 
     /// <summary>The display name of a stored target ("ru" → Russian; a typed name such as Belarusian stays as typed).</summary>
-    public static string TargetTitle(string? stored) => TranslationLanguages.NameFor(stored) ?? "Russian";
+    public static string TargetTitle(string? stored) => LanguageNames.Of(stored) ?? LanguageNames.Of("ru")!;
 
     /// <summary>True when the stored target is none of the catalog languages (shown through the "Other…" field).</summary>
     public static bool IsCustomTarget(string? stored) =>

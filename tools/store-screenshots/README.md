@@ -18,3 +18,15 @@ recognition, speaker detection and Gemma output in the installed Release package
 
 Keep the preview package and its data apart from a real VoiceType install: a different identity is a different data folder.
 Remove it with `Get-AppxPackage DimQ1.VoiceType.UnoPreview | Remove-AppxPackage` (this also deletes its data folder).
+
+## One set per interface language (2.0.1)
+
+`pwsh shoot-all.ps1 [-Langs ru,de]` writes `docs/store/imports/v2.0.0/screenshots/<lang>/01..06-*.png` for the 16 interface
+languages, one language after another (`shoot-lang.ps1 -Lang <code> -Out <dir>`; log `%TEMP%oicetype-shoot-all.log`). It drives the
+installed **preview** package through UI Automation by the app's own string tables (`drive.ps1`: `L <lang> <key>`), sets
+`UiLanguage` and the live-translation target (the UI language; German for English) in its `settings.json`, starts it, and
+captures with `PrintWindow` on the monitor left of the primary one; the window is never activated. Prerequisites: the preview
+data folder seeded as above, plus, done once in the app: speakers detected and renamed in "Product sync", the Russian recording
+translated to English, the chat "Release 2.0 and customer feedback" over two recordings. Run only ONE copy at a time: two runs
+close each other's window. The Models screenshot was dropped (its Settings link is not reliably reachable through UIA).
+`make-listing-v2.0.0.py` uses a language's own set when all six files exist, the English set otherwise.
