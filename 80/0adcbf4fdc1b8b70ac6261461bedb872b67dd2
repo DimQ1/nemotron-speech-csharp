@@ -1,0 +1,19 @@
+apps/VoiceType.Uno/src/global.json
+  s_13d57ddad0c9ec::t_8d4a0a0c1446ff 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "800adcbf4fdc1b8b70ac6261461bedb872b67dd2",
+  "prompts": {},
+  "sessions": {
+    "s_13d57ddad0c9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f3c1a7d-4d02-4295-9d0e-8f091fc2075f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
