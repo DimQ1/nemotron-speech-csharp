@@ -1,0 +1,49 @@
+apps/VoiceType.Uno/src/VoiceType.Uno/Platforms/Android/Main.Android.cs
+  s_13d57ddad0c9ec::t_ee5ebeef6bb5f4 12,23,30,34-40
+apps/VoiceType.Uno/src/VoiceType.Uno/Platforms/Android/MainActivity.Android.cs
+  s_13d57ddad0c9ec::t_024d04826559a0 12-13,15
+apps/NemotronSpeech/src/NemotronSpeech/AppOptions.cs
+  s_64a477cf3f003c::t_c81711cee2ce12 10,22-27,79-80
+apps/NemotronSpeech/src/NemotronSpeech/Program.cs
+  s_64a477cf3f003c::t_71ee4df68b84f0 128,132-133
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronRnntEngine.cs
+  s_64a477cf3f003c::t_6f17482e76db70 76,83-84,209,331,338
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronRnntRecognizer.cs
+  s_64a477cf3f003c::t_f80cf3300bcd62 65-71,974,977
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronStreamState.cs
+  s_64a477cf3f003c::t_468a0d31f79123 92-94,111
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/NemotronTermBias.cs
+  s_64a477cf3f003c::t_b825782c77c449 1-341
+libraries/SpeechLib/src/SpeechLib.Providers/Nemotron/RnntGreedyDecoder.cs
+  s_64a477cf3f003c::t_96f60462c21411 78-83,117,180-181,196
+libraries/SpeechLib/src/SpeechLib.Providers/RecognizerFactory.cs
+  s_64a477cf3f003c::t_ae61c6b0f013da 90,165-170
+libraries/SpeechLib/tests/SpeechLib.Nemotron.Tests/Unit_NemotronTermBiasTests.cs
+  s_64a477cf3f003c::t_94829a3094680a 1-354
+tools/WerEval/Program.cs
+  s_64a477cf3f003c::t_4b899259dbddcb 126-129,166-167,413,658-671
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c23adf217654f78eb0db374cbb8be14867a64ef5",
+  "prompts": {},
+  "sessions": {
+    "s_13d57ddad0c9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f3c1a7d-4d02-4295-9d0e-8f091fc2075f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_64a477cf3f003c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022be61e-ce5c-4c8f-996e-bfa85ec8ad62",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
