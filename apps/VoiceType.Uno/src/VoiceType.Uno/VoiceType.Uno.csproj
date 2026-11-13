@@ -87,6 +87,10 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net11.0-ios'">
     <!-- WASAPI playback is built on the NAudio package that iOS does not link (see the NAudio3 reference below). -->
     <Compile Remove="Services\Playback\WasapiPcmOutput.cs" />
+    <!-- Microsoft.ML.OnnxRuntime P/Invokes RegisterCustomOps of the optional onnxruntime-extensions library
+         (SessionOptions.RegisterOrtExtensions), which is not linked and never called. The .NET 11 iOS SDK forces every
+         P/Invoke symbol as undefined (-u), so the simulator link failed with "_RegisterCustomOps ... <initial-undefines>". -->
+    <ReferenceNativeSymbol Include="RegisterCustomOps" SymbolType="Function" SymbolMode="Ignore" />
   </ItemGroup>
 
   <ItemGroup>

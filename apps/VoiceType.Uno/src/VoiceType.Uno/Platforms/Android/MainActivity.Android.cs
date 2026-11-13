@@ -12,7 +12,7 @@ namespace VoiceType.Uno.Droid;
     WindowSoftInputMode = SoftInput.AdjustNothing | SoftInput.StateHidden,
     Exported = true
 )]
-public class MainActivity : Uno.UI.Runtime.Android.ApplicationActivity
+public class MainActivity : global::Uno.UI.Runtime.Android.ApplicationActivity
 {
     private const int RuntimePermissionsRequestCode = 42;
 
