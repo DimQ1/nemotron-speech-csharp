@@ -109,9 +109,13 @@ $publishArgs = @(
 dotnet @publishArgs
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
 
-$packageDir = Join-Path $projectDir "bin\Release\$tfm\win-x64\AppPackages\VoiceType.Uno_${packageVersion}_x64_Test"
-$built = Join-Path $packageDir "VoiceType.Uno_${packageVersion}_x64.msix"
-if (-not (Test-Path $built)) { throw "No package at $built" }
+# WinAppSDK 1.x wrote bin\Release\<tfm>\<rid>\AppPackages; the MSIX tooling of WinAppSDK 2.x (Uno 7) writes AppPackages next to the project.
+$packageName = "VoiceType.Uno_${packageVersion}_x64"
+$built = @(
+    (Join-Path $projectDir "AppPackages\${packageName}_Test\$packageName.msix"),
+    (Join-Path $projectDir "bin\Release\$tfm\win-x64\AppPackages\${packageName}_Test\$packageName.msix")
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $built) { throw "No package $packageName.msix in AppPackages\ or bin\Release\$tfm\win-x64\AppPackages\" }
 # The Store and the preview build write the same AppPackages folder: keep each under its identity.
 $outDir = Join-Path $projectDir 'bin\StorePackages'
 New-Item -ItemType Directory -Force $outDir | Out-Null

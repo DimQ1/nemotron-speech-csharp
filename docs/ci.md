@@ -112,7 +112,7 @@ Other local facts that matter for CI parity:
   or in the main checkout of a worktree); they take minutes to an hour. Use the filter above for a CI-like run.
 * Model-backed Nemotron runs: see `AGENTS.md` (env vars `NEMOTRON_MODEL_DIR_*`, `NEMOTRON_FULL_GOLDEN=1`).
 * There is no root `global.json` yet: at the repository root `dotnet` uses the newest installed SDK (a .NET 11 preview on the maintainer's
-  laptop), CI uses the newest `10.0.x` (open decision D4). `apps/VoiceType.Uno/src/global.json` only pins the Uno SDK (`Uno.Sdk 6.7.30`).
+  laptop), CI uses the newest `10.0.x` (open decision D4). `apps/VoiceType.Uno/src/global.json` pins the Uno SDK (`Uno.Sdk 7.0.5`: Uno 7.0.32, Windows App SDK 2.5.1, Toolkit 11, SkiaSharp 4.151) and the .NET SDK band (`10.0.100`, `latestFeature`), so a machine with a .NET 11 SDK still builds the Uno app with .NET 10.
 * Lint the workflows: run the official `actionlint` binary from the repository root, or
   `docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12`. The Docker image also runs `shellcheck`; the local Windows
   binary does not (no `shellcheck` installed), so a style finding in an embedded bash block can first appear in CI.
@@ -198,7 +198,7 @@ Secrets are not available to pull requests from forks; every check of `CI` works
 
 ## iOS
 
-`VoiceType.Uno.csproj` has an **opt-in** `net10.0-ios` target (Uno 6, Skia on UIKit). It is opt-in because the iOS target needs the `ios`
+`VoiceType.Uno.csproj` has an **opt-in** `net10.0-ios` target (Uno 7, Skia on UIKit). It is opt-in because the iOS target needs the `ios`
 workload and an Xcode, which only a Mac has: `-p:UnoIosOnly=true` makes `net10.0-ios` the only target (build with `-f net10.0-ios`, never
 with `-p:TargetFrameworks`, which leaks into every referenced library). The default target set of the other platforms is unchanged.
 

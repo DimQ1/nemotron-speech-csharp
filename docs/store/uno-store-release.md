@@ -40,7 +40,7 @@ cd apps\VoiceType.Uno\src\VoiceType.Uno
 
 - Версия: `MAJOR.MINOR.PATCH`, скрипт дописывает `.0` (Store требует 0 в четвёртой части) и отказывается собирать версию
   не выше 1.3.4.0. Она же уходит в `ApplicationDisplayVersion` (окно «О программе», метаданные History).
-- Пакет self-contained (.NET 10 + WinAppSDK внутри), x64, 116 МБ, без `.msixupload`. Partner Center принимает `.msix`
+- Пакет self-contained (.NET 10 + WinAppSDK внутри), x64, 98 МБ с Uno 7 / WinAppSDK 2.5 (было 116 МБ), без `.msixupload`. С WinAppSDK 2.x пакет появляется в `AppPackages\` рядом с проектом, а не в `bin\Release\...\AppPackages\`; скрипт ищет в обоих местах. Partner Center принимает `.msix`
   и сам его подписывает.
 - `-Sign -Install -Force` ставит **настоящую** identity поверх локально установленной WinUI. Это и есть обновление
   из Store на этой машине, и оно конвертирует данные WinUI. Без `-Force` скрипт откажется, если `DimQ1.VoiceType` установлен.

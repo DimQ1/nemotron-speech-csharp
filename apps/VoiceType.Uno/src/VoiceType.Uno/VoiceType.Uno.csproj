@@ -76,7 +76,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-ios'">
-    <!-- Uno 6 renders with Skia on UIKit (UnoPlatformHostBuilder.UseAppleUIKit, Platforms/iOS/Main.iOS.cs).
+    <!-- Uno 7 renders with Skia on UIKit (UnoPlatformHostBuilder.UseAppleUIKit, Platforms/iOS/Main.iOS.cs).
          The ONNX Runtime iOS xcframework is linked statically by the NuGet package's own targets (CoreML weak). -->
     <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
     <!-- Unsigned by default (CI, simulator, compile checks). A signed build passes EnableCodeSigning=true plus the
