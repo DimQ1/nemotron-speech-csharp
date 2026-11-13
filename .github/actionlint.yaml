@@ -1,0 +1,5 @@
+# Runner labels actionlint does not know yet.
+self-hosted-runner:
+  labels:
+    # GitHub-hosted public preview image with Xcode 27 (macOS 27): the .NET 11 iOS workload needs Xcode 27.2.
+    - xcode-27

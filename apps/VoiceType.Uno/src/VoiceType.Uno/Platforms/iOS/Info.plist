@@ -39,5 +39,23 @@
 	<!-- The app only uses the encryption that ships with the OS (HTTPS to Hugging Face for model downloads). -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- UIKit scene lifecycle: required by the iOS 27 SDK (MT7199). One window: VoiceType keeps app-wide singletons. -->
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>__UNO_DEFAULT_SCENE_CONFIGURATION__</string>
+					<key>UISceneDelegateClassName</key>
+					<string>SceneDelegate</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 </dict>
 </plist>
