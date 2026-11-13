@@ -44,7 +44,7 @@ Write-Host "Publishing VoiceType.Uno $Version for $Runtime..."
 dotnet publish $project `
     -c Release `
     -r $Runtime `
-    -f net10.0-desktop `
+    -f net11.0-desktop `
     -p:GpuArch=CPU `
     --self-contained true `
     -o $publishDir

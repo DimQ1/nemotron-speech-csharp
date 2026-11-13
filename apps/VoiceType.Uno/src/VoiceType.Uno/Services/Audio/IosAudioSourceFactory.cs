@@ -1,5 +1,5 @@
 // iOS microphone capture via AVAudioEngine.
-// Only compiled for the net10.0-ios head. iOS gives an app no access to system audio, so Mic is the only mode.
+// Only compiled for the net11.0-ios head. iOS gives an app no access to system audio, so Mic is the only mode.
 #if __IOS__
 
 using AVFoundation;

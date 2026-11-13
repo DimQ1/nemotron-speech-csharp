@@ -2,7 +2,7 @@ name: VoiceType.Uno iOS
 
 run-name: VoiceType.Uno iOS · ${{ github.ref_name }} · #${{ github.run_number }}
 
-# Unsigned iOS builds of the Uno head (net10.0-ios, Skia on UIKit): one for the Simulator, one for a device.
+# Unsigned iOS builds of the Uno head (net11.0-ios, Skia on UIKit): one for the Simulator, one for a device.
 # Kept apart from "VoiceType.Uno CI" because a Mac runner is slow (30+ min) and the head is young: an iOS problem
 # must not turn the Windows / Linux / Android packages red. The job lives in uno-publish.yml (job `ios`).
 # What the artifacts are good for and how a signed IPA would come out: docs/ci.md, section iOS.

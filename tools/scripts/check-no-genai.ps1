@@ -19,7 +19,7 @@
   1 when anything of GenAI is found, 0 otherwise. Build the heads first, from a clean output (delete bin/<Configuration>)
   when a previous build may have left files behind:
     dotnet build NemotronSpeech.slnx -c Release
-    dotnet build apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -c Release -f net10.0-desktop -p:RuntimeIdentifier=win-x64   (from apps/VoiceType.Uno/src)
+    dotnet build apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -c Release -f net11.0-desktop -p:RuntimeIdentifier=win-x64   (from apps/VoiceType.Uno/src)
 
   What it does not see: an Android APK/AAB (build one and look inside) and any output folder that is not one of the two above
   (VoiceType.WinUI, the third head, was removed; its successor in the Store is the Uno WinAppSDK head, whose MSIX output is not scanned).
@@ -44,7 +44,7 @@ $heads = [ordered]@{
 }
 $headOutput = @{
     'CLI (NemotronSpeech)' = @('bin', $Configuration)
-    'Uno desktop'          = @('bin', $Configuration, 'net10.0-desktop')
+    'Uno desktop'          = @('bin', $Configuration, 'net11.0-desktop')
 }
 $pattern = 'OnnxRuntimeGenAI|onnxruntime-genai'
 $findings = [System.Collections.Generic.List[string]]::new()

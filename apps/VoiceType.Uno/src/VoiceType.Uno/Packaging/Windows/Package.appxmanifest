@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Microsoft Store package of the WinAppSDK head (net10.0-windows10.0.26100), opt-in with -p:VoiceTypeMsix=true
+  Microsoft Store package of the WinAppSDK head (net11.0-windows10.0.26100), opt-in with -p:VoiceTypeMsix=true
   (build-store-msix.ps1). The Identity is the one VoiceType.WinUI was published with (Partner Center, Store ID 9NRQX69XCLPT):
   the Uno app arrives as an UPDATE of the WinUI app, keeps its package family name and therefore its data folder
   (%LOCALAPPDATA%\Packages\DimQ1.VoiceType_310ax279fjzmt\LocalCache\Local\VoiceType), which WinUiDataImport converts at the first start.

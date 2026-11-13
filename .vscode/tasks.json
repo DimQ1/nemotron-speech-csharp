@@ -9,7 +9,7 @@
                 "build",
                 "${workspaceFolder}/apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj",
                 "-c", "Debug",
-                "-f", "net10.0-windows10.0.26100",
+                "-f", "net11.0-windows10.0.26100",
                 "-p:GpuArch=CPU"
             ],
             "problemMatcher": "$msCompile",

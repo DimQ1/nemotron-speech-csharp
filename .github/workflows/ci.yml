@@ -48,7 +48,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
+      - name: Setup build (.NET 11 SDK, NuGet cache, LiteRtLmSharp feed)
         uses: ./.github/actions/setup-build
 
       - name: Check .NET SDK info
@@ -76,7 +76,7 @@ jobs:
 
       # ---- Linux: the cross-platform projects ----
       # The test projects pull in almost every library; the rest is built explicitly. Since VoiceType.WinUI was removed
-      # every project of the slnx targets plain net10.0, so this step could become a build of NemotronSpeech.slnx
+      # every project of the slnx targets plain net11.0, so this step could become a build of NemotronSpeech.slnx
       # (not done yet: tools/BenchmarkSuite1 has never been built on a Linux runner).
       - name: Build cross-platform projects (Linux)
         if: runner.os == 'Linux'
@@ -143,7 +143,7 @@ jobs:
         if: runner.os == 'Windows'
         run: >-
           dotnet build apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
-          -c Release -f net10.0-desktop -r win-x64
+          -c Release -f net11.0-desktop -r win-x64
 
       - name: No ONNX Runtime GenAI in the product
         if: runner.os == 'Windows'

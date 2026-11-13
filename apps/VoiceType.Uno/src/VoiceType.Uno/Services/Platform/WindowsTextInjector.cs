@@ -4,7 +4,7 @@ using System.Text;
 namespace VoiceType.Uno.Services.Platform;
 
 /// <summary>
-/// Windows text injector for the WinUI 3 head (net10.0-windows10.0.26100).
+/// Windows text injector for the WinUI 3 head (net11.0-windows10.0.26100).
 /// <see cref="Inject"/> types the text straight into the focused window with
 /// SendInput Unicode key events:
 /// the clipboard is neither used nor overwritten. With <see cref="Mode"/> set to

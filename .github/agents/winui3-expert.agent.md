@@ -95,8 +95,8 @@ await dialog.ShowAsync();
 ## Project Context
 
 The WinUI 3 code of this repository is the Windows App SDK head of the Uno app
-(`apps/VoiceType.Uno/src/VoiceType.Uno`, target `net10.0-windows10.0.26100`; the other heads are
-`net10.0-desktop` (Skia) and Android):
+(`apps/VoiceType.Uno/src/VoiceType.Uno`, target `net11.0-windows10.0.26100`; the other heads are
+`net11.0-desktop` (Skia) and Android):
 - Uno Platform single project (`Uno.Sdk`), XAML shared by every head
 - Unpackaged by default; the Microsoft Store MSIX is opt-in (`-p:VoiceTypeMsix=true`, `build-store-msix.ps1`)
 - MVVM with CommunityToolkit.Mvvm

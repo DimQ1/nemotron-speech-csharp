@@ -1,20 +1,20 @@
 <Project Sdk="Uno.Sdk">
   <PropertyGroup>
-    <!-- net10.0-windows10.0.26100 = WinAppSDK (WinUI 3) head for parity testing on Windows;
-         net10.0-desktop = Skia head (Linux X11 primary, also Windows/macOS);
-         net10.0-android = Android head (Skia). The Microsoft.ML.OnnxRuntime package ships the
+    <!-- net11.0-windows10.0.26100 = WinAppSDK (WinUI 3) head for parity testing on Windows;
+         net11.0-desktop = Skia head (Linux X11 primary, also Windows/macOS);
+         net11.0-android = Android head (Skia). The Microsoft.ML.OnnxRuntime package ships the
          android native (onnxruntime.aar), so the recognizers run on the CPU of the device.
          The android head is excluded when publishing for a desktop RID: a desktop RID
          (linux-x64 / win-x64 / osx-arm64) would make the android head resolve a non-existent
          Mono runtime pack during restore (dotnet publish -r <desktop-rid>). The android head
          is published with its own TFM (no -r). -->
-    <TargetFrameworks>net10.0-windows10.0.26100;net10.0-desktop</TargetFrameworks>
-    <TargetFrameworks Condition="'$(RuntimeIdentifier)' != 'linux-x64' and '$(RuntimeIdentifier)' != 'win-x64' and '$(RuntimeIdentifier)' != 'osx-arm64'">$(TargetFrameworks);net10.0-android</TargetFrameworks>
-    <!-- iOS head, opt-in: -p:UnoIosOnly=true builds ONLY net10.0-ios (build with -f net10.0-ios, never with
+    <TargetFrameworks>net11.0-windows10.0.26100;net11.0-desktop</TargetFrameworks>
+    <TargetFrameworks Condition="'$(RuntimeIdentifier)' != 'linux-x64' and '$(RuntimeIdentifier)' != 'win-x64' and '$(RuntimeIdentifier)' != 'osx-arm64'">$(TargetFrameworks);net11.0-android</TargetFrameworks>
+    <!-- iOS head, opt-in: -p:UnoIosOnly=true builds ONLY net11.0-ios (build with -f net11.0-ios, never with
          -p:TargetFrameworks: a global property leaks into every referenced library). It is not part of the default
          set because the iOS target needs the ios workload and an Xcode, which only a Mac (or a machine with the
          workload and a paired Mac) has; the CI job `ios` in uno-publish.yml sets it. -->
-    <TargetFrameworks Condition="'$(UnoIosOnly)' == 'true'">net10.0-ios</TargetFrameworks>
+    <TargetFrameworks Condition="'$(UnoIosOnly)' == 'true'">net11.0-ios</TargetFrameworks>
 
     <OutputType>Exe</OutputType>
     <UnoSingleProject>true</UnoSingleProject>
@@ -51,14 +51,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100'">
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0-windows10.0.26100'">
     <DefineConstants>$(DefineConstants);VOICE_TYPE_WINDOWS</DefineConstants>
   </PropertyGroup>
 
   <!-- Microsoft Store MSIX of the WinAppSDK head, opt-in (build-store-msix.ps1): without VoiceTypeMsix the head stays unpackaged,
        so F5, the parity checks and the CI builds are unchanged. The manifest is under Packaging/ (excluded from the default items)
        because a Package.appxmanifest in the project folder would make every Windows build an MSIX. Identity = VoiceType.WinUI's. -->
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.26100' and '$(VoiceTypeMsix)' == 'true'">
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0-windows10.0.26100' and '$(VoiceTypeMsix)' == 'true'">
     <WindowsAppxManifestPath Condition="'$(WindowsAppxManifestPath)' == ''">$(MSBuildThisFileDirectory)Packaging\Windows\Package.appxmanifest</WindowsAppxManifestPath>
     <WindowsPackageType>MSIX</WindowsPackageType>
     <EnableMsixTooling>true</EnableMsixTooling>
@@ -69,13 +69,13 @@
     <AppxSymbolPackageEnabled>false</AppxSymbolPackageEnabled>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0-android'">
     <!-- ONNX Runtime AAR declares minSdk 24 (uses APIs not available below);
          align the app's minSdk with the library instead of overrideLibrary. -->
     <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-ios'">
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0-ios'">
     <!-- Uno 7 renders with Skia on UIKit (UnoPlatformHostBuilder.UseAppleUIKit, Platforms/iOS/Main.iOS.cs).
          The ONNX Runtime iOS xcframework is linked statically by the NuGet package's own targets (CoreML weak). -->
     <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
@@ -84,7 +84,7 @@
     <EnableCodeSigning Condition="'$(EnableCodeSigning)' == ''">false</EnableCodeSigning>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-ios'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net11.0-ios'">
     <!-- WASAPI playback is built on the NAudio package that iOS does not link (see the NAudio3 reference below). -->
     <Compile Remove="Services\Playback\WasapiPcmOutput.cs" />
   </ItemGroup>
@@ -97,7 +97,7 @@
 
   <ItemGroup>
     <!-- UI-free core: settings store, model discovery, transcript coordination.
-         Plain net10.0 so the logic is unit-tested without the Uno runtime. -->
+         Plain net11.0 so the logic is unit-tested without the Uno runtime. -->
     <ProjectReference Include="..\VoiceType.Uno.Core\VoiceType.Uno.Core.csproj" />
     <!-- Speech recognition contracts (IAudioSource, IStreamingSpeechRecognizer, ...) -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib\SpeechLib.csproj" />
@@ -114,11 +114,11 @@
     <!-- In-process LiteRT-LM translation (no sidecar): LiteRtLmSharp runtime packages
          are RID-selected (win-x64 / linux-x64), so the native backend also works on Linux -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.LiteRT.Native\SpeechLib.LiteRT.Native.csproj" />
-    <!-- Windows audio capture (WASAPI) via NAudio 3.0.1 — portable TFM (net10.0), so
+    <!-- Windows audio capture (WASAPI) via NAudio 3.0.1 — portable TFM (net11.0), so
          it links into both heads; PulseAudio is selected at runtime on Linux. -->
     <!-- Not on iOS: it is Windows audio (WASAPI) plus NAudio.Lame, and the device AOT compiler fails on NAudio.Lame.dll. -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.Audio.NAudio3\SpeechLib.Audio.NAudio3.csproj"
-                      Condition="'$(TargetFramework)' != 'net10.0-ios'" />
+                      Condition="'$(TargetFramework)' != 'net11.0-ios'" />
     <!-- Recordings history audio: Ogg Opus / WAV writers, offline reader, streaming playback reader -->
     <ProjectReference Include="..\..\..\..\libraries\SpeechLib\src\SpeechLib.AudioStorage\SpeechLib.AudioStorage.csproj" />
   </ItemGroup>

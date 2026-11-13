@@ -1,13 +1,13 @@
 name: Setup build
 description: >-
-  .NET 10 SDK (with the NuGet package cache) and the LiteRtLmSharp folder feed that nuget.config maps
-  LiteRtLmSharp* to. Replaces the three copy-pasted "Setup .NET 10 SDK" + "Fetch the LiteRtLmSharp feed"
+  .NET 11 SDK (with the NuGet package cache) and the LiteRtLmSharp folder feed that nuget.config maps
+  LiteRtLmSharp* to. Replaces the three copy-pasted "Setup .NET 11 SDK" + "Fetch the LiteRtLmSharp feed"
   step pairs of every workflow. Call it after actions/checkout (a local action needs the sources).
 
 inputs:
   dotnet-version:
     description: SDK band for actions/setup-dotnet
-    default: '10.0.x'
+    default: '11.0.x'
 
 runs:
   using: composite

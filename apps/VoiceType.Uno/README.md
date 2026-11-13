@@ -69,22 +69,22 @@ The single project has two target frameworks:
 
 | TFM | Head | Purpose |
 |---|---|---|
-| `net10.0-desktop` | Skia | **Primary** — Linux (X11); also runs on Windows/macOS for quick UI checks |
-| `net10.0-windows10.0.26100` | WinAppSDK (WinUI 3) | Native WinUI look; unpackaged by default, the Microsoft Store MSIX (identity `DimQ1.VoiceType`) with `-p:VoiceTypeMsix=true` / `build-store-msix.ps1` |
+| `net11.0-desktop` | Skia | **Primary** — Linux (X11); also runs on Windows/macOS for quick UI checks |
+| `net11.0-windows10.0.26100` | WinAppSDK (WinUI 3) | Native WinUI look; unpackaged by default, the Microsoft Store MSIX (identity `DimQ1.VoiceType`) with `-p:VoiceTypeMsix=true` / `build-store-msix.ps1` |
 
 ```powershell
 # Build both heads
 dotnet build apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -p:GpuArch=CPU
 
 # Run Skia desktop head on Windows (closest to the Linux build)
-dotnet run --project apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -f net10.0-desktop -p:GpuArch=CPU
+dotnet run --project apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -f net11.0-desktop -p:GpuArch=CPU
 
 # Run WinUI 3 head on Windows (native controls)
-dotnet run --project apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -f net10.0-windows10.0.26100 -p:GpuArch=CPU
+dotnet run --project apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -f net11.0-windows10.0.26100 -p:GpuArch=CPU
 
 # Ubuntu (X11 session)
 sudo apt install libasound2 libfontconfig1
-dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -c Release -r linux-x64 -f net10.0-desktop -p:GpuArch=CPU
+dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -c Release -r linux-x64 -f net11.0-desktop -p:GpuArch=CPU
 ```
 
 Wayland sessions: hotkeys and text injection require the XDG GlobalShortcuts / RemoteDesktop portals — not implemented yet; run under X11 (XWayland) for now.

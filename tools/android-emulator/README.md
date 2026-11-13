@@ -31,7 +31,7 @@ tools\android-emulator\install-app.ps1 -Launch       # latest Release *-Signed.a
 tools\android-emulator\snap.ps1 -Path shot.png       # screenshot (screen is 1080x2400)
 ```
 `start-emulator.ps1` waits for `sys.boot_completed`, keeps the screen on, and disables animations.
-Build the APK first: `dotnet build apps/VoiceType.Uno/src/VoiceType.Uno -f net10.0-android -c Release`.
+Build the APK first: `dotnet build apps/VoiceType.Uno/src/VoiceType.Uno -f net11.0-android -c Release`.
 
 Fake battery/charging conditions (the emulator has no real battery):
 ```

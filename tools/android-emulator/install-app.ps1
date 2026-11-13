@@ -13,7 +13,7 @@ if (-not $Apk) {
     $root = Join-Path $PSScriptRoot '..\..\apps\VoiceType.Uno\src\VoiceType.Uno\bin\Release'
     $Apk = (Get-ChildItem $root -Recurse -Filter '*-Signed.apk' | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
 }
-if (-not $Apk -or -not (Test-Path $Apk)) { throw 'No APK found; build net10.0-android Release first.' }
+if (-not $Apk -or -not (Test-Path $Apk)) { throw 'No APK found; build net11.0-android Release first.' }
 Write-Host "Installing $Apk on $serial"
 & $adb -s $serial install -r $Apk
 & $adb -s $serial shell pm grant $pkg android.permission.RECORD_AUDIO

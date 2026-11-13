@@ -39,7 +39,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $projectDir = $PSScriptRoot
 $csproj = Join-Path $projectDir 'VoiceType.Uno.csproj'
-$tfm = 'net10.0-windows10.0.26100'
+$tfm = 'net11.0-windows10.0.26100'
 
 if ($Version -notmatch '^(\d+)\.(\d+)\.(\d+)(\.0)?$') {
     throw "Version '$Version' must be MAJOR.MINOR.PATCH (the Store adds .0; the fourth part must be 0)."

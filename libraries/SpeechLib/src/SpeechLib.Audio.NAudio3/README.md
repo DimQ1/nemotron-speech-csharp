@@ -17,7 +17,7 @@ LiveTranscriber.Run(source, "Microphone", recognizer);
 ```
 
 The provider supports microphone, WASAPI loopback, and mixed capture. The project targets
-the portable `net10.0` TFM (NAudio 3 packages are `net9.0`), but the WASAPI classes only
+the portable `net11.0` TFM (NAudio 3 packages are `net9.0`), but the WASAPI classes only
 work on Windows; `Transcriber.CreateAudioSource` throws `PlatformNotSupportedException`
 elsewhere.
 

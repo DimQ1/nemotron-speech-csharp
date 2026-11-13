@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $proj = Join-Path $PSScriptRoot 'DiarBench.csproj'
 dotnet build $proj -c Release -nologo -v q | Out-Null
-$exe = Join-Path $PSScriptRoot 'bin/Release/net10.0/DiarBench.exe'
+$exe = Join-Path $PSScriptRoot 'bin/Release/net11.0/DiarBench.exe'
 foreach ($m in $Models.Split(',')) {
     foreach ($t in $Threads.Split(',')) {
         foreach ($mode in $Modes.Split(',')) {

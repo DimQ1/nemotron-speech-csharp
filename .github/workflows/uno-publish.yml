@@ -27,7 +27,7 @@ on:
         type: boolean
         default: true
       ios:
-        description: Build the iOS head (net10.0-ios) for the Simulator and for a device, both unsigned - see docs/ci.md, iOS
+        description: Build the iOS head (net11.0-ios) for the Simulator and for a device, both unsigned - see docs/ci.md, iOS
         type: boolean
         default: false
       macos:
@@ -84,13 +84,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
+      - name: Setup build (.NET 11 SDK, NuGet cache, LiteRtLmSharp feed)
         uses: ./.github/actions/setup-build
 
       - name: Publish VoiceType.Uno (win-x64, self-contained)
         run: >-
           dotnet publish ${{ env.UNO_PROJECT }}
-          -c Release -f net10.0-desktop -r win-x64
+          -c Release -f net11.0-desktop -r win-x64
           -p:ApplicationDisplayVersion=${{ inputs.version }}
           --self-contained true -o build/voicetype-uno-win
 
@@ -116,13 +116,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
+      - name: Setup build (.NET 11 SDK, NuGet cache, LiteRtLmSharp feed)
         uses: ./.github/actions/setup-build
 
       - name: Publish VoiceType.Uno (linux-x64, self-contained)
         run: >-
           dotnet publish ${{ env.UNO_PROJECT }}
-          -c Release -f net10.0-desktop -r linux-x64
+          -c Release -f net11.0-desktop -r linux-x64
           -p:ApplicationDisplayVersion=${{ inputs.version }}
           --self-contained true -o build/voicetype-uno-linux
 
@@ -170,7 +170,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
+      - name: Setup build (.NET 11 SDK, NuGet cache, LiteRtLmSharp feed)
         uses: ./.github/actions/setup-build
 
       - name: Install Android workload
@@ -206,7 +206,7 @@ jobs:
           "storepass=$storePass" >> $env:GITHUB_OUTPUT
           "keypass=$keyPass" >> $env:GITHUB_OUTPUT
 
-      - name: Publish VoiceType.Uno (net10.0-android, AAB then APK)
+      - name: Publish VoiceType.Uno (net11.0-android, AAB then APK)
         shell: pwsh
         env:
           SIGNED: ${{ steps.keystore.outputs.signed }}
@@ -215,7 +215,7 @@ jobs:
           KEYPASS: ${{ steps.keystore.outputs.keypass }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
-          $common = @('publish', $env:UNO_PROJECT, '-c', 'Release', '-f', 'net10.0-android',
+          $common = @('publish', $env:UNO_PROJECT, '-c', 'Release', '-f', 'net11.0-android',
                       '-p:ApplicationDisplayVersion=${{ inputs.version }}',
                       '-p:ApplicationVersion=${{ inputs.version-code }}')
           if ($env:SIGNED -eq 'true') {
@@ -231,7 +231,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force build/voicetype-uno-android | Out-Null
-          $publish = "apps/VoiceType.Uno/src/VoiceType.Uno/bin/Release/net10.0-android/publish"
+          $publish = "apps/VoiceType.Uno/src/VoiceType.Uno/bin/Release/net11.0-android/publish"
           Copy-Item "$publish/*-Signed.aab" build/voicetype-uno-android/
           Copy-Item "$publish/*-Signed.apk" build/voicetype-uno-android/
           Get-ChildItem build/voicetype-uno-android | Format-Table Name, Length
@@ -272,7 +272,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
+      - name: Setup build (.NET 11 SDK, NuGet cache, LiteRtLmSharp feed)
         uses: ./.github/actions/setup-build
 
       - name: Fetch the LiteRT-LM runtime for Apple silicon
@@ -283,7 +283,7 @@ jobs:
       - name: Publish VoiceType.Uno (osx-arm64, self-contained)
         run: >-
           dotnet publish ${{ env.UNO_PROJECT }}
-          -c Release -f net10.0-desktop -r osx-arm64
+          -c Release -f net11.0-desktop -r osx-arm64
           -p:ApplicationDisplayVersion=${{ inputs.version }}
           --self-contained true -o build/voicetype-uno-osx-arm64
 
@@ -350,18 +350,18 @@ jobs:
           retention-days: ${{ inputs.retention-days }}
 
   # ------------------------------------------------------------------------------------------------
-  # iOS head (net10.0-ios, Skia on UIKit). Two unsigned builds of the same project on a Mac runner:
+  # iOS head (net11.0-ios, Skia on UIKit). Two unsigned builds of the same project on a Mac runner:
   #   simulator - iossimulator-arm64, runs in the Xcode Simulator on an Apple-silicon Mac
   #   device    - ios-arm64, the Release/AOT/linker pass for a real iPhone; unsigned, so it cannot be installed
   # A device install needs the Apple Developer account steps at the end of this job (docs/ci.md, iOS).
-  # The head is opt-in in the csproj (-p:UnoIosOnly=true, built with -f net10.0-ios).
+  # The head is opt-in in the csproj (-p:UnoIosOnly=true, built with -f net11.0-ios).
   # ------------------------------------------------------------------------------------------------
   ios:
     name: Build iOS (${{ matrix.name }}, unsigned)
     if: ${{ inputs.ios }}
-    # macos-26 = macOS 26 arm64 with Xcode 26.0.1 ... 26.6 (default 26.6) and .NET SDK 10.0.401.
-    # macos-latest is the same image today; pin the label so Xcode does not move under the workload.
-    runs-on: macos-26
+    # .NET 11 iOS needs the 27.x workload and Xcode 27.2: only the `xcode-27` image (public preview, macOS 27, Xcode 27.0-27.2)
+    # has it; macos-26 stops at Xcode 26.6. Pin the label so Xcode does not move under the workload.
+    runs-on: xcode-27
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -378,17 +378,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
+      - name: Setup build (.NET 11 SDK, NuGet cache, LiteRtLmSharp feed)
         uses: ./.github/actions/setup-build
 
       # The workload version and the Xcode move TOGETHER, and the Xcode is not always the first two parts of the workload
-      # version: 26.5.10318 needs Xcode 26.6 ("This version of .NET for iOS (26.5.10318) requires Xcode 26.6").
+      # version: 26.5.10318 needed Xcode 26.6 on .NET 10; the .NET 11 workload 27.2.11039 recommends Xcode 27.2
+      # (RecommendedXcodeVersion in Microsoft.iOS.Sdk.net11.0_27.2).
       # The unpinned `dotnet workload install ios` takes the newest manifest (27.x today), whose Xcode is not on the
       # runner image. Change both values together after reading the build error of the new combination.
       - name: Install iOS workload (pinned)
         shell: bash
         env:
-          IOS_WORKLOAD: 26.5.10318/10.0.100
+          IOS_WORKLOAD: 27.2.11039/11.0.100
         run: |
           printf '{ "microsoft.net.sdk.ios": "%s" }\n' "$IOS_WORKLOAD" > "$RUNNER_TEMP/ios-rollback.json"
           dotnet workload install ios --from-rollback-file "$RUNNER_TEMP/ios-rollback.json"
@@ -397,7 +398,7 @@ jobs:
       - name: Select the Xcode the workload requires
         shell: bash
         env:
-          IOS_XCODE: '26.6'
+          IOS_XCODE: '27.2'
         run: |
           app="/Applications/Xcode_${IOS_XCODE}.app"
           if [[ ! -d "$app" ]]; then
@@ -407,13 +408,13 @@ jobs:
           sudo xcode-select -s "$app"
           xcodebuild -version
 
-      - name: Build VoiceType.Uno (net10.0-ios, ${{ matrix.rid }}, no signing)
+      - name: Build VoiceType.Uno (net11.0-ios, ${{ matrix.rid }}, no signing)
         # Use -f, never -p:TargetFrameworks: that global property leaks into every referenced library.
         shell: bash
         run: |
           set -o pipefail
           dotnet build ${{ env.UNO_PROJECT }} \
-            -c Release -f net10.0-ios -r ${{ matrix.rid }} \
+            -c Release -f net11.0-ios -r ${{ matrix.rid }} \
             -p:UnoIosOnly=true -p:EnableCodeSigning=false \
             -p:ApplicationDisplayVersion=${{ inputs.version }} -p:ApplicationVersion=${{ inputs.version-code }} \
             2>&1 | tee ios-build.log
@@ -429,7 +430,7 @@ jobs:
       - name: Zip the .app
         shell: bash
         run: |
-          app=$(find apps/VoiceType.Uno/src/VoiceType.Uno/bin/Release/net10.0-ios -maxdepth 3 -name '*.app' | head -n 1)
+          app=$(find apps/VoiceType.Uno/src/VoiceType.Uno/bin/Release/net11.0-ios -maxdepth 3 -name '*.app' | head -n 1)
           test -n "$app" || { echo "::error::no .app in the build output"; exit 1; }
           echo "app: $app"; du -sh "$app"
           mkdir -p build
@@ -462,7 +463,7 @@ jobs:
       #     echo "$PROFILE_BASE64" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/voicetype.mobileprovision"
       # - name: Publish the signed IPA
       #   run: >-
-      #     dotnet publish ${{ env.UNO_PROJECT }} -c Release -f net10.0-ios -r ios-arm64 -p:UnoIosOnly=true
+      #     dotnet publish ${{ env.UNO_PROJECT }} -c Release -f net11.0-ios -r ios-arm64 -p:UnoIosOnly=true
       #     -p:ArchiveOnBuild=true -p:CodesignKey="Apple Distribution: <team name> (<team id>)" -p:CodesignProvision="<profile name>"
       # - name: Upload to TestFlight
       #   env: { APPSTORE_API_KEY_ID: ..., APPSTORE_API_ISSUER_ID: ..., APPSTORE_API_PRIVATE_KEY: ... }

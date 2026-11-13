@@ -1,5 +1,5 @@
 // Android playback via AudioTrack (stream mode, PCM float). Only compiled for the
-// net10.0-android head; desktop/Windows heads use WASAPI or PulseAudio.
+// net11.0-android head; desktop/Windows heads use WASAPI or PulseAudio.
 #if __ANDROID__
 
 using Android.Media;

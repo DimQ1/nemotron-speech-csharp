@@ -17,7 +17,7 @@ answered yet carry the default that was applied and the words *default, maintain
 | `.github/workflows/release-voicetype-uno-android.yml` | `VoiceType.Uno Android Release` | tag `uno-android-v*`, manual | Android package only; only a tag creates a release |
 | `.github/workflows/voicetype-uno-linux-smoke.yml` | `VoiceType.Uno Linux Smoke` | pull request and push to `master` with nearly the same path filter as the Uno CI, manual | Publish the Linux head and start it under Xvfb without a model for 10 s |
 | `.github/workflows/convert-parakeet-tdt.yml` | `Convert Parakeet TDT to ONNX` | manual only | Python export of the Parakeet TDT model, optional upload to Hugging Face. Unchanged, never run, see [Known issues](#known-issues-and-backlog) |
-| `.github/actions/setup-build/action.yml` | (composite action) | used by every .NET job | .NET 10 SDK with the NuGet cache, then `tools/scripts/fetch-litertlmsharp-feed.ps1` |
+| `.github/actions/setup-build/action.yml` | (composite action) | used by every .NET job | .NET 11 SDK with the NuGet cache, then `tools/scripts/fetch-litertlmsharp-feed.ps1` |
 
 Removed in this change: `build-voicetype-release.yml` (`VoiceType CI`) and `release-voicetype-tag.yml` (`VoiceType Tagged Release`). Both
 built `VoiceType/VoiceType.csproj` and `VoiceType.Tests`, the WPF app that commit `be92e25` deleted; the first had been red on every
@@ -25,7 +25,7 @@ push since 2026-08-04, the second (tag `v*`) was dormant and would have failed.
 
 ### Things every .NET job has in common
 
-* `actions/checkout@v7`, then the composite action `setup-build`: `actions/setup-dotnet@v5` (`10.0.x`, NuGet cache keyed on the csproj
+* `actions/checkout@v7`, then the composite action `setup-build`: `actions/setup-dotnet@v5` (`11.0.x`, NuGet cache keyed on the csproj
   files and `nuget.config`) and `pwsh tools/scripts/fetch-litertlmsharp-feed.ps1`. The feed step must run **before any restore**:
   `nuget.config` maps `LiteRtLmSharp*` to the folder feed `nuget-feed/litertlmsharp`, whose `.nupkg` files are not in git (4 packages,
   about 91 MB, plain HTTPS download from the `v1.4.0` release of the fork `DimQ1/LiteRtLmSharp`, no token). The default `-Version` of the
@@ -76,7 +76,7 @@ none of the nine projects has ever run on Linux.
 
 Windows additionally builds the whole `NemotronSpeech.slnx` (CLI, libraries, tools), builds the Uno desktop head for `win-x64`
 and runs `tools/scripts/check-no-genai.ps1`. Linux builds the CLI, `VoiceType.Hotkeys`, `WerEval` and `DiarizationEval` explicitly (since VoiceType.WinUI
-was removed every project of the slnx is plain `net10.0`, so the Linux leg could build the slnx too; `BenchmarkSuite1` has never been built
+was removed every project of the slnx is plain `net11.0`, so the Linux leg could build the slnx too; `BenchmarkSuite1` has never been built
 on Linux). Both start with a check that the tracked Nemotron fixtures exist.
 
 ## Run the same checks locally
@@ -89,7 +89,7 @@ pwsh tools/scripts/fetch-litertlmsharp-feed.ps1
 
 # build
 dotnet build NemotronSpeech.slnx -c Release
-dotnet build apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -c Release -f net10.0-desktop -r win-x64
+dotnet build apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -c Release -f net11.0-desktop -r win-x64
 
 # the model-free tests, exactly as CI selects them
 $filter = 'FullyQualifiedName!~.E2E_&FullyQualifiedName!~.Real_'
@@ -102,7 +102,7 @@ pwsh tools/scripts/check-no-genai.ps1
 
 `check-no-genai.ps1` needs PowerShell 7 (`#Requires -Version 7.0`) and **builds and restores nothing**: it reads `obj/project.assets.json`
 and `bin/Release` of the CLI and the Uno desktop head, so the two build commands above must have run first (with
-`-r win-x64`, otherwise the Uno restore also pulls the `net10.0-android` target, which needs the Android workload). It exits 1 when
+`-r win-x64`, otherwise the Uno restore also pulls the `net11.0-android` target, which needs the Android workload). It exits 1 when
 GenAI is found, 2 when no head output exists. The CI job runs it on Windows only, after the
 win-x64 build of the Uno desktop head.
 
@@ -111,8 +111,10 @@ Other local facts that matter for CI parity:
 * `dotnet test NemotronSpeech.slnx` (no filter) also runs the model-backed `E2E_*` classes whenever the models are found (in the checkout
   or in the main checkout of a worktree); they take minutes to an hour. Use the filter above for a CI-like run.
 * Model-backed Nemotron runs: see `AGENTS.md` (env vars `NEMOTRON_MODEL_DIR_*`, `NEMOTRON_FULL_GOLDEN=1`).
-* There is no root `global.json` yet: at the repository root `dotnet` uses the newest installed SDK (a .NET 11 preview on the maintainer's
-  laptop), CI uses the newest `10.0.x` (open decision D4). `apps/VoiceType.Uno/src/global.json` pins the Uno SDK (`Uno.Sdk 7.0.5`: Uno 7.0.32, Windows App SDK 2.5.1, Toolkit 11, SkiaSharp 4.151) and the .NET SDK band (`10.0.100`, `latestFeature`), so a machine with a .NET 11 SDK still builds the Uno app with .NET 10.
+* The .NET SDK band is pinned to **.NET 11** (`11.0.100`, `latestFeature`) twice: in the root `global.json` and in
+  `apps/VoiceType.Uno/src/global.json`, which also pins the Uno SDK (`Uno.Sdk 7.0.5`: Uno 7.0.32, Windows App SDK 2.5.1, Toolkit 11,
+  SkiaSharp 4.151); CI installs `11.0.x`. Every project targets `net11.0` (the Uno heads `net11.0-desktop`, `-windows10.0.26100`,
+  `-android`, `-ios`). The iOS job runs on the `xcode-27` image (public preview) with the iOS workload `27.2.11039/11.0.100` and Xcode 27.2.
 * Lint the workflows: run the official `actionlint` binary from the repository root, or
   `docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12`. The Docker image also runs `shellcheck`; the local Windows
   binary does not (no `shellcheck` installed), so a style finding in an embedded bash block can first appear in CI.
@@ -198,8 +200,8 @@ Secrets are not available to pull requests from forks; every check of `CI` works
 
 ## iOS
 
-`VoiceType.Uno.csproj` has an **opt-in** `net10.0-ios` target (Uno 7, Skia on UIKit). It is opt-in because the iOS target needs the `ios`
-workload and an Xcode, which only a Mac has: `-p:UnoIosOnly=true` makes `net10.0-ios` the only target (build with `-f net10.0-ios`, never
+`VoiceType.Uno.csproj` has an **opt-in** `net11.0-ios` target (Uno 7, Skia on UIKit). It is opt-in because the iOS target needs the `ios`
+workload and an Xcode, which only a Mac has: `-p:UnoIosOnly=true` makes `net11.0-ios` the only target (build with `-f net11.0-ios`, never
 with `-p:TargetFrameworks`, which leaks into every referenced library). The default target set of the other platforms is unchanged.
 
 **Status (2026-10-23):** the first green run built both variants on `macos-26` (Simulator about 35 min, device/AOT about 40 min; artifacts
@@ -241,7 +243,7 @@ What is missing for the next stages (stop after any of them if the product decis
 
 ## macOS
 
-The Skia desktop head (`net10.0-desktop`, `UseMacOS()`) published for `osx-arm64` and wrapped into **VoiceType.app** by
+The Skia desktop head (`net11.0-desktop`, `UseMacOS()`) published for `osx-arm64` and wrapped into **VoiceType.app** by
 `apps/VoiceType.Uno/src/VoiceType.Uno/build-macos-app.sh`. Apple silicon only, macOS 14 or newer (system audio needs 14.2).
 
 * **Audio capture** has no .NET binding on the desktop head, so it lives in a Swift helper, `Packaging/macOS/voicetype-audio.swift`,
@@ -320,7 +322,7 @@ The maintainer has not answered these. The default column is what is in the repo
 Not verified, because it only exists on GitHub's runners: **every workflow run**, the cache behaviour, the Linux results of all nine test projects
 (WSL on the maintainer's laptop has no `dotnet` and no network), the `check-no-genai.ps1` step on a hosted runner, the Android
 workload and the signing path (read from the documentation, never exercised), the `.deb` install step, and anything about macOS and iOS (no Mac; the laptop's
-`ios` workload belongs to another SDK band, so `net10.0-ios` cannot be restored here; the iOS-only C# file was compiled against the iOS
+`ios` workload belongs to another SDK band, so `net11.0-ios` cannot be restored here; the iOS-only C# file was compiled against the iOS
 reference assembly in a scratch project). Hosted-runner facts (images, Xcode versions) come from the `actions/runner-images` README of
 2026-10-22 and move.
 

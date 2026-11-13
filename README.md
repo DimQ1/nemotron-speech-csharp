@@ -16,7 +16,7 @@ Real-time multilingual speech recognition using [NVIDIA Nemotron 3.5 ASR](https:
 
 ```
 nemotron-speech-csharp/
-├── NemotronSpeech.slnx           # .NET 10 solution file
+├── NemotronSpeech.slnx           # .NET 11 solution file
 ├── apps/                         # Executable products, each with local source and tests
 │   ├── NemotronSpeech/src/       # 🎙️ Nemotron recognizer CLI
 │   └── VoiceType.Uno/            # 🐧 Uno Platform app (Skia desktop: Windows, Linux, macOS; WinAppSDK head = Microsoft Store; Android; iOS) and its tests
@@ -38,17 +38,17 @@ nemotron-speech-csharp/
 
 | Project | Type | Description |
 |---------|------|-------------|
-| [**SpeechLib**](libraries/SpeechLib/src/SpeechLib/README.md) | .NET 10 Library | Provider-neutral interfaces, bounded audio queues, capture lifecycle, and `LiveTranscriber` |
-| **SpeechLib.Providers** | .NET 10 Library | Recognizers on plain ONNX Runtime (NVIDIA Nemotron, Parakeet TDT, Qwen3-ASR, VibeVoice) and the `RecognizerFactory` that selects them |
-| **SpeechLib.Audio.NAudio3** | .NET 10 Library | NAudio 3.0.1 WASAPI capture provider used by the CLI and VoiceType.Uno (Windows) |
-| [**NemotronSpeech**](apps/NemotronSpeech/src/NemotronSpeech/README.md) | .NET 10 Console App | Command-line front end over `RecognizerFactory` for NVIDIA Nemotron 3.5 ASR and Parakeet TDT (plain ONNX Runtime, CPU). |
-| [**VoiceType.Uno**](apps/VoiceType.Uno/README.md) | .NET 10 Uno Platform App | The dictation app (Skia desktop on Windows, Linux and macOS, the WinAppSDK head that ships in the Microsoft Store, Android, iOS): global hotkeys, text typed into the focused window, recordings History, live translation. It replaced the former VoiceType.WinUI app, also in the Store |
-| **BenchmarkSuite1** | .NET 10 Console App | BenchmarkDotNet suite for CPU threads, VAD, execution mode, RTF, and process CPU measurements |
+| [**SpeechLib**](libraries/SpeechLib/src/SpeechLib/README.md) | .NET 11 Library | Provider-neutral interfaces, bounded audio queues, capture lifecycle, and `LiveTranscriber` |
+| **SpeechLib.Providers** | .NET 11 Library | Recognizers on plain ONNX Runtime (NVIDIA Nemotron, Parakeet TDT, Qwen3-ASR, VibeVoice) and the `RecognizerFactory` that selects them |
+| **SpeechLib.Audio.NAudio3** | .NET 11 Library | NAudio 3.0.1 WASAPI capture provider used by the CLI and VoiceType.Uno (Windows) |
+| [**NemotronSpeech**](apps/NemotronSpeech/src/NemotronSpeech/README.md) | .NET 11 Console App | Command-line front end over `RecognizerFactory` for NVIDIA Nemotron 3.5 ASR and Parakeet TDT (plain ONNX Runtime, CPU). |
+| [**VoiceType.Uno**](apps/VoiceType.Uno/README.md) | .NET 11 Uno Platform App | The dictation app (Skia desktop on Windows, Linux and macOS, the WinAppSDK head that ships in the Microsoft Store, Android, iOS): global hotkeys, text typed into the focused window, recordings History, live translation. It replaced the former VoiceType.WinUI app, also in the Store |
+| **BenchmarkSuite1** | .NET 11 Console App | BenchmarkDotNet suite for CPU threads, VAD, execution mode, RTF, and process CPU measurements |
 
 ## Quick Start
 
 ### Prerequisites
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [.NET 11 SDK](https://dotnet.microsoft.com/download/dotnet/11.0)
 - Windows 10/11
 - Microphone
 

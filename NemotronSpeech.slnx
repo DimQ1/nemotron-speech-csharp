@@ -6,7 +6,7 @@
   <!--
     VoiceType.Uno (apps/VoiceType.Uno: VoiceType.Uno, VoiceType.Uno.Core, VoiceType.Uno.Tests) is not in this
     solution (Uno.Sdk resolution needs the global.json in apps/VoiceType.Uno/src). Build and test it on its own, e.g.
-    dotnet build apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -c Release -f net10.0-desktop -p:RuntimeIdentifier=win-x64
+    dotnet build apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj -c Release -f net11.0-desktop -p:RuntimeIdentifier=win-x64
   -->
   <Folder Name="/apps/VoiceType.Uno/" />
   <Folder Name="/libraries/">

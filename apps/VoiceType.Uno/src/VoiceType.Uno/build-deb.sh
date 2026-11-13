@@ -32,7 +32,7 @@ if [[ ! -x "$PUBLISH_DIR/VoiceType.Uno" ]]; then
     dotnet publish "$PROJECT_DIR/VoiceType.Uno.csproj" \
         -c Release \
         -r linux-x64 \
-        -f net10.0-desktop \
+        -f net11.0-desktop \
         -p:GpuArch=CPU \
         --self-contained true \
         -o "$PUBLISH_DIR"

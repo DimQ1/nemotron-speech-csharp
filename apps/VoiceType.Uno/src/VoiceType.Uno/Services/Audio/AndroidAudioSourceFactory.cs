@@ -1,5 +1,5 @@
 // Android microphone capture via AudioRecord.
-// Only compiled for the net10.0-android head — on desktop/Windows heads the
+// Only compiled for the net11.0-android head — on desktop/Windows heads the
 // PulseAudio / NAudio factories are used instead. Loopback/Mix are not
 // available on Android without elevated privileges; Mic is the only mode.
 #if __ANDROID__

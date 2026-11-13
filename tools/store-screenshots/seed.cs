@@ -1,6 +1,6 @@
 #:project ../../apps/VoiceType.Uno/src/VoiceType.Uno.Core/VoiceType.Uno.Core.csproj
 #:project ../../libraries/SpeechLib/src/SpeechLib.Providers/SpeechLib.Providers.csproj
-#:property TargetFramework=net10.0
+#:property TargetFramework=net11.0
 
 // Store screenshots: real recordings for History. Each WAV (SAPI voices, make-audio.ps1) is recognized by the real model with
 // the History offline path (OfflineTranscriber, as OfflineRecognitionJob does) and stored with RecordingStore.

@@ -14,7 +14,7 @@ if ([string]::IsNullOrWhiteSpace($LinuxAppDir)) {
 $workspace = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
 $appSource = Join-Path $workspace "apps/VoiceType.Uno/src/VoiceType.Uno"
 $project = Join-Path $appSource "VoiceType.Uno.csproj"
-$publishDir = Join-Path $appSource "bin/Debug/net10.0-desktop/linux-x64/publish"
+$publishDir = Join-Path $appSource "bin/Debug/net11.0-desktop/linux-x64/publish"
 $launcher = Join-Path $appSource "launch-linux.sh"
 $fixer = Join-Path $workspace "tools/scripts/x11-window-fixer.py"
 
@@ -34,7 +34,7 @@ Write-Host "Publishing VoiceType.Uno for Linux..."
 # Note: `-r linux-x64` with a multi-TFM project would also restore the android
 # head (failing on a Mono linux-x64 runtime pack); the csproj excludes the
 # android TFM when RuntimeIdentifier is linux-x64.
-& dotnet publish $project -c Debug -r linux-x64 -f net10.0-desktop -p:GpuArch=CPU --self-contained true
+& dotnet publish $project -c Debug -r linux-x64 -f net11.0-desktop -p:GpuArch=CPU --self-contained true
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

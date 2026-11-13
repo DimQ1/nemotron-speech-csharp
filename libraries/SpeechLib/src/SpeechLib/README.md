@@ -7,9 +7,9 @@ It contains recognizer and audio-source interfaces, bounded batched queues, capt
 
 | Project | Responsibility | Platform |
 | --- | --- | --- |
-| `SpeechLib` | Core contracts, streaming infrastructure and capture DSP | `net10.0` |
-| `SpeechLib.Providers` | Nemotron / Parakeet / Qwen3 / VibeVoice recognizers over ONNX Runtime | `net10.0` |
-| `SpeechLib.Audio.NAudio3` | WASAPI capture (mic, loopback, mix) and file loading via NAudio 3.0.1 | `net10.0` (Windows at runtime) |
+| `SpeechLib` | Core contracts, streaming infrastructure and capture DSP | `net11.0` |
+| `SpeechLib.Providers` | Nemotron / Parakeet / Qwen3 / VibeVoice recognizers over ONNX Runtime | `net11.0` |
+| `SpeechLib.Audio.NAudio3` | WASAPI capture (mic, loopback, mix) and file loading via NAudio 3.0.1 | `net11.0` (Windows at runtime) |
 
 The core project has no NAudio package reference (only plain ONNX Runtime for the Silero VAD gate). Applications choose the providers they need through project references.
 

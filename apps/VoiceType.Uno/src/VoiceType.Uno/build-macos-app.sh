@@ -3,7 +3,7 @@
 #
 #   build-macos-app.sh [version]        version: CFBundleShortVersionString, e.g. 1.9.2 (default 1.0.0)
 #
-# PUBLISH_DIR: an existing `dotnet publish -f net10.0-desktop -r osx-arm64 --self-contained` output (published here
+# PUBLISH_DIR: an existing `dotnet publish -f net11.0-desktop -r osx-arm64 --self-contained` output (published here
 # when it has no VoiceType.Uno). Output: build/macos-packages/{VoiceType.Uno-macos-arm64.dmg,.zip,README.md,SHA256SUMS}.
 #
 # The bundle: the published files in Contents/MacOS (the .NET host looks for them next to the executable), its folders
@@ -32,7 +32,7 @@ if [[ ! -x "$PUBLISH_DIR/VoiceType.Uno" ]]; then
     rm -rf "$PUBLISH_DIR"
     dotnet publish "$PROJECT_DIR/VoiceType.Uno.csproj" \
         -c Release \
-        -f net10.0-desktop \
+        -f net11.0-desktop \
         -r osx-arm64 \
         -p:ApplicationDisplayVersion="$VERSION" \
         --self-contained true \

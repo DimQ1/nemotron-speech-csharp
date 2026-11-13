@@ -47,7 +47,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup build (.NET 10 SDK, NuGet cache, LiteRtLmSharp feed)
+      - name: Setup build (.NET 11 SDK, NuGet cache, LiteRtLmSharp feed)
         uses: ./.github/actions/setup-build
 
       - name: Check .NET SDK info
@@ -63,7 +63,7 @@ jobs:
       - name: Publish VoiceType.Uno (linux-x64, self-contained)
         run: >
           dotnet publish apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
-          -c Release -r linux-x64 -f net10.0-desktop
+          -c Release -r linux-x64 -f net11.0-desktop
           --self-contained true -o build/voicetype-uno-linux-smoke
 
       - name: Start ALSA null capture (fake mic) + virtual X display
