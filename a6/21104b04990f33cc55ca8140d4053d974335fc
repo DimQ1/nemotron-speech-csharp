@@ -1,0 +1,23 @@
+.github/actionlint.yaml
+  s_13d57ddad0c9ec::t_48725a8ef20738 1-5
+apps/VoiceType.Uno/src/VoiceType.Uno/Platforms/iOS/Info.plist
+  s_13d57ddad0c9ec::t_3cd32bf127c6b8 42-59
+apps/VoiceType.Uno/src/VoiceType.Uno/Platforms/iOS/SceneDelegate.iOS.cs
+  s_13d57ddad0c9ec::t_706f51370bd3e0 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a621104b04990f33cc55ca8140d4053d974335fc",
+  "prompts": {},
+  "sessions": {
+    "s_13d57ddad0c9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f3c1a7d-4d02-4295-9d0e-8f091fc2075f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
