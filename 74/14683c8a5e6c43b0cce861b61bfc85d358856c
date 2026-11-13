@@ -1,0 +1,23 @@
+apps/VoiceType.Uno/src/VoiceType.Uno/Platforms/Android/Main.Android.cs
+  s_13d57ddad0c9ec::t_094c24be223734 23
+apps/VoiceType.Uno/src/VoiceType.Uno/Platforms/Android/MainActivity.Android.cs
+  s_13d57ddad0c9ec::t_08a13b4701c074 15
+apps/VoiceType.Uno/src/VoiceType.Uno/VoiceType.Uno.csproj
+  s_13d57ddad0c9ec::t_a83300d8149d95 90-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7414683c8a5e6c43b0cce861b61bfc85d358856c",
+  "prompts": {},
+  "sessions": {
+    "s_13d57ddad0c9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f3c1a7d-4d02-4295-9d0e-8f091fc2075f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
