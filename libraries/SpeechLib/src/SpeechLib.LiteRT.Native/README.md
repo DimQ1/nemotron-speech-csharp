@@ -2,15 +2,14 @@
 
 In-process translation with a Gemma 4 model in `.litertlm` format, loaded through
 LiteRT-LM via the [LiteRtLmSharp](https://github.com/DimQ1/LiteRtLmSharp) fork
-(1.4.0, native LiteRT-LM v0.18.0 — the fork's build, which carries the engine-usage improvements this
-repository uses; upstream's own 1.3.0 is a different build without them). No sidecar server: the model
-runs inside the application process.
+(1.4.0-dimq1.1, native LiteRT-LM v0.18.0 — the fork's build, which carries the engine-usage improvements
+this repository uses; upstream is preparing its own 1.4.0 from the same pull request, a different API). No
+sidecar server: the model runs inside the application process.
 
 ## Restoring the packages
 
-The fork's 1.4.0 is not on nuget.org — upstream's 1.3.0 there has the same native version but not the
-improvements — so its `.nupkg` files are fetched once from the fork's public `v1.4.0` release into a
-local folder feed that the root
+The fork's build is not on nuget.org, so its `.nupkg` files are fetched once from the fork's public
+`v1.4.0-dimq1.1` release into a local folder feed that the root
 [nuget.config](../../../../nuget.config) maps the `LiteRtLmSharp*` packages to — no token and no GitHub
 CLI involved:
 

@@ -28,7 +28,7 @@ push since 2026-08-04, the second (tag `v*`) was dormant and would have failed.
 * `actions/checkout@v7`, then the composite action `setup-build`: `actions/setup-dotnet@v5` (`11.0.x`, NuGet cache keyed on the csproj
   files and `nuget.config`) and `pwsh tools/scripts/fetch-litertlmsharp-feed.ps1`. The feed step must run **before any restore**:
   `nuget.config` maps `LiteRtLmSharp*` to the folder feed `nuget-feed/litertlmsharp`, whose `.nupkg` files are not in git (4 packages,
-  about 91 MB, plain HTTPS download from the `v1.4.0` release of the fork `DimQ1/LiteRtLmSharp`, no token). The default `-Version` of the
+  about 91 MB, plain HTTPS download from the `v1.4.0-dimq1.1` release of the fork `DimQ1/LiteRtLmSharp`, no token). The default `-Version` of the
   script and the `Version` in `SpeechLib.LiteRT.Native.csproj` must move together.
 * `permissions: contents: read` at the top of every workflow, `contents: write` only on the two `release` jobs; a `concurrency` group
   per workflow and ref (cancel in progress for pull requests only, never for `master` or tags); a `timeout-minutes` on every job.

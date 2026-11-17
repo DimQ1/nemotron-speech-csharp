@@ -1,18 +1,20 @@
 # Local NuGet feed for the LiteRtLmSharp packages
 
-`SpeechLib.LiteRT.Native` references **LiteRtLmSharp 1.4.0** (native LiteRT-LM v0.18.0), the fork's build
-with the engine-usage improvements this repository uses. Upstream's own 1.3.0 on nuget.org is the same
-native version but a different build with the same package number and without those improvements (they
-are proposed upstream as [OrihuelaConde/LiteRtLmSharp#15](https://github.com/OrihuelaConde/LiteRtLmSharp/pull/15)),
-which is why the fork publishes its build under 1.4.0. The engine comes from the fork
+`SpeechLib.LiteRT.Native` references **LiteRtLmSharp 1.4.0-dimq1.1** (native LiteRT-LM v0.18.0), the fork's
+build with the engine-usage improvements this repository uses. They are proposed upstream as
+[OrihuelaConde/LiteRtLmSharp#15](https://github.com/OrihuelaConde/LiteRtLmSharp/pull/15); the maintainer
+reworked them towards his own 1.4.0 (a different API — per-engine `AllowMultipleEngines`, `Greedy`/`TopK`
+sent as `TopP`, a `Clone()` checkpoint instead of `Snapshot()`/`Resume()`), so this build carries a
+prerelease suffix: a restore can never take upstream's 1.4.0 for the fork's build, or the reverse. The
+engine comes from the fork
 [DimQ1/LiteRtLmSharp](https://github.com/DimQ1/LiteRtLmSharp) and is published two ways:
 
 - **GitHub Packages feed** — `https://nuget.pkg.github.com/DimQ1/index.json`. This is the feed the fork
   publishes to (`publish-github-packages.yml`); GitHub requires an authenticated read for it even though
   both repositories are public, so consuming it needs a token with the `read:packages` scope.
 - **GitHub release assets** — the same `.nupkg` files are attached to the fork's
-  [`v1.4.0` release](https://github.com/DimQ1/LiteRtLmSharp/releases/tag/v1.4.0), downloadable over plain
-  HTTPS with no token and no GitHub CLI.
+  [`v1.4.0-dimq1.1` release](https://github.com/DimQ1/LiteRtLmSharp/releases/tag/v1.4.0-dimq1.1),
+  downloadable over plain HTTPS with no token and no GitHub CLI.
 
 The root `nuget.config` maps `LiteRtLmSharp*` to **this directory** (the `litertlmsharp-local` folder
 feed) so that a clone builds without any secret. Populate it once:
