@@ -1,0 +1,101 @@
+.github/actions/setup-build/action.yml
+  s_64a477cf3f003c::t_945999900c5bc8 25,29
+.github/workflows/build-voicetype-uno-ios.yml
+  s_64a477cf3f003c::t_4f56ad7fa56ec9 23,35
+.github/workflows/build-voicetype-uno.yml
+  s_13d57ddad0c9ec::t_5b50d44f554d8f 31,44
+.github/workflows/voicetype-uno-linux-smoke.yml
+  s_64a477cf3f003c::t_3ebdbfb21b1132 22,32
+docs/ci.md
+  s_64a477cf3f003c::t_c7f561f7f37946 31-33
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/README.md
+  s_0b812487364c9b::t_d0d0ab09b3892a 5,11,25-26,64-66,71,84-86,108-109
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/SpeechLib.LiteRT.Native.csproj
+  s_64a477cf3f003c::t_3551975768ab31 3-4,24-30,32-35
+nuget-feed/litertlmsharp/README.md
+  s_0b812487364c9b::t_c9535a0b6cc7e2 3-6,12,29-44
+nuget.config
+  s_20e41f7f2d2ce6::t_7f97fb6eaf62c7 7-11
+apps/VoiceType.Uno/src/Directory.Packages.props
+  s_0b812487364c9b::t_389985c5892a06 2,12
+docs/design/voicetype-uno-history/README.md
+  s_734115e02d5dcf::t_8e45946ea5ffbf 49-50,548,552-553,700-702,1317
+docs/research/litert/engine-improvements.md
+  s_c713b6f0cfff71::t_c4521ff333e0ef 330-380
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/Engine/GemmaConversationHistory.cs
+  s_0b812487364c9b::t_9c12cba53f3c1d 1-49
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/Engine/IGemmaEngine.cs
+  s_0b812487364c9b::t_489aab3d857c2e 47
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/Engine/NativeGemmaEngine.cs
+  s_c713b6f0cfff71::t_accc9234f24a02 2,8,47,49-62,67-69,74,76-77,82,93-94,115-116,118,122-123,125
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/GemmaEngineHost.cs
+  s_0b812487364c9b::t_0d98ce5c7472d9 11,23,743,805-809,811-815,818-820,854
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/LiteRTLmNativeOptions.cs
+  s_0b812487364c9b::t_994e9046922ba9 8-9
+libraries/SpeechLib/tests/SpeechLib.LiteRT.Native.Tests/Real_GemmaEngineHostTests.cs
+  s_0b812487364c9b::t_c83a5a79984d6c 177-216
+libraries/SpeechLib/tests/SpeechLib.LiteRT.Native.Tests/Unit_GemmaConversationHistoryTests.cs
+  s_0b812487364c9b::t_699cc01f845834 1-72
+libraries/SpeechLib/tests/SpeechLib.LiteRT.Native.Tests/Unit_GemmaEngineHostTests.cs
+  s_0b812487364c9b::t_7a8c7d96fa7a0a 463,465,468,473-476,478,480-481
+nuget-feed/litertlmsharp/Version.props
+  s_0b812487364c9b::t_f838312f1a256b 1-5
+tools/scripts/fetch-litertlmsharp-feed.ps1
+  s_0b812487364c9b::t_336992c3f751c4 6-10,18,26,43,53-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a1d97b940e5982fe692988d1b768f0c27a15c1d4",
+  "prompts": {},
+  "sessions": {
+    "s_0b812487364c9b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "eeabfda0-8629-4cc5-acae-ada9d99b89ed",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_13d57ddad0c9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f3c1a7d-4d02-4295-9d0e-8f091fc2075f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_64a477cf3f003c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022be61e-ce5c-4c8f-996e-bfa85ec8ad62",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_734115e02d5dcf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8477978f9f00dca3",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_c713b6f0cfff71": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb40b311-c71f-47dc-9878-f199bc87a142",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
