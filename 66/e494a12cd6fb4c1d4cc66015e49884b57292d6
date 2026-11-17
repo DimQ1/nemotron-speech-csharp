@@ -1,0 +1,61 @@
+.github/actions/setup-build/action.yml
+  s_0b812487364c9b::t_5925164f4755e0 25,29
+.github/workflows/build-voicetype-uno-ios.yml
+  s_0b812487364c9b::t_3ec5b9c4657499 23,35
+.github/workflows/build-voicetype-uno.yml
+  s_0b812487364c9b::t_6d4eaee3e3da62 31,44
+.github/workflows/voicetype-uno-linux-smoke.yml
+  s_0b812487364c9b::t_1a3b447d48734d 22,32
+apps/VoiceType.Uno/src/Directory.Packages.props
+  s_0b812487364c9b::t_ce7119fcb14644 2,12
+docs/ci.md
+  s_0b812487364c9b::t_aeea3ae2c857ec 31-33
+docs/design/voicetype-uno-history/README.md
+  s_0b812487364c9b::t_5905c744b91c9f 49-50,548,552-553,700-702,1317
+docs/research/litert/engine-improvements.md
+  s_0b812487364c9b::t_5439cc575e0a16 33-34,173-176,259-263,270-273,283,287,291-379
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/Engine/GemmaConversationHistory.cs
+  s_0b812487364c9b::t_ae0c0cde6bc8e9 1-49
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/Engine/IGemmaEngine.cs
+  s_0b812487364c9b::t_3c913ddc7ebf5d 47
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/Engine/NativeGemmaEngine.cs
+  s_0b812487364c9b::t_0f121266bd54db 2,8,47,49-62,67-69,74,76-77,82,93-94,115-116,118,122-123,125
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/GemmaEngineHost.cs
+  s_0b812487364c9b::t_d58d2b90cf847f 11,23,743,805-809,811-815,818-820,854
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/LiteRTLmNativeOptions.cs
+  s_0b812487364c9b::t_ab3959bcde7650 8-9
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/README.md
+  s_0b812487364c9b::t_fb10b9802bcf41 5-6,10-11,25-26,64-66,71,84-86,108-109
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/SpeechLib.LiteRT.Native.csproj
+  s_0b812487364c9b::t_a2f60eccea623a 3-4,24-30,32-35
+libraries/SpeechLib/tests/SpeechLib.LiteRT.Native.Tests/Real_GemmaEngineHostTests.cs
+  s_0b812487364c9b::t_15c4d3dcca012f 177-216
+libraries/SpeechLib/tests/SpeechLib.LiteRT.Native.Tests/Unit_GemmaConversationHistoryTests.cs
+  s_0b812487364c9b::t_d5c7d4492362e2 1-72
+libraries/SpeechLib/tests/SpeechLib.LiteRT.Native.Tests/Unit_GemmaEngineHostTests.cs
+  s_0b812487364c9b::t_fc0b839561cfe4 463,465,468,473-476,478,480-481
+nuget-feed/litertlmsharp/README.md
+  s_0b812487364c9b::t_e77e8dd7904f5a 3-6,12-13,29-44
+nuget-feed/litertlmsharp/Version.props
+  s_0b812487364c9b::t_d27eaf1483ffbb 1-5
+nuget.config
+  s_0b812487364c9b::t_b4cbd3c192324d 7-11
+tools/scripts/fetch-litertlmsharp-feed.ps1
+  s_0b812487364c9b::t_d6d7b98a19b7ac 6-10,18,26,43,53-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66e494a12cd6fb4c1d4cc66015e49884b57292d6",
+  "prompts": {},
+  "sessions": {
+    "s_0b812487364c9b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "eeabfda0-8629-4cc5-acae-ada9d99b89ed",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
