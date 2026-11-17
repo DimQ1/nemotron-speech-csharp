@@ -1,0 +1,47 @@
+name: VoiceType.Uno macOS
+
+run-name: VoiceType.Uno macOS ${{ inputs.version }} (${{ github.ref_name }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: App version (MAJOR.MINOR.PATCH); builds the selected source ref
+        type: string
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uno-macos-${{ github.ref }}-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  meta:
+    name: Validate version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::version must be MAJOR.MINOR.PATCH"; exit 1; }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: macOS package
+    needs: meta
+    uses: ./.github/workflows/uno-publish.yml
+    with:
+      version: ${{ needs.meta.outputs.version }}
+      windows: false
+      linux: false
+      android: false
+      ios: false
+      macos: true
+      retention-days: 7

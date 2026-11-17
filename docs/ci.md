@@ -13,6 +13,7 @@ answered yet carry the default that was applied and the words *default, maintain
 | `.github/workflows/build-voicetype-uno.yml` | `VoiceType.Uno CI` | pull request and push to `master` that touch the app, the libraries, the feed script, `nuget.config` or the workflows; manual | Platform packages through `uno-publish.yml`: Windows, Linux, Android and macOS (the last two not on pull requests) |
 | `.github/workflows/uno-publish.yml` | `VoiceType.Uno publish (reusable)` | called by the three workflows around it | The one definition of the Windows / Linux / Android / macOS / iOS jobs |
 | `.github/workflows/build-voicetype-uno-ios.yml` | `VoiceType.Uno iOS` | pull request and push to `master` with the same path filter as the Uno CI (without the Linux-only script), manual | Unsigned iOS builds on a Mac runner, Simulator and device, through the `ios` job of `uno-publish.yml`. Separate from the Uno CI so that a slow or red iOS build never blocks the other platforms |
+| `.github/workflows/build-voicetype-uno-macos.yml` | `VoiceType.Uno macOS` | manual, input `version` | macOS only through `uno-publish.yml`; keeps archives as artifacts, never creates or edits a release and never rebuilds Windows/Linux/Android/iOS |
 | `.github/workflows/release-voicetype-uno.yml` | `VoiceType.Uno Tagged Release` | tag `uno-v*` | Version from the tag, all platform packages (Windows, Linux, Android, macOS, and the two unsigned iOS builds), GitHub release |
 | `.github/workflows/release-voicetype-uno-android.yml` | `VoiceType.Uno Android Release` | tag `uno-android-v*`, manual | Android package only; only a tag creates a release |
 | `.github/workflows/voicetype-uno-linux-smoke.yml` | `VoiceType.Uno Linux Smoke` | pull request and push to `master` with nearly the same path filter as the Uno CI, manual | Publish the Linux head and start it under Xvfb without a model for 10 s |
@@ -141,6 +142,23 @@ Other local facts that matter for CI parity:
 5. After the run: read the job summary of the Android job (signing state and certificate fingerprint, see below) and the Linux job
    (the `.deb` is installed with `apt` on the Ubuntu 24.04 runner, which checks that the `Depends` line resolves; the runner image already carries many
    libraries, so this is not a clean-room install test).
+
+### macOS separately from a published release
+
+`uno-v2.0.3` was published with the maintainer's approval without macOS after two hosted Apple-silicon runner capacity
+cancellations. Its eight assets came from the tagged run `44160183726` at `66e494a`, with sizes and SHA256 hashes checked.
+Android has an APK only: despite the successful job, no AAB was present in its artifact; the release notes say so.
+
+To retry macOS without gating or modifying that public release:
+
+```powershell
+gh workflow run build-voicetype-uno-macos.yml --ref master -f version=2.0.3
+```
+
+This builds the selected dispatch ref, not an implicit tag. Before attaching its packages to an older release, verify that
+the app, libraries and dependency pins match the release source. The build reuses the normal packaging and startup checks.
+After a successful run, the artifact contains the `.dmg`, `.zip`, `README.md` and `SHA256SUMS`; rename the latter two to
+`macOS-README.md` and `macOS-SHA256SUMS` when attaching them, so they do not overwrite the Linux notes and checksums.
 
 **Version rule for Android.** Both tag series produce the same app, and Android refuses an update whose `versionCode` is not higher.
 An Android-only tag must therefore be numerically above the last `uno-v` tag (after `uno-v1.8.1` use `uno-android-v1.8.2`, not
