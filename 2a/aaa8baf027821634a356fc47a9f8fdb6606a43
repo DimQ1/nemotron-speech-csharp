@@ -1,0 +1,55 @@
+.github/actions/setup-build/action.yml
+  s_64a477cf3f003c::t_6470e1b0b5a381 28-30
+docs/ci.md
+  s_64a477cf3f003c::t_d1503fc5575f9b 31
+docs/design/voicetype-uno-history/README.md
+  s_0b812487364c9b::t_c99be7ab0e7af5 49-50,548,552-553,700
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/SpeechLib.LiteRT.Native.csproj
+  s_64a477cf3f003c::t_dc5f6c9e88685b 22-33,38-40,46-49
+nuget.config
+  s_20e41f7f2d2ce6::t_ad5dcb4416bb62 7-13
+apps/VoiceType.Uno/src/Directory.Packages.props
+  s_0b812487364c9b::t_fcdbb00d904cba 11
+docs/research/litert/engine-improvements.md
+  s_0b812487364c9b::t_b565a52a48a312 33-34,173-176,259-263,270-273,283,287,291-328
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/LiteRTLmNativeOptions.cs
+  s_0b812487364c9b::t_89e0bb63a1a22a 8-9
+libraries/SpeechLib/src/SpeechLib.LiteRT.Native/README.md
+  s_0b812487364c9b::t_14be3866b1bbbc 5-7,11-12
+nuget-feed/litertlmsharp/README.md
+  s_0b812487364c9b::t_5c714241b1c68b 3-9,16-17
+tools/scripts/fetch-litertlmsharp-feed.ps1
+  s_0b812487364c9b::t_692260acd054d8 6-14,22,30,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2aaaa8baf027821634a356fc47a9f8fdb6606a43",
+  "prompts": {},
+  "sessions": {
+    "s_0b812487364c9b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "eeabfda0-8629-4cc5-acae-ada9d99b89ed",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_20e41f7f2d2ce6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9574bf-3150-43ae-8dd7-dbf767d344b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    },
+    "s_64a477cf3f003c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022be61e-ce5c-4c8f-996e-bfa85ec8ad62",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
