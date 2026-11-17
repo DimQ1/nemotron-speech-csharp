@@ -1,0 +1,21 @@
+docs/ci.md
+  s_0b812487364c9b::t_580ebf439ea94e 16,146-162
+.github/workflows/build-voicetype-uno-macos.yml
+  s_0b812487364c9b::t_939590d1e08094 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9770b53f7813316c3e1c168d15a19d8ac572ad72",
+  "prompts": {},
+  "sessions": {
+    "s_0b812487364c9b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "eeabfda0-8629-4cc5-acae-ada9d99b89ed",
+        "model": "unknown"
+      },
+      "human_author": "Dzmitry Shchamialiou <dzmitry.shchamialiou@ventionteams.com>"
+    }
+  }
+}
