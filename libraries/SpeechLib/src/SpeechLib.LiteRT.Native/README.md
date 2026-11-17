@@ -2,15 +2,13 @@
 
 In-process translation with a Gemma 4 model in `.litertlm` format, loaded through
 LiteRT-LM via the [LiteRtLmSharp](https://github.com/DimQ1/LiteRtLmSharp) fork
-(1.4.0, native LiteRT-LM v0.18.0 — the fork's build, which carries the engine-usage improvements this
-repository uses; upstream's own 1.3.0 is a different build without them). No sidecar server: the model
-runs inside the application process.
+(1.5.0-dimq1.2, native LiteRT-LM v0.19.1 / C API 1.0.0, including the maintainer's reviewed engine fixes). No
+sidecar server: the model runs inside the application process.
 
 ## Restoring the packages
 
-The fork's 1.4.0 is not on nuget.org — upstream's 1.3.0 there has the same native version but not the
-improvements — so its `.nupkg` files are fetched once from the fork's public `v1.4.0` release into a
-local folder feed that the root
+The fork's build is not on nuget.org, so its `.nupkg` files are fetched once from the fork's public
+release selected by [Version.props](../../../../nuget-feed/litertlmsharp/Version.props) into a local folder feed that the root
 [nuget.config](../../../../nuget.config) maps the `LiteRtLmSharp*` packages to — no token and no GitHub
 CLI involved:
 
@@ -24,9 +22,8 @@ The packages are also published to the fork's GitHub Packages feed
 with the `read:packages` scope, because GitHub requires an authenticated read even for public packages.
 See [nuget-feed/litertlmsharp/README.md](../../../../nuget-feed/litertlmsharp/README.md) for both paths.
 
-To fall back to the released engine, pin the four `LiteRtLmSharp*` references in
-[SpeechLib.LiteRT.Native.csproj](SpeechLib.LiteRT.Native.csproj) back to `1.2.0` (native v0.16.0) — that
-version restores from nuget.org, and the mapping still allows it.
+For future package updates, change that one property and fetch the corresponding release. Managed and
+runtime packages must match; downgrading to a pre-1.0 C API requires the matching application adapter.
 
 ## Model
 
@@ -64,13 +61,14 @@ under *Measured* below.
   - *Background* is re-run from its start once the engine is free. Its text is delivered whole at the end (a
     half-streamed attempt would show duplicates), so callers send small idempotent units (500-800 prompt tokens).
   - *Interactive* keeps its enumerator open and yields nothing while preempted. It continues from the text already
-    yielded: `conversation.Snapshot(partial)` + `LiteRtConversation.Resume()` on a fresh conversation (history plus
-    the partial reply as a model turn), then one extra user turn (`ContinuationPrompt`, "Continue your previous
+    yielded: application-owned `GemmaConversationHistory` records typed completed turns, the interrupted user
+    request and the delivered partial reply. A fresh conversation receives those as `History`, then one extra
+    user turn (`ContinuationPrompt`, "Continue your previous
     answer exactly where it stopped...") streams the rest. Measured coherence: usable, not guaranteed. The model often
     restarts the unfinished sentence ("The cycle begins in" + "The cycle begins in the evaporator") or opens with an
     ellipsis, so `ContinuationJoiner` holds back the first characters, strips the repeated overlap and the ellipsis,
     and streams the rest untouched; the meaning right after the cut can still drift a little. Preempted before the
-    first text, the answer simply restarts. If the snapshot cannot be taken the request fails with a clear
+    first text, the answer simply restarts. If the history cannot be captured the request fails with a clear
     `InvalidOperationException` (never silent duplicates or gaps). Two other continuation prompts were tried and
     rejected: they made the model wrap up with one short sentence instead of continuing.
   - A cancelled `LiteRtConversation` is dead: the host always drops it and, for a chat, rebuilds or resumes it.
@@ -83,13 +81,9 @@ under *Measured* below.
 - **Stateless requests** (no key: live translation, background units) use a fresh conversation per request
   (13 ms to create, memory does not grow).
 - **Samplers.** No explicit sampler by default: the model's own (top-k 40 / top-p 0.95 / temperature 1.0). Only when
-  `LlmSampling.Temperature/TopP` are set does the host ask for a top-p sampler; if the backend refuses
-  (`LiteRtSamplerNotSupportedException` or a failed first send) it retries **once** on a fresh conversation without
-  it and stops asking for the life of the host. Greedy/TopK are not implemented on CPU, so the host never asks for
-  them. Measured on native v0.18.0: this is a missing sampler, not memory pressure, and once a send has
-  completed on the engine the runtime accepts and silently ignores later sampler parameters.
-  `LiteRtSamplerParams.NearGreedy` (top-p 0.5, temperature 0.1) is the supported profile closest to greedy if a
-  more deterministic translation is wanted; its quality and latency have not been measured yet.
+  `LlmSampling.Temperature/TopP` are set does the host ask for a top-p sampler. Native failures reach the caller;
+  they no longer trigger a silent retry with different sampling. The new binding maps an explicit `Greedy`
+  request to TopP with TopK=1, but this upgrade intentionally keeps the app's existing sampling choices.
 - **Errors.** `LiteRtContextOverflowException` becomes `SpeechLib.Llm.LlmContextOverflowException` (token count and
   window); a native error after the caller's token fired becomes `OperationCanceledException`; a missing model or a
   failed load is `LlmUnavailableException` (a later request retries the load); everything queued fails with
@@ -111,8 +105,8 @@ terminology and register stay consistent), then the sentence; a no-repeat 8-gram
   process, so an app that also has a shared host must use the shared form.
 - **Coalescing.** A newer revision of a sentence (its text extends the older one) cancels the older request while it
   has not produced anything yet.
-- `LiteRTLmNativeOptions.Greedy` is kept for source compatibility and has no effect (the CPU backend never
-  implemented Greedy; the model's own sampler applied all along).
+- `LiteRTLmNativeOptions.Greedy` is kept for source compatibility and still has no effect. Switching the app
+  to the binding's now-working argmax strategy is a separate translation-quality change, not part of this upgrade.
 
 Sample timing, 20-core laptop CPU: one 15-word English sentence into Russian, first chunk 0.9-1.2 s and about
 2.2-3.3 s in total (the 95-token system prompt is part of that: with a 4-word prompt the first chunk is 0.55-0.65 s).

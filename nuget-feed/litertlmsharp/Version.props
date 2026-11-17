@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup>
+    <LiteRtLmSharpVersion>1.5.0-dimq1.2</LiteRtLmSharpVersion>
+  </PropertyGroup>
+</Project>

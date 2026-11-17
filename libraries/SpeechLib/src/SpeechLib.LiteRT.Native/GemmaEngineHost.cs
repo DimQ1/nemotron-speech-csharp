@@ -8,7 +8,7 @@ using SpeechLib.Llm;
 namespace SpeechLib.LiteRT.Native;
 
 /// <summary>
-/// The single owner of the process's one Gemma engine (LiteRT-LM through LiteRtLmSharp 1.3.0): loads it lazily,
+/// The single owner of the process's one Gemma engine (LiteRT-LM through LiteRtLmSharp): loads it lazily,
 /// unloads it when idle, and runs every native operation through ONE worker loop, so exactly one operation is ever
 /// in flight (the "lease": the runtime serializes sends without priorities and blocks conversation creation and
 /// token counting while anything generates).
@@ -20,7 +20,7 @@ namespace SpeechLib.LiteRT.Native;
 /// cancelled, so the host reports the wait in <see cref="Status"/>).</item>
 /// <item>A preempted Background request is re-run from its start (its text is delivered whole, never half-streamed).
 /// A preempted Interactive request keeps its enumerator open, resumes on a fresh conversation from the text already
-/// yielded (<c>Snapshot()/Resume()</c> plus a continuation turn) and goes on without duplicates.</item>
+/// yielded (application-owned history plus a continuation turn) and goes on without duplicates.</item>
 /// <item>Requests with a <see cref="LlmRequest.ConversationKey"/> use a live stateful conversation (LRU, at most
 /// <see cref="GemmaEngineHostOptions.MaxLiveConversations"/>) when the caller's history matches what the conversation
 /// holds, and rebuild it by replay otherwise.</item>
@@ -55,7 +55,6 @@ public sealed class GemmaEngineHost : ILlmHost, ILlmHostConfiguration
     private readonly Task _loop;
     private long _lastActivityTimestamp = Stopwatch.GetTimestamp();
     private volatile bool _lastActivityWasBackground;
-    private volatile bool _samplerDisabled;
     private int _pendingReconfigures;
 
     /// <summary>Creates the host for the real model. The engine itself loads at the first request.</summary>
@@ -741,7 +740,7 @@ public sealed class GemmaEngineHost : ILlmHost, ILlmHostConfiguration
         UnloadEngine();
         lock (_lock)
         {
-            // Snapshots of interrupted answers belong to the engine that was just disposed.
+            // Rebuild pending answers from their logical request when engine settings change.
             foreach (var queued in _queue)
             {
                 if (queued.Snapshot is not null || queued.ResumedFrom is not null)
@@ -754,7 +753,6 @@ public sealed class GemmaEngineHost : ILlmHost, ILlmHostConfiguration
         }
 
         _options = _options.With(settings.ModelPath, settings.Backend, settings.ContextTokens);
-        _samplerDisabled = false; // a different backend may implement the sampler
         BackendFallbackReason = null;
         lock (_lock)
             _unavailableReason = null;
@@ -804,43 +802,21 @@ public sealed class GemmaEngineHost : ILlmHost, ILlmHostConfiguration
         var sampler = SamplerFor(request.Sampling);
         var sendSpec = new GemmaSendSpec(request.Priority == LlmPriority.Live ? _options.LiveNoRepeatNgramSize : 0);
 
-        for (var attempt = 0; ; attempt++)
+        var continuing = job.Snapshot is not null || job.TextResume;
+        var (conversation, sendText, chat) = Acquire(job, engine, sampler);
+        job.ActiveConv = conversation;
+        job.ActiveChat = chat;
+        var joiner = continuing ? new ContinuationJoiner(job.Emitted.ToString()) : null;
+
+        await foreach (var raw in conversation.SendStreamingAsync(sendText, sendSpec, ct).ConfigureAwait(false))
         {
-            var useSampler = sampler is not null && !_samplerDisabled;
-            var gotChunk = false;
-            try
-            {
-                var continuing = job.Snapshot is not null || job.TextResume;
-                var (conversation, sendText, chat) = Acquire(job, engine, useSampler ? sampler : null);
-                job.ActiveConv = conversation;
-                job.ActiveChat = chat;
-                var joiner = continuing ? new ContinuationJoiner(job.Emitted.ToString()) : null;
-
-                await foreach (var raw in conversation.SendStreamingAsync(sendText, sendSpec, ct).ConfigureAwait(false))
-                {
-                    if (raw.Length == 0)
-                        continue;
-
-                    gotChunk = true;
-                    Emit(job, joiner is null ? raw : joiner.Push(raw));
-                }
-
-                if (joiner is not null)
-                    Emit(job, joiner.Flush());
-
-                break;
-            }
-            catch (Exception ex) when (
-                attempt == 0 && useSampler && !gotChunk && job.Emitted.Length == 0 && !ct.IsCancellationRequested
-                && ex is not LlmContextOverflowException and not LlmUnavailableException)
-            {
-                // The CPU backend does not implement some samplers: a conversation asking for one fails its first send
-                // and stays unusable. Retry once on a fresh conversation without it, and stop asking for the
-                // rest of this engine's life (the model's own sampler applies).
-                _samplerDisabled = true;
-                DropActive(job);
-            }
+            if (raw.Length == 0)
+                continue;
+            Emit(job, joiner is null ? raw : joiner.Push(raw));
         }
+
+        if (joiner is not null)
+            Emit(job, joiner.Flush());
 
         FinishConversation(job);
         if (job.Priority == LlmPriority.Background)
@@ -875,8 +851,7 @@ public sealed class GemmaEngineHost : ILlmHost, ILlmHostConfiguration
 
         if (job.TextResume)
         {
-            // The engine was replaced while this answer was interrupted: a snapshot belongs to the old engine, so
-            // rebuild the conversation from text (turns + the reply so far as a model turn) and continue it.
+            // After reconfiguration, replay the logical request and delivered answer under the new settings.
             job.TextResume = false;
             var turns = new List<LlmMessage>(plan.History)
             {

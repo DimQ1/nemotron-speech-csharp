@@ -25,9 +25,6 @@ internal sealed record GemmaSendSpec(int NoRepeatNgram);
 /// <summary>An opaque capture of a cancelled conversation, enough to continue it on a fresh one.</summary>
 internal interface IGemmaSnapshot;
 
-/// <summary>Thrown when the backend does not implement the requested sampler.</summary>
-internal sealed class GemmaSamplerException(string message, Exception? inner = null) : Exception(message, inner);
-
 internal interface IGemmaEngine : IDisposable
 {
     int MaxNumTokens { get; }
@@ -47,8 +44,7 @@ internal interface IGemmaConversation : IDisposable
     /// <summary>
     /// Sends one user turn and streams the answer text. Cancelling <paramref name="cancellationToken"/> stops the
     /// decode (about 40 ms) and throws <see cref="OperationCanceledException"/>; the conversation is dead afterwards.
-    /// Throws <see cref="GemmaSamplerException"/> for an unsupported sampler and
-    /// <see cref="LlmContextOverflowException"/> when the context is full.
+    /// Throws <see cref="LlmContextOverflowException"/> when the context is full.
     /// </summary>
     IAsyncEnumerable<string> SendStreamingAsync(string userText, GemmaSendSpec send, CancellationToken cancellationToken);
 

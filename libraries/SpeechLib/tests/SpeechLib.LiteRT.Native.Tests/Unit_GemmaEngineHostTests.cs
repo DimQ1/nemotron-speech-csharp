@@ -460,25 +460,25 @@ public sealed class Unit_GemmaEngineHostTests
     }
 
     [Fact]
-    public async Task Sampler_ShouldRetryOnceWithoutExplicitSamplerAndStopAsking()
+    public async Task Sampler_ShouldSurfaceFailureWithoutRetryingOrChangingLaterRequests()
     {
+        var failure = new InvalidOperationException("Native generation failed.");
         var engine = new FakeGemmaEngine
         {
-            ReplyFor = call => call.Conversation.Spec.Sampler is null
-                ? FakeReply.Text("ok")
-                : new FakeReply { FailWith = () => new GemmaSamplerException("Sampler type: 3 not implemented") },
+            ReplyFor = _ => new FakeReply { FailWith = () => failure },
         };
         await using var host = NewHost(engine);
         var sampled = new LlmSampling(Temperature: 0.1, TopP: 0.5);
 
-        Assert.Equal("ok", await host.GenerateAsync(Req(LlmPriority.Live, "a") with { Sampling = sampled }));
-        Assert.Equal(2, engine.Conversations.Count);
-        Assert.NotNull(engine.Conversations[0].Spec.Sampler);
-        Assert.Null(engine.Conversations[1].Spec.Sampler);
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => host.GenerateAsync(Req(LlmPriority.Live, "a") with { Sampling = sampled }));
+        Assert.Same(failure, actual);
+        Assert.Single(engine.Conversations);
 
+        engine.ReplyFor = _ => FakeReply.Text("ok");
         Assert.Equal("ok", await host.GenerateAsync(Req(LlmPriority.Live, "b") with { Sampling = sampled }));
-        Assert.Equal(3, engine.Conversations.Count); // no failing attempt this time
-        Assert.Null(engine.Conversations[2].Spec.Sampler);
+        Assert.Equal(2, engine.Conversations.Count);
+        Assert.All(engine.Conversations, c => Assert.Equal(new GemmaSamplerSpec(0.1, 0.5), c.Spec.Sampler));
     }
 
     [Fact]
