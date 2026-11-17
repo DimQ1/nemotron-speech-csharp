@@ -19,6 +19,7 @@ on:
       - 'libraries/SpeechLib/**'
       - 'libraries/VoiceType.Hotkeys/**'
       - 'nuget.config'
+      - 'nuget-feed/litertlmsharp/Version.props'
       - 'global.json'
   pull_request:
     paths:
@@ -28,6 +29,7 @@ on:
       - 'libraries/SpeechLib/**'
       - 'libraries/VoiceType.Hotkeys/**'
       - 'nuget.config'
+      - 'nuget-feed/litertlmsharp/Version.props'
       - 'global.json'
 
 concurrency:

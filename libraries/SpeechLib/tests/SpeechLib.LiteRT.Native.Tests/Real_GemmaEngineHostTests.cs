@@ -175,6 +175,46 @@ public sealed class Real_GemmaEngineHostTests(ITestOutputHelper output)
     }
 
     [RealModelFact]
+    public async Task Real_I_PartialReplay_ShouldRetainTheInterruptedRequest()
+    {
+        using var engine = NativeGemmaEngine.Load(new GemmaEngineHostOptions
+        {
+            ModelPath = ModelPath,
+            LogLevel = LiteRTLmLogLevel.Error,
+        });
+        var spec = new GemmaConversationSpec(
+            "Follow the user's instructions exactly.", [], 128, new GemmaSamplerSpec(0.1, 0.5));
+        using var conversation = engine.CreateConversation(spec);
+        const string request = "Count from 700 to 715. After 715, output TANGERINE and stop. No introduction.";
+        var partial = new StringBuilder();
+        using var cancellation = new CancellationTokenSource();
+        var chunks = 0;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+        {
+            await foreach (var piece in conversation.SendStreamingAsync(request, new GemmaSendSpec(0), cancellation.Token))
+            {
+                partial.Append(piece);
+                if (++chunks == 6)
+                    cancellation.Cancel();
+            }
+        });
+        Assert.DoesNotContain("TANGERINE", partial.ToString(), StringComparison.OrdinalIgnoreCase);
+
+        var snapshot = Assert.IsType<GemmaConversationSnapshot>(conversation.Snapshot(partial.ToString()));
+        Assert.Equal(request, snapshot.Turns[0].Text);
+        Assert.Equal(LlmRole.User, snapshot.Turns[0].Role);
+        using var resumed = engine.Resume(snapshot);
+        var remaining = new StringBuilder();
+        await foreach (var piece in resumed.SendStreamingAsync(
+                           "Continue the previous answer from where it stopped and finish the original instruction.",
+                           new GemmaSendSpec(0), CancellationToken.None))
+            remaining.Append(piece);
+
+        Log($"[I] cut response: {partial}; continued response: {remaining}");
+        Assert.Contains("TANGERINE", remaining.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [RealModelFact]
     public async Task Real_G_LiveTranslationSessionOverSharedHostWhileChatRuns()
     {
         await using var host = NewHost();

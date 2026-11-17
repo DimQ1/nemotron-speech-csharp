@@ -20,6 +20,7 @@ on:
       - 'libraries/SpeechLib/**'
       - 'libraries/VoiceType.Hotkeys/**'
       - 'tools/scripts/fetch-litertlmsharp-feed.ps1'
+      - 'nuget-feed/litertlmsharp/Version.props'
       - 'nuget.config'
       - 'global.json'
   pull_request:
@@ -31,6 +32,7 @@ on:
       - 'libraries/SpeechLib/**'
       - 'libraries/VoiceType.Hotkeys/**'
       - 'tools/scripts/fetch-litertlmsharp-feed.ps1'
+      - 'nuget-feed/litertlmsharp/Version.props'
       - 'nuget.config'
       - 'global.json'
 

@@ -3,15 +3,11 @@
 Downloads the LiteRtLmSharp packages this repository consumes into a local NuGet folder feed.
 
 .DESCRIPTION
-`SpeechLib.LiteRT.Native` references LiteRtLmSharp 1.4.0-dimq1.1 (native LiteRT-LM v0.18.0), the fork's
-build with the engine-usage improvements this repository uses. They are proposed upstream as
-OrihuelaConde/LiteRtLmSharp#15; the maintainer reworked them towards his own 1.4.0 (a different API), so
-the fork publishes under a prerelease-suffixed version and a restore can never take one build for the
-other. It is published from the fork https://github.com/DimQ1/LiteRtLmSharp to its GitHub Packages feed,
-and the same .nupkg files are attached to the fork's `v<version>` GitHub release. GitHub Packages requires
-an authenticated read even for public packages, so this script uses the release assets instead — plain
-HTTPS, no token, no GitHub CLI — and drops them into the local folder feed that nuget.config maps the
-LiteRtLmSharp* packages to.
+The version defaults to nuget-feed/litertlmsharp/Version.props, also imported by the application projects.
+The fork https://github.com/DimQ1/LiteRtLmSharp publishes matched managed/runtime NuGet packages to
+GitHub Packages and the same files to its public `v<version>` release. GitHub Packages requires an
+authenticated read, so this script uses the release assets instead: HTTPS, no token, no GitHub CLI.
+Suffixed fork versions avoid collisions with different upstream builds in NuGet's global package cache.
 
 Run once after cloning (and in CI before building a project that consumes SpeechLib.LiteRT.Native):
 
@@ -19,7 +15,7 @@ Run once after cloning (and in CI before building a project that consumes Speech
   pwsh tools/scripts/fetch-litertlmsharp-feed.ps1 -Rid win-x64       # add/refresh one runtime package
   pwsh tools/scripts/fetch-litertlmsharp-feed.ps1 -Rid osx-arm64     # macOS publish (VoiceType.Uno references it for that RID only)
   pwsh tools/scripts/fetch-litertlmsharp-feed.ps1 -All               # every package the release carries
-  pwsh tools/scripts/fetch-litertlmsharp-feed.ps1 -Version 1.4.0-dimq1.1 -Force
+  pwsh tools/scripts/fetch-litertlmsharp-feed.ps1 -Force             # refresh the pinned version
 
 Already-downloaded packages are skipped unless -Force is given, so the script is cheap to call from a
 build script. Use the GitHub Packages feed directly (see the project README) if you prefer to consume
@@ -27,7 +23,7 @@ the published feed with a `read:packages` token.
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = '1.4.0-dimq1.1',
+    [string]$Version,
     [string]$Repo = 'DimQ1/LiteRtLmSharp',
     [string]$Destination,
     # Package ids to fetch; empty = the ones this repository references (see the switch below).
@@ -44,7 +40,7 @@ $ErrorActionPreference = 'Stop'
 # package plus the win-x64 / linux-x64 / android-arm64 runtime packages (apps publish per RID).
 $referencedPackages = @('LiteRtLmSharp', 'LiteRtLmSharp.runtime.win-x64', 'LiteRtLmSharp.runtime.linux-x64',
                         'LiteRtLmSharp.runtime.android-arm64')
-# Everything the 1.4.0-dimq1.1 release carries (kept in sync with the runtime packages in LiteRtLmSharp.slnx).
+# Kept in sync with the fork's published runtime packages.
 $everyPackage = @('LiteRtLmSharp', 'LiteRtLmSharp.Extensions.AI', 'LiteRtLmSharp.SemanticKernel') +
     @('win-x64', 'linux-x64', 'linux-arm64', 'android-arm64', 'android-x64', 'osx-arm64') |
     ForEach-Object { if ($_ -like 'LiteRtLmSharp*') { $_ } else { "LiteRtLmSharp.runtime.$_" } }
@@ -54,6 +50,11 @@ if ($Rid) { $packages += @($Rid | ForEach-Object { $_ -split ',' } | ForEach-Obj
 $packages = $packages | Sort-Object -Unique
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+if (-not $Version) {
+    [xml]$versionProps = Get-Content (Join-Path $repoRoot 'nuget-feed\litertlmsharp\Version.props') -Raw
+    $Version = [string]$versionProps.Project.PropertyGroup.LiteRtLmSharpVersion
+    if (-not $Version) { throw 'Version.props has no LiteRtLmSharpVersion.' }
+}
 $dest = if ($Destination) { $Destination } else { Join-Path $repoRoot 'nuget-feed/litertlmsharp' }
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 $dest = (Resolve-Path $dest).Path

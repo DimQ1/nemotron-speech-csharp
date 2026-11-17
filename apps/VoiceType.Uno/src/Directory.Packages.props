@@ -1,4 +1,5 @@
 <Project ToolsVersion="15.0">
+  <Import Project="..\..\..\nuget-feed\litertlmsharp\Version.props" />
   <!--
     To update the version of Uno, you should instead update the Sdk version in the global.json file.
 
@@ -8,6 +9,6 @@
   <ItemGroup>
     <!-- Only referenced by VoiceType.Uno for RuntimeIdentifier osx-arm64 (macOS publish). Keep the version in step with
          the LiteRtLmSharp packages of libraries/SpeechLib/src/SpeechLib.LiteRT.Native. -->
-    <PackageVersion Include="LiteRtLmSharp.runtime.osx-arm64" Version="1.4.0-dimq1.1" />
+    <PackageVersion Include="LiteRtLmSharp.runtime.osx-arm64" Version="[$(LiteRtLmSharpVersion)]" />
   </ItemGroup>
 </Project>

@@ -1,10 +1,11 @@
 using System.Runtime.CompilerServices;
+using System.Text;
 using LiteRtLmSharp;
 using SpeechLib.Llm;
 
 namespace SpeechLib.LiteRT.Native;
 
-/// <summary>The real engine: a thin adapter from <see cref="IGemmaEngine"/> to LiteRtLmSharp 1.3.0.</summary>
+/// <summary>The real engine: a thin adapter from <see cref="IGemmaEngine"/> to LiteRtLmSharp.</summary>
 internal sealed class NativeGemmaEngine : IGemmaEngine
 {
     private readonly LiteRtEngine _engine;
@@ -43,54 +44,42 @@ internal sealed class NativeGemmaEngine : IGemmaEngine
                 : LiteRtMessage.User(message.Text));
         }
 
-        try
+        var conversation = _engine.CreateConversation(new LiteRtConversationOptions
         {
-            var conversation = _engine.CreateConversation(new LiteRtConversationOptions
-            {
-                SystemMessage = spec.System,
-                EnableThinking = false,
-                MaxOutputTokens = spec.MaxOutputTokens,
-                Sampler = spec.Sampler is null
-                    ? null
-                    : new LiteRtSamplerParams
-                    {
-                        Strategy = LiteRtSamplerType.TopP,
-                        TopP = (float)spec.Sampler.TopP,
-                        Temperature = (float)spec.Sampler.Temperature,
-                    },
-                History = history.Count > 0 ? history : null,
-            });
-            return new NativeGemmaConversation(conversation);
-        }
-        catch (LiteRtSamplerNotSupportedException ex)
-        {
-            throw new GemmaSamplerException(ex.Message, ex);
-        }
+            SystemMessage = spec.System,
+            EnableThinking = false,
+            MaxOutputTokens = spec.MaxOutputTokens,
+            Sampler = spec.Sampler is null
+                ? null
+                : new LiteRtSamplerParams
+                {
+                    Strategy = LiteRtSamplerType.TopP,
+                    TopP = (float)spec.Sampler.TopP,
+                    Temperature = (float)spec.Sampler.Temperature,
+                },
+            History = history.Count > 0 ? history : null,
+        });
+        return new NativeGemmaConversation(conversation, spec);
     }
 
     public IGemmaConversation Resume(IGemmaSnapshot snapshot)
     {
-        try
-        {
-            return new NativeGemmaConversation(LiteRtConversation.Resume(((NativeSnapshot)snapshot).Value));
-        }
-        catch (LiteRtSamplerNotSupportedException ex)
-        {
-            throw new GemmaSamplerException(ex.Message, ex);
-        }
+        if (snapshot is not GemmaConversationSnapshot saved)
+            throw new ArgumentException("The snapshot is not an application text-history snapshot.", nameof(snapshot));
+        return CreateConversation(saved.Spec with { History = saved.Turns });
     }
 
     public void Dispose() => _engine.Dispose();
 
-    internal sealed record NativeSnapshot(LiteRtConversationSnapshot Value) : IGemmaSnapshot;
-
-    private sealed class NativeGemmaConversation(LiteRtConversation conversation) : IGemmaConversation
+    private sealed class NativeGemmaConversation(LiteRtConversation conversation, GemmaConversationSpec spec) : IGemmaConversation
     {
+        private readonly GemmaConversationHistory _history = new(spec);
+
         public int TokenCountCached => conversation.TokenCountCached;
 
         public bool IsContextFull => conversation.IsContextFull;
 
-        public IGemmaSnapshot Snapshot(string? partialResponse) => new NativeSnapshot(conversation.Snapshot(partialResponse));
+        public IGemmaSnapshot Snapshot(string? partialResponse) => _history.Snapshot(partialResponse);
 
         public async IAsyncEnumerable<string> SendStreamingAsync(
             string userText,
@@ -101,6 +90,8 @@ internal sealed class NativeGemmaEngine : IGemmaEngine
                 ? new LiteRtSendOptions { NoRepeatNgram = new LiteRtNoRepeatNgramOptions { NgramSize = send.NoRepeatNgram } }
                 : null;
 
+            _history.BeginTurn(userText);
+            var answer = new StringBuilder();
             await using var stream = conversation
                 .SendStreamingAsync(userText, attachments: null, options, cancellationToken)
                 .ConfigureAwait(false)
@@ -113,10 +104,6 @@ internal sealed class NativeGemmaEngine : IGemmaEngine
                 {
                     has = await stream.MoveNextAsync();
                 }
-                catch (LiteRtSamplerNotSupportedException ex)
-                {
-                    throw new GemmaSamplerException(ex.Message, ex);
-                }
                 catch (LiteRtContextOverflowException ex)
                 {
                     throw new LlmContextOverflowException(
@@ -125,11 +112,17 @@ internal sealed class NativeGemmaEngine : IGemmaEngine
                 }
 
                 if (!has)
+                {
+                    _history.CompleteTurn(answer.ToString());
                     yield break;
+                }
 
                 var chunk = stream.Current;
                 if (chunk.Kind == LiteRtStreamChunkKind.Answer && chunk.Text.Length > 0)
+                {
+                    answer.Append(chunk.Text);
                     yield return chunk.Text;
+                }
             }
         }
 

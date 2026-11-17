@@ -1,19 +1,15 @@
 # Local NuGet feed for the LiteRtLmSharp packages
 
-`SpeechLib.LiteRT.Native` references **LiteRtLmSharp 1.4.0-dimq1.1** (native LiteRT-LM v0.18.0), the fork's
-build with the engine-usage improvements this repository uses. They are proposed upstream as
-[OrihuelaConde/LiteRtLmSharp#15](https://github.com/OrihuelaConde/LiteRtLmSharp/pull/15); the maintainer
-reworked them towards his own 1.4.0 (a different API — per-engine `AllowMultipleEngines`, `Greedy`/`TopK`
-sent as `TopP`, a `Clone()` checkpoint instead of `Snapshot()`/`Resume()`), so this build carries a
-prerelease suffix: a restore can never take upstream's 1.4.0 for the fork's build, or the reverse. The
-engine comes from the fork
-[DimQ1/LiteRtLmSharp](https://github.com/DimQ1/LiteRtLmSharp) and is published two ways:
+The app consumes **LiteRtLmSharp 1.5.0-dimq1.2**, native **LiteRT-LM 0.19.1 / C API 1.0.0**, from
+[DimQ1/LiteRtLmSharp](https://github.com/DimQ1/LiteRtLmSharp). It includes the maintainer's reviewed
+engine fixes from PR 15. Suffixed versions keep different fork/upstream assemblies out of the same
+NuGet cache slot. All managed/runtime references and the fetch script read **[Version.props](Version.props)**.
 
 - **GitHub Packages feed** — `https://nuget.pkg.github.com/DimQ1/index.json`. This is the feed the fork
   publishes to (`publish-github-packages.yml`); GitHub requires an authenticated read for it even though
   both repositories are public, so consuming it needs a token with the `read:packages` scope.
 - **GitHub release assets** — the same `.nupkg` files are attached to the fork's
-  [`v1.4.0-dimq1.1` release](https://github.com/DimQ1/LiteRtLmSharp/releases/tag/v1.4.0-dimq1.1),
+  [`v1.5.0-dimq1.2` release](https://github.com/DimQ1/LiteRtLmSharp/releases/tag/v1.5.0-dimq1.2),
   downloadable over plain HTTPS with no token and no GitHub CLI.
 
 The root `nuget.config` maps `LiteRtLmSharp*` to **this directory** (the `litertlmsharp-local` folder
@@ -30,3 +26,19 @@ that consumes `SpeechLib.LiteRT.Native`.
 
 Everything else this repository needs still comes from nuget.org, which the `nuget.config` mapping keeps
 as the default source for every other package id.
+
+## Updating NuGet packages
+
+1. Publish a new, unused suffixed version in the fork. Its
+   [update guide](https://github.com/DimQ1/LiteRtLmSharp/blob/master/docs/fork-updates.md) covers the
+   native release, ABI audit, tests and **Publish to GitHub Packages** workflow.
+2. Change only `LiteRtLmSharpVersion` in [Version.props](Version.props). It updates the library's
+   managed/runtime references, Uno's macOS runtime version and the fetch script together.
+3. Run the fetch script above (`-Rid osx-arm64` for macOS), restore, then build/test the application.
+   The native engine tests use `SPEECHLIB_GEMMA_MODEL` for model-backed checks.
+4. For direct GitHub Packages consumption, enable the existing `github-dimq1` source in
+   [nuget.config](../../nuget.config) and provide `GITHUB_PACKAGES_TOKEN` with `read:packages` outside git.
+   Otherwise the release mirror needs no credentials.
+
+Do not swap only the native DLL: C API 1.0.0 changes function signatures and stop-token ownership.
+Switching back to an older fork API also requires reverting the corresponding application adapter.
